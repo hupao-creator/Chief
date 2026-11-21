@@ -101,7 +101,14 @@ owns resolution, profile compatibility and window appearance.
    regions, and a different primary language with Chinese second. Inspect the
    visible language and `snapshot.settings.locale`, including after changing the
    preferred order while Chief is running. Check the profile's output locale
-   receipt before starting a generated-output operation.
+   receipt before starting a generated-output operation. In an isolated profile,
+   count successful locale temporary-file creations, fsyncs and renames for
+   initial publication, then through two 15-second discovery intervals and a
+   reconnect. Expect one of each initially, zero with the same published value,
+   and one of each per language change. Race two clients requesting the same
+   change and check that only one publishes. Force a rename failure and check
+   that the next command publishes after the obstruction is removed. See the
+   [profile publication contract](../../app/macos/Sources/Core/README.md).
 3. Open Settings from loaded Overview and confirm Chief Agent is selected and the
    English tabs read Chief Agent, Auto-Categorization and Super Thread, in order.
    In Chinese, check Chief Agent, 自动归类 and 超级线程. At normal and narrow widths,

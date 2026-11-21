@@ -157,6 +157,12 @@ Directory-list entries use their own host, target and entry name for UI identity
 so distinct symlinks to the same target retain stable labels after redraws.
 
 Native navigation and drafts belong to the workspace. [Desktop preferences](../Host/Shell/DesktopPreferences.swift) persist profile-local selection, onboarding and reading activity. The native app [derives its interface settings from macOS](../../README.md#system-appearance-and-language) and publishes the resolved language for generated output through profile metadata.
+Before connection, reconnection and commands (including installation discovery),
+the language publisher compares the private file with its canonical JSON under
+an exclusive lock on the runtime directory. Matching bytes require only a read.
+A missing, different or invalid file goes through the synced atomic replacement.
+Each publisher checks disk again on the next call, including after failure or
+another client’s language change.
 
 HTTP and command rejections after handoff retain the original fork identity;
 an explicit replacement preserves it until the accepted draft is consumed.

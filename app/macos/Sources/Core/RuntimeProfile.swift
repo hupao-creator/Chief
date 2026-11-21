@@ -112,9 +112,26 @@ public struct RuntimeProfile: Sendable, Equatable {
         guard locale == "zh-CN" || locale == "en-US" else {
             throw RuntimeError("INVALID_OUTPUT_LOCALE", "Output locale must be zh-CN or en-US")
         }
-        try prepare()
-        let directory = try openMetadataDirectory()
+        let directory: Int32
+        do { directory = try openMetadataDirectory() }
+        catch {
+            try prepare()
+            directory = try openMetadataDirectory()
+        }
         defer { Darwin.close(directory) }
+        // Other clients can publish between commands. Lock the stable directory,
+        // since rename replaces the locale file itself. Closing releases the lock.
+        let acquire: (Int32, Int32) -> Int32 = flock
+        while acquire(directory, LOCK_EX) != 0 {
+            if errno == EINTR { continue }
+            throw Self.profileIOError("lock output locale metadata")
+        }
+        // Values are a fixed enum; serialization never interpolates arbitrary text.
+        let data = Data("{\"locale\":\"\(locale)\"}".utf8)
+        // Only a verified private file can satisfy publication. Otherwise use
+        // the normal atomic replacement, including to repair invalid metadata.
+        let name = "output-locale.json"
+        if (try? readPrivateData(name, in: directory)) == data { return }
         let temporary = "output-locale.json.\(UUID().uuidString).tmp"
         let descriptor = temporary.withCString { Darwin.openat(directory, $0, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600) }
         guard descriptor >= 0 else { throw Self.profileIOError("create output locale metadata") }
@@ -122,8 +139,6 @@ public struct RuntimeProfile: Sendable, Equatable {
             Darwin.close(descriptor)
             _ = temporary.withCString { Darwin.unlinkat(directory, $0, 0) }
         }
-        // Values are a fixed enum; serialization never interpolates arbitrary text.
-        let data = Data("{\"locale\":\"\(locale)\"}".utf8)
         try data.withUnsafeBytes { buffer in
             guard let base = buffer.baseAddress else { return }
             var offset = 0
@@ -136,7 +151,7 @@ public struct RuntimeProfile: Sendable, Equatable {
         }
         guard Darwin.fsync(descriptor) == 0 else { throw Self.profileIOError("flush output locale metadata") }
         let renamed = temporary.withCString { source in
-            "output-locale.json".withCString { target in Darwin.renameat(directory, source, directory, target) }
+            name.withCString { target in Darwin.renameat(directory, source, directory, target) }
         }
         guard renamed == 0 else { throw Self.profileIOError("publish output locale metadata") }
     }
@@ -183,7 +198,12 @@ public struct RuntimeProfile: Sendable, Equatable {
         do { directory = try openMetadataDirectory() }
         catch let error as RuntimeError where error.code == "PROFILE_NOT_FOUND" { return nil }
         defer { Darwin.close(directory) }
-        let name = url.lastPathComponent
+        guard let data = try readPrivateData(url.lastPathComponent, in: directory) else { return nil }
+        do { return try JSONValue.parse(data: data) }
+        catch { throw RuntimeError("INVALID_DISCOVERY", "Runtime metadata is not valid JSON") }
+    }
+
+    private func readPrivateData(_ name: String, in directory: Int32) throws -> Data? {
         var before = stat()
         guard name.withCString({ Darwin.fstatat(directory, $0, &before, AT_SYMLINK_NOFOLLOW) }) == 0 else {
             if errno == ENOENT { return nil }
@@ -209,8 +229,7 @@ public struct RuntimeProfile: Sendable, Equatable {
             guard data.count + count <= 64 * 1024 else { throw Self.unsafeMetadata() }
             data.append(contentsOf: buffer.prefix(count))
         }
-        do { return try JSONValue.parse(data: data) }
-        catch { throw RuntimeError("INVALID_DISCOVERY", "Runtime metadata is not valid JSON") }
+        return data
     }
 
     private static func unsafeMetadata() -> RuntimeError {
