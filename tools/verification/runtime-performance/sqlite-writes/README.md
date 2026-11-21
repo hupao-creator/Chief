@@ -24,3 +24,5 @@ python3 tools/verification/runtime-performance/prepare_baseline.py 2aed57156caae
 ```
 
 Compare the same ordered inputs, logical changes and committed revisions. Sum database and WAL write bytes including the final checkpoint. File size after checkpoint measures net allocation. The fixture supplies the activity mix, history size and packet boundaries. Live profiles, native event pacing, model services, GUI latency and power loss require separate evidence.
+
+The paired macOS runs include per-record attribution, every operation’s raw counters and the recovery checks for the measured source. [Measurement report and samples](../results/20261121-sqlite-writes/README.md)
