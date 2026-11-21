@@ -152,9 +152,15 @@ func (r *Runtime) prepareExecutionSettings(ctx context.Context, owner, requested
 	// Presentation and startup recovery do not admit native work. Their catalog
 	// discovery must not hold the write gate while an unrelated prompt is saved.
 	// A real execution admission already owns this gate through its context.
-	captured, err := r.captureExecutionProfiles(ctx, settings, owner, requested, initializeOnly)
+	captured := settings
+	needsCommit, err := r.captureExecutionProfiles(ctx, &captured, owner, requested, initializeOnly)
 	if err != nil {
 		return settings, revision, err
+	}
+	// A presentation of an initialized profile only needs the committed snapshot.
+	// An unrelated admission can keep the write gate until native acknowledgment.
+	if !needsCommit {
+		return settings, revision, ctx.Err()
 	}
 	unlock, err := r.configurationLock(ctx)
 	if err != nil {
@@ -350,11 +356,13 @@ func (r *Runtime) persistCapturedSettings(ctx context.Context, expected int64, s
 	})
 	return err
 }
-func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings model.Settings, owner, requested string, initializeOnly bool) (model.Settings, error) {
+
+// A false result leaves settings untouched. Explicit capture and resolving an
+// automatic preference both require commit-time reconciliation.
+func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings *model.Settings, owner, requested string, initializeOnly bool) (bool, error) {
 	if err := ctx.Err(); err != nil {
-		return settings, err
+		return false, err
 	}
-	settings.PluginSettings = append([]model.PluginSettings{}, settings.PluginSettings...)
 	var background *backgroundSettings
 	entryIndex := -1
 	if owner != "" {
@@ -362,10 +370,10 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings model.S
 			if entry.ID == owner {
 				var value backgroundSettings
 				if err := model.Unmarshal(entry.Value, &value); err != nil {
-					return settings, err
+					return false, err
 				}
 				if value.Mode != "inherit" && value.Mode != "override" {
-					return settings, errors.New("application setting is not an execution binding")
+					return false, errors.New("application setting is not an execution binding")
 				}
 				background = &value
 				entryIndex = i
@@ -373,10 +381,10 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings model.S
 			}
 		}
 		if background == nil {
-			return settings, errors.New("unknown application execution settings")
+			return false, errors.New("unknown application execution settings")
 		}
 		if initializeOnly && background.Enabled != nil && !*background.Enabled {
-			return settings, nil
+			return false, nil
 		}
 		if background.Mode == "inherit" {
 			return r.captureExecutionProfiles(ctx, settings, "", requested, initializeOnly)
@@ -391,10 +399,10 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings model.S
 	source := mergeProfiles(settings.Harnesses, settings.Moku.ExecutionHarnesses, profiles)
 	cwd, cwdErr := r.configurationCwd(owner)
 	if cwdErr != nil {
-		return settings, cwdErr
+		return false, cwdErr
 	}
 	if err := os.MkdirAll(cwd, 0700); err != nil {
-		return settings, err
+		return false, err
 	}
 	harnessID := requested
 	if harnessID == "" {
@@ -416,14 +424,14 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings model.S
 						if e == nil && available.Available {
 							selectedPreference = current
 						} else if e == nil && available.RequiresExplicitSelection {
-							return settings, fmt.Errorf("current Chief host requires explicit compatible selection: %s", available.Reason)
+							return false, fmt.Errorf("current Chief host requires explicit compatible selection: %s", available.Reason)
 						}
 					}
 				}
 			}
 			id, err := r.ResolveHost(ctx, selectedPreference, source, cwd)
 			if err != nil {
-				return settings, err
+				return false, err
 			}
 			harnessID = id
 		} else {
@@ -432,10 +440,10 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings model.S
 	}
 	h := r.config.Harnesses[harnessID]
 	if h == nil || !h.Descriptor().ThreadCapabilities.CanHostMoku() {
-		return settings, fmt.Errorf("harness cannot host internal execution: %s", harnessID)
+		return false, fmt.Errorf("harness cannot host internal execution: %s", harnessID)
 	}
 	if reason := r.config.DisabledHarnesses[harnessID]; reason != "" {
-		return settings, fmt.Errorf("harness disabled: %s", reason)
+		return false, fmt.Errorf("harness disabled: %s", reason)
 	}
 	existing, exists := profiles[harnessID]
 	captured := existing
@@ -446,12 +454,15 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings model.S
 		}
 		value, err := h.Settings().SnapshotExecution(ctx, plugin.SettingsRequest{Settings: settingsSource, Cwd: cwd}, !exists)
 		if err != nil {
-			return settings, err
+			return false, err
 		}
 		captured = value
 	}
 	if !json.Valid(captured) {
-		return settings, errors.New("execution snapshot is not JSON")
+		return false, errors.New("execution snapshot is not JSON")
+	}
+	if initializeOnly && exists && preference != "auto" {
+		return false, nil
 	}
 	nextProfiles := mergeProfiles(profiles, map[string]json.RawMessage{harnessID: captured})
 	if preference == "auto" {
@@ -465,11 +476,13 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings model.S
 		background.HarnessPreference = preference
 		value, err := json.Marshal(background)
 		if err != nil {
-			return settings, err
+			return false, err
 		}
+		// The caller retains its original snapshot for the commit-time source check.
+		settings.PluginSettings = append([]model.PluginSettings(nil), settings.PluginSettings...)
 		settings.PluginSettings[entryIndex].Value = value
 	}
-	return settings, nil
+	return true, nil
 }
 func (r *Runtime) configurationCwd(owner string) (string, error) {
 	if owner == "" {
@@ -544,14 +557,14 @@ func (r *Runtime) validateChangedProfiles(ctx context.Context, settings, previou
 	var err error
 	for id, value := range settings.Moku.ExecutionHarnesses {
 		if !same(value, previous.Moku.ExecutionHarnesses[id]) {
-			settings, err = r.captureExecutionProfiles(ctx, settings, "", id, false)
+			_, err = r.captureExecutionProfiles(ctx, &settings, "", id, false)
 			if err != nil {
 				return settings, err
 			}
 		}
 	}
 	if settings.Moku.HostHarnessPreference != previous.Moku.HostHarnessPreference {
-		settings, err = r.captureExecutionProfiles(ctx, settings, "", "", false)
+		_, err = r.captureExecutionProfiles(ctx, &settings, "", "", false)
 		if err != nil {
 			return settings, err
 		}
@@ -577,14 +590,14 @@ func (r *Runtime) validateChangedProfiles(ctx context.Context, settings, previou
 		}
 		for id, profile := range value.Harnesses {
 			if !same(profile, oldProfiles[id]) {
-				settings, err = r.captureExecutionProfiles(ctx, settings, entry.ID, id, false)
+				_, err = r.captureExecutionProfiles(ctx, &settings, entry.ID, id, false)
 				if err != nil {
 					return settings, err
 				}
 			}
 		}
 		if before.Mode != "override" || oldPreference != value.HarnessPreference {
-			settings, err = r.captureExecutionProfiles(ctx, settings, entry.ID, "", false)
+			_, err = r.captureExecutionProfiles(ctx, &settings, entry.ID, "", false)
 			if err != nil {
 				return settings, err
 			}
