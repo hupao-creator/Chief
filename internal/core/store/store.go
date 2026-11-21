@@ -54,8 +54,8 @@ type result struct {
 	err      error
 }
 
-// Open creates the current format or reopens it. Foreign schemas are rejected;
-// the caller selects a new path when making an incompatible format change.
+// Open creates or validates the profile's database. A supported inline-format
+// database can be opened in place without converting untouched records.
 func Open(path string) (*Store, error) {
 	if path == "" || path == ":memory:" {
 		return nil, errors.New("state store requires a durable file path")

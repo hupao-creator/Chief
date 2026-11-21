@@ -14,16 +14,17 @@ new parent directories are mode `0700`.
 New runtime profiles use `chief-go-state-v1/state.sqlite`. If a profile has the
 existing `mokusei-go-state-v1` directory, the runtime opens that database in place.
 
-The Go format has `application_id = 0x4d4f4b53` (`MOKS`) and `user_version = 1`. Only a completely empty, unversioned
-SQLite database can be initialized. Foreign versions, extra schema objects,
+The Go store accepts application ID `0x4d4f4b53` (`MOKS`) and format versions
+1 and 2. Only a completely empty, unversioned SQLite database can be initialized. Foreign versions, extra schema objects,
 altered table definitions, malformed JSON, invalid lifecycle references, and
 noncontiguous ordering are rejected at open.
 
-The schema contains:
+The database contains the following tables.
 
 | Table | Responsibility |
 | --- | --- |
-| `records` | One UTF-8 JSON BLOB per unique record key, at most 50 MiB each |
+| `records` | Inline UTF-8 JSON records, including untouched Alpha v1 values |
+| `record_chunks` (v2) | Ordered byte ranges of large JSON records |
 | `entity_order` | Unique IDs and contiguous positions for each ordered entity kind |
 | `store_meta` | Monotonically increasing committed revision |
 
@@ -31,6 +32,28 @@ SQLite runs in WAL mode with `synchronous=FULL`, an 8 KiB page size for new file
 and a 2-second busy timeout. macOS full fsync and checkpoint full fsync are
 enabled. A successful update means that COMMIT has completed, including its
 durability work. WAL checkpoint completion is not required for durability.
+
+## Large records
+
+A logical record has one key and up to 50 MiB of exact UTF-8 JSON. Values up
+to 64 KiB live in `records`. The first changed value above that threshold
+creates `record_chunks` and sets `user_version=2` in the transaction that
+saves the value and its revision. Opening a v1 profile and writing smaller
+records keep the v1 format. Existing large inline rows remain readable in place. Each moves to
+chunks on its next large write. A v1-only executable rejects a v2 database.
+
+Large values use consecutive 7,680-byte parts numbered from zero. The smaller
+final part is empty for an exact multiple. A commit compares parts against the
+last committed bytes, writes changed parts and deletes any surplus tail in the
+same transaction as the revision and related records. Shrinking to 64 KiB or
+less moves the value back inline. Opening checks key ownership, consecutive
+positions, the final part, total size and the reassembled JSON. A key must
+have exactly one representation.
+
+Harness submissions still serialize complete logical snapshots. An edit near
+the front that shifts subsequent byte offsets can change many parts. Updates
+to a growing tail typically share earlier parts. These storage choices preserve
+each existing admission, streaming and COMMIT boundary.
 
 ## Transactions and snapshots
 
@@ -119,9 +142,9 @@ ownership and surface the error instead of starting a replacement writer.
 The store has no dependency on the application model. Runtime code supplies its
 typed domain validation and uses keys such as:
 
-- `thread:<id>`, ordered under `thread`;
-- `application-record:<collection>:<id>` and collection metadata;
-- `private-session:<id>`;
+- `thread:<id>`, ordered under `threads`;
+- `application:<collection>:<id>` and collection metadata;
+- `private-session:<agent>:<key>` and its session-ID index;
 - `settings`, `settings-revision`, `moku-applied-settings`, `tags`, and tag metadata;
 - `event:<id>`, `lifecycle-work:<consumer>`, and
   `lifecycle-outcome:<consumer>:<event>`.
@@ -180,12 +203,13 @@ events, using the reverse outcome index. Batch reads therefore do not walk all
 pages of history to find a handful of requested identities. `History` is the
 filter-only convenience wrapper. Scope authorization remains the caller's job.
 These indexes are derived from validated records and rebuilt on open; the
-durable SQLite format is unchanged.
+durable keys and logical values belong to the same store transaction.
 
 ## Source and verification
 
 [store.go](store.go) owns admission and transactions, [sqlite.go](sqlite.go) owns
-schema and durable writes, [snapshot.go](snapshot.go) and [index.go](index.go) own
+schema and durable writes, and [chunks.go](chunks.go) owns large-record reads and writes.
+[snapshot.go](snapshot.go) and [index.go](index.go) own
 immutable reads, and [lifecycle.go](lifecycle.go) owns events, work and receipts.
 [lifecycle_index.go](lifecycle_index.go) owns query indexes and pending readers;
 [lifecycle_subscriptions.go](lifecycle_subscriptions.go) owns routed notifications.
@@ -209,6 +233,20 @@ batch IDs cannot mutate work. Reopening retains pending work, receipts and outco
 The [property](../../../tools/verification/pbt/store/lifecycle_property_test.go)
 uses 1–60 actions, three scopes/consumers, bounded receipt keys and generated
 processed/failed outcomes; timestamp ties exercise deterministic event order.
+
+**PBT-STORE-STREAM** starts with the [distributed Alpha v1 schema](https://github.com/hupao-creator/Chief/blob/df9ad830c3811d31759e110b5b0cd899969255ab/internal/core/store/sqlite.go).
+The [property](../../../tools/verification/pbt/store/stream_property_test.go)
+checks exact stream prefixes from 2–7 concurrent producers, duplicate retries,
+rollback on a late SQLite statement failure, size changes, deletion and reopen.
+It compares the recovered bytes and receipt after a child exits directly after
+COMMIT. A copy cut inside that transaction’s WAL frames must recover the
+preceding revision and its exact bytes. The cut follows the
+[SQLite WAL format](https://www.sqlite.org/fileformat2.html#the_write_ahead_log).
+Malformed physical chunk sequences must fail to open. These on-disk
+transitions and crash boundaries are outside the integer snapshot property.
+
+The [write benchmark](../../../tools/verification/runtime-performance/sqlite-writes/README.md)
+attributes changes and file writes to an isolated workload with two session kinds.
 
 Run `make pbt-go`. These properties do not cover power-loss/fsync faults,
 multiple writers or allocation/performance bounds. See the [PBT guide](../../../tools/verification/pbt/README.md)

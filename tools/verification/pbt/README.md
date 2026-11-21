@@ -27,6 +27,7 @@ selects only these entries and requires evidence that they actually ran.
 | PBT-MOKU-SCOPE | [Moku](../../../internal/services/moku/README.md): two owners, 1–12 executions, permuted/duplicate callbacks and configuration installs | Highest observed owner revision controls tools; retired scopes cancel |
 | PBT-MOKU-QUEUE | [Moku](../../../internal/services/moku/README.md): 1–8 cohorts of 1–12 waiters and cancellation subsets | Cancelled waiters release behind held owner; surviving admission is exclusive; queue reusable |
 | PBT-STORE-SNAPSHOT | [Store](../../../internal/core/store/README.md): 1–80 transactions, overlapping ASCII/Unicode/long prefixes, puts/deletes | Independent map oracle for exact prefix/diff results and snapshot immutability |
+| PBT-STORE-STREAM | [Large records](../../../internal/core/store/README.md#large-records), Alpha v1 fixtures, 2–7 concurrent appenders, variable-length edits, SQL failure, retry and child exit | Every acknowledged revision has the expected bytes, including whitespace and Unicode. Reopen recovers a stream fragment and its receipt together. A WAL cut before the complete commit frame recovers the prior revision. Malformed chunk sequences fail to open. |
 | PBT-STORE-LIFECYCLE | [Store](../../../internal/core/store/README.md): 1–60 append/batch/receipt/settle/rollback/reopen actions, three scopes/consumers | Independent fact/acknowledgement model; effect idempotency, rollback isolation, pending/history and durable work |
 | PBT-CODEX-TERMINAL | [Codex](../../../internal/plugins/harness/codex/README.md): generated start/event/follow-up/reject/settle histories | Durable state decodes; first terminal is absorbing; rejection notice retained |
 | PBT-CODEX-CATALOG | [Codex](../../../internal/plugins/harness/codex/README.md): client version, valid/malformed timestamp and a write before/during/after acquisition | Counted native probes distinguish reuse, one re-enumeration and reuse of the new result |
@@ -69,7 +70,7 @@ JavaScript launcher), `sandbox-exec` and loopback listeners. It uses isolated
 profiles/configuration and a scripted model provider; it does not read user
 conversations or contact a real model service.
 
-Rapid defaults to 100 cases per property (worktree removal: 5, system: 3), seed 1. Swift geometry and collection budgets
+Rapid defaults to seed 1 and 100 cases per property. Stream storage runs 30 cases, worktree removal runs 5 and the system property runs 3. Swift geometry and collection budgets
 default to 480 seeds, deferred regrouping to 64, mounted state to 8 plus corpus. `--cases` (1–10000),
 `--seed` (nonzero UInt64), `CHIEF_PBT_CASES` and `CHIEF_PBT_SEED` control
 generated budgets. `--timeout` defaults to 600s per property including compilation;

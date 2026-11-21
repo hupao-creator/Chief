@@ -41,6 +41,8 @@ Quit Chief Alpha before updating. In Finder, use **Go → Go to Folder** to open
 
 Replace **Chief Alpha.app** in **Applications** with the copy from the new disk image. If your installed copy is named **Mokusei Alpha.app**, move it out of **Applications** first. Open Chief Alpha and check that your conversations and settings appear.
 
-Alpha updates are manual. App data may be incompatible between versions, and macOS may ask for permissions again. Alpha has its own app data and uses the project folders and agent sign-ins you already have on this Mac.
+Keep the pre-update backup if you may return to an earlier Alpha. Once Chief saves a large conversation, the earlier app may be unable to open the updated data. To go back, quit Chief, move your current data folders aside and restore the backed-up folders to their original location. The earlier app will show the conversations and settings from the time of that backup.
+
+Alpha updates are manual, and macOS may ask for permissions again. Alpha has its own app data and uses the project folders and agent sign-ins you already have on this Mac.
 
 [Back to the product guide](README.md)

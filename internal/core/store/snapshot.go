@@ -26,11 +26,13 @@ type storedOrder struct{ ids []string }
 type storedRecord struct {
 	body json.RawMessage
 	hash string
+	// Physical layout of this value when committed. A loaded v1 row is inline at any size.
+	chunked bool
 }
 
-func newStoredRecord(body json.RawMessage) *storedRecord {
+func newStoredRecord(body json.RawMessage, chunked bool) *storedRecord {
 	sum := sha256.Sum256(body)
-	return &storedRecord{body: bytes.Clone(body), hash: hex.EncodeToString(sum[:])}
+	return &storedRecord{body: bytes.Clone(body), hash: hex.EncodeToString(sum[:]), chunked: chunked}
 }
 
 // RecordHash identifies the exact immutable record bytes without copying or
@@ -292,7 +294,7 @@ func (t *Tx) PutRaw(key string, value json.RawMessage) error {
 		delete(t.writes, key)
 		return nil
 	}
-	t.writes[key] = newStoredRecord(value)
+	t.writes[key] = newStoredRecord(value, len(value) > inlineLimit)
 	return nil
 }
 func (t *Tx) Delete(key string) error {
