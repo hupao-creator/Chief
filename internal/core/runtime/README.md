@@ -188,7 +188,12 @@ Nested preparation shares the owning admission context.
 Settings presentation and startup recovery discover missing execution profiles
 outside that gate. Their short commit merges only changed execution fields,
 checking the selected Harness's source rather than unrelated Harness defaults.
-An initialized read has no capture to invalidate. Concurrent initializers reuse
+An initialize-only read of a pinned profile with a concrete host preference
+uses committed settings without entering the configuration gate or writer queue.
+A disabled background binding also has no capture to commit. Presentation still
+loads current Harness facts and rechecks the selected source and workspace
+before replying. Selecting a host for an automatic preference or capturing a
+missing profile requires the normal gated merge. Concurrent initializers reuse
 an already saved profile and preserve the selected host, even when a late native
 reply differs; captures of different Harnesses retain both profiles. A changed
 source with no saved execution profile still invalidates discovery. Prompt,
@@ -254,9 +259,10 @@ Automatic installation discovery uses `harness:detect-installation` with one
 Harness ID. Each response is independent and does not refresh the login shell.
 Explicit `harness:detect-installations` recovery still refreshes the environment
 once before the parallel batch. Neither endpoint interprets installed as
-account authentication. Settings telemetry separately measures
-`installation`, `presentation.snapshot` and `presentation.native`, with bounded
-Harness/owner metadata and no settings or credential values.
+account authentication. The [isolated HTTP benchmark](../../../tools/verification/local-http/README.md)
+times these public reads. Its diagnostic build measures configuration gate wait
+and native presentation time inside the handler. Production requests do not
+emit per-stage timing samples.
 
 ## Lazy Moku notifications
 
@@ -327,6 +333,12 @@ preset preserves that guidance for later restoration; the Moku service owns
 general routing priorities and instruction generation.
 
 ## Property boundaries
+
+**PBT-RUNTIME-SETTINGS** overlaps a pinned execution or ordinary defaults
+presentation with a save awaiting native validation. Generated completions before
+commit, after commit or through cancellation check which source may be returned
+and which operation may advance the revision. The [property](../../../tools/verification/pbt/runtime/settings_property_test.go)
+uses a real Runtime and isolated SQLite with a controlled native peer.
 
 **PBT-MOKU-OUTBOX** drives the production delivery queue and attempt/admission
 transactions against SQLite. Generated lazy/waking deliveries, repeated IDs,

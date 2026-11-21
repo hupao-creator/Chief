@@ -1,0 +1,44 @@
+{
+  "startedAt": "2026-11-21T12:15:13.679688+00:00",
+  "head": "b20e87bc22a0126659c5df62da1864dd5f144f98",
+  "status": "",
+  "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+  "seed": 20261121,
+  "properties": [
+    {
+      "id": "PBT-RUNTIME-SETTINGS",
+      "suite": "go",
+      "engine": "rapid",
+      "package": "tools/verification/pbt/runtime",
+      "test": "TestSettingsPresentationProperties",
+      "doc": "internal/core/runtime/README.md",
+      "cases": 100,
+      "status": "passed",
+      "command": [
+        "./scripts/go.sh",
+        "test",
+        "./tools/verification/pbt/runtime",
+        "-count=1",
+        "-json",
+        "-timeout=600s",
+        "-race",
+        "-run",
+        "^TestSettingsPresentationProperties$",
+        "-short=false",
+        "-rapid.checks=100",
+        "-rapid.seed=20261121",
+        "-rapid.steps=30",
+        "-rapid.nofailfile=false",
+        "-rapid.shrinktime=30s"
+      ],
+      "timeoutSeconds": 600,
+      "childExitCode": 0,
+      "generatedCases": 100,
+      "exitCode": 0,
+      "elapsedSeconds": 8.999
+    }
+  ],
+  "exitCode": 0,
+  "untrackedSHA256": {},
+  "finishedAt": "2026-11-21T12:15:22.796379+00:00"
+}

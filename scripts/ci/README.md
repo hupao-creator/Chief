@@ -6,8 +6,8 @@ ordinary example/table unit-test suites. Each property names its module contract
 input domain and oracle; generated sample counts are not code-coverage percentages.
 
 Linux runs Go formatting, architecture/import and static registration checks,
-`go vet ./...`, `go build ./...` and Go PBT (eight Rapid properties, 100 cases each,
-seed 1; Report HTML fuzz, 10s), followed by the explicit-replay CLI e2e for
+`go vet ./...`, `go build ./...` and the routine Go PBT inventory with its per-property case counts,
+seed 1 and a 10s Report HTML fuzz run, followed by the explicit-replay CLI e2e for
 generated invalid inputs, witnessed corpus execution and injected/fixed oracle
 failure. Replay mechanism checks are separate from the property inventory count.
 macOS 26 arm64 builds all Go packages and the

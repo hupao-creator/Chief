@@ -1,0 +1,68 @@
+{"binarySHA256": "ca9e4e2b3285288190f692ca9f6e9112a0a5438e39298c1570059475cf6503e4", "seedSHA256": "cf8fbe9fd18abcc616735443905e80e710c2533872b258c56e7d3cbb2d63a94f", "collectorSHA256": "b3c10b576f843d082e346795bcd9fdff2a8bc3499830890b5a7307d7afa6f2ff", "peerSHA256": "ee492e298086d4d55f7549ec1e947a4966bd7b094425e03b0200daa5d3e11d7a", "macOS": "26.5.1", "arch": "arm64", "python": "3.13.3", "rounds": 5, "intervalSeconds": 0.0}
+{"role": "initialize", "command": "harness:settings-presentation", "start": 959974377486708, "headers": 959975726240750, "end": 959975726255250, "bytes": 318, "http": 200, "ok": true}
+{"role": "defaults", "command": "harness:settings-presentation", "start": 959975726738708, "headers": 959975786943916, "end": 959975786955125, "bytes": 318, "http": 200, "ok": true}
+{"role": "setup", "command": "state:load", "start": 959975787214708, "headers": 959975788275375, "end": 959975788290416, "bytes": 2265, "http": 200, "ok": true}
+{"role": "validation-entered", "at": 959975837814291}
+{"role": "control", "command": "harness:settings-presentation", "start": 959975838023375, "headers": 959975841764708, "end": 959975841772875, "bytes": 318, "http": 200, "ok": true}
+{"role": "discovery", "command": "harness:detect-installation", "start": 959975841835583, "headers": 959975842365375, "end": 959975842370583, "bytes": 145, "http": 200, "ok": true}
+{"role": "prefetch", "command": "harness:settings-presentation", "start": 959975837965916, "headers": 959977115159791, "end": 959977115173541, "bytes": 318, "http": 200, "ok": true}
+{"role": "save", "command": "app:update-settings", "start": 959975788616875, "headers": 959977127043291, "end": 959977127055000, "bytes": 759, "http": 200, "ok": true}
+{"role": "verify", "command": "state:load", "start": 959977127330500, "headers": 959977128115500, "end": 959977128129125, "bytes": 2265, "http": 200, "ok": true}
+{"role": "setup", "command": "state:load", "start": 959977128209625, "headers": 959977128691166, "end": 959977128702041, "bytes": 2265, "http": 200, "ok": true}
+{"role": "validation-entered", "at": 959977183825875}
+{"role": "control", "command": "harness:settings-presentation", "start": 959977183961000, "headers": 959977184990708, "end": 959977184998583, "bytes": 318, "http": 200, "ok": true}
+{"role": "discovery", "command": "harness:detect-installation", "start": 959977185057250, "headers": 959977185424833, "end": 959977185428000, "bytes": 145, "http": 200, "ok": true}
+{"role": "prefetch", "command": "harness:settings-presentation", "start": 959977183941291, "headers": 959978458620916, "end": 959978458631208, "bytes": 318, "http": 200, "ok": true}
+{"role": "save", "command": "app:update-settings", "start": 959977129038291, "headers": 959978470898708, "end": 959978470910833, "bytes": 759, "http": 200, "ok": true}
+{"role": "verify", "command": "state:load", "start": 959978471030250, "headers": 959978471714125, "end": 959978471723916, "bytes": 2265, "http": 200, "ok": true}
+{"role": "setup", "command": "state:load", "start": 959978471787166, "headers": 959978472310500, "end": 959978472317416, "bytes": 2265, "http": 200, "ok": true}
+{"role": "validation-entered", "at": 959978528383833}
+{"role": "control", "command": "harness:settings-presentation", "start": 959978528481708, "headers": 959978529471083, "end": 959978529478458, "bytes": 318, "http": 200, "ok": true}
+{"role": "discovery", "command": "harness:detect-installation", "start": 959978529524208, "headers": 959978529853833, "end": 959978529857458, "bytes": 145, "http": 200, "ok": true}
+{"role": "prefetch", "command": "harness:settings-presentation", "start": 959978528464333, "headers": 959979805524416, "end": 959979805534708, "bytes": 318, "http": 200, "ok": true}
+{"role": "save", "command": "app:update-settings", "start": 959978472664750, "headers": 959979816928916, "end": 959979816944458, "bytes": 759, "http": 200, "ok": true}
+{"role": "verify", "command": "state:load", "start": 959979817094791, "headers": 959979817861250, "end": 959979817872375, "bytes": 2265, "http": 200, "ok": true}
+{"role": "setup", "command": "state:load", "start": 959979817949291, "headers": 959979818535916, "end": 959979818552458, "bytes": 2265, "http": 200, "ok": true}
+{"role": "validation-entered", "at": 959979901941125}
+{"role": "control", "command": "harness:settings-presentation", "start": 959979902076041, "headers": 959979903390208, "end": 959979903400750, "bytes": 318, "http": 200, "ok": true}
+{"role": "discovery", "command": "harness:detect-installation", "start": 959979903462666, "headers": 959979903967083, "end": 959979903971500, "bytes": 145, "http": 200, "ok": true}
+{"role": "prefetch", "command": "harness:settings-presentation", "start": 959979902057416, "headers": 959981175855166, "end": 959981175864333, "bytes": 318, "http": 200, "ok": true}
+{"role": "save", "command": "app:update-settings", "start": 959979819058541, "headers": 959981186783291, "end": 959981186798166, "bytes": 759, "http": 200, "ok": true}
+{"role": "verify", "command": "state:load", "start": 959981186936333, "headers": 959981187589875, "end": 959981187601208, "bytes": 2266, "http": 200, "ok": true}
+{"role": "setup", "command": "state:load", "start": 959981187682791, "headers": 959981188133250, "end": 959981188142250, "bytes": 2266, "http": 200, "ok": true}
+{"role": "validation-entered", "at": 959981244558166}
+{"role": "control", "command": "harness:settings-presentation", "start": 959981244679708, "headers": 959981245592541, "end": 959981245600958, "bytes": 318, "http": 200, "ok": true}
+{"role": "discovery", "command": "harness:detect-installation", "start": 959981245654208, "headers": 959981246030500, "end": 959981246034500, "bytes": 145, "http": 200, "ok": true}
+{"role": "prefetch", "command": "harness:settings-presentation", "start": 959981244661375, "headers": 959982518279458, "end": 959982518289083, "bytes": 318, "http": 200, "ok": true}
+{"role": "save", "command": "app:update-settings", "start": 959981188484833, "headers": 959982536837625, "end": 959982536848666, "bytes": 759, "http": 200, "ok": true}
+{"role": "verify", "command": "state:load", "start": 959982537193875, "headers": 959982537834208, "end": 959982537842750, "bytes": 2266, "http": 200, "ok": true}
+{"role": "stream", "command": "/events", "start": 959975787145958, "hello": 959975788176916, "heartbeat": 959990788950708, "http": 200}
+{"role": "cancel-refresh", "command": "harness:settings-presentation", "disconnect": 959990832856583, "drained": 959990839123791}
+{"role": "after-cancel", "command": "harness:settings-presentation", "start": 959990839339583, "headers": 959990900457916, "end": 959990900469333, "bytes": 318, "http": 200, "ok": true}
+{"role": "periodic", "command": "harness:settings-presentation", "start": 959990900546458, "headers": 959990901512500, "end": 959990901518708, "bytes": 318, "http": 200, "ok": true}
+{"role": "periodic-defaults", "command": "harness:settings-presentation", "start": 959990901570541, "headers": 959990902458250, "end": 959990902461750, "bytes": 318, "http": 200, "ok": true}
+{"role": "periodic", "command": "harness:settings-presentation", "start": 959990902500083, "headers": 959990903185416, "end": 959990903192541, "bytes": 318, "http": 200, "ok": true}
+{"role": "periodic-defaults", "command": "harness:settings-presentation", "start": 959990903242541, "headers": 959990903856125, "end": 959990903861666, "bytes": 318, "http": 200, "ok": true}
+{"role": "native-peer", "method": "initialize", "at": 959975637305041}
+{"role": "native-peer", "method": "initialize", "at": 959975637782625}
+{"role": "native-peer", "method": "initialize", "at": 959975637822666}
+{"role": "native-peer", "method": "get_settings", "at": 959975637870958}
+{"role": "native-peer", "method": "get_settings", "at": 959975638144041}
+{"role": "native-peer", "method": "get_usage", "at": 959975638178833}
+{"role": "native-peer", "method": "initialize", "at": 959975681695375}
+{"role": "native-peer", "method": "initialize", "at": 959975764945708}
+{"role": "native-peer", "method": "initialize", "at": 959975795279708}
+{"role": "native-peer", "method": "initialize", "at": 959975795428416}
+{"role": "native-peer", "method": "get_usage", "at": 959975795611416}
+{"role": "native-peer", "method": "initialize", "at": 959975834592333}
+{"role": "native-peer", "method": "get_settings", "at": 959975834959208}
+{"role": "native-peer", "method": "initialize", "at": 959977179143750}
+{"role": "native-peer", "method": "get_settings", "at": 959977179428125}
+{"role": "native-peer", "method": "initialize", "at": 959978525617166}
+{"role": "native-peer", "method": "get_settings", "at": 959978525994958}
+{"role": "native-peer", "method": "initialize", "at": 959979895794083}
+{"role": "native-peer", "method": "get_settings", "at": 959979896171583}
+{"role": "native-peer", "method": "initialize", "at": 959981239826625}
+{"role": "native-peer", "method": "get_settings", "at": 959981240317500}
+{"role": "native-peer", "method": "initialize", "at": 959990828346208}
+{"role": "native-peer", "method": "initialize", "at": 959990878460958}
