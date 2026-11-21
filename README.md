@@ -33,8 +33,9 @@ credentials.
 ## Get started
 
 Chief is available as an **invited alpha** for Macs with Apple silicon and
-macOS 26 or later. Get the **Chief Alpha** disk image and installation guide
-from your inviter.
+macOS 26 or later. Open [Chief Releases](https://github.com/hupao-creator/Chief/releases)
+and choose the alpha version from your invitation. Under **Assets**, download the
+arm64 disk image, `SHA256SUMS`, and `READ-ME-FIRST.txt`.
 
 1. Drag **Chief Alpha.app** from the disk image into **Applications**, then open it. The alpha is not notarized; a trusted download may need the per-app **Open Anyway** exception in **System Settings → Privacy & Security**.
 2. Install and configure at least one supported agent on your Mac: Codex, Claude, Pi Agent, or OpenCode. Chief checks which are ready during setup. Each service determines model access and costs.

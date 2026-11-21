@@ -4,9 +4,12 @@
 
 You'll need a Mac with Apple silicon running macOS 26 or later.
 
-1. Get the Chief Alpha disk image and `READ-ME-FIRST.txt` from your inviter. Confirm the source and version.
-2. Open the disk image, drag **Chief Alpha.app** into **Applications**, and eject the disk image. Open Chief Alpha from **Applications**.
-3. If macOS says it can't verify the developer or check the app for malicious software, confirm that you trust this copy. In **System Settings → Privacy & Security**, find the message for Chief Alpha and click **Open Anyway**. If macOS reports malware or damage, or the app still won't open, send the full message and version to your inviter.
+1. Find the version from your invitation on the [Chief Releases page](https://github.com/hupao-creator/Chief/releases). Under **Assets**, download the arm64 disk image (`.dmg`), `SHA256SUMS`, and `READ-ME-FIRST.txt` into the same folder.
+2. To verify the download, open Terminal in that folder and run `shasum -a 256 -c SHA256SUMS`. Look for the disk image's filename followed by **OK**. If the check fails, download both the disk image and checksum again from the same release before opening it.
+3. Open the disk image, drag **Chief Alpha.app** into **Applications**, and eject the disk image. Open Chief Alpha from **Applications**.
+4. If macOS says it can't verify the developer or check the app for malicious software, confirm that you trust this copy. In **System Settings → Privacy & Security**, find the message for Chief Alpha and click **Open Anyway**. If macOS reports malware or damage, or the app still won't open, stop and contact your inviter with the warning text and release version.
+
+If Chief opens but says it can't connect to its background service, click **Reconnect**. When the connection succeeds, Chief shows setup or your workspace. If the message returns, include it and the release version when you contact your inviter. Remove account details and private paths before sharing a screenshot.
 
 ## Connect an agent
 

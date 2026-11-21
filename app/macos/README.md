@@ -180,6 +180,10 @@ and refreshes on system defaults and locale notifications and app activation.
 Workspace surfaces and app commands use this language. The workspace publishes
 the same locale to Runtime profile metadata before connection and execution
 commands, and updates it when the language changes during a session.
+The app bundle declares English and Simplified Chinese for system-owned menus
+and panels. The Help menu opens the English product guide. Before initial
+content arrives, a connection failure identifies Chief's background service
+and offers Reconnect. Provider discovery starts after that connection succeeds.
 
 `desktop-preferences.json` stores profile selection, onboarding and reading
 activity. Saved appearance and language fields are ignored on read and omitted

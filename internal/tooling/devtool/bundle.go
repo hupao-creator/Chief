@@ -115,6 +115,8 @@ func infoPlist(version, buildVersion, releaseVersion string, p Product) string {
 <key>CFBundleIdentifier</key><string>%s</string>
 <key>CFBundleName</key><string>%s</string>
 <key>CFBundleDisplayName</key><string>%s</string>
+<key>CFBundleDevelopmentRegion</key><string>en</string>
+<key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string></array>
 <key>ChiefDataDirectoryName</key><string>%s</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
@@ -230,11 +232,7 @@ func Bundle(ctx context.Context, repo string, opts BundleOptions) (string, error
 	if err = os.WriteFile(filepath.Join(resources, "build-provenance.json"), append(provenanceJSON, '\n'), 0644); err != nil {
 		return "", err
 	}
-	goroot, err := run(ctx, repo, nil, goExecutable(), "env", "GOROOT")
-	if err != nil {
-		return "", err
-	}
-	if err = copyFile(filepath.Join(strings.TrimSpace(goroot), "LICENSE"), filepath.Join(resources, "licenses/Go-LICENSE"), 0644); err != nil {
+	if err = packageLicenses(ctx, repo, filepath.Join(resources, "licenses")); err != nil {
 		return "", err
 	}
 	if err = copyFile(filepath.Join(repo, "app/macos/build/AppIcon.icns"), filepath.Join(resources, "AppIcon.icns"), 0644); err != nil {
@@ -257,6 +255,13 @@ func Bundle(ctx context.Context, repo string, opts BundleOptions) (string, error
 	}
 	if !embedded {
 		return "", fmt.Errorf("native executable has no embedded Frameworks rpath")
+	}
+	if opts.Configuration == "release" {
+		// The linker's debug map contains absolute paths to the builder's object files.
+		// Keep the original build product for symbolication and strip only the staged copy.
+		if _, err = run(ctx, repo, nil, "/usr/bin/strip", "-S", executable); err != nil {
+			return "", err
+		}
 	}
 	if _, err = assertPortableMachO(ctx, executable, false); err != nil {
 		return "", err

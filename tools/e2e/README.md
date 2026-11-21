@@ -37,6 +37,24 @@ one interrupted execution. Real provider behavior/authentication, other Harnesse
 forks, archive button input, reconnect/restart recovery and cancellation invariants are not
 certified by these scenarios.
 
+### Alpha install and first launch
+
+Use the [packaging contract](../../app/macos/build/README.md#invited-alpha-dmgs)
+and [installation guide](../../docs/getting-started.md#install-chief-alpha).
+Verify the DMG against the checksum from the same release. Mount it read-only,
+check the Applications shortcut and compare the enclosed guide with the download.
+Copy the app to a temporary install directory, eject the image, then run alpha
+smoke on the copy. Record the DMG hash, source commit and build number.
+
+Launch that copy with an isolated home and profile. Observe discovery with no
+agents and the available installation and retry actions. With an isolated,
+configured agent, complete setup, reopen the same profile and check that setup
+stays complete. For an update, populate a disposable profile with the distributed
+version, quit it and open the candidate against the same home. Check its saved
+work and settings. Record the OS, fixture, observed pages and cleanup.
+Downloaded-file Gatekeeper and permission prompts require a quarantined copy
+on a clean Mac. A local launch cannot establish those outcomes.
+
 ### First-run handoff
 
 Launch the native app with a fresh private profile and a ready Chief-capable

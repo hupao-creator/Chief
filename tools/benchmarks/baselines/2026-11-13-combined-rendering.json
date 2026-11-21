@@ -1659,7 +1659,7 @@
     "No physical FPS, GPU, WindowServer or energy measurement",
     "N20 and standalone drag not run"
   ],
-  "evidenceRoot": "/Users/felixwang/Desktop/Mokusei/.scratch/overview-combined-rendering-20261113",
+  "evidenceRoot": ".scratch/overview-combined-rendering-20261113",
   "evidenceSHA256": {
     "baseline/n-10/00-first-render/manifest.json": "5c258b7f5c1f89c44ea07056aaf9241407c236de03233a0fc54c3f497bec4c23",
     "baseline/n-10/01-idle.active/manifest.json": "9b770c71e9b6c8fb6baf8dae8a2da26f663baedd0948c5f1abd5cfa70afbc91b",

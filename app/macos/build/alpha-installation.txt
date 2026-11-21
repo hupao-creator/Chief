@@ -7,13 +7,16 @@ Apple Silicon Mac（M 系列芯片），macOS 26 或更新版本。
 各 Agent 的运行环境、账号与模型使用费用由使用者自行准备。
 
 首次安装
-1. 从邀请方取得 DMG 和本说明，确认版本与来源；SHA256SUMS 可用于核对下载完整性。
+1. 在 https://github.com/hupao-creator/Chief/releases 找到邀请中指定的版本。
+   从 Assets 将 DMG、SHA256SUMS 和本说明下载到同一文件夹。
+   在该文件夹的终端中运行 shasum -a 256 -c SHA256SUMS。DMG 文件名后应显示 OK。
+   如果校验失败，请从同一版本重新下载 DMG 和 SHA256SUMS 后再打开。
 2. 打开 DMG，把 Chief Alpha.app 拖入 Applications 文件夹，然后弹出磁盘映像。
 3. 从“应用程序”打开 Chief Alpha。
 4. 这个 alpha 使用临时签名，未经 Apple 公证。macOS 可能提示无法验证开发者或
    无法检查恶意软件。确认你信任邀请方提供的这个包后，在“系统设置 → 隐私与安全性”
    找到该应用的提示，点“仍要打开”，按系统提示确认。无需关闭系统整体安全检查。
-   如果提示包含恶意软件、损坏或仍无法打开，请把完整提示和版本信息发给邀请方。
+   如果 macOS 报告已检测到恶意软件、应用已损坏，或仍无法打开，请停止安装，向邀请方提供提示文字和版本。
    Apple 的说明：https://support.apple.com/zh-cn/102445
 
 数据与更新
@@ -21,12 +24,12 @@ Alpha 与 Chief 正式版、开发版并存，新安装使用独立数据目录�
 ~/Library/Application Support/Chief Alpha
 如果已有 ~/Library/Application Support/Mokusei Alpha，Chief Alpha 继续使用该目录。
 应用数据独立，但你主动选择的项目目录、Agent 登录状态和外部工具仍由本机共享。
-本阶段没有自动更新。更新前先退出 Chief Alpha，再备份上述数据目录，
+本阶段没有自动更新。更新前先退出 Chief Alpha，再备份上述数据目录（两者都存在时都备份），
 然后用新 DMG 替换 Applications 中的应用。如果原应用名为 Mokusei Alpha.app，
 请先将其移出 Applications，再安装 Chief Alpha。
 Alpha 的数据格式可能变化，不保证旧版本之间的数据兼容。请保留原始项目备份。
 临时签名随构建变化，更新后 macOS 可能再次请求文件访问等权限。
-反馈问题时附上 DMG 文件名、macOS 版本和复现步骤；不要发送账号密钥。
+反馈问题时附上 DMG 文件名、macOS 版本和复现步骤。分享截图或提示文字前，请遮盖账号信息、密钥和私人文件路径。
 
 Requirements
 An Apple Silicon Mac (M-series) running macOS 26 or later.
@@ -35,8 +38,11 @@ Install and sign in to your chosen Agent's native CLI before using it.
 You supply each Agent's dependencies, account and any model usage fees.
 
 First installation
-1. Obtain the DMG and this guide from your inviter and confirm the source and version.
-   SHA256SUMS can be used to check that the download is intact.
+1. Find the version from your invitation at https://github.com/hupao-creator/Chief/releases.
+   Under Assets, download the DMG, SHA256SUMS and this guide into the same folder.
+   Open Terminal in that folder and run shasum -a 256 -c SHA256SUMS. Look for
+   the DMG filename followed by OK. If the check fails, download the DMG and
+   checksum again from the same release before opening the image.
 2. Open the DMG, drag Chief Alpha.app to Applications, then eject the disk image.
 3. Open Chief Alpha from Applications.
 4. This alpha is ad-hoc signed and has not been notarized by Apple. macOS may say
@@ -44,8 +50,8 @@ First installation
    this particular package from your inviter, open System Settings > Privacy &
    Security, find the app's message, choose Open Anyway and confirm as prompted.
    You do not need to disable system-wide security checks. If macOS reports
-   malware, damage, or still refuses to open it, send the full message and
-   version to your inviter. Apple's guide: https://support.apple.com/en-us/102445
+   malware or damage, or the app still won't open, stop and contact your inviter
+   with the warning text and release version. Apple's guide: https://support.apple.com/en-us/102445
 
 Data and updates
 Alpha can coexist with Chief production and development installations. New installs use:
@@ -53,7 +59,7 @@ Alpha can coexist with Chief production and development installations. New insta
 If ~/Library/Application Support/Mokusei Alpha exists, Chief Alpha keeps using it.
 App data is separate; projects you choose, Agent sign-ins and external tools are
 still shared on your Mac.
-There is no automatic updater. Quit Chief Alpha, back up that data directory,
+There is no automatic updater. Quit Chief Alpha, back up both folders if present,
 then replace the app in Applications with the one from the new DMG. If the
 installed bundle is named Mokusei Alpha.app, move it out of Applications
 before installing Chief Alpha.
@@ -61,4 +67,4 @@ Alpha data formats may change; compatibility between older versions is not guara
 Keep backups of your original projects. Ad-hoc signatures change between builds,
 so macOS may request file access and other permissions again after an update.
 For feedback, include the DMG filename, macOS version and steps to reproduce.
-Do not send account secrets.
+Remove account details, secrets and private file paths from screenshots and error messages before sharing.

@@ -27,7 +27,7 @@
       "Full benchmark remains incomplete / not-comparable"
     ]
   },
-  "rawEvidenceRoot": "/Users/felixwang/Desktop/Mokusei/.scratch/live-cloud-candidates-20261113",
+  "rawEvidenceRoot": ".scratch/live-cloud-candidates-20261113",
   "host": {
     "accessibility": true,
     "capture": true,

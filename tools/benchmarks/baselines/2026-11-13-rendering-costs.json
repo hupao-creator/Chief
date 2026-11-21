@@ -1275,7 +1275,7 @@
     "https://developer.apple.com/documentation/appkit/nswindow/didchangescreennotification",
     "https://developer.apple.com/documentation/appkit/nsapplication/didchangescreenparametersnotification"
   ],
-  "rawArchive": "/Users/felixwang/Desktop/Mokusei/.scratch/overview-costs-and-styles-20261113",
+  "rawArchive": ".scratch/overview-costs-and-styles-20261113",
   "verification": {
     "temporaryProductionBundleBuildAndSignature": "passed",
     "fullLocalSuite": "not-run; unaffected production source",

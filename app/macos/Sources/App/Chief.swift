@@ -44,6 +44,11 @@ private struct WorkspaceApp: App {
         }
         .commands {
             NativeWorkspaceCommands(locale: session.locale)
+            CommandGroup(replacing: .help) {
+                Link(session.locale.text("Chief 使用指南（英文）", "Chief User Guide"),
+                     destination: URL(string: "https://github.com/hupao-creator/Chief/blob/main/docs/README.md")!)
+                    .keyboardShortcut("?")
+            }
             CommandGroup(replacing: .appTermination) {
                 Button(session.locale.text("退出", "Quit")) { session.quit() }.keyboardShortcut("q")
             }
