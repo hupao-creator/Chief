@@ -126,6 +126,17 @@ mode and before/after observations with each run. A process-local simulation
 covers only its injected inputs. It cannot certify macOS notifications or all
 window pixels.
 
+### Settings over a populated Overview
+
+In an isolated workspace, pan Overview with an Agent and a Super Thread in view.
+Record the window while opening Settings with the gear and closing it with **×**.
+Compare each clear frame of the Super Thread title and cover with its pre-click
+appearance. The workspace blur and shade should follow the capsule in both
+directions. A sharp but faded report before the blur starts or after it lifts
+fails the replay. Check that the cards retain their positions, canvas scrolling
+is blocked while Settings is open, and the same canvas responds again on return.
+See the [Settings presentation contract](../../app/macos/Sources/Host/Settings/README.md).
+
 ### Custom task orchestration editor
 
 Open **Chief → Task Orchestration Preferences → Custom** in Settings. Verify

@@ -140,7 +140,11 @@ also scrolls so its chrome cannot make form controls unreachable. The resident
 eyes scroll with the header so they stay with their seat above the form.
 
 The scene blurs Overview and blocks pointer, keyboard and accessibility access
-until the capsule finishes returning. Close, Escape and backdrop click share
+until the capsule finishes returning. Super Thread covers and card text keep
+their normal contrast beneath the animated workspace blur and shade, including
+the clear frames before expansion and at the end of the return.
+The [populated Overview replay](../../../../../tools/e2e/README.md#settings-over-a-populated-overview)
+checks these frames in both directions. Close, Escape and backdrop click share
 `NativeSettingsNavigation`'s draft gate; backdrop clicks never reach Overview.
 Native menus and IME retain their Escape priority. Input and Note
 visits remain retained beneath Settings, including draft and reading position.
