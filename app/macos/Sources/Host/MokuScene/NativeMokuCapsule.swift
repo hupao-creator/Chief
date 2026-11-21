@@ -99,13 +99,18 @@ struct NativeMokuCapsuleEyes: Shape {
                 radius: data.second.second.first, rotation: data.second.second.second, opacity: 1)
     }
 
+    static let eyeScale = 0.22
+    static func contour(_ eye: MokuEye, blink: Double) -> Path {
+        let w = eye.w * eyeScale, h = eye.h * eyeScale * blink
+        return Path(roundedRect: CGRect(x: -w / 2, y: -h / 2, width: w, height: h),
+                    cornerRadius: eye.radius * eyeScale)
+    }
+
     func path(in rect: CGRect) -> Path {
         var path = Path()
         for geometry in [left, right] {
-            let scale = 0.22
-            let width = geometry.w * scale, height = geometry.h * scale * blink
-            let eye = Path(roundedRect: CGRect(x: -width / 2, y: -height / 2, width: width, height: height),
-                           cornerRadius: geometry.radius * scale)
+            let scale = Self.eyeScale
+            let eye = Self.contour(geometry, blink: blink)
             let transform = CGAffineTransform(rotationAngle: geometry.rotation * .pi / 180)
                 .concatenating(CGAffineTransform(translationX: rect.midX + geometry.x * scale,
                                                y: rect.midY + geometry.y * scale))

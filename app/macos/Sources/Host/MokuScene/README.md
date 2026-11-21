@@ -260,18 +260,15 @@ depend on a predicted text height. Dispatch status is informational; clicking it
 
 The compact running fallback reuses [MokuRunningStory](../Moku/MokuRunningStory.swift): three rainbow beats, lift, a three-second orbit, landing and recovery, with the eyes following the same clock. The eyes retain their seat while the 5-point dots follow the capsule's outer contour, with 3 points of clear space. [NativeMokuRunningGeometry](NativeMokuRunningGeometry.swift) supplies that authored path to the persistent character host. Decorations paint outside the glass clip.
 
-[NativeMokuCharacterMotion](NativeMokuCharacterMotion.swift) owns one AppKit display link and logical clock for the persistent eye and decoration seats. Ordinary expression changes take 420ms; running/thinking handoffs take 550ms. Interrupted transitions inherit the currently sampled geometry and derivative, without an intermediate idle pose or overlapping eye views. Same-segment text updates do not redirect a role. Inactive, hidden and occluded scenes pause the clock. Blink shape uses the continuous timestamp rather than fixed-rate samples.
+[NativeMokuCharacterMotion](NativeMokuCharacterMotion.swift) owns one AppKit display link and logical clock for the persistent eye and decoration seats. Ordinary expression changes take 420ms; running/thinking handoffs take 550ms. Interrupted transitions inherit the currently sampled geometry and derivative, without an intermediate idle pose or overlapping eye views. Same-segment text updates do not redirect a role. Inactive, hidden and occluded scenes pause the clock. The Dock and composer use the same [native blink layers](NativeMokuCapsuleBlink.swift). Each eye keeps its centre, tilt and rounded outline as its height follows the blink.
 
-Static character targets are cached until their input changes. The native display
-link sleeps between blinks (4.2-second period, 0.32-second blink). The
+Static character targets are cached until their input changes. Core Animation plays the 320ms blink on the original 4.2-second wall-clock phase. Its path keyframes trace the original sine down to 9% height and back to open; corner radii use the original eye shape at each height. The display link stays asleep throughout an idle blink. The
 [first-run handoff](../Onboarding/README.md) schedules a single blink on the
 mounted face and sets its next idle blink one full period later. App activation,
 scene state and the face's AppKit visibility govern that first blink.
 Losing eligibility clears it immediately, including
 while the display link sleeps. The next idle blink keeps its scheduled time.
-One cancellable wake resumes the display link at the next blink. A Harness
-identity with no face and no moving decoration has neither frames nor a blink
-wake. Role transitions, loading, visible reasoning and retiring ink keep their
+Hidden or inactive faces remove the blink animation. A visible face rejoins its scheduled phase. Role transitions, loading, visible reasoning and retiring ink keep their
 frames through the final paint. Resuming starts a fresh wall-time interval, so
 sleep cannot advance a new transition. No eye-only correctness suite is configured here.
 
