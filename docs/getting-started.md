@@ -12,7 +12,7 @@ You'll need a Mac with Apple silicon running macOS 26 or later.
 
 Chief opens in Simplified Chinese if Chinese is first in your Mac's preferred languages. For every other primary language, Chief opens in English. This guide uses the English labels. [Change appearance or language on your Mac](settings.md#change-appearance-or-language-on-your-mac)
 
-Chief checks for Codex, Claude, Pi Agent, and OpenCode on your Mac. To set up a missing agent, click **Install** on the first setup page to open its installation instructions. Follow those instructions and sign in or set up a model as needed. Model access and costs depend on the service you use.
+Chief checks for Codex, Claude, Pi Agent, and OpenCode on your Mac. Each agent’s logo and name appear when it is ready. To install a missing agent, click its name with the arrow on the first setup page. Follow those instructions and sign in or set up a model as needed. Model access and costs depend on the service you use.
 
 Return to Chief. Click **Check again** if it appears, or **Retry** next to an agent that couldn't load. You can click **Continue** once an agent that can serve as Chief is ready. Use **Back** if you want to return to the first page and check any other agents.
 

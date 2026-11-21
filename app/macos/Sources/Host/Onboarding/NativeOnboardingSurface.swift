@@ -7,6 +7,7 @@ struct NativeOnboardingSurface: View {
     @Bindable var state: NativeOnboardingState
     let scene: NativeMokuSceneState
     let applicationSections: [NativeApplicationSettingsSection]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var mapMotion = NativeMokuSettingsAnimationState()
@@ -145,21 +146,57 @@ struct NativeOnboardingSurface: View {
     private var discoveryHasFailures: Bool {
         state.harnesses.contains { if case .failed = state.discoveryState($0) { return true }; return false }
     }
+    private var pendingDiscoveryDescription: String {
+        state.harnesses.compactMap { harness in
+            let name = harness.descriptor.displayName.string
+            switch state.discoveryState(harness) {
+            case .checking: return name + " " + locale.text("检测中", "Checking")
+            case .loading: return name + " " + locale.text("读取配置中", "Loading settings")
+            default: return nil
+            }
+        }.joined(separator: ", ")
+    }
+
     private var discovery: some View {
-        VStack(spacing: 24) {
+        let ready = state.installed
+        let missing = state.harnesses.filter { state.discoveryState($0) == .missing }
+        let needsInstall = ready.isEmpty && !state.detecting && !discoveryHasFailures && discoveryError == nil
+        return VStack(spacing: 44) {
             HStack(spacing: 10) {
                 if state.detecting { ProgressView().controlSize(.small) }
-                Text(state.detecting
-                     ? locale.text("正在发现 Agent · \(state.installed.count) 个已就绪", "Discovering Agents · \(state.installed.count) ready")
-                     : discoveryHasFailures || discoveryError != nil
-                        ? locale.text("\(state.installed.count) 个 Agent 已就绪，部分读取失败", "\(state.installed.count) Agents ready; some could not be loaded")
-                     : state.installed.isEmpty ? locale.text("安装一个 Agent", "Install an Agent")
-                     : locale.text("发现 \(state.installed.count) 个 Agent", "Found \(state.installed.count) Agents"))
+                Text(state.detecting ? locale.text("正在发现 Agent", "Discovering Agents")
+                     : needsInstall ? locale.text("安装一个 Agent", "Install an Agent")
+                     : ready.isEmpty ? locale.text("暂时无法发现 Agent", "Unable to discover Agents")
+                     : locale.text("发现 \(ready.count) 个 Agent", ready.count == 1 ? "Found 1 Agent" : "Found \(ready.count) Agents"))
                     .font(.system(size: 16, weight: .medium)).contentTransition(.numericText())
+                    .accessibilityValue(pendingDiscoveryDescription)
             }
-            HStack(alignment: .top, spacing: 20) {
-                ForEach(state.harnesses, id: \.descriptor.id) { harness in
-                    discoveryAgent(harness)
+            if !ready.isEmpty || state.detecting {
+                HStack(spacing: 28) {
+                    ForEach(ready, id: \.descriptor.id) { harness in
+                        VStack(spacing: 26) {
+                            harness.logo(size: 72).frame(width: 86, height: 90).accessibilityHidden(true)
+                            Text(harness.descriptor.displayName.string).font(.system(size: 16, weight: .medium))
+                        }.frame(maxWidth: .infinity, minHeight: 168)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityValue(locale.text("已就绪", "Ready"))
+                            .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 18)))
+                    }
+                }.frame(height: 190)
+            }
+            if !missing.isEmpty {
+                HStack(spacing: 24) {
+                    ForEach(missing, id: \.descriptor.id) { harness in
+                        VStack(spacing: 16) {
+                            if needsInstall { harness.logo(size: 50).frame(height: 64).accessibilityHidden(true) }
+                            if let guide = harness.descriptor.installationGuide {
+                                Button { open(guide) } label: {
+                                    Label(harness.descriptor.displayName.string, systemImage: "arrow.up.right")
+                                }.buttonStyle(.plain)
+                                    .accessibilityLabel(locale.text("安装 ", "Install ") + harness.descriptor.displayName.string)
+                            } else if needsInstall { Text(harness.descriptor.displayName.string) }
+                        }.font(.system(size: 12)).frame(maxWidth: .infinity)
+                    }
                 }
             }
             ForEach(state.harnesses, id: \.descriptor.id) { harness in
@@ -172,39 +209,11 @@ struct NativeOnboardingSurface: View {
                             }))
                 }
             }
-            if state.installed.contains(where: { $0.descriptor.threadCapabilities.canHostMoku }), state.detecting || discoveryHasFailures {
-                Text(locale.text("可以先配置已就绪的 Agent；返回此页可查看其余 Agent。", "You can configure ready Agents now. Return here to check the others."))
-                    .font(.system(size: 12)).foregroundStyle(secondary)
-            } else if state.installed.isEmpty && !state.detecting && !discoveryHasFailures {
+            if needsInstall {
                 Text(locale.text("安装并登录后，重新检测。", "Install and sign in, then check again."))
                     .font(.system(size: 12)).foregroundStyle(secondary)
             }
-        }.animation(motion, value: state.installed.map(\.descriptor.id))
-    }
-
-    private func discoveryAgent(_ harness: AnyHarnessPlugin) -> some View {
-        let status = state.discoveryState(harness)
-        return VStack(spacing: 12) {
-            harness.logo(size: status == .ready ? 72 : 32).frame(width: 86, height: 90)
-                .opacity(status == .ready ? 1 : 0.5)
-            Text(harness.descriptor.displayName.string).font(.system(size: status == .ready ? 16 : 12, weight: .medium))
-            Group {
-                switch status {
-                case .checking, .loading:
-                    HStack(spacing: 5) {
-                        ProgressView().controlSize(.mini)
-                        Text(status == .checking ? locale.text("检测中", "Checking") : locale.text("读取配置中", "Loading settings"))
-                    }
-                case .ready: Label(locale.text("已就绪", "Ready"), systemImage: "checkmark")
-                case .failed: Text(locale.text("读取失败", "Load failed"))
-                case .missing:
-                    if let guide = harness.descriptor.installationGuide {
-                        Button { open(guide) } label: { Label(locale.text("安装", "Install"), systemImage: "arrow.up.right") }
-                            .buttonStyle(.plain)
-                    } else { Text(locale.text("未安装", "Not installed")) }
-                }
-            }.font(.system(size: 11)).foregroundStyle(secondary)
-        }.frame(maxWidth: .infinity, minHeight: 168)
+        }.animation(reduceMotion ? nil : motion, value: ready.map(\.descriptor.id))
     }
 
     private func configurationForStep(_ step: NativeOnboardingStep) -> some View {

@@ -17,9 +17,8 @@ The floating panel keeps the landing background and uses a neutral window
 surface with untinted Liquid Glass controls. The panel, hosted controls, and
 Tag and Super Thread animations inherit the system appearance. During the
 noninteractive handoff, the contracting surface takes on the Dock's capsule
-color. Discovery presents
-Harnesses independently as checking installation, loading configuration, ready,
-or failed with a Harness-specific retry. An executable alone is not discovered:
+color. Discovery reveals each ready Harness by logo and name. Pending Harnesses share
+a single progress indicator. Each failed Harness has its own error and retry. An executable alone is not discovered:
 readiness joins the workspace's retained Moku execution and enabled independent
 background-role resources for that Harness. Inherited roles join
 Moku's exact resource, so readiness does not wait for unused application scopes.
@@ -37,8 +36,8 @@ Codex/Pi/OpenCode require usable model catalogs; Claude supports custom model
 identifiers and can legitimately have an empty advertised list. OpenCode waits
 for the account phase that can still filter model availability, not usage telemetry.
 
-The title counts only ready Harnesses and keeps discovery progress or partial
-failure explicit. Continue requires at least one ready Moku-capable Harness and
+The title shows discovery in progress, then the ready count, installation prompt
+or discovery failure. Continue requires at least one ready Moku-capable Harness and
 does not wait for unrelated slow/failed Harnesses. It admits the current ready
 roster into Moku and the role pickers; returning to discovery can admit newly
 ready Harnesses. The admitted roster remains stable across execution-profile
