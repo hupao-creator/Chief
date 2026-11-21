@@ -2,20 +2,15 @@ import ChiefPluginUI
 import SwiftUI
 import AppKit
 
-/// Precision determines units; phases determine ownership, independently of the
-/// device type. There is no axis lock, synthetic inertia or Retina conversion.
+/// AppKit supplies signed content motion and any inertia. Precise gestures
+/// contribute only their horizontal component. A single-axis mouse wheel
+/// uses its line delta to move along the same horizontal scroll range.
 enum NativeOverviewScrollGeometry {
-    static func delta(x: Double, y: Double, precise: Bool, shift: Bool,
-                      canvasPerWindowPoint: CGSize) -> CGSize? {
-        guard x.isFinite, y.isFinite, canvasPerWindowPoint.width.isFinite,
-              canvasPerWindowPoint.height.isFinite, canvasPerWindowPoint.width > 0,
-              canvasPerWindowPoint.height > 0 else { return nil }
-        let unit = precise ? 1.0 : 40.0
-        let horizontal = !precise && shift && x == 0
-        let result = CGSize(width: (horizontal ? y : x) * unit * canvasPerWindowPoint.width,
-                            height: (horizontal ? 0 : y) * unit * canvasPerWindowPoint.height)
-        guard result.width.isFinite, result.height.isFinite else { return nil }
-        return result
+    static func distance(x: Double, y: Double, precise: Bool, pointsPerWindowPoint: Double) -> Double? {
+        guard x.isFinite, y.isFinite, pointsPerWindowPoint.isFinite, pointsPerWindowPoint > 0 else { return nil }
+        let delta = precise ? x : (x == 0 ? y : x) * 40
+        let distance = -delta * pointsPerWindowPoint
+        return distance.isFinite ? distance : nil
     }
 }
 
@@ -58,56 +53,16 @@ struct NativeOverviewScrollSequence {
     }
 }
 
-/// SwiftUI supplies cumulative magnification. Store every valid sample, including
-/// samples beyond a clamp, so reversing direction responds immediately.
-struct NativeOverviewPinchSamples {
-    private(set) var previous = 1.0
-    mutating func ratio(_ magnification: Double) -> Double? {
-        guard magnification.isFinite, magnification > 0 else { return nil }
-        defer { previous = magnification }
-        let value = magnification / previous
-        return value.isFinite && value > 0 ? value : nil
-    }
-}
-
-@MainActor final class NativeOverviewNavigationInput {
-    let regions: NativeCanvasInputRegions
-    init(regions: NativeCanvasInputRegions = .init()) { self.regions = regions }
-    weak var view: NativeOverviewScrollInput.MonitorView?
-    private var pinchSamples: NativeOverviewPinchSamples?
-    private var pinchAllowed = false
-    private var pinchAnchor = CGPoint.zero
-    private(set) var pinching = false
-    private var pinchCancelled = false
-
-    func pinch(magnification: Double, anchor: CGPoint, camera: NativeOverviewCamera) {
-        guard let view else { return }
-        if !pinching {
-            pinching = true; pinchCancelled = false
-            pinchSamples = .init(); pinchAnchor = anchor
-            pinchAllowed = view.canStart(at: anchor)
-            view.interrupt()
-        }
-        guard !pinchCancelled, pinchAllowed, view.enabled() else { return }
-        guard let ratio = pinchSamples?.ratio(magnification), ratio != 1 else { return }
-        let live = camera.liveTransform
-        camera.setManualTransform(NativeOverviewCameraGeometry.zoom(live, cursor: pinchAnchor,
-            nextScale: min(camera.maximumScale, live.scale * ratio), minimumScale: camera.minimumScale), anchor: pinchAnchor)
-    }
-    func endPinch() { pinching = false; pinchSamples = nil; pinchAllowed = false; pinchCancelled = false }
-    func cancel() { if pinching { pinchCancelled = true }; view?.interrupt() }
-}
-
 /// Transparent geometry/lifecycle anchor, never a hit target or first responder.
 /// A local monitor also sees events above SwiftUI's semantic card subviews.
 struct NativeOverviewScrollInput: NSViewRepresentable {
-    var input: NativeOverviewNavigationInput
+    var regions: NativeCanvasInputRegions
     var size: CGSize
     var toolbarBottom: Double
     var identity: String
     var contentScale: CGFloat
     var enabled: () -> Bool
-    var pan: (CGSize) -> Void
+    var scroll: (Double) -> Void
 
     // At high workspace zoom, a card can make the canvas stack larger than the
     // viewport. Window-to-canvas conversion must use the viewport-sized anchor.
@@ -117,8 +72,8 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
     func updateNSView(_ view: MonitorView, context: Context) {
         let geometry = Configuration(size: size, toolbarBottom: toolbarBottom, identity: identity, contentScale: contentScale)
         if view.configuration != geometry { view.cancelSequence(); view.configuration = geometry }
-        view.input = input; input.view = view
-        view.enabled = enabled; view.pan = pan
+        view.regions = regions
+        view.enabled = enabled; view.scroll = scroll
         if !enabled() { view.cancelSequence() }
     }
     static func dismantleNSView(_ view: MonitorView, coordinator: ()) { view.stop() }
@@ -132,9 +87,9 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
 
     @MainActor final class MonitorView: NSView {
         var configuration = Configuration(size: .zero, toolbarBottom: 0, identity: "", contentScale: 1)
-        weak var input: NativeOverviewNavigationInput?
+        weak var regions: NativeCanvasInputRegions?
         var enabled: () -> Bool = { false }
-        var pan: (CGSize) -> Void = { _ in }
+        var scroll: (Double) -> Void = { _ in }
         var sequence = NativeOverviewScrollSequence()
         private var monitor: Any?
         private var observers: [NSObjectProtocol] = []
@@ -144,12 +99,11 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
 
         // Convert a pair of window points rather than dividing by camera scale,
         // backingScaleFactor or an assumed SwiftUI/AppKit zoom convention.
-        var canvasPerWindowPoint: CGSize? {
+        var canvasPerWindowPoint: CGFloat? {
             guard bounds.width > 0, bounds.height > 0, configuration.size.width > 0,
                   configuration.size.height > 0 else { return nil }
             let a = convert(CGPoint.zero, from: nil), b = convert(CGPoint(x: 1, y: 1), from: nil)
-            return CGSize(width: abs(b.x - a.x) * configuration.size.width / bounds.width,
-                          height: abs(b.y - a.y) * configuration.size.height / bounds.height)
+            return abs(b.x - a.x) * configuration.size.width / bounds.width
         }
         func canvasPoint(_ point: CGPoint) -> CGPoint {
             let local = convert(point, from: nil)
@@ -169,7 +123,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                   NSEvent.pressedMouseButtons == 0 else { return false }
             let location = windowPoint(point)
             guard bounds.intersection(visibleRect).contains(convert(location, from: nil)),
-                  input?.regions.contains(location, in: window) != true else { return false }
+                  regions?.contains(location, in: window) != true else { return false }
             // Public AppKit fallback for native editors/embedded scrolling views.
             guard let content = window.contentView else { return false }
             let hitPoint = content.superview?.convert(location, from: nil) ?? location
@@ -193,10 +147,9 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             }
             let modified = !event.modifierFlags.intersection([.command, .control, .option]).isEmpty
             guard !modified, let factor = canvasPerWindowPoint,
-                  let delta = NativeOverviewScrollGeometry.delta(x: event.scrollingDeltaX, y: event.scrollingDeltaY,
-                    precise: event.hasPreciseScrollingDeltas, shift: event.modifierFlags.contains(.shift),
-                    canvasPerWindowPoint: factor) else { cancelSequence(); return event }
-            let hasDelta = delta.width != 0 || delta.height != 0
+                  let distance = NativeOverviewScrollGeometry.distance(x: event.scrollingDeltaX, y: event.scrollingDeltaY,
+                    precise: event.hasPreciseScrollingDeltas, pointsPerWindowPoint: factor) else { cancelSequence(); return event }
+            let hasDelta = event.scrollingDeltaX != 0 || event.scrollingDeltaY != 0
             let directStart = event.phase.contains(.began) || (event.phase.isEmpty && event.momentumPhase.isEmpty)
             if directStart { requiresNewSequence = false }
             if event.phase.contains(.mayBegin) {
@@ -210,22 +163,21 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                 return owner == .discarded ? nil : event
             }
             let candidate: NativeOverviewScrollSequence.Owner = canStart(at: canvasPoint(event.locationInWindow))
-                && input?.pinching != true ? .canvas : .native
-            if input?.pinching == true || NSEvent.pressedMouseButtons != 0 { sequence.interrupt() }
+                ? .canvas : .native
+            if NSEvent.pressedMouseButtons != 0 { sequence.interrupt() }
             let owner = sequence.route(phase: event.phase, momentum: event.momentumPhase, hasDelta: hasDelta,
                 candidate: candidate, now: event.timestamp)
             switch owner {
             case .canvas:
-                if hasDelta { pan(delta) }
+                if distance != 0 { scroll(distance) }
                 return nil
             case .discarded: return nil
             default: return event
             }
         }
         func cancelSequence() {
-            sequence.interrupt(); requiresNewSequence = true; input?.cancel()
+            sequence.interrupt(); requiresNewSequence = true
         }
-        func interrupt() { sequence.interrupt() }
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             stop()

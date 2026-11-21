@@ -39,7 +39,6 @@ public struct NativeOverviewWorkspaceView: View {
     public let model: NativeOverviewWorkspaceModel
     public let callbacks: NativeOverviewWorkspaceCallbacks
     public var interactionPaused: Bool
-    public var clickExclusions: NativeClickExclusions
     public var chromeVisible: Bool
     public var landing: Bool
     @Environment(\.nativeCanvasInputRegions) private var sharedInputRegions
@@ -48,10 +47,9 @@ public struct NativeOverviewWorkspaceView: View {
     private var inputRegions: NativeCanvasInputRegions { sharedInputRegions ?? localInputRegions }
     private var locale: DesktopLocale { model.workspace.locale }
     public init(model: NativeOverviewWorkspaceModel, callbacks: NativeOverviewWorkspaceCallbacks,
-                interactionPaused: Bool = false, clickExclusions: NativeClickExclusions = .init(), landing: Bool = false,
+                interactionPaused: Bool = false, landing: Bool = false,
                 chromeVisible: Bool = true) {
         self.model = model; self.callbacks = callbacks; self.interactionPaused = interactionPaused
-        self.clickExclusions = clickExclusions
         self.landing = landing; self.chromeVisible = chromeVisible
         _callbackStore = State(initialValue: NativeOverviewWorkspaceCallbackStore(callbacks))
     }
@@ -125,14 +123,13 @@ public struct NativeOverviewWorkspaceView: View {
                     selectedTag: model.selectedTag,
                     selectedScope: model.selectedScope, selectedKind: model.tagSelection?.kind,
                     allHasActiveTasks: model.allHasActiveTasks,
-                    cameraManual: model.canvasState.camera.manual,
-                    focusFilterRequestKey: model.focusFilterRequestKey, strings: chromeStrings,
+                    strings: chromeStrings,
                     onTagChange: model.selectTag,
-                    onReturnToAuto: { model.canvasState.camera.returnToAuto() }, onSettings: callbacks.onSettings,
-                    onRestart: callbacks.onRestart, onFocusFilterRequestConsumed: model.consumeFilterFocus,
+                    onSettings: callbacks.onSettings,
+                    onRestart: callbacks.onRestart,
                     onSettingsWithOrigin: callbacks.onSettingsWithOrigin,
                     onSettingsFrameChange: callbacks.onSettingsFrameChange,
-                    clickExclusions: clickExclusions, interactions: model.chromeInteractions)
+                    interactions: model.chromeInteractions)
                     .opacity(chromeVisible ? 1 : 0)
                     // Translate the retained chrome without compressing its labels or
                     // changing the canvas clearance, including the narrow two-row layout.
@@ -173,7 +170,7 @@ public struct NativeOverviewWorkspaceView: View {
     private var chromeStrings: NativeOverviewChromeStrings {
         var strings = NativeOverviewChromeStrings()
         if locale == .english {
-            strings.all = "All"; strings.returnToAuto = "Return to automatic view"
+            strings.all = "All"
             strings.settings = "Settings"; strings.restart = "Restart development app"; strings.actions = "Overview actions"
             strings.closeFilter = "Close child tag menu"
             strings.filter = "Filter by tag"
@@ -215,6 +212,7 @@ private struct NativeOverviewWorkspaceCard: View {
                     .focusable()
                     .focusEffectDisabled()
                     .onKeyPress(.return) { open(thread.id); return .handled }
+                    .onKeyPress(keys: [.leftArrow, .rightArrow], action: model.canvasState.scrollWithArrow)
                     .accessibilityAction(named: Text(model.workspace.locale.text("打开会话", "Open conversation"))) { open(thread.id) }
             case .application(let plugin, let snapshot):
                 applicationCard(plugin: plugin, snapshot: snapshot)

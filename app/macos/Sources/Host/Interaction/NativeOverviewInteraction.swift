@@ -138,12 +138,7 @@ extension NativeWorkspacePresentation {
     var overviewInteractionActions: [String] {
         var result: [String] = []
         if interactionPage == "overview" {
-            if !scene.interactionPaused, canvas.camera.isInitialized, !canvas.isLayingOut {
-                result += ["overview.pan", "overview.zoom"]
-            }
-            // The toolbar remains usable while the composer pauses canvas input;
-            // the production camera defers fitting until that pause ends.
-            if canvas.camera.isInitialized { result.append("overview.auto") }
+            if !scene.interactionPaused, canvas.canScroll { result.append("overview.scroll") }
             if overview.error != nil || canvas.layoutError != nil { result.append("overview.retry") }
             if !overview.chromeInteractions.mountedDirectoryIDs.isEmpty {
                 result += ["overview.directory.open", "overview.directory.close", "overview.directory.select"]
@@ -166,24 +161,16 @@ extension NativeWorkspacePresentation {
                 "children": .array(item.children.filter { $0.count > 0 }.map(filter))])
         }
         let camera = canvas.camera
-        let transform = camera.liveTransform
+        let transform = camera.transform
         let viewport: JSONValue = camera.viewport.map {
             .object(["width": .number($0.width), "height": .number($0.height),
                      "toolbarBottom": .number($0.toolbarBottom), "bottomReservedHeight": .number($0.bottomReservedHeight)])
         } ?? .null
-        let automaticFitTarget: JSONValue = camera.automaticFitTarget.map {
-            .object(["scale": .number($0.scale), "x": .number($0.x), "y": .number($0.y)])
-        } ?? .null
         let cameraState: JSONValue = .object([
-            "initialized": .bool(camera.isInitialized), "manual": .bool(camera.manual),
-            "animating": .bool(camera.isAnimating), "returning": .bool(camera.returning),
+            "initialized": .bool(camera.isInitialized), "viewport": viewport,
             "scale": .number(transform.scale), "x": .number(transform.x), "y": .number(transform.y),
-            "minimumScale": .number(camera.minimumScale), "maximumScale": .number(camera.maximumScale),
-            "viewport": viewport,
-            "motionPending": .bool(camera.hasScheduledMotion), "automaticFitPending": .bool(camera.hasPendingAutomaticFit),
-            "automaticFitBlocked": camera.automaticFitBlockReason.map(JSONValue.text) ?? .null,
-            "interactionPauseReasons": .array(canvas.interactionPauseReasons.map(JSONValue.text)),
-            "automaticFitTarget": automaticFitTarget
+            "scrollOffset": .number(camera.scrollOffset), "maximumOffset": .number(camera.maximumOffset),
+            "interactionPauseReasons": .array(canvas.interactionPauseReasons.map(JSONValue.text))
         ])
         let placements: [JSONValue] = canvas.presentedPlacements.map {
             .object(["id": .text($0.id), "column": .integer($0.column), "row": .integer($0.row),
@@ -240,19 +227,13 @@ extension NativeWorkspacePresentation {
 
     func performOverviewInteraction(_ action: NativeWorkspaceAction) throws {
         switch action {
-        case .overviewPan(let x, let y): canvas.camera.pan(deltaX: x, deltaY: y)
-        case .overviewZoom(let delta, let x, let y):
-            guard let viewport = canvas.camera.viewport, (0...1).contains(x), (0...1).contains(y) else {
-                throw NativeInteractionError("invalid_request", "Zoom anchor must be within the normalized viewport")
-            }
-            canvas.camera.zoom(deltaY: delta, cursor: CGPoint(x: viewport.width * x, y: viewport.height * y))
-        case .overviewAuto: canvas.camera.returnToAuto()
+        case .overviewScroll(let distance): canvas.camera.scroll(by: distance)
         case .overviewRetry: overview.refresh(); canvas.retryLayout()
         case .overviewDirectoryOpen(let id): try overview.chromeInteractions.perform(directory: id, operation: "open")
         case .overviewDirectoryClose(let id): try overview.chromeInteractions.perform(directory: id, operation: "close")
         case .overviewDirectorySelect(let id, let filter): try overview.chromeInteractions.perform(directory: id, operation: "select", child: filter)
         case .overviewScrollFilter(let id): try overview.chromeInteractions.scrollTo(id)
-        case .toggleMokuInput: scene.toggleInput()
+        case .toggleMokuInput: scene.toggleInput(focusOnOpening: true)
         case .toggleMokuHistory: scene.toggleMoku()
         case .toggleMokuNote: toggleMokuNote()
         default: throw NativeInteractionError("invalid_request", "Not an Overview action")

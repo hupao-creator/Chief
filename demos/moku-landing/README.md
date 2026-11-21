@@ -14,11 +14,12 @@ Command-1/2/3/4 分别重置、演示成功、失败及归档。
 
 ## Nested workspace header replay
 
-Build the current Debug package and use a new output directory.
+Build the current Debug package and use a new output directory. The optional
+`--keyboard` check uses the shell's macOS Accessibility permission to focus a card in the isolated app.
 
 ```sh
 xcrun swift build --package-path app/macos
-python3 demos/moku-landing/verify_header.py --capture --output .build/nested-header-replay
+python3 demos/moku-landing/verify_header.py --capture --keyboard --output .build/nested-header-replay
 ```
 
 The replay mounts the production workspace and its nested reading host with
@@ -27,7 +28,12 @@ at actual size, visits 1.44× and 2.5×, and returns to 5× at two window height
 The JSON records rendered filter bounds, native window button centers and
 hit tests, and whether a window-local click in the upper part of the
 Settings button opens Settings in both actual-size windows. It also records
-header exclusion and canvas navigation from injected wheel and pinch input.
-Optional captures show the fixture's offline workspace.
-Physical dragging, trackpad delivery and system fullscreen are outside this
-replay.
+header exclusion, precise diagonal input, vertical-only input, native momentum
+phases, mouse wheel bounds and Settings input ownership. An 18-task fixture
+also exercises blank-space drags and clicks, a mouse click on a newly reached
+card, reader return, insertion and deletion. Its receipt is `overview-scroll.json`.
+With `--keyboard`, the replay scrolls a column with each arrow key and opens the
+focused card with Return. It records both distances and the card identity in
+`overview-keyboard.json`. Optional captures show the isolated workspace.
+Wheel samples enter the mounted AppKit monitor. Pointer events go through the
+window. Physical trackpad delivery and system fullscreen need separate observation.

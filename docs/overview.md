@@ -10,7 +10,9 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 ## Move around the canvas
 
-Drag empty space or scroll to reach cards outside the window. Pinch to zoom on a trackpad. Click empty space or use **Return to automatic view** to restore the automatic framing.
+When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or turn the mouse wheel. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. Click a task card, or press Return on a focused task, to open it.
+
+Overview keeps your place when you close a conversation or Settings. If you remove cards or widen the window, scrolling stops at the new last column.
 
 Overview may group Super Threads into a collection when the view is crowded or when several haven’t been opened recently. Choose a narrower folder or tag to see more Super Threads as individual cards, or click a collection's page count to browse its members. [Browse Super Threads in a collection](reports-tags-and-changes.md#browse-super-threads-in-a-collection)
 

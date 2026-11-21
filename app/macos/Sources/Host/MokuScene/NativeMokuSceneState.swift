@@ -9,7 +9,6 @@ import ChiefPluginUI
 /// Navigation lifetime shared by the overview, dock, thread and settings seats.
 /// SwiftUI owns presentation and animation; the model owns navigation intent.
 @MainActor @Observable public final class NativeMokuSceneState {
-    public let overviewState: NativeOverviewCanvasState
     public let settingsCharacter = MokuCharacterController()
     /// Controls outside the Dock that an outside click must treat as inside,
     /// such as the Overview's Return to Automatic View button.
@@ -132,9 +131,8 @@ import ChiefPluginUI
     @ObservationIgnored private var claimedNoteOpenGeneration = 0
 
     enum Command { case camera(Bool, Bool), settings(Bool), coordinator(CGRect?, Bool), position, visibility, shellScroll, settle }
-    public init(overviewState: NativeOverviewCanvasState = .init(), replyReadFileURL: URL? = nil,
+    public init(replyReadFileURL: URL? = nil,
                 readingPanelMotion: NativeReadingPageMotion? = nil) {
-        self.overviewState = overviewState
         self.readingPanelMotion = readingPanelMotion
         self.replyReadFileURL = replyReadFileURL
         let stored = replyReadFileURL.flatMap { try? Data(contentsOf: $0) }
@@ -191,11 +189,15 @@ import ChiefPluginUI
 
         // Compose accepts typing during the ink animation. In a pinned Agent
         // editor it can refocus even when TOC navigation suppressed autofocus.
-        guard inputOpen, !dockCovered,
-              refocusingPinnedInput || opening && focusOnOpening else { return }
+        if refocusingPinnedInput || opening && focusOnOpening {
+            focusOpenComposer(bufferOpeningKeys: opening && !inputPinnedOpen)
+        }
+    }
+    func focusOpenComposer(bufferOpeningKeys: Bool = false) {
+        guard inputOpen, inputInteractionReady, dockRouteVisible, !dockCovered else { return }
         let key = nextComposerFocusKey()
         composerFocusRequest = .init(key: key, generation: composerGeneration)
-        if opening, focusOnOpening, !inputPinnedOpen { composeKeys = .init(key: key) }
+        if bufferOpeningKeys { composeKeys = .init(key: key) }
     }
     func nextComposerFocusKey() -> Int {
         composerFocusSequence += 1
@@ -264,7 +266,6 @@ import ChiefPluginUI
         guard open || !inputPinnedOpen || !dockRouteVisible || dockCovered || dockInteractionVisible else { return }
         guard open != inputOpen else { return }
         capsuleTask?.cancel(); capsuleTask = nil
-        overviewState.clearAutoFocusSuppression()
         if open {
             talkPresentation.setPresented(false)
             closeNotePanel()
@@ -282,19 +283,15 @@ import ChiefPluginUI
     }
 
     /// Outside clicks leave bottom-Dock input mode; landing keeps its composer open.
-    /// Mark a dismissing click before mouse-up so the Overview background cannot
-    /// also run its automatic framing transition for the same press.
     @discardableResult
     public func dismissInputForOutsideClick() -> Bool {
         guard inputOpen, !inputPinnedOpen, !landingActive, dockRouteVisible, !dockCovered else { return false }
         setInputOpen(false)
         inputHandledOutsideClick = true
-        overviewState.suppressAutoFocusForThisClick()
         return true
     }
     func beginOutsideClick() {
         inputHandledOutsideClick = false
-        overviewState.clearAutoFocusSuppression()
     }
     func preserveInputForOwnedClick() {
         // Composition or a transient control owns this press, even if AppKit

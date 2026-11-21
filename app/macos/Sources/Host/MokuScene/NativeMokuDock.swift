@@ -935,7 +935,7 @@ public struct NativeMokuDock: View {
         }
         .overlay(alignment: .bottomLeading) {
             if rowControlAvailable && !inputPresent {
-                Button { state.setInputOpen(true) } label: {
+                Button { state.toggleInput(focusOnOpening: true) } label: {
                     Color.clear
                         .frame(width: !state.notePanelOpen && !noteMounted && displayedMessage == nil ? surface.width : 46, height: rowHeight)
                         .contentShape(Rectangle())

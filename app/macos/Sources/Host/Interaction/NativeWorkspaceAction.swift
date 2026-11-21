@@ -17,7 +17,7 @@ public enum NativeWorkspaceAction: Sendable {
     case readingControl(id: String, handle: String, operation: String, value: JSONValue)
     case showOverview, back, openThread(ApplicationThreadRef)
     case selectFilter(String?)
-    case overviewPan(x: Double, y: Double), overviewZoom(delta: Double, x: Double, y: Double), overviewAuto, overviewRetry
+    case overviewScroll(Double), overviewRetry
     case overviewDirectoryOpen(String), overviewDirectoryClose(String), overviewDirectorySelect(directory: String, filter: String)
     case overviewScrollFilter(String)
     case toggleMokuInput, toggleMokuHistory, toggleMokuNote
@@ -33,9 +33,7 @@ public enum NativeWorkspaceAction: Sendable {
         case .back: "navigation.back"
         case .openThread: "thread.open"
         case .selectFilter: "filter.select"
-        case .overviewPan: "overview.pan"
-        case .overviewZoom: "overview.zoom"
-        case .overviewAuto: "overview.auto"
+        case .overviewScroll: "overview.scroll"
         case .overviewRetry: "overview.retry"
         case .overviewDirectoryOpen: "overview.directory.open"
         case .overviewDirectoryClose: "overview.directory.close"
@@ -97,13 +95,9 @@ public enum NativeWorkspaceAction: Sendable {
         case "filter.select":
             try fields(["filterId"])
             self = .selectFilter(json["filterId"] == .null ? nil : try string("filterId"))
-        case "overview.pan":
-            try fields(["deltaX", "deltaY"])
-            self = .overviewPan(x: try number("deltaX"), y: try number("deltaY"))
-        case "overview.zoom":
-            try fields(["delta", "x", "y"])
-            self = .overviewZoom(delta: try number("delta", limit: 1000), x: try number("x", limit: 1), y: try number("y", limit: 1))
-        case "overview.auto": try fields([]); self = .overviewAuto
+        case "overview.scroll":
+            try fields(["distance"])
+            self = .overviewScroll(try number("distance"))
         case "overview.retry": try fields([]); self = .overviewRetry
         case "overview.directory.open": try fields(["directoryId"]); self = .overviewDirectoryOpen(try string("directoryId"))
         case "overview.directory.close": try fields(["directoryId"]); self = .overviewDirectoryClose(try string("directoryId"))

@@ -106,8 +106,7 @@ public final class NativeWorkspacePresentation {
     }
 
     private func makeScene() -> NativeMokuSceneState {
-        let state = NativeMokuSceneState(overviewState: canvas,
-            replyReadFileURL: workspace.client.storageDirectory.appendingPathComponent("native-moku-reply-read.json"),
+        let state = NativeMokuSceneState(replyReadFileURL: workspace.client.storageDirectory.appendingPathComponent("native-moku-reply-read.json"),
             readingPanelMotion: messageMotion)
         state.executionDockPlacement.beginRoute(navigationRouteID)
         state.submitNoteExposure = { [weak self] noteID, revision in
@@ -239,7 +238,7 @@ public final class NativeWorkspacePresentation {
             if collectionPanel.owner != nil && collectionPanel.readingMember != ref { collectionPanel.retire() }
             if readingCollectionMember { overview.holdCollectionRank(for: ref) }
             readingPanelSourceCardID = selected == nil ? sourceCardID ?? overview.sourceCardID(for: ref) ?? ref.threadID.string : nil
-            readingPanelSource = readingCollectionMember ? collectionPanel.memberFrame : readingPanelSourceCardID.flatMap { canvas.displayedFrame(for: $0) }
+            readingPanelSource = readingCollectionMember ? collectionPanel.memberFrame : readingPanelSourceCardID.flatMap { canvas.visibleFrame(for: $0) }
             threadIdentityVisit = ref.typeID == "agent" && (target == nil || sourceCardID != nil)
                 ? readingPanelSourceCardID.flatMap { threadIdentityRegistry.capture($0) } : nil
         }
@@ -297,17 +296,11 @@ public final class NativeWorkspacePresentation {
         overview.readingSource = nil
         guard let request else { return }
         guard request.space == scene.noteReadingOrigin?.space else { scene.cancelPendingNoteReading(); return }
-        overview.revealReadingSource(for: request.destination)
-        scene.noteReadingOrigin?.space = overview.sceneKey
-        // A space switch schedules a fresh preparation for its own layout.
-        guard request == noteSourcePreparation else { return }
         if overview.error == nil {
             await canvas.prepareForPresentation()
             guard !Task.isCancelled, request == noteSourcePreparation else { return }
             if let card = request.card, canvas.layoutError == nil,
-               let placement = canvas.presentedPlacements.first(where: { $0.id == card }) {
-                await canvas.camera.revealReadingCard(placement.cardFrame)
-                guard !Task.isCancelled, request == noteSourcePreparation else { return }
+               canvas.visibleFrame(for: card) != nil {
                 overview.readingSource = .init(member: request.destination) { [weak self] in
                     guard let self, request == noteSourcePreparation else { return }
                     finishNoteOpening(request, sourceCardID: card)
@@ -366,7 +359,7 @@ public final class NativeWorkspacePresentation {
         else { closeApplication() }
     }
 
-    public func showOverview(focusFilter: Bool = false) {
+    public func showOverview() {
         guard !onboarding.blocksWorkspace else { return }
         scene.cancelPendingNoteReading()
         if scene.settingsOpen {
@@ -375,14 +368,12 @@ public final class NativeWorkspacePresentation {
             return
         }
         if browsingCollection, let owner = collectionPanel.owner {
-            if focusFilter { overview.requestFilterFocus() }
             collectionPanel.close(owner: owner)
             return
         }
         scene.noteReadingOrigin?.returnsToNote = false
         scene.setNotePanelOpen(false)
         if readingCollectionMember { collectionPanel.retire() }
-        if focusFilter { overview.requestFilterFocus() }
         if scene.mokuOpen { scene.setMokuOpen(false) }
         // Reversal keeps the opening's source frozen. A settled return samples
         // its new destination only after the retained canvas has been prepared.
@@ -407,7 +398,7 @@ public final class NativeWorkspacePresentation {
             readingPanelSourceCardID = overview.items.contains(where: { $0.id == id }) ? id : nil
         }
         if overview.error == nil, canvas.layoutError == nil, usesReadingPanel, let id = readingPanelSourceCardID {
-            readingPanelSource = canvas.displayedFrame(for: id)
+            readingPanelSource = canvas.visibleFrame(for: id)
         } else { readingPanelSource = nil }
     }
 
@@ -707,7 +698,7 @@ public final class NativeWorkspacePresentation {
             inputAdmissionReady: (selected == nil || readingEntranceAdmitted)
                 && (selected?.typeID != "report.document" || (thread != nil && reportInputReady)),
             waitsForHarnessIdentity: thread != nil,
-            autofocus: autofocus, retainingOpenInput: retainingOpenInput)
+            autofocus: autofocus && selected != nil, retainingOpenInput: retainingOpenInput)
     }
 
     fileprivate func admitReadingEntrance(routeID: UUID, reference: ApplicationThreadRef) -> Bool {
@@ -1073,7 +1064,7 @@ public struct NativeWorkspaceView: View {
                         openApplication: { presentation.open($0, target: $1) },
                         onSettings: { presentation.openSettings() }),
                     interactionPaused: presentation.scene.interactionPaused || presentation.messageMotion.active,
-                    clickExclusions: presentation.scene.outsideClickExclusions, landing: presentation.moku.landing,
+                    landing: presentation.moku.landing,
                     chromeVisible: presentation.selected == nil)
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen
                         && !presentation.scene.mokuOpen && !presentation.scene.cameraActive && !presentation.onboarding.blocksWorkspace),
@@ -1214,7 +1205,7 @@ public struct NativeWorkspaceCommands: Commands {
     public init(locale: DesktopLocale) { self.locale = locale }
     public var body: some Commands {
         CommandGroup(after: .sidebar) {
-            Button(locale.text("会话俯瞰", "Overview")) { presentation?.showOverview(focusFilter: true) }.keyboardShortcut("k")
+            Button(locale.text("会话俯瞰", "Overview")) { presentation?.showOverview() }.keyboardShortcut("k")
                 .disabled(presentation?.onboarding.blocksWorkspace == true)
             Button("Chief") { presentation?.scene.toggleMoku() }.keyboardShortcut("b")
                 .disabled(presentation?.onboarding.blocksWorkspace == true || presentation?.scene.settingsOpen == true)

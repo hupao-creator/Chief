@@ -57,21 +57,6 @@ public struct NativeOverviewGridMetrics: Equatable, Sendable {
     }
 }
 
-/// Explicit inputs shared by automatic placement and fit-all framing.
-/// `scaleCap` is the product's intentional manual/automatic zoom ceiling; nil
-/// means automatic framing has no ceiling. All policies retain the 1x floor.
-public struct NativeOverviewGeometryPolicy: Equatable, Sendable {
-    public var metrics: NativeOverviewGridMetrics
-    public var scaleCap: Double?
-
-    public init(metrics: NativeOverviewGridMetrics = .standard, scaleCap: Double? = 1.0) {
-        self.metrics = metrics
-        self.scaleCap = scaleCap
-    }
-
-    public static let standard = Self()
-}
-
 public struct NativeOverviewBounds: Equatable, Codable, Sendable {
     public let column: Int
     public let row: Int
@@ -104,15 +89,9 @@ public struct NativeOverviewBounds: Equatable, Codable, Sendable {
 public struct NativeOverviewGeometry: Equatable, Sendable {
     public let placements: [NativeOverviewPlacement]
     public let bounds: NativeOverviewBounds
-    /// Nil for an empty collection or a viewport without usable area.
-    public let automaticCamera: NativeOverviewTransform?
-
-    public init(placements: [NativeOverviewPlacement], bounds: NativeOverviewBounds,
-                automaticCamera: NativeOverviewTransform?) {
-        self.placements = placements
-        self.bounds = bounds
-        self.automaticCamera = automaticCamera
-    }
+    /// The view at the leading scroll boundary. Empty layouts have no projection.
+    public let leadingTransform: NativeOverviewTransform?
+    public let maximumScrollOffset: Double
 }
 
 public enum NativeOverviewLayoutError: LocalizedError, Equatable {
@@ -126,7 +105,7 @@ public enum NativeOverviewLayoutError: LocalizedError, Equatable {
 }
 
 /// Pure, history-free geometry. The same complete input always produces the
-/// same placements, bounds and fit-all camera.
+/// same placements, bounds and horizontal scroll range.
 ///
 /// `members` order is product order (selection/catalog order): it owns card
 /// identity order and deterministic tie-breaking. It is not a user-movable
@@ -143,12 +122,12 @@ public enum NativeOverviewLayout {
 
     public static func solve(members: [NativeOverviewMember],
                              usableViewport: NativeOverviewContentRect,
-                             policy: NativeOverviewGeometryPolicy = .standard) throws -> NativeOverviewGeometry {
-        try validate(members: members, viewport: usableViewport, policy: policy)
+                             metrics: NativeOverviewGridMetrics = .standard) throws -> NativeOverviewGeometry {
+        try validate(members: members, viewport: usableViewport, metrics: metrics)
         guard !members.isEmpty else {
-            return NativeOverviewGeometry(placements: [], bounds: .empty, automaticCamera: nil)
+            return NativeOverviewGeometry(placements: [], bounds: .empty, leadingTransform: nil, maximumScrollOffset: 0)
         }
-        let chosen = choosePlacement(members: members, viewport: usableViewport, metrics: policy.metrics)
+        let chosen = choosePlacement(members: members, viewport: usableViewport, metrics: metrics)
         // Shelf candidates are size-sorted for packing. Return product order so
         // content-only reuse and callers see a stable, input-aligned sequence.
         let byID = Dictionary(uniqueKeysWithValues: chosen.map { ($0.id, $0) })
@@ -156,31 +135,30 @@ public enum NativeOverviewLayout {
         guard placements.count == members.count else {
             throw NativeOverviewLayoutError.invalidInput("Overview solver lost a member")
         }
-        let bounds = summarize(placements, metrics: policy.metrics)
-        let camera = automaticCamera(bounds: bounds, usableViewport: usableViewport, policy: policy)
-        return NativeOverviewGeometry(placements: placements, bounds: bounds, automaticCamera: camera)
-    }
-
-    /// Center the complete arrangement, retaining the card scale floor.
-    public static func automaticCamera(bounds: NativeOverviewBounds,
-                                       usableViewport: NativeOverviewContentRect,
-                                       policy: NativeOverviewGeometryPolicy = .standard) -> NativeOverviewTransform? {
-        guard bounds.width > 0, bounds.height > 0,
-              usableViewport.width > 0, usableViewport.height > 0 else { return nil }
-        let content = NativeOverviewContentRect(left: bounds.left, top: bounds.top,
-                                                width: bounds.width, height: bounds.height)
-        return NativeOverviewCameraGeometry.centeredTransform(
-            content: content, usable: usableViewport, scaleCap: policy.scaleCap)
+        let bounds = summarize(placements, metrics: metrics)
+        guard usableViewport.width > 0, usableViewport.height > 0 else {
+            return .init(placements: placements, bounds: bounds, leadingTransform: nil, maximumScrollOffset: 0)
+        }
+        // Only a card taller than the available height needs scaling. A wide
+        // collection keeps its natural size and starts at the leading inset.
+        let scale = min(1, usableViewport.height / bounds.height)
+        let spareWidth = usableViewport.width - bounds.width * scale
+        let leading = NativeOverviewTransform(scale: scale,
+            x: usableViewport.left + max(0, spareWidth) / 2 - bounds.left * scale,
+            y: usableViewport.top + (usableViewport.height - bounds.height * scale) / 2 - bounds.top * scale)
+        return .init(placements: placements, bounds: bounds, leadingTransform: leading, maximumScrollOffset: max(0, -spareWidth))
     }
 
     // MARK: - Candidate selection
 
     private struct Score {
+        let fitsHeight: Bool
         let fit: Double
         let area: Double
         let width: Double
 
-        init(columns: Int, rows: Int, viewport: NativeOverviewContentRect, metrics: NativeOverviewGridMetrics) {
+        init(columns: Int, rows: Int, rowLimit: Int, viewport: NativeOverviewContentRect, metrics: NativeOverviewGridMetrics) {
+            fitsHeight = rows <= rowLimit
             width = metrics.width(columns: columns)
             let height = metrics.height(rows: rows)
             fit = min(viewport.width / width, viewport.height / height)
@@ -188,6 +166,7 @@ public enum NativeOverviewLayout {
         }
 
         func improves(on other: Self) -> Bool {
+            if fitsHeight != other.fitsHeight { return fitsHeight }
             if fit != other.fit { return fit > other.fit }
             if area != other.area { return area < other.area }
             return width < other.width
@@ -199,9 +178,12 @@ public enum NativeOverviewLayout {
                                         metrics: NativeOverviewGridMetrics) -> [NativeOverviewPlacement] {
         let maxColumns = members.map(\.columns).max()!
         let maxRows = members.map(\.rows).max()!
+        let totalRows = members.reduce(0) { $0 + $1.rows }
+        let availableRows = (viewport.height + metrics.gap) / metrics.rowPitch
+        let rowLimit = max(maxRows, Int(min(Double(totalRows), availableRows)))
         func gridScore(_ across: Int) -> Score {
             Score(columns: across * maxColumns, rows: (1 + (members.count - 1) / across) * maxRows,
-                  viewport: viewport, metrics: metrics)
+                  rowLimit: rowLimit, viewport: viewport, metrics: metrics)
         }
 
         // Score regular grids by dimensions alone. Packing each winning row to
@@ -227,13 +209,23 @@ public enum NativeOverviewLayout {
             band = max(band, member.rows)
             return placement
         }
-        guard members.contains(where: { $0.columns != maxColumns || $0.rows != maxRows }) else { return best }
-
         func score(_ placements: [NativeOverviewPlacement]) -> Score {
             let bounds = summarize(placements, metrics: metrics)
-            return Score(columns: bounds.columns, rows: bounds.rows, viewport: viewport, metrics: metrics)
+            return Score(columns: bounds.columns, rows: bounds.rows, rowLimit: rowLimit, viewport: viewport, metrics: metrics)
         }
         bestScore = score(best)
+        if bestScore.fit < 1 {
+            // Fill successive columns in product order when space runs out.
+            // Include the exact height limit even when shelf sampling is sparse.
+            let columns = pack(members, target: rowLimit, vertical: true)
+            let candidate = score(columns)
+            if !bestScore.improves(on: candidate) {
+                best = columns
+                bestScore = candidate
+            }
+        }
+        guard members.contains(where: { $0.columns != maxColumns || $0.rows != maxRows }) else { return best }
+
         // Prefer the product-order packing on ties, across both orientations.
         for sizeFirst in [false, true] {
             for vertical in [false, true] {
@@ -331,17 +323,11 @@ public enum NativeOverviewLayout {
 
     private static func validate(members: [NativeOverviewMember],
                                  viewport: NativeOverviewContentRect,
-                                 policy: NativeOverviewGeometryPolicy) throws {
-        let metrics = policy.metrics
+                                 metrics: NativeOverviewGridMetrics) throws {
         guard metrics.columnWidth.isFinite, metrics.columnWidth > 0,
               metrics.rowHeight.isFinite, metrics.rowHeight > 0,
               metrics.gap.isFinite, metrics.gap >= 0 else {
             throw NativeOverviewLayoutError.invalidInput("Overview grid metrics must be finite and positive")
-        }
-        if let cap = policy.scaleCap {
-            guard cap.isFinite, cap >= NativeOverviewCameraGeometry.scaleFloor else {
-                throw NativeOverviewLayoutError.invalidInput("Overview scale cap must be finite and at least 1x")
-            }
         }
         for value in [viewport.left, viewport.top, viewport.width, viewport.height] {
             guard value.isFinite else {

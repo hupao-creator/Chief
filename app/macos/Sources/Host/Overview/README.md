@@ -47,7 +47,7 @@ opaque palette surfaces and a soft border, including completed cards.
 Super Thread collections provide one continuous regular Liquid Glass plate
 behind their cover, metadata and intervening layout space. Their policy's
 `providesCardSurface` omits the Canvas's opaque shell; glass remains in the
-semantic camera plane so pan/zoom update its backdrop geometry. Collection
+semantic camera plane so scrolling updates its backdrop geometry. Collection
 emoji badges opt into regular glass with a light mint tint at the unchanged
 44pt diameter / top 12pt / trailing 17pt metadata seat. Reduce Transparency
 uses opaque palette fills; the material helper falls back to system Material
@@ -80,8 +80,7 @@ draft callback. The Harness overview renderer receives only an existing-interact
 response callback plus ordinary reading navigation, rather than full thread
 actions. Permission/question responses remain available; those are bound to a
 current pending interaction. There is no per-card message editor, text/file drop
-target or send shortcut. Canvas drag/scroll/pinch, Return-to-open and
-card activation keep their navigation behavior. The independent Moku composer,
+target or send shortcut. Horizontal scrolling, Return-to-open and card activation share the mounted canvas. The independent Moku composer,
 Thread-detail Moku input, Browser annotation sends and general Runtime APIs
 remain owned by their existing boundaries. Moku tool operations do not decorate
 card borders; returning from a reader must not replay an operation-completion
@@ -120,14 +119,12 @@ structural snapshot until exit finishes. Newer content can adopt an existing
 slot only for the same structural identity; a different incarnation starts its
 own slot. Source replacement retires the old ownership.
 
-Presented placements have an identity index rebuilt only with a new layout. Each pan/zoom input checks the current attention identities against that index,
+Presented placements have an identity index rebuilt only with a new layout. Each scroll input checks the current attention identities against that index,
 so finished and unrelated placements do not participate. The empty attention set
 returns immediately.
 
 Offscreen attention changes notify the mounted coordinator without routing
-ordinary text updates through canvas attachment or moving the camera. Structural,
-scene and viewport changes refresh the camera callback, so its saved memory
-always belongs to the active scene. The workspace's empty-state and Dock
+ordinary text updates through canvas attachment or moving the camera. Structural, scene and viewport changes refresh the visibility callback. The workspace's empty-state and Dock
 reservation read separate presence facts, not the high-frequency item array or
 complete Moku thread.
 
@@ -154,99 +151,52 @@ this production workspace path and confirm that its native renderer is active.
 
 ## Accessibility gesture ownership
 
-The canvas groups its accessibility children **before** installing its pinch
-recognizer. Each Agent card likewise creates a named container before attaching
-its open gesture and action. Its title, preview, status and embedded interaction
-controls remain readable and independently actionable inside that container.
-Do not move these groups outside the gesture modifiers: SwiftUI otherwise derives
-gesture attachments for every descendant when navigation or Moku input changes
-visibility/enablement, blocking transition startup even for the retained backdrop.
-See the [target-Mac contract](../../../../../design/reading.md)
-for reading admission and source ownership.
+The canvas groups its accessibility children and exposes horizontal scroll actions.
+Each Agent card groups its title, status and embedded actions before attaching its
+open gesture. Tab can focus cards and buttons. Return opens a focused Agent card.
+Entering Overview leaves keyboard focus to the normal window responder chain.
 
 ## Layout, motion and input
 
-The FitAll contract and verification limits are described in
-[the layout refactor note](../../../../../design/overview.md).
+The logical cell is 320×196pt with a 16pt gap. A 1×2 card is 320×408pt
+and a 2×1 card is 656×196pt. The [layout solver](NativeOverviewLayout.swift)
+uses current membership in product order, card spans and the usable viewport.
+It scores regular grids and packs mixed spans into horizontal and vertical
+bands. Candidates must fit the available rows, or the tallest single card
+when it exceeds the available height. Within this limit, the best natural fit
+wins, followed by smaller area and width. A column pass includes the exact row
+limit so the next cards can extend to the right. Mixed-span passes consider
+up to 65 strip sizes per orientation and retain up to 64 disjoint openings.
+Returned placements follow product order. Empty input has no projection.
+Invalid identities, spans, metrics or viewport sizes produce a layout error.
 
-Presentation pauses (including the expanded Moku composer) gate canvas hit
-testing and accessibility without disabling the card control tree. Native
-Button labels, including Report cards and Git summaries, therefore keep their
-ordinary colors alongside gesture-based Agent cards. Camera pause, activation
-guards and Moku outside-click dismissal retain their existing owners; transient
-composer growth does not change the layout viewport. See the
-[current contract](../../../../../design/composer.md)
-for the implemented camera contract.
+Fitting arrangements remain centered. Wider arrangements start at the leading
+inset. The trailing limit is the projected card width minus the usable width.
+Cards retain their natural size unless a single card is taller than the usable
+height, in which case the projection scales all cards uniformly to fit that
+height. The usual header, idle Dock and margins reserve space. Vertical margins
+yield in a short window. At extreme window zoom where the header and Dock
+reserve the whole height, the canvas uses the logical window height.
 
-The 1x grid cell is 320pt wide and 196pt high, with a 16pt gap. Two-row cards are
-408pt high; two-column cards are 656pt wide. Footprints retain their column/row
-semantics, including Agent Threads, individual Reports and Super Thread collections.
-Packing, rendered card bounds, transitions and attention visibility all use
-the shared grid pitch, as do camera bounds and hit regions. Manual and automatic
-camera framing keep at least 1×, so large
-layouts overflow the viewport and remain reachable by pan.
+The workspace retains one horizontal offset in memory while a reader or Settings
+covers the canvas. A resize, filter change or membership update clamps that
+offset into the new range. An empty layout resets it to zero. The profile
+persists card and filter data independently of layout geometry.
+[Design and example arrangement](../../../../../design/overview.md)
 
-[NativeOverviewLayout](NativeOverviewLayout.swift) is a pure function. Its inputs are the latest members in product order, the usable viewport and an explicit geometry policy; its output is placements, bounds and the automatic camera. Previous placements, old cameras, animation progress, pauses and revision history are not inputs.
-
-The solver scores each regular grid by dimensions and builds the best one's rows
-using the cards' actual spans. This guarantees a raw fit at least as good as the
-best largest-card grid. Equal-sized cards take this linear path. For mixed spans,
-the solver also packs horizontal and vertical bands, trying product order and
-then larger cross-axis spans first. Short cards can occupy openings left beside
-or beneath earlier cards. Each pass samples up to 65 strip sizes and retains up
-to 64 disjoint openings. Storage scales with card count, independently of span
-magnitude. With these limits, sorting dominates asymptotic time at `O(N log N)`.
-Candidates compete on raw FitAll scale, then smaller world area and width.
-The first equally ranked layout wins. Returned placements follow product order.
-
-One 2×1, one 1×2 and two 1×1 cards tile six cells. The better fitting of the
-3×2 and 2×3 rectangles is available in any product order. Other mixed
-collections use bounded packing and can retain unused space.
-
-Card sizes remain their measured spans. A card may compose up to
-`HarnessOverviewCapacity.maximumColumns` (three) grid columns; that is a card
-capability, not an Overview viewport column count or a layout mode. A 3×2 card
-is centered by the same solver at 1× even in the minimum window. Gaps are world-space; screen gaps are `scale × gap`. The solver never clips, stretches or equalizes cards. Empty input returns empty bounds and no camera; a zero-area usable viewport returns legal positions without a camera; negative viewport dimensions, malformed spans, duplicate IDs and invalid limits throw a typed input error. A later valid input always plans normally.
-
-Same-scene structural slot changes with identical members and viewport reuse geometry. Reuse still cancels any obsolete worker waiting for the spatial stage, so an A→B→A membership or viewport update cannot later publish B over A. Content-only updates do not enqueue layout. A viewport size change re-evaluates candidates because aspect can change the chosen arrangement. `layoutSolveCount` and `geometryReuseCount` expose these paths.
-
-Packing reserves a header allowance and the idle Dock footprint.
-The canvas and fixtures share
-`NativeOverviewViewportDefaults.toolbarBottom`. The shell and semantic planes
-draw across the full window. Controls float above cards during panning.
-
-Automatic framing fits the union of card frames to the usable width and height
-with a 1× scale floor and the configured scale cap. It centers the union in
-that region, then moves the target down to the window midpoint if the usable
-center is above it. The same rule centers tall layouts at 1×. Panning can
-reach every card. Manual bookmarks and zoom use the original usable region.
-The window has a separate 1× to 5× zoom. Background layout preserves manual
-pan and zoom. Returning to automatic uses the latest complete snapshot,
-including after a pause, a hidden window or a failed or zero-area update.
-If the header, Dock and framing margins exhaust the vertical packing area at
-high workspace zoom, the automatic camera centers the packed cards using the
-window's full logical height. This also initializes navigation on a cold open.
-An empty collection disposes the camera.
-
-Geometry targets are latest-wins. Each new structural snapshot cancels the in-flight presentation, samples the current card poses and starts a new transition to the latest target; no FIFO of historical revisions is queued. A successful solve publishes placements, bounds and camera from the same input snapshot. An older task cannot publish after a newer token, cannot clear `isLayingOut` for a newer owner and cannot consume a newer revision. Content updates do not restart admitted work. Pausing settles the displayed sample and retains the latest pending target; hiding defers only the camera target. Resuming plans from the latest content rather than replaying omitted revisions.
-
-Camera ownership has one mutable source. Live bookmarks combine the sampled
-transform with the current manual/automatic mode; animation samples cannot
-restore an earlier manual mode after an explicit return to automatic framing.
-The same ownership is published when the automatic target already matches the
-current transform and no animation is needed.
-
-[NativeOverviewCardMotion](NativeOverviewCardMotion.swift) samples each mounted card's current pose. An interrupted transition retargets from that sample. Outgoing content remains mounted until its exit completes; entries, moves and exits share one bounded transition and then release retiring snapshots. Shell and semantic planes share geometry and opacity. Retired and transparent semantic cards are hidden from accessibility.
+The layout transaction publishes the latest placements and projection together.
+Content-only changes keep card slots and reuse geometry. A newer structural
+snapshot cancels the previous worker. Interrupted card transitions start from
+the sampled poses and release outgoing cards when their exit completes.
+Presentation pauses gate pointer and accessibility input while preserving the
+ordinary appearance of embedded controls.
 
 Tag scene changes retain their filter choreography: outgoing cards shrink
 and fade over 140ms, survivors move over 320ms after a 70ms delay, and new cards
 enter over 230ms after a 150ms delay. The new collection first lays out at frozen
 start poses; only that layout's acknowledgement starts the shared clock, so plugin
-construction cannot consume the transition. Automatic framing is prepared at its
-final transform before that layout; the card clock owns screen-space travel
-rather than starting a second camera clock during mounting. Camera cuts reproject
-sampled old poses to preserve their
-screen positions. Visible survivors retain manual framing. Rapid selections
+construction cannot consume the transition. The projection is installed before that layout. Reprojecting
+the sampled card poses preserves their screen-space origins. Rapid selections
 cancel the old owner and retarget those samples. An empty destination retains the
 camera through the exit before disposing it; switching from an empty scene still
 animates entry.
@@ -274,21 +224,19 @@ content builder. New card inputs still replace the value without changing its
 mounted identity, and child state, Observation and environment updates remain
 live.
 
-[NativeOverviewStageCoordinator](NativeOverviewStageCoordinator.swift) serializes card spatial motion with Moku. Camera geometry is latest-wins and does not wait in that card queue. Explicit return to automatic framing restores the latest collection fit. Temporary interaction/visibility pauses defer that reset; fresh manual input cancels it. First nonempty layout prepares its camera before revealing cards.
+[NativeOverviewStageCoordinator](NativeOverviewStageCoordinator.swift) serializes card spatial motion with Moku.
+The idle Dock reservation comes from the 44pt capsule and its bottom clearance.
+Composer and Note expansion keep the same packing area.
 
-Camera memory is a runtime bookmark (scene, transform and manual ownership),
-with no persisted mode selector. Existing preferences and user data need no
-migration or cleanup.
-
-The workspace supplies the Dock reservation from the same idle capsule geometry
-used by the renderer (44pt height plus its viewport-dependent bottom seat). Transient composer/note expansion stays an interaction overlay and does not
-repack the scene. The reservation consumes the existing vertical padding budget when computing the usable size.
-
-[NativeOverviewScrollInput](NativeOverviewScrollInput.swift) coordinates pan/zoom with native controls. The input monitor follows the top-left of the logical viewport at its exact size, including when the card stack overflows it. Window header dragging and Moku controls are excluded from canvas navigation. A click that dismisses Moku input cannot also reset the camera. Real interaction pauses automatic camera motion; hover/restored focus alone does not imply editing.
-
-The canvas combines SwiftUI's focused-card scope with the window's actual editable text responder before pausing for input. Closing a covering surface can restore keyboard focus to a whole card; that focus keeps keyboard activation without holding the text-editing pause. Window-scoped native responder notifications also release editing protection when a field loses focus or unmounts, without changing camera state from automation.
-
-The host supplies no context menu on the canvas background or directory chips. Report cards provide their plugin-owned archive menu. A background click restores automatic framing. Directory children remain available through hover and accessibility actions.
+[NativeOverviewScrollInput](NativeOverviewScrollInput.swift) routes AppKit wheel events.
+A trackpad contributes its horizontal delta, including native momentum. A line
+wheel uses its horizontal delta when available and otherwise its vertical delta,
+at 40 window points per line. Pointer presses interrupt inertia. Dragging the
+window header moves the window. Empty canvas presses leave the offset alone.
+Native editors, filter menus, the Dock and carousel cover retain their own input.
+Settings, readers and active text entry gate canvas scrolling. Card focus keeps
+horizontal arrow navigation and Return available. Opening the Chief input
+explicitly hands focus to its editor.
 
 Geometry reuse applies when the current membership and viewport are unchanged; a structural slot refresh then updates content without invoking the solver. Recovery from an interrupted entry, resize or exit samples the current poses and starts the latest presentation, so transparent entrants and retired snapshots are released. No reading-position edge seat is retained.
 
@@ -334,7 +282,7 @@ and independent opening/closing progress keep their existing ownership.
 
 Tag widths have no fixed point cap. Each top-level chip may use the scroll viewport left after All and bar insets; sibling chips remain horizontally scrollable. The centered bar leaves room on both sides for the window controls and actions, plus 16pt clearance. At viewport widths of 620 logical points or less, filters occupy a second row. Child chips may use the full available bar width, and overflowing child rows scroll within that width. Their glass container stays inside the scroll viewport so captured labels cannot bypass clipping. Chips use shadowless `.clear` glass over a view-layer material fill rather than `.regular` glass: the regular variant's system-drawn shadow is composited outside the SwiftUI layer, so neither a per-chip `clipShape` nor the bar's capsule clip can trim it, and the 4pt gaps let neighboring shadows overlap into a visible band. The material fill supplies the frosted face and follows the pill shape, while selection tint and interactive feedback remain on the glass. Selected All, directory and semantic chips use the overview accent with 22% tint alpha, or 34% with Increased Contrast; unselected chips have no tint. Selected directory chips replace their folder or child emoji prefix with a check icon. Selected semantic chips replace their emoji prefix with the same check, including in child menus; All remains prefix-free. Accessibility labels retain the original tag names and emoji. Label font weights remain unchanged; the shared selected check uses a 2-unit Lucide stroke instead of the default 1.5-unit stroke. Names only truncate when their individual viewport cannot hold them. Presentation does not change tag identity or membership.
 
-All, directory and semantic capsules (including child menus) retain the 1.1× enlarged label and prefix metrics. Their height shares `NativeWindowNavigationGeometry.height` (42pt) with the traffic-light capsule and right-side circular actions. In the single-row layout, the centered filters and right-side actions sit 16 logical points from the top. In the two-row layout, the right-side actions sit 10pt from the top. In the two-row layout it sits 76pt from the top when space permits. The filter bar moves up in short viewports to leave at least 8 logical points for starting canvas scrolling and pinching at supported window sizes and zoom levels. The traffic lights have their own fixed window-relative position. Header dragging and scroll exclusion end at 60 logical points in the single-row layout and 2pt below the filter bar in the two-row layout. Card packing and camera framing retain their independent 60pt header allowance (120pt at widths up to 620pt with filters). Semantic labels always lay out the emoji separately from the plain title, in both selection states. The shared prefix retains both its unselected glyph and centered check as opacity-switched layout participants, reserving the same natural width and height across selection changes. This stability applies to a fixed title/child; choosing a different directory child can still change the title width. The shared prefix keeps its native ideal size: an emoji's advance and line bounds can exceed its point size, so an icon-sized square can cut its glyph even inside a roomy chip. The Lucide folder and selected check use the same icon size; emoji do not use per-glyph offsets.
+All, directory and semantic capsules (including child menus) retain the 1.1× enlarged label and prefix metrics. Their height shares `NativeWindowNavigationGeometry.height` (42pt) with the traffic-light capsule and right-side circular actions. In the single-row layout, the centered filters and right-side actions sit 16 logical points from the top. In the two-row layout, the right-side actions sit 10pt from the top. In the two-row layout it sits 76pt from the top when space permits. The filter bar moves up in short viewports to leave at least 8 logical points for starting canvas scrolling at supported window sizes and zoom levels. The traffic lights have their own fixed window-relative position. Header dragging and scroll exclusion end at 60 logical points in the single-row layout and 2pt below the filter bar in the two-row layout. Card packing and camera framing retain their independent 60pt header allowance (120pt at widths up to 620pt with filters). Semantic labels always lay out the emoji separately from the plain title, in both selection states. The shared prefix retains both its unselected glyph and centered check as opacity-switched layout participants, reserving the same natural width and height across selection changes. This stability applies to a fixed title/child; choosing a different directory child can still change the title width. The shared prefix keeps its native ideal size: an emoji's advance and line bounds can exceed its point size, so an icon-sized square can cut its glyph even inside a roomy chip. The Lucide folder and selected check use the same icon size; emoji do not use per-glyph offsets.
 
 ## Tag activity
 
@@ -359,8 +307,7 @@ shared slot is implemented in [NativeOverviewTagActivity](NativeOverviewTagActiv
 ## Verification boundary
 
 The [property boundaries](#property-boundaries) describe the generated geometry
-and mounted convergence checks. Geometry containment applies only when the raw
-fit permits the 1× floor. Mounted state reads rendered frame identities and
+and mounted convergence checks. Geometry checks cover vertical containment and horizontal reachability at the two bounds. Mounted state reads rendered frame identities and
 camera projection; it does not certify control-region geometry, Report content,
 reading transitions, physical gestures or captured appearance.
 
@@ -460,7 +407,7 @@ visibility, archive, directory/tag selection and exact execution coverage. It
 uses the full individual footprints, including offscreen cards. A report with a
 cover costs two cells and a coverless report costs one.
 
-When a Chief Note link targets a grouped Report, the carousel pauses automatic
+When a Chief Note link targets a Report in a visible collection, the carousel pauses automatic
 advance and selects that member. The reader opens through the card’s ordinary
 opening path after the target page settles. A brief visit retains that member
 as the return page while it remains grouped. The [Note link contract](../MokuScene/README.md)
@@ -492,7 +439,7 @@ Take the shortest prefix meeting the 16-cell target, the idle-member minimum
 and, for an already grouped prefix in the same space, a two-cell release margin.
 A fresh qualification can use all 16 cells. Pressure grouping requires at least
 two members and positive savings. When the target is unreachable, take the
-largest saving available and allow pan. Display order follows the original
+largest saving available and allow horizontal scrolling. Display order follows the original
 creation order, with the collection at its oldest member's position.
 
 Opening uses the real report identity and the current source card. Prepared
@@ -659,13 +606,12 @@ scroll position, controls and animation frames require the native replay.
 **PBT-OVERVIEW-GEOMETRY** calls the production pure layout solver with 0–18
 unique product-ordered cards (1–3 columns, 1–2 rows), usable viewport widths
 240–2,600pt, heights 240–1,600pt and origins −400…400/−200…200pt. It uses the
-shipping 1× camera policy. The [generated property](../../../Tests/Properties/NativeOverviewGeometryProperties.swift)
+shipping height-limited projection. The [generated property](../../../Tests/Properties/NativeOverviewGeometryProperties.swift)
 checks exact membership/order/spans and uses the specified 320×196pt cell and
 16pt gap to check the frame union against the solver's production metrics.
-It checks finite positive nonoverlapping frames and bounded FitAll scale with its
-1× floor, centered projection and viewport containment when raw fit permits it.
+It checks finite positive nonoverlapping frames, the row limit, vertical containment, leading alignment and reachability of the trailing edge.
 It independently enumerates largest-card regular grids to check the documented
-quality floor. Every fourth seed shuffles the six-cell tiling with base spans of
+quality floor within the row limit. Every fourth seed shuffles the six-cell tiling with base spans of
 1–3 columns and 1–2 rows per tile. An independent area and aspect check catches
 empty cells or a poorer orientation even when the regular-grid floor passes.
 Empty membership has no camera. No oracle calls the solver's
@@ -678,17 +624,13 @@ all-policy or global-optimality coverage.
 [Generated traces](../../../Tests/Properties/NativeOverviewStateProperties.swift)
 start with independent toolbar (0–120pt) and Dock (0–180pt) clearances.
 Every fourth seed starts with 8–14 single-width cards of varying heights to
-exercise overflow. Each trace makes 18 attempts at insert/remove/footprint/resize/pause/visibility/manual/auto/
-content events, up to 1–2 column/row spans, 500–1,500 by 500–1,000pt sizes,
-manual pans at the current camera scale and revisions 0–5. The window supplies
+exercise overflow. Each trace makes 18 attempts at insert/remove/footprint/resize/pause/visibility/scroll/content events, up to 1–2 column/row spans, 500–1,500 by 500–1,000pt sizes,
+scroll distances of −1,200…1,200pt and revisions 0–5. The window supplies
 its actual display backing scale for pixel comparisons.
-ID selection sorts the live set before seeded sampling. After releasing pause,
-hiding and manual ownership, the latest snapshot must settle within 3s: presented
-membership and rendered frame identities agree, card/camera projection differs
-by less than one physical pixel, and final scale matches the documented FitAll
-floor/cap formula. The union of mounted card frames must center horizontally
-and balance the toolbar and Dock clearances according to the automatic framing
-rule, including when the union overflows. Events are submitted 4ms apart; this samples interleavings
+ID selection sorts the live set before seeded sampling. After releasing pause
+and restoring visibility, the latest snapshot must settle within 3s. Mounted
+membership and projection agree within one physical pixel. The envelope stays
+within the vertical bounds at the retained, clamped horizontal offset. Events are submitted 4ms apart; this samples interleavings
 rather than enumerating all scheduler orders. A reduced trace is
 retained as property corpus. Failures print original/reduced event traces and
 only shrink to the same failure category. This checks mounted convergence, not
@@ -705,12 +647,13 @@ experience measurements to benchmarks. See [PBT commands/evidence](../../../../.
 
 ## Camera interaction e2e
 
-`E2E-OVERVIEW-001` opens an isolated workspace at Overview. The default
-suite has one completed task. The Collection suite adds a second task and six
-reports. The runner observes the mounted task, all card placements, the viewport
-and both control clearances. At 1× it checks the automatic center, requests a
-manual pan, checks both displacement axes, and returns to automatic framing.
-The settled return must recover the original center. The three snapshots and
-socket transcript certify semantic camera behavior. Physical input, clipping
-at the window edges and cover pixels require separate observations.
-[Desktop scenario and evidence](../../../../../tools/e2e/README.md)
+`E2E-OVERVIEW-002` opens an isolated product workspace. The default suite has
+twelve completed tasks and requires horizontal overflow. The Collection suite uses mixed card footprints. The runner
+checks the leading alignment and both scroll limits, opens Settings, checks
+input exclusion and returns to the retained position. Snapshots and a socket
+transcript record semantic action results. The nested-window replay adds mouse
+presses and clicks, trackpad phase samples, wheel input and resizing in the
+mounted workspace. Its optional keyboard check focuses a card through system
+accessibility, scrolls one column per arrow key and opens the focused card with
+Return. Physical device performance needs separate evidence.
+[Desktop scenarios](../../../../../tools/e2e/README.md) · [Window replay](../../../../../demos/moku-landing/README.md#nested-workspace-header-replay)

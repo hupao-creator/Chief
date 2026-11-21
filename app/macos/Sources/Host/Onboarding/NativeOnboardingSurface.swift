@@ -269,6 +269,7 @@ struct NativeOnboardingSurface: View {
             withAnimation(.easeInOut(duration: revealDuration)) { panelVisible = false }
             try await Task.sleep(for: .milliseconds(200))
             state.finishHandoff()
+            if scene.windowVisible && NSApp.isActive { scene.focusOpenComposer() }
         } catch { return }
     }
 }

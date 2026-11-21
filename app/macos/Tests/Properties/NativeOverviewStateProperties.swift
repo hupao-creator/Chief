@@ -13,8 +13,7 @@ private enum StateEvent: Codable, CustomStringConvertible {
     case clearances(toolbar: Double, dock: Double)
     case pause(Bool)
     case visible(Bool)
-    case manual
-    case automatic
+    case scroll(Double)
     case content(String, Int)
 
     var description: String {
@@ -26,8 +25,7 @@ private enum StateEvent: Codable, CustomStringConvertible {
         case .clearances(let toolbar, let dock): "clearances(toolbar=\(toolbar),dock=\(dock))"
         case .pause(let value): "pause(\(value))"
         case .visible(let value): "visible(\(value))"
-        case .manual: "manual pan"
-        case .automatic: "automatic"
+        case .scroll(let distance): "scroll(\(distance))"
         case .content(let id, let revision): "content(\(id),\(revision))"
         }
     }
@@ -86,7 +84,7 @@ private func generateTrace(seed: UInt64, length: Int = 18) -> StateTrace {
         case 6:
             events.append(.visible(random.coin()))
         case 7:
-            events.append(random.coin() ? .manual : .automatic)
+            events.append(.scroll(Double(random.pick(-1200...1200))))
         default:
             guard let id = live.sorted().randomElement(using: &random) else { continue }
             events.append(.content(id, random.pick(0...5)))
@@ -103,7 +101,7 @@ private let reducedInterleavingTrace = StateTrace(seed: 0, events: [
     .resize(1292, 858),
     .pause(true),
     .insert("c", 1, 2),
-    .automatic,
+    .scroll(120),
     .visible(false),
     .visible(true),
     .pause(false),
@@ -144,10 +142,7 @@ struct NativeOverviewStateProperties {
         var items = [NativeOverviewItem]()
         let fixture = OverviewReplayFixture()
         let window = SwiftUIReplay.window(OverviewReplayCanvas(fixture: fixture), width: 1180, height: 780)
-        defer {
-            window.close()
-            fixture.state.camera.dispose()
-        }
+        defer { window.close() }
         for event in trace.events {
             switch event {
             case .insert(let id, let columns, let rows):
@@ -170,10 +165,8 @@ struct NativeOverviewStateProperties {
                 fixture.layoutPaused = value
             case .visible(let value):
                 fixture.visible = value
-            case .manual:
-                fixture.state.camera.pan(deltaX: -120, deltaY: 80)
-            case .automatic:
-                fixture.state.camera.returnToAuto()
+            case .scroll(let distance):
+                fixture.state.camera.scroll(by: distance)
             case .content(let id, let revision):
                 guard let index = items.firstIndex(where: { $0.id == id }) else { continue }
                 items[index].presentationID = "stream-\(revision)"
@@ -181,11 +174,10 @@ struct NativeOverviewStateProperties {
             }
             try? await Task.sleep(for: .milliseconds(4))
         }
-        // Let every pending pause/visibility/manual branch release before the
+        // Let every pending pause/visibility branch release before the
         // final observation. The trace itself owns the interleaving.
         fixture.layoutPaused = false
         fixture.visible = true
-        if fixture.state.camera.manual { fixture.state.camera.returnToAuto() }
         do {
             try await OverviewReplay.settle(fixture, in: window)
         } catch {
@@ -202,19 +194,19 @@ struct NativeOverviewStateProperties {
         if !items.isEmpty {
             let usable = fixture.usable
             let world = fixture.worldBounds
-            let raw = min(usable.width / world.width, usable.height / world.height)
-            let expected = max(1, min(NativeOverviewCameraGeometry.scaleCap, raw))
-            if abs(fixture.state.camera.liveTransform.scale - expected) > 1e-6 {
-                return "scale does not match FitAll: " + summary(fixture)
-            }
-            // Equal top/bottom space when the Dock is taller. A taller toolbar
-            // keeps half the excess clearance above the center of the cards.
-            let center = CGPoint(x: fixture.size.width / 2,
-                                 y: (fixture.size.height + max(0, fixture.toolbarBottom - fixture.bottomReservedHeight)) / 2)
+            let tallest = Double(items.map(\.rows).max()!) * 212 - 16
+            let scale = min(1, usable.height / tallest)
+            let camera = fixture.state.camera
+            let width = world.width * scale
+            let maxOffset = max(0, width - usable.width)
             let envelope = fixture.renderedEnvelope
             let pixel = 1 / window.backingScaleFactor
-            if abs(envelope.midX - center.x) > pixel || abs(envelope.midY - center.y) > pixel {
-                return "automatic center differs: expected=\(center) rendered=\(envelope) " + summary(fixture)
+            let left = usable.left + max(0, usable.width - width) / 2 - camera.scrollOffset
+            if abs(camera.transform.scale - scale) > 1e-6 || abs(maxOffset - camera.maximumOffset) > pixel
+                || !(0...maxOffset).contains(camera.scrollOffset)
+                || abs(envelope.minX - left) > pixel || abs(envelope.midY - usable.top - usable.height / 2) > pixel
+                || envelope.minY < usable.top - pixel || envelope.maxY > usable.top + usable.height + pixel {
+                return "mounted scroll range or envelope differs: " + summary(fixture)
             }
         }
         return nil
@@ -242,8 +234,7 @@ struct NativeOverviewStateProperties {
 
     private func summary(_ fixture: OverviewReplayFixture) -> String {
         "finalItems=\(fixture.items.map(\.id)) presented=\(fixture.state.presentedPlacements.map(\.id)) "
-            + "frames=\(fixture.frames.keys.sorted()) manual=\(fixture.state.camera.manual) "
-            + "animating=\(fixture.state.camera.isAnimating) pending=\(fixture.state.camera.hasPendingAutomaticFit) "
+            + "frames=\(fixture.frames.keys.sorted()) scroll=\(fixture.state.camera.scrollOffset) "
             + "layingOut=\(fixture.state.isLayingOut) error=\(fixture.state.layoutError ?? "nil")"
     }
 }

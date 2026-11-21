@@ -99,7 +99,7 @@ the real composer. In an active, visible window, the
 resident eyes stay open through the 180ms final fade and blink once for 320ms
 as the input box comes fully into view. Leaving the foreground or hiding
 the face during either interval cancels the cue for
-this handoff. The editor accepts input as soon as the handoff finishes.
+this handoff. **Start using Chief** gives the visible editor keyboard focus when the handoff finishes in the active app.
 See the [first-run handoff replay](../../../../../tools/e2e/README.md#first-run-handoff)
 for the window capture procedure. The one-time marker is independent of empty-workspace landing:
 archiving all conversations still restores landing without replaying setup.

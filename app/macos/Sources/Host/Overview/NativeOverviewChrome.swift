@@ -47,25 +47,18 @@ public struct NativeOverviewChrome: View {
     public var selectedTag: String
     public var selectedScope: String
     public var selectedKind: NativeOverviewTagKind?
-    public var cameraManual: Bool
-    public var focusFilterRequestKey: Int
     public var onTagChange: (NativeOverviewFilter?) -> Void
-    public var onReturnToAuto: (() -> Void)?
     public var onSettings: (() -> Void)?
     /// Bounds use logical points from the top-left of the zoomable client viewport.
     public var onSettingsWithOrigin: ((CGRect) -> Void)?
     public var onSettingsFrameChange: ((CGRect?) -> Void)?
     public var onRestart: (() -> Void)?
-    public var onFocusFilterRequestConsumed: (() -> Void)?
-    public var clickExclusions: NativeClickExclusions?
     public var interactions: NativeOverviewChromeInteractions?
     public var strings: NativeOverviewChromeStrings
-    @FocusState private var focusedTag: String?
     @Namespace private var tagGlass
     @Namespace private var actionGlass
     @State private var presentedFilters: [NativeOverviewFilter]
     @State private var hasPresentedFilters: Bool
-    @State private var returnToAutoVisible: Bool
     @State private var settingsAnchor = OverviewSettingsAnchor()
     @State private var measuredAllWidth: CGFloat = 0
     @State private var measuredTagsWidth: CGFloat = 0
@@ -80,15 +73,12 @@ public struct NativeOverviewChrome: View {
 
     public init(filters: [NativeOverviewFilter], viewportHeight: CGFloat? = nil, selectedTag: String = "", selectedScope: String = "", selectedKind: NativeOverviewTagKind? = nil,
                 allHasActiveTasks: Bool = false,
-                cameraManual: Bool = false, focusFilterRequestKey: Int = 0,
                 strings: NativeOverviewChromeStrings = .init(),
                 onTagChange: @escaping (NativeOverviewFilter?) -> Void,
-                onReturnToAuto: (() -> Void)? = nil,
                 onSettings: (() -> Void)? = nil, onRestart: (() -> Void)? = nil,
-                onFocusFilterRequestConsumed: (() -> Void)? = nil,
                 onSettingsWithOrigin: ((CGRect) -> Void)? = nil,
                 onSettingsFrameChange: ((CGRect?) -> Void)? = nil,
-                clickExclusions: NativeClickExclusions? = nil, interactions: NativeOverviewChromeInteractions? = nil) {
+                interactions: NativeOverviewChromeInteractions? = nil) {
         self.viewportHeight = viewportHeight
         self.filters = filters; self.selectedTag = selectedTag; self.selectedScope = selectedScope; self.selectedKind = selectedKind
         self.allHasActiveTasks = allHasActiveTasks
@@ -97,12 +87,8 @@ public struct NativeOverviewChrome: View {
         _latestSelection = State(initialValue: selection)
         _presentedFilters = State(initialValue: filters)
         _hasPresentedFilters = State(initialValue: !filters.isEmpty)
-        self.cameraManual = cameraManual; self.focusFilterRequestKey = focusFilterRequestKey
-        _returnToAutoVisible = State(initialValue: cameraManual)
         self.strings = strings; self.onTagChange = onTagChange
-        self.onReturnToAuto = onReturnToAuto; self.onSettings = onSettings; self.onRestart = onRestart
-        self.onFocusFilterRequestConsumed = onFocusFilterRequestConsumed
-        self.clickExclusions = clickExclusions
+        self.onSettings = onSettings; self.onRestart = onRestart
         self.interactions = interactions
         self.onSettingsWithOrigin = onSettingsWithOrigin; self.onSettingsFrameChange = onSettingsFrameChange
     }
@@ -133,9 +119,6 @@ public struct NativeOverviewChrome: View {
             }
         }
         .frame(height: stackedFilterTop + OverviewTagMetrics.chipHeight)
-        .onChange(of: cameraManual) { _, manual in
-            withAnimation(.smooth(duration: 0.32)) { returnToAutoVisible = manual }
-        }
         .onChange(of: selection) { _, value in
             latestSelection = value
             if hoveredScope == nil && !submenuClosing {
@@ -155,13 +138,11 @@ public struct NativeOverviewChrome: View {
             interactions?.removeChrome(owner: interactionOwner)
         }
         .onChange(of: filters) { _, updated in presentFilters(updated, animated: hasPresentedFilters) }
-        .onChange(of: focusFilterRequestKey) { _, request in consumeFocus(request) }
         .onAppear {
             latestSelection = selection
             displayedSelection = selection
             interactions?.installChrome(owner: interactionOwner, openScope: hoveredScope)
             presentFilters(filters, animated: false)
-            consumeFocus(focusFilterRequestKey)
         }
     }
 
@@ -190,7 +171,7 @@ public struct NativeOverviewChrome: View {
     }
 
     private var actionWidth: CGFloat {
-        let count = (onReturnToAuto != nil ? 1 : 0) + (onRestart != nil ? 1 : 0)
+        let count = (onRestart != nil ? 1 : 0)
             + (onSettings != nil || onSettingsWithOrigin != nil ? 1 : 0)
         return CGFloat(count) * OverviewTagMetrics.actionDiameter + CGFloat(max(0, count - 1)) * OverviewTagMetrics.spacing
     }
@@ -200,14 +181,6 @@ public struct NativeOverviewChrome: View {
         // while retaining separate outlines at rest.
         GlassEffectContainer(spacing: OverviewTagMetrics.spacing) {
             HStack(spacing: OverviewTagMetrics.spacing) {
-                if returnToAutoVisible, let onReturnToAuto {
-                    iconButton("Shrink", size: 15, title: strings.returnToAuto, action: onReturnToAuto)
-                        .background {
-                            if let clickExclusions {
-                                NativeClickExclusionRegion(exclusions: clickExclusions)
-                            }
-                        }
-                }
                 if let onRestart { iconButton("RotateCcw", size: 15, title: strings.restart, action: onRestart) }
                 if onSettings != nil || onSettingsWithOrigin != nil {
                     iconButton("Settings", size: 15, title: strings.settings,
@@ -217,7 +190,6 @@ public struct NativeOverviewChrome: View {
                     }
                 }
             }
-            // Reserve the conditional slot without covering the tag glass.
             .frame(width: actionWidth, alignment: .trailing)
         }
         .modifier(OverviewToolbarEntry())
@@ -314,7 +286,6 @@ public struct NativeOverviewChrome: View {
                             .transition(.identity)
                             .allowsHitTesting(active && current)
                             .accessibilityHidden(!active || !current)
-                            .focused($focusedTag, equals: child.id)
                             .overviewTagAnchor(child.id)
                             .accessibilityIdentifier(child.id)
                             .accessibilityLabel(Text(child.displayTag))
@@ -427,7 +398,6 @@ public struct NativeOverviewChrome: View {
             }
             .buttonStyle(OverviewTagButtonStyle(active: selectedTag.isEmpty))
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measuredAllWidth = $0 }
-            .focused($focusedTag, equals: "__all__")
             .accessibilityAddTraits(selectedTag.isEmpty ? .isSelected : [])
             .accessibilityValue(Text(allHasActiveTasks ? strings.containsActiveTasks : ""))
             OverviewHorizontalScroll(interactions: interactions, owner: interactionOwner, ids: presentedFilters.map(\.id)) {
@@ -472,7 +442,6 @@ public struct NativeOverviewChrome: View {
                 .glassEffectID(filter.id, in: tagGlass)
                 .glassEffectTransition(.matchedGeometry)
                 .overviewTagAnchor(filter.id)
-                .focused($focusedTag, equals: filter.id)
                 .accessibilityIdentifier(filter.id)
                 .accessibilityLabel(Text(filterTitle(filter)))
                 .accessibilityAddTraits(active ? .isSelected : [])
@@ -521,12 +490,6 @@ public struct NativeOverviewChrome: View {
         .accessibilityAddTraits(active ? .isSelected : [])
     }
 
-    private func consumeFocus(_ request: Int) {
-        guard request != 0 else { return }
-        focusedTag = filters.isEmpty ? nil : (filters.first(where: { $0.matches(selectedTag, kind: selectedKind, scope: selectedScope) })?.id ?? "__all__")
-        onFocusFilterRequestConsumed?()
-    }
-
     private func presentFilters(_ updated: [NativeOverviewFilter], animated: Bool) {
         // A local presentation transaction keeps card/camera/settings updates out
         // of this animation. Initial hydration is immediate.
@@ -556,11 +519,7 @@ public struct NativeOverviewChrome: View {
             }
             presentedFilters = updated
             if !updated.isEmpty && !hasPresentedFilters { hasPresentedFilters = true }
-            if updated.isEmpty {
-                focusedTag = nil
-            } else if let focusedTag, focusedTag != "__all__", !updated.contains(where: { $0.id == focusedTag || $0.children.contains { $0.id == focusedTag } }) {
-                self.focusedTag = "__all__"
-            }
+
         }
     }
 }
@@ -612,7 +571,6 @@ struct OverviewTagPrefix: View {
 
 public struct NativeOverviewChromeStrings: Sendable {
     public var all = "全部"
-    public var returnToAuto = "回到自动视图"
     public var settings = "设置"
     public var restart = "重启开发应用"
     public var actions = "俯瞰视图操作"

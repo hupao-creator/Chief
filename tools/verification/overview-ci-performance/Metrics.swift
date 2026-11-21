@@ -412,11 +412,8 @@ func environmentJSON() -> [String: Any] {
 
 @MainActor
 func cameraJSON(_ camera: NativeOverviewCamera) -> [String: Any] {
-    let transform = camera.liveTransform
-    return ["scale": transform.scale, "x": transform.x, "y": transform.y,
-        "manual": camera.manual, "isAnimating": camera.isAnimating,
-        "minimumScale": camera.minimumScale, "hasScheduledMotion": camera.hasScheduledMotion,
-        "hasPendingAutomaticFit": camera.hasPendingAutomaticFit]
+    let transform = camera.transform
+    return ["scale": transform.scale, "x": transform.x, "y": transform.y]
 }
 
 @MainActor
@@ -439,7 +436,7 @@ func visibilityJSON(_ model: NativeOverviewWorkspaceModel) -> [String: Any] {
     }
     let region = NativeOverviewCameraGeometry.contentRegion(viewport)
     let clip = CGRect(x: region.left, y: region.top, width: region.width, height: region.height)
-    let transform = model.canvasState.camera.liveTransform
+    let transform = model.canvasState.camera.transform
     let activeIDs = Set((0..<4).map { "card-\($0)" })
     var active: [[String: Any]] = []
     var fullIDs: [String] = [], partialIDs: [String] = []

@@ -110,6 +110,9 @@ control checks this input path alongside the AppKit controls.
 | `body.pan` | Same source schedule during system mouse dragging. |
 | `zoom`, `body.zoom` | Declared but **unsupported** until a public system magnification injector is validated. Command-wheel is not silently substituted for a macOS pinch. |
 
+The background drag in the pan workload leaves the Overview viewport stationary.
+Its displacement trace cannot measure horizontal scrolling performance.
+
 The default run selects the six supported scenarios. Unsupported zoom cases
 are reported only when explicitly requested.
 

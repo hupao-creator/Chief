@@ -13,21 +13,19 @@ region is 1384×712pt. Twelve 1×1 cards occupy four columns and three rows
 (1328×620pt). Card text keeps its declared point sizes.
 
 At the default 1× camera, the card origins in this layout are x = 92, 428,
-764, 1100 and y = 140, 352, 564. The automatic target moves down by the
+764, 1100 and y = 140, 352, 564. The vertical alignment moves down by the
 distance from the usable center to the window center when the Dock leaves
-more clearance below. Cards draw across the full canvas during panning.
+more clearance below, within the reserved space.
 
 The pure solver returns placements and bounds from one input.
 Mixed spans can fill gaps within horizontal or vertical bands. The four-card
 mix of a wide card, a tall card and two single cells fills a 3×2 or 2×3
-rectangle according to the usable viewport. FitAll centers the card union at
-the configured floor and cap. Overflow remains reachable by panning.
-Layout and camera targets are latest-wins, fenced by identity and
-revision. Content-only updates do not restart structural motion. Interrupted
-travel samples current poses; hidden work coalesces to the latest target.
-Automatic focus recomputes placement and center when membership shrinks. The
-product camera stays at 1×. Clicking empty canvas restores automatic framing
-after a manual pan.
+rectangle according to the usable viewport and available rows. Fitting layouts
+remain centered. Overflow uses additional columns to the right with bounded
+horizontal scrolling. Only a tallest card that exceeds the available height
+requires uniform scaling. Readers, Settings and content updates retain the scroll
+position, clamped when the legal range shrinks. Layout and card motion use the
+latest structural revision and sample interrupted poses.
 
 Agent card titles reserve one line and truncate at the tail so title swaps do
 not shift model, time or body content. Empty, missing and error facts keep their own

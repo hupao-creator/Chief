@@ -22,6 +22,10 @@ an otherwise idle, unlocked Mac and an agreed exclusive desktop slot are require
 | ux-reading | reading.first-open, reading.reopen | 8 KiB settled Markdown reply; 10s formal; existing reading input schedule |
 | ux-zoom | zoom, body.zoom | Unsupported: no validated real system pinch injector |
 
+The Overview pan workloads inject a background mouse drag. The canvas keeps its
+position during that gesture. These optical workloads cannot certify horizontal
+wheel response or trackpad inertia.
+
 All tolerances are **provisional, not physically calibrated**. Each metric has
 lower-is-better direction and 15% relative tolerance; allowed degradation is the
 larger of that relative amount and the absolute tolerance below.

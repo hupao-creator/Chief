@@ -30,7 +30,7 @@ contains every requested ID, including blocked and unreached entries.
 
 | ID | Implemented interaction and criterion | Prerequisite / evidence | Coverage boundary |
 | --- | --- | --- | --- |
-| `E2E-OVERVIEW-001` | Observe a mounted task at 1×, pan by (+48, −90)pt, and restore the center of all card placements. Cell spans and window clearances determine the expected coordinates. | One task in the default suite, two tasks and eight reports in the Collection suite. The automatic, panned and recentered snapshots record the three poses. | Semantic camera actions and mounted identity. Pointer hit testing and drawn pixels need separate evidence. |
+| `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve completed tasks in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
 | `E2E-SETTINGS-001` | Open Settings with Chief Agent selected and only Chief Agent, Auto-Categorization and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief Agent and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
 | `E2E-COLLECTION-001` | Open a grouped member, return, then revisit and read. Switch directory and archive/restore unrelated reports while All remains mounted. | Two isolated directories, two completed tasks and eight reports from a deterministic peer. | The 18-cell All groups two fresh reports. A nine-cell directory releases them. A brief visit holds the cover, a qualified visit promotes the report, and the group releases when the expanded view reaches 14 cells. |
@@ -41,7 +41,7 @@ called verified. Source inspection and a successful preparation do not certify
 them. The runner emits the actual status, revision and evidence for each attempt;
 there is no repository-wide "covered" flag. Current implementation supports
 Codex only and deterministic text without attachments. The collection scenario
-uses two ordinary Threads, the other scenarios one.
+uses two ordinary Threads. The default suite prepares twelve and reads the first. Composer alone uses one.
 Reading uses two completed executions; Composer adds one completed follow-up and
 one interrupted execution. Real provider behavior/authentication, other Harnesses,
 forks, archive button input, reconnect/restart recovery and cancellation invariants are not
@@ -147,7 +147,7 @@ window pixels.
 
 ### Settings over a populated Overview
 
-In an isolated workspace, pan Overview with an Agent and a Super Thread in view.
+In an isolated workspace, scroll horizontally until an Agent and a Super Thread are in view.
 Record the window while opening Settings with the gear and closing it with **×**.
 Compare each clear frame of the Super Thread title and cover with its pre-click
 appearance. The workspace blur and shade should follow the capsule in both
@@ -194,9 +194,8 @@ Collection on All. Record the isolated window continuously and save the filter,
 carousel member, execution identities and link position alongside the recording.
 
 1. In the other directory, scroll the Note to the ordinary link and click it
-   with the system pointer. Check that the Note finishes closing before the
-   filter changes. The reader should open from the target card at the cited
-   run’s heading. After the scoped body has loaded, check that its timeline
+   with the system pointer. Check that the Note closes and the selected filter and canvas offset stay put.
+   The reader should open at the cited run’s heading. After the scoped body has loaded, check that its timeline
    height exceeds its viewport, `top` is zero and `following` is false. Repeat from a filter that already contains the target and check that
    its selection stays put. Click the reader’s **×** and verify the Note stays
    closed on Overview. Reopen the Note and follow the historical link again.

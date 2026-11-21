@@ -90,8 +90,8 @@ def run(args):
     output = args.output.resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     specs = json.loads((Path(__file__).parent / "scenarios.json").read_text())["scenarios"]
-    suites = {"supported": {"E2E-OVERVIEW-001", "E2E-READ-001", "E2E-SETTINGS-001"}, "composer": {"E2E-COMPOSER-001"},
-              "collection": {"E2E-OVERVIEW-001", "E2E-COLLECTION-001"}}
+    suites = {"supported": {"E2E-OVERVIEW-002", "E2E-READ-001", "E2E-SETTINGS-001"}, "composer": {"E2E-COMPOSER-001"},
+              "collection": {"E2E-OVERVIEW-002", "E2E-COLLECTION-001"}}
     specs = [s for s in specs if args.suite == "all" or s["id"] in suites[args.suite]]
     requested = {s["id"] for s in specs}
     save(output / "scenario-contract.json", specs)
@@ -151,6 +151,8 @@ def run(args):
         if "E2E-COLLECTION-001" in requested:
             session.peer.prepare_collection()
             collection.enable_reports(session, True)
+        elif "E2E-OVERVIEW-002" in requested:
+            session.peer.count = 12
         report["validity"] = "valid"
         event("prepare-thread")
         receipt = session.runtime.invoke("moku:submit", [{"input": {"parts": [{"kind": "text", "text":
@@ -158,6 +160,9 @@ def run(args):
         wait_for(lambda: session.peer.receipts, lambda v: len(v) == session.peer.count, 60)
         thread = session.peer.receipts["bench_create_01"]["threadId"]
         row = completed(session, thread)
+        for created in session.peer.receipts.values():
+            if created["threadId"] != thread:
+                completed(session, created["threadId"])
         initial = row["observation"]["latestExecution"]["executionId"]
         save(output / "creation.json", {"receipt": receipt, "thread": row})
         save(output / "initial-oracle.json", read_turn(session, thread, initial, session.peer.body(1), "initial-content.json"))
@@ -200,8 +205,8 @@ def run(args):
             save(output / "followup-oracle.json", read_turn(session, thread, latest, session.peer.followup_body(), "followup-content.json"))
             return latest
 
-        if "E2E-OVERVIEW-001" in requested:
-            execute("E2E-OVERVIEW-001", lambda: desktop.overview_camera(thread))
+        if "E2E-OVERVIEW-002" in requested:
+            execute("E2E-OVERVIEW-002", lambda: desktop.overview_scroll(thread))
         if "E2E-COLLECTION-001" in requested:
             execute("E2E-COLLECTION-001", lambda: collection.journey(desktop, reports))
             if args.suite == "all":

@@ -11,7 +11,7 @@ running the product. Existing baseline/candidate data cannot establish current
 flat-card behavior or GPU/FPS/energy results.
 
 The independent geometry probe links the current production
-`NativeOverviewLayout.solve` and FitAll camera. It measures geometry without a
+`NativeOverviewLayout.solve` and horizontal scroll geometry. It measures geometry without a
 visible window and does not measure glass, GPU or real input:
 
 ```sh

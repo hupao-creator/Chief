@@ -50,7 +50,6 @@ public struct NativeOverviewLayoutRevision: Sendable {
 public final class NativeOverviewCanvasState {
     public let camera = NativeOverviewCamera()
     public let motionStages: NativeOverviewStageCoordinator
-    public let memory: NativeOverviewCameraMemory
     @ObservationIgnored public fileprivate(set) var sceneSnapshotCount = 0
     /// Mounted integration replays verify content invalidation without timing the UI.
     @ObservationIgnored public fileprivate(set) var bodyEvaluationCount = 0
@@ -71,9 +70,6 @@ public final class NativeOverviewCanvasState {
     @ObservationIgnored fileprivate var hostOwner: UUID?
     @ObservationIgnored fileprivate var inputFocused = false
     @ObservationIgnored fileprivate var externalInteractionPaused = false
-    /// A Moku outside click already dismissed the composer. The same click must
-    /// not also return the camera to automatic framing when its mouse-up lands.
-    @ObservationIgnored fileprivate var autoFocusSuppressedForClick = false
     @ObservationIgnored fileprivate var activeIDs = Set<String>()
     @ObservationIgnored fileprivate var visible = true
     @ObservationIgnored private var interactionCounts: [String: Int] = [:]
@@ -81,16 +77,17 @@ public final class NativeOverviewCanvasState {
     fileprivate var preparationRequest: UInt64 = 0
     @ObservationIgnored fileprivate var completedPreparation: UInt64 = 0
 
-    public init(memory: NativeOverviewCameraMemory = .init(), motionStages: NativeOverviewStageCoordinator = .init()) {
-        self.memory = memory
+    public init(motionStages: NativeOverviewStageCoordinator = .init()) {
         self.motionStages = motionStages
     }
     public func displayedFrame(for id: String) -> CGRect? {
         guard !isLayingOut, let placement = placementsByID[id] else { return nil }
-        let frame = placement.cardFrame
-        let transform = camera.liveTransform
-        return CGRect(x: frame.minX * transform.scale + transform.x, y: frame.minY * transform.scale + transform.y,
-                      width: frame.width * transform.scale, height: frame.height * transform.scale)
+        return camera.transform.project(placement.cardFrame)
+    }
+    func visibleFrame(for id: String) -> CGRect? {
+        guard let frame = displayedFrame(for: id), let viewport = camera.viewport,
+              frame.intersects(CGRect(x: 0, y: 0, width: viewport.width, height: viewport.height)) else { return nil }
+        return frame
     }
     public func retryLayout() { retryHandler?() }
     /// Wait for a layout admitted AFTER the caller refreshed the retained model.
@@ -108,7 +105,6 @@ public final class NativeOverviewCanvasState {
     /// Interaction widgets invoke this for real input, not hover or restored focus.
     public func beginInteraction(cardID: String) {
         interactionCounts[cardID, default: 0] += 1
-        refreshInteractionPause()
     }
     public func endInteraction(cardID: String? = nil) {
         if let cardID {
@@ -116,7 +112,6 @@ public final class NativeOverviewCanvasState {
             if remaining == 0 { interactionCounts.removeValue(forKey: cardID) }
             else { interactionCounts[cardID] = remaining }
         } else { interactionCounts.removeAll() }
-        refreshInteractionPause()
     }
 
     var interactionCardIDs: Set<String> { Set(interactionCounts.keys) }
@@ -124,20 +119,16 @@ public final class NativeOverviewCanvasState {
         (externalInteractionPaused ? ["presentation"] : []) + (inputFocused ? ["text-editing"] : [])
             + (!interactionCounts.isEmpty ? ["responding"] : [])
     }
-    /// The Moku composer reports that this click dismissed input-box mode.
-    func suppressAutoFocusForThisClick() { autoFocusSuppressedForClick = true }
-    func clearAutoFocusSuppression() { autoFocusSuppressedForClick = false }
-    /// One click may dismiss input-box mode or return the camera to automatic
-    /// framing, never both. Consuming the mark here makes the dismissal win.
-    func allowsBackgroundAutoFocus() -> Bool {
-        if autoFocusSuppressedForClick {
-            autoFocusSuppressedForClick = false
-            return false
-        }
-        return !externalInteractionPaused
+    var canScroll: Bool {
+        visible && hostOwner != nil && !externalInteractionPaused && !inputFocused && interactionCounts.isEmpty
+            && !isLayingOut && camera.isInitialized
     }
-    fileprivate func refreshInteractionPause() {
-        camera.setInteractionPaused(externalInteractionPaused || inputFocused || !interactionCounts.isEmpty)
+    func scrollWithArrow(_ press: KeyPress) -> KeyPress.Result {
+        // AppKit can mark ordinary arrow keys as numeric-pad input.
+        guard press.modifiers.intersection([.command, .control, .option, .shift]).isEmpty,
+              canScroll, camera.maximumOffset > 0 else { return .ignored }
+        camera.scroll(by: press.key == .rightArrow ? NativeOverviewLayout.columnPitch : -NativeOverviewLayout.columnPitch)
+        return .handled
     }
     fileprivate func cardAppeared(_ id: String) {
         mountedCardCounts[id, default: 0] += 1
@@ -195,16 +186,13 @@ public struct NativeOverviewCanvas<Content: View>: View {
     @State private var worker: Task<Void, Never>?
     @State private var mountedScene: String?
     @State private var mountedSelection: String?
-    @State private var contentRect = NativeOverviewContentRect(left: 0, top: 0, width: 0, height: 0)
     @State private var plannedViewport: NativeOverviewViewport?
     @State private var retry = 0
     @State private var ownership = UUID()
     @State private var layoutToken = UUID()
     @State private var presentationToken = UUID()
     @State private var preparedPresentationToken: UUID?
-    @GestureState private var dragOrigin: NativeOverviewTransform?
-    @GestureState private var zoomActive = false
-    @State private var navigationInput: NativeOverviewNavigationInput
+    @State private var navigationRegions: NativeCanvasInputRegions
 
     public init(items: [NativeOverviewItem] = [], contentSource: NativeOverviewContentStore? = nil,
                 sceneKey: String, state: NativeOverviewCanvasState,
@@ -230,7 +218,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         self.onRetainedPresentationIDsChanged = onRetainedPresentationIDsChanged
         self.cardContentIdentity = cardContentIdentity
         self.card = card
-        _navigationInput = State(initialValue: NativeOverviewNavigationInput(regions: inputRegions ?? .init()))
+        _navigationRegions = State(initialValue: inputRegions ?? .init())
     }
 
     public var body: some View {
@@ -245,15 +233,10 @@ public struct NativeOverviewCanvas<Content: View>: View {
             let viewport = NativeOverviewViewport(width: geometry.size.width, height: geometry.size.height,
                                                   toolbarBottom: toolbarBottom, bottomReservedHeight: bottomReservedHeight)
             ZStack(alignment: .topLeading) {
-                // Window dragging must never enter the camera's manual pan gesture.
                 Color.clear.contentShape(Rectangle())
-                    .frame(height: max(0, headerInputBottom))
+                    .frame(width: geometry.size.width, height: max(0, headerInputBottom))
                     .gesture(WindowDragGesture())
-                Color.clear.contentShape(Rectangle())
-                    .onTapGesture { if state.allowsBackgroundAutoFocus() { state.camera.returnToAuto() } }
-                    .gesture(pan)
-                    .padding(.top, max(0, headerInputBottom))
-                OverviewCameraPlane(camera: state.camera, visible: visible, ignoreLayout: true) {
+                OverviewCameraPlane(camera: state.camera, ignoreLayout: true) {
                     ZStack(alignment: .topLeading) {
                         ForEach(placements, id: \.id) { placement in
                             if let item = records[placement.id] {
@@ -265,7 +248,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
                 }
-                OverviewCameraPlane(camera: state.camera, visible: visible) {
+                OverviewCameraPlane(camera: state.camera) {
                     ZStack(alignment: .topLeading) {
                         ForEach(placements, id: \.id) { placement in
                             if let item = records[placement.id] {
@@ -276,19 +259,18 @@ public struct NativeOverviewCanvas<Content: View>: View {
                     .frame(width: displayWidth, height: displayHeight, alignment: .topLeading)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
             .background(alignment: .topLeading) {
-                NativeOverviewScrollInput(input: navigationInput, size: geometry.size, toolbarBottom: headerInputBottom,
+                NativeOverviewScrollInput(regions: navigationRegions, size: geometry.size, toolbarBottom: headerInputBottom,
                     identity: "\(ownership)|\(sceneKey)|\(selectionID ?? "")|\(resetEpoch)", contentScale: windowContentScale,
-                    enabled: { visible && state.visible && !state.externalInteractionPaused && !interactionPaused
-                        && !state.isLayingOut && state.hostOwner == ownership && state.camera.isInitialized },
-                    pan: { delta in state.camera.pan(deltaX: delta.width, deltaY: delta.height) })
+                    enabled: { visible && !interactionPaused && state.hostOwner == ownership && state.canScroll },
+                    scroll: { state.camera.scroll(by: $0) })
             }
             .background {
                 OverviewEditingFocusObserver(state: state, owner: ownership, focusedCard: focusedCard)
                     .allowsHitTesting(false)
             }
-            .environment(\.nativeCanvasInputRegions, navigationInput.regions)
+            .environment(\.nativeCanvasInputRegions, navigationRegions)
             .coordinateSpace(name: ownership)
             // Mount the new collection at frozen start poses before its clock
             // runs. Plugin construction must not consume the filter transition.
@@ -296,30 +278,30 @@ public struct NativeOverviewCanvas<Content: View>: View {
                 preparedPresentationToken = $0
             }
             .clipped()
-            // Group before attaching the canvas gesture; otherwise SwiftUI
-            // derives its accessibility attachment for every card descendant.
             .accessibilityElement(children: .contain)
-            .simultaneousGesture(magnification(in: geometry.size))
-            .onChange(of: zoomActive) { _, active in if !active { navigationInput.endPinch() } }
-            .onChange(of: state.isLayingOut) { _, layingOut in if layingOut { navigationInput.cancel() } }
+            .accessibilityScrollAction { edge in
+                guard state.canScroll else { return }
+                if edge == .trailing { state.camera.scroll(by: geometry.size.width) }
+                if edge == .leading { state.camera.scroll(by: -geometry.size.width) }
+            }
+            .onKeyPress(keys: [.leftArrow, .rightArrow], action: state.scrollWithArrow)
             // A presentation pause blocks the canvas, but must not publish a
             // disabled control state into plugin cards: native Buttons dim their
             // labels while gesture-based cards keep their ordinary appearance.
             .allowsHitTesting(!interactionPaused)
             .accessibilityHidden(interactionPaused)
             .onChange(of: requestKey(viewport)) { _, _ in attach(viewport); enqueue(viewport) }
-            .onAppear { attach(viewport); state.camera.setVisible(visible); enqueue(viewport) }
+            .onAppear { attach(viewport); enqueue(viewport) }
             // Simple array hosts feed the same store as the production model.
             // Production supplies a stable source and never observes the array.
             .onChange(of: suppliedItems) { _, updated in
                 if let updated { contentStore.install(updated) }
             }
             .onChange(of: ObjectIdentifier(contentStore)) { _, _ in attach(viewport) }
-            .onChange(of: visible) { _, value in state.visible = value; state.camera.setVisible(value) }
+            .onChange(of: visible) { _, value in state.visible = value }
             .onChange(of: viewport) { _, _ in attach(viewport) }
-             .onChange(of: interactionPaused) { _, value in
+            .onChange(of: interactionPaused) { _, value in
                 state.externalInteractionPaused = value
-                state.refreshInteractionPause()
             }
             .onDisappear { detach() }
         }
@@ -346,25 +328,6 @@ public struct NativeOverviewCanvas<Content: View>: View {
     private func livePose(_ placement: NativeOverviewPlacement, at now: TimeInterval) -> OverviewCardPose {
         cardMotions[placement.id]?.sample(at: now) ?? pose(placement)
     }
-    private var pan: some Gesture {
-        DragGesture(minimumDistance: 4)
-            .updating($dragOrigin) { _, origin, _ in if origin == nil { origin = state.camera.liveTransform } }
-            .onChanged { value in
-                navigationInput.cancel()
-                guard state.visible, !state.isLayingOut, !state.externalInteractionPaused, let origin = dragOrigin else { return }
-                state.camera.setManualTransform(.init(scale: origin.scale, x: origin.x + value.translation.width,
-                                                       y: origin.y + value.translation.height))
-            }
-    }
-    private func magnification(in size: CGSize) -> some Gesture {
-        MagnifyGesture()
-            .updating($zoomActive) { _, active, _ in active = true }
-            .onChanged { value in
-                let cursor = CGPoint(x: value.startAnchor.x * size.width, y: value.startAnchor.y * size.height)
-                navigationInput.pinch(magnification: value.magnification, anchor: cursor, camera: state.camera)
-            }
-            .onEnded { _ in navigationInput.endPinch() }
-    }
     private func requestKey(_ viewport: NativeOverviewViewport) -> String {
         "\(ObjectIdentifier(contentStore))|\(sceneKey)|\(selectionID ?? "")|\(contentStore.structureRevision)|\(viewport)|\(resetEpoch)|\(retry)|\(revisions.last?.revision ?? 0)|\(layoutPaused)|\(state.preparationRequest)"
     }
@@ -388,12 +351,11 @@ public struct NativeOverviewCanvas<Content: View>: View {
             cancelScheduling(settle: false)
             state.isLayingOut = false
             // A structural slot refresh with unchanged membership or viewport
-            // does not need another solve. Keep any playing camera motion untouched.
+            // does not need another solve.
             installRendered(items, retainingOutgoing: true)
             retain()
             state.geometryReuseCount += 1
-            state.camera.applyGeometry(content: contentRect, viewport: viewport,
-                                       automatic: state.camera.automaticFitTarget)
+            state.camera.onChange?()
             consume(pendingRevisions)
             state.completedPreparation = max(state.completedPreparation, state.preparationRequest)
             return
@@ -480,10 +442,9 @@ public struct NativeOverviewCanvas<Content: View>: View {
         state.retryHandler = { retry += 1 }
         state.activationCheck = { id in !state.externalInteractionPaused && !state.isLayingOut && state.activeIDs.contains(id) }
         // The callback reads current attention facts, while scene/viewport changes
-        // reattach its coordinate and memory ownership.
+        // reattach its viewport.
         state.camera.onChange = {
             let attention = source.attentionIDs
-            if let view = state.camera.live { state.memory.current = (sceneKey, view) }
             guard !attention.isEmpty else {
                 state.overflowAttentionCount = 0
                 return
@@ -492,27 +453,21 @@ public struct NativeOverviewCanvas<Content: View>: View {
                 state.attentionVisibilityVisitCount += 1
                 guard let placement = state.placementsByID[id] else { return count }
                 let frame = placement.cardFrame
-                let visible = NativeOverviewCameraGeometry.isVisible(
-                    .init(left: frame.minX, top: frame.minY, width: frame.width, height: frame.height),
-                    transform: state.camera.liveTransform, viewport: viewport)
+                let visible = state.camera.transform.project(frame).intersects(CGRect(origin: .zero,
+                    size: CGSize(width: viewport.width, height: viewport.height)))
                 return count + (visible ? 0 : 1)
             }
         }
-        state.refreshInteractionPause()
     }
 
     private func detach() {
-        navigationInput.cancel(); navigationInput.endPinch()
         worker?.cancel(); worker = nil; layoutToken = UUID()
         attachedContent?.release(owner: ownership); attachedContent = nil
         guard state.hostOwner == ownership else { return }
-        if let view = state.camera.live { state.memory.current = (sceneKey, view) }
-        state.camera.setVisible(false)
         state.camera.onChange = nil
         state.retryHandler = nil; state.activationCheck = nil
         state.hostOwner = nil; state.isLayingOut = false; state.inputFocused = false; state.activeIDs.removeAll()
         cardMotions.removeAll(); cardPoses.removeAll(); outgoingPlacements.removeAll()
-        state.refreshInteractionPause()
         onRetainedPresentationIDsChanged?([])
     }
 
@@ -560,10 +515,9 @@ public struct NativeOverviewCanvas<Content: View>: View {
         defer { stage.release() }
         try Task.checkCancellation()
         guard layoutToken == token, state.hostOwner == ownership else { throw CancellationError() }
-        let usable = NativeOverviewCameraGeometry.automaticFramingRegion(viewport)
+        let usable = NativeOverviewCameraGeometry.framingRegion(viewport)
         state.layoutSolveCount += 1
-        let geometry = try NativeOverviewLayout.solve(members: members, usableViewport: usable,
-                                                      policy: .standard)
+        let geometry = try NativeOverviewLayout.solve(members: members, usableViewport: usable)
         try Task.checkCancellation()
         guard layoutToken == token, state.hostOwner == ownership else { throw CancellationError() }
         let initial = mountedScene == nil || (!replaceScene && displayed.isEmpty && outgoingPlacements.isEmpty)
@@ -576,19 +530,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         let nextIDs = Set(next.map(\.id))
         let boxes = Dictionary(geometry.placements.map { ($0.id, $0.cardFrame) },
                                uniquingKeysWith: { first, _ in first })
-        // A scene change with no visible survivor is a fresh framing request.
-        // This keeps a new filter collection visible even when the old
-        // scene was manually panned offscreen. Visible survivors keep manual
-        // ownership; automatic survivors fit the new collection.
-        let sampledCamera = state.camera.liveTransform
-        let hasVisibleSurvivor = displayed.contains { placement in
-            guard nextIDs.contains(placement.id) else { return false }
-            let frame = livePose(placement, at: now).frame
-            return NativeOverviewCameraGeometry.isVisible(
-                .init(left: frame.minX, top: frame.minY, width: frame.width, height: frame.height),
-                transform: sampledCamera, viewport: viewport)
-        }
-        contentRect = geometry.bounds.contentRect
+        let sampledCamera = state.camera.transform
         plannedViewport = viewport
         mountedScene = sceneKey
         mountedSelection = selectionID
@@ -602,9 +544,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         // Empty targets keep the old camera until the last outgoing card has
         // retired; disposing it here would jump those cards before their exit.
         if !animated || !next.isEmpty {
-            prepareCamera(next, initial: initial, replaceScene: replaceScene, animated: animated,
-                          hasVisibleSurvivor: hasVisibleSurvivor, viewport: viewport,
-                          contentRect: contentRect, automatic: geometry.automaticCamera)
+            state.camera.install(geometry, viewport: viewport)
         }
         retain()
         guard animated else {
@@ -613,14 +553,14 @@ public struct NativeOverviewCanvas<Content: View>: View {
             outgoingPlacements.removeAll()
             retiringPresentationIDs.removeAll()
             installRendered(next.map(currentContentItem))
-            finishPresentation(next: next, revisions: revisions)
+            finishPresentation(revisions: revisions)
             return
         }
 
         if replaceScene {
             // Preserve screen-space origins across a camera cut, including
             // sampled outgoing cards when a rapid selection reverses an exit.
-            let camera = state.camera.liveTransform
+            let camera = state.camera.transform
             let preparation = UUID()
             presentationToken = preparation
             for placement in outgoingPlacements {
@@ -698,18 +638,14 @@ public struct NativeOverviewCanvas<Content: View>: View {
         outgoingPlacements.removeAll()
         retiringPresentationIDs.removeAll()
         if next.isEmpty {
-            prepareCamera(next, initial: initial, replaceScene: replaceScene, animated: animated,
-                          hasVisibleSurvivor: hasVisibleSurvivor, viewport: viewport,
-                          contentRect: contentRect, automatic: geometry.automaticCamera)
+            state.camera.install(geometry, viewport: viewport)
         }
         installRendered(next.map(currentContentItem))
-        finishPresentation(next: next, revisions: revisions)
+        finishPresentation(revisions: revisions)
     }
 
-    private func finishPresentation(next: [NativeOverviewItem], revisions: [NativeOverviewLayoutRevision]) {
+    private func finishPresentation(revisions: [NativeOverviewLayoutRevision]) {
         retain()
-        if next.isEmpty { state.memory.current = nil }
-        state.refreshInteractionPause()
         consume(revisions)
     }
 
@@ -718,28 +654,6 @@ public struct NativeOverviewCanvas<Content: View>: View {
         // unchanged footprint. The model retains older structural projections.
         guard let latest = contentStore.records[item.id], latest.structuralIdentity == item.structuralIdentity else { return item }
         return latest
-    }
-
-    private func prepareCamera(_ next: [NativeOverviewItem], initial: Bool, replaceScene: Bool, animated: Bool,
-                               hasVisibleSurvivor: Bool,
-                               viewport: NativeOverviewViewport, contentRect: NativeOverviewContentRect,
-                               automatic: NativeOverviewTransform?) {
-        // Filter card poses own screen-space travel, including camera changes.
-        // Prepare the final automatic camera before the frozen layout; an
-        // independent camera clock would run while plugin cards are mounting.
-        let filterTransition = animated && replaceScene
-        if initial || next.isEmpty || !state.camera.isInitialized
-            || (replaceScene && !hasVisibleSurvivor)
-            || (filterTransition && !state.camera.manual) {
-            if initial, !next.isEmpty, let saved = state.memory.current, saved.sceneKey == sceneKey {
-                state.camera.restore(view: saved.view, content: contentRect, viewport: viewport)
-            } else {
-                state.camera.cutTo(content: contentRect, viewport: viewport)
-            }
-        } else {
-            let target = automatic ?? NativeOverviewCameraGeometry.fit(contentRect, viewport: viewport)
-            state.camera.applyGeometry(content: contentRect, viewport: viewport, automatic: target)
-        }
     }
 
     private func setMotion(_ id: String, from: OverviewCardPose, to: OverviewCardPose,
@@ -757,28 +671,22 @@ public struct NativeOverviewCanvas<Content: View>: View {
 
 }
 
-/// Only this transform wrapper samples camera motion; card content keeps its identity.
+/// Scrolling updates the two planes together without rebuilding card content.
 private struct OverviewCameraPlane<Content: View>: View {
     let camera: NativeOverviewCamera
-    let visible: Bool
     @Environment(\.nativeWindowContentScale) private var windowScale
     // Only decorative surfaces may opt out of geometry propagation.
     let ignoreLayout: Bool
     let content: Content
-    init(camera: NativeOverviewCamera, visible: Bool, ignoreLayout: Bool = false, @ViewBuilder content: () -> Content) {
+    init(camera: NativeOverviewCamera, ignoreLayout: Bool = false, @ViewBuilder content: () -> Content) {
         self.camera = camera
-        self.visible = visible
         self.ignoreLayout = ignoreLayout
         self.content = content()
     }
     var body: some View {
         let transform = camera.transform
-        // Prepare glyphs at a bounded resolution tier. Panning never changes
-        // this environment; zooming rebuilds text only when crossing a tier.
-        let peakScale = camera.animationFrames.reduce(transform.scale) { max($0, $1.scale) }
-        let magnification = max(1, peakScale * windowScale)
+        let magnification = max(1, transform.scale * windowScale)
         let textResolution = min(32, pow(2, ceil(log2(magnification))))
-        let delay = camera.animationFrames.dropFirst().first?.at ?? 0
         Group {
             if ignoreLayout {
                 content.modifier(OverviewCameraAffineEffect(scale: transform.scale, x: transform.x, y: transform.y).ignoredByLayout())
@@ -788,8 +696,6 @@ private struct OverviewCameraPlane<Content: View>: View {
             }
         }
             .environment(\.threadCardTextRasterScale, textResolution)
-            .animation(visible && camera.isAnimating ? Animation(OverviewCameraAnimation(delay: delay, startedAt: camera.animationStartTime ?? ProcessInfo.processInfo.systemUptime)) : nil,
-                       value: transform)
     }
 }
 
@@ -809,7 +715,7 @@ private struct OverviewCardShell: View, Equatable {
         OverviewCardFrame(pose: pose, motion: motion, visible: visible) {
             if slot.item.providesCardSurface {
                 // Glass belongs in the semantic camera plane so backdrop geometry
-                // tracks pan/zoom; a flat decorative shell would occlude its sample.
+                // tracks horizontal scrolling; a flat decorative shell would occlude its sample.
                 Color.clear
             } else {
                 RoundedRectangle(cornerRadius: 22)
@@ -901,25 +807,8 @@ private struct OverviewSwiftUICard<Content: View>: View, Equatable {
     }
 }
 
-/// Match the camera's sampled curve so interrupting a SwiftUI animation keeps the same position.
-private struct OverviewCameraAnimation: CustomAnimation {
-    let delay: TimeInterval
-    let startedAt: TimeInterval
-    func animate<V: VectorArithmetic>(value: V, time: TimeInterval, context: inout AnimationContext<V>) -> V? {
-        let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
-        let duration = NativeOverviewCameraGeometry.motionDuration
-        let frames = Double(NativeOverviewCameraGeometry.motionFrameCount)
-        guard elapsed < delay + duration else { return nil }
-        let position = max(0, (elapsed - delay) / duration) * frames
-        let lower = floor(position), upper = min(frames, lower + 1)
-        let a = 1 - pow(1 - lower / frames, 5), b = 1 - pow(1 - upper / frames, 5)
-        return value.scaled(by: a + (b - a) * (position - lower))
-    }
-}
-
-/// SwiftUI can restore keyboard focus to the focusable card when a covering surface closes.
-/// That identifies a card, not an editing session. Only its live editable native
-/// responder owns the input pause; a card/button focus must not defer auto-fit.
+/// Only a live text editor inside a card owns its editing keys. Keyboard
+/// focus on an ordinary card keeps canvas navigation available.
 private struct OverviewEditingFocusObserver: NSViewRepresentable {
     let state: NativeOverviewCanvasState
     let owner: UUID
@@ -980,7 +869,6 @@ private struct OverviewEditingFocusObserver: NSViewRepresentable {
                 let editing = self.attached && self.focusedCard != nil && editor?.isEditable == true
                 guard state.inputFocused != editing else { return }
                 state.inputFocused = editing
-                state.refreshInteractionPause()
             }
         }
 

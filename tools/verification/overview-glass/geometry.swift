@@ -20,7 +20,7 @@ import ChiefPluginUI
                     rows: index.isMultiple(of: 5) ? plan.size.rows : 1)
             }
             let result = try NativeOverviewLayout.solve(members: members, usableViewport: usable)
-            guard let camera = result.automaticCamera else { throw CocoaError(.featureUnsupported) }
+            guard let camera = result.leadingTransform else { throw CocoaError(.featureUnsupported) }
             let frames = result.placements.map { placement in
                 let frame = placement.cardFrame
                 return CGRect(x: camera.x + frame.minX * camera.scale,
@@ -32,10 +32,7 @@ import ChiefPluginUI
             rows.append(["count": count, "placed": result.placements.count,
                 "totalNaturalCells": members.reduce(0) { $0 + $1.columns * $1.rows },
                 "cameraScale": camera.scale,
-                "scaleCap": NativeOverviewGeometryPolicy.standard.scaleCap ?? 1.7,
-                "fitScale": NativeOverviewCameraGeometry.centeredTransform(
-                    content: result.bounds.contentRect, usable: usable,
-                    scaleCap: nil)?.scale ?? 0,
+                "maximumScrollOffset": result.maximumScrollOffset,
                 "geometricFullyInWindow": frames.filter { window.contains($0) }.count,
                 "geometricIntersectingWindow": frames.filter { window.intersects($0) }.count,
                 "boundsColumnsRows": [result.bounds.columns, result.bounds.rows]])

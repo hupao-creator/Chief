@@ -103,21 +103,27 @@ private func violations(_ input: LayoutCase) -> [String] {
         if result.bounds.width <= 0 || result.bounds.height <= 0 { issues.append("non-positive bounds") }
     }
     if input.members.isEmpty {
-        if result.automaticCamera != nil { issues.append("empty collection produced a camera") }
+        if result.leadingTransform != nil { issues.append("empty collection produced a camera") }
         return issues
     }
     guard input.usable.width > 0, input.usable.height > 0 else {
-        if result.automaticCamera != nil { issues.append("zero viewport produced a camera") }
+        if result.leadingTransform != nil { issues.append("zero viewport produced a camera") }
         return issues
     }
-    guard let camera = result.automaticCamera else {
-        issues.append("valid nonempty input has no automatic camera")
+    guard let camera = result.leadingTransform else {
+        issues.append("valid nonempty input has no leading transform")
         return issues
     }
     if ![camera.scale, camera.x, camera.y].allSatisfy(\.isFinite) { issues.append("non-finite camera") }
     if camera.scale <= 0 { issues.append("non-positive scale") }
     let fit = min(input.usable.width / result.bounds.width, input.usable.height / result.bounds.height)
-    if abs(camera.scale - 1) > tolerance { issues.append("standard camera is not at 1×") }
+    let tallest = metrics.height(rows: input.members.map(\.rows).max()!)
+    if result.bounds.height > max(tallest, input.usable.height) + tolerance {
+        issues.append("packing added rows beyond the available height")
+    }
+    if abs(camera.scale - min(1, input.usable.height / tallest)) > tolerance {
+        issues.append("scale differs from the tallest single card's height constraint")
+    }
     var screenUnion = CGRect.null
     for placement in result.placements {
         let cardFrame = frame(of: placement)
@@ -128,14 +134,16 @@ private func violations(_ input: LayoutCase) -> [String] {
         screenUnion = screenUnion.union(screen)
         let allowed = CGRect(x: input.usable.left, y: input.usable.top,
                              width: input.usable.width, height: input.usable.height)
-        if fit >= 1 && !allowed.insetBy(dx: -1e-6, dy: -1e-6).contains(screen) {
-            issues.append("card \(placement.id) is outside the usable viewport")
+        if screen.minY < allowed.minY - tolerance || screen.maxY > allowed.maxY + tolerance
+            || screen.minX < allowed.minX - tolerance || screen.maxX - result.maximumScrollOffset > allowed.maxX + tolerance {
+            issues.append("card \(placement.id) cannot be reached within the viewport")
         }
     }
-    let centerX = input.usable.left + input.usable.width / 2
-    let centerY = input.usable.top + input.usable.height / 2
-    if abs(screenUnion.midX - centerX) > 1e-6 || abs(screenUnion.midY - centerY) > 1e-6 {
-        issues.append("collection is not centered")
+    let spareWidth = input.usable.width - screenUnion.width
+    if abs(screenUnion.minX - (input.usable.left + max(0, spareWidth) / 2)) > tolerance
+        || abs(screenUnion.midY - (input.usable.top + input.usable.height / 2)) > tolerance
+        || abs(result.maximumScrollOffset - max(0, -spareWidth)) > tolerance {
+        issues.append("leading alignment or trailing scroll boundary differs")
     }
     // Independent regular-grid lower bound: max card size in every cell.
     let maxColumns = input.members.map(\.columns).max()!
@@ -147,7 +155,9 @@ private func violations(_ input: LayoutCase) -> [String] {
         let rows = (input.members.count + columns - 1) / columns
         let width = Double(columns) * cellWidth + Double(columns - 1) * metrics.gap
         let height = Double(rows) * cellHeight + Double(rows - 1) * metrics.gap
-        baseline = max(baseline, min(input.usable.width / width, input.usable.height / height))
+        if height <= max(tallest, input.usable.height) {
+            baseline = max(baseline, min(input.usable.width / width, input.usable.height / height))
+        }
     }
     let productionFit = min(input.usable.width / result.bounds.width,
                             input.usable.height / result.bounds.height)
@@ -164,7 +174,8 @@ private func violations(_ input: LayoutCase) -> [String] {
                            input.usable.height / metrics.height(rows: 3 * h))
         let fullRectangle = (result.bounds.columns, result.bounds.rows) == (3 * w, 2 * h)
             || (result.bounds.columns, result.bounds.rows) == (2 * w, 3 * h)
-        if !fullRectangle || fit + tolerance < max(landscape, portrait) {
+        let canUsePortrait = metrics.height(rows: 3 * h) <= max(tallest, input.usable.height)
+        if !fullRectangle || fit + tolerance < (canUsePortrait ? max(landscape, portrait) : landscape) {
             issues.append("mixed four-card tiling wastes space or misses the better orientation")
         }
     }

@@ -31,8 +31,10 @@ otherwise the bound current route closes through normal reading motion. A blank
 panel-margin click closes detail only after a completed press. Reader,
 Sidecards, capsule and directory candidates keep their normal actions. Press
 ownership survives AppKit committing marked text or dismissing a popup.
-TOC selection changes drafts without stealing focus. Initial input and explicit
-Browser annotation retain autofocus. The Dock requests automatic focus as the
+TOC selection changes drafts without stealing focus. Opening Overview or showing
+its empty-workspace input leaves the editor available for a click or Tab. The
+Chief capsule and Compose command explicitly focus it. Initial Agent input and
+explicit Browser annotation retain autofocus. The Dock requests automatic focus as the
 current editor's text becomes visible. Explicit focus can acquire the admitted
 editor earlier. Incoming-reader publication cannot be cleared by its outgoing owner.
 

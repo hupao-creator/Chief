@@ -136,10 +136,9 @@ This entry admits public ordinary threads, including archived and
 failed or Moku-tool-interrupted threads hidden from Overview. The reading request is
 exact and does not start execution. A missing or ineligible thread shows an
 unavailable notice; a missing execution uses the reader's unavailable page. Each click receives a fresh reading request.
-After Note dismissal, Overview keeps a filter that already contains the
-destination or selects a matching filter. A grouped destination must reach its
-own carousel page before the reader opens from the card. An eligible target
-without an Overview card can still open.
+After Note dismissal, Overview retains its filter and horizontal position.
+A visible source card supplies the reader entrance. A visible collection first
+turns to the linked Report. A filtered or offscreen destination opens directly.
 The catalog indexes Super Thread ownership by ordinary Thread, across its runs.
 A unique owner opens the Report panel with the cited run beside the document.
 Both Note routes start at the heading of the exact run. The Report’s own

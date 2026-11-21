@@ -16,20 +16,29 @@ private struct ReplayError: Error, CustomStringConvertible {
 private final class WheelSample: NSEvent {
     let target: NSWindow
     let point: CGPoint
-    init(window: NSWindow, point: CGPoint) {
+    let x, y: CGFloat
+    let precise: Bool
+    let direct, momentum: NSEvent.Phase
+    init(window: NSWindow, point: CGPoint, x: CGFloat, y: CGFloat, precise: Bool = true,
+         phase: NSEvent.Phase = .began, momentum: NSEvent.Phase = []) {
         target = window
         self.point = point
+        self.x = x
+        self.y = y
+        self.precise = precise
+        direct = phase
+        self.momentum = momentum
         super.init()
     }
     required init?(coder: NSCoder) { nil }
     override var window: NSWindow? { target }
     override var locationInWindow: CGPoint { point }
     override var type: NSEvent.EventType { .scrollWheel }
-    override var hasPreciseScrollingDeltas: Bool { true }
-    override var scrollingDeltaX: CGFloat { 0 }
-    override var scrollingDeltaY: CGFloat { 12 }
-    override var phase: NSEvent.Phase { .began }
-    override var momentumPhase: NSEvent.Phase { [] }
+    override var hasPreciseScrollingDeltas: Bool { precise }
+    override var scrollingDeltaX: CGFloat { x }
+    override var scrollingDeltaY: CGFloat { y }
+    override var phase: NSEvent.Phase { direct }
+    override var momentumPhase: NSEvent.Phase { momentum }
     override var modifierFlags: NSEvent.ModifierFlags { [] }
     override var timestamp: TimeInterval { ProcessInfo.processInfo.systemUptime }
 }
@@ -69,22 +78,28 @@ private final class WheelSample: NSEvent {
         .restorationBehavior(.disabled)
     }
 
-    private func replay() async throws {
-        let threads = try ["task", "moku"].map { id in
+    private func installTasks(_ count: Int, revision: Int, authority: UUID) async throws {
+        let ids = (0..<count).map { "task-\($0)" } + ["moku"]
+        let threads = try ids.map { id in
             try HarnessThread(id: JSONText(id), harnessID: "codex", revision: 0, sessionState: .null,
                 observation: .init(), cwd: "/fixture", settings: .object([:]), createdAt: 1, updatedAt: 2,
                 title: JSONText(id), tags: [], moku: id == "moku" ? true : nil, transcript: id == "moku" ? .array([]) : nil,
                 directoryTag: "Fixture", directoryScope: "/fixture").json
         }
-        let snapshot: JSONValue = .object(["revision": .integer(1), "settingsRevision": .integer(0),
+        let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
             "defaultCwd": .text("/fixture"), "settings": .object([:]), "threads": .array(threads),
             "executions": .array([]), "applicationThreads": .array([])])
-        await workspace.installPrepared(snapshot, event: .snapshot(snapshot, authority: UUID()))
+        await workspace.installPrepared(snapshot, event: .snapshot(snapshot, authority: authority))
+    }
+
+    private func replay() async throws {
+        let authority = UUID()
+        try await installTasks(18, revision: 1, authority: authority)
         guard workspace.hasInitialContent, let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "header-replay" }),
               let screen = NSScreen.screens.first else { throw ReplayError("Workspace did not mount") }
-        NSApp.setActivationPolicy(.accessory)
         window.collectionBehavior = [.auxiliary, .canJoinAllSpaces]
-        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
 
         let directory = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -99,12 +114,17 @@ private final class WheelSample: NSEvent {
             (CGSize(width: 860, height: 640), 5, 76, nil, nil),
             (CGSize(width: 860, height: 600), 5, 68, nil, nil),
         ]
+        var previousOffset = 0.0
         for (size, scale, filterTop, settingsProbe, captureName) in cases {
             zoom = scale
             window.setContentSize(size)
             window.setFrameTopLeftPoint(CGPoint(x: screen.visibleFrame.midX - size.width / 2, y: screen.visibleFrame.midY + size.height / 2))
             try await Task.sleep(for: .seconds(2))
+            let camera = presentation.canvas.camera
+            let retained = camera.scrollOffset == min(previousOffset, camera.maximumOffset)
             var result = try inspect(window, scale: scale, filterTop: filterTop)
+            result["retainedOffsetOnResize"] = retained
+            result["passed"] = retained && result["passed"] as? Bool == true
             if CommandLine.arguments.contains("--capture"), let captureName {
                 try await capture(window, to: directory.appending(path: captureName + ".png"))
             }
@@ -114,12 +134,17 @@ private final class WheelSample: NSEvent {
                 result["settingsOpened"] = opened
                 result["passed"] = opened && result["passed"] as? Bool == true
             }
+            previousOffset = camera.scrollOffset
             records.append(result)
             if result["passed"] as? Bool != true { print("Failed geometry: \(result)") }
         }
         try JSONSerialization.data(withJSONObject: records, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "nested-header.json"))
         guard records.allSatisfy({ $0["passed"] as? Bool == true }) else { throw ReplayError("Nested header replay failed") }
+        zoom = 1
+        window.setContentSize(CGSize(width: 900, height: 680))
+        try await Task.sleep(for: .seconds(1))
+        try await cardInteraction(window, directory: directory, authority: authority)
     }
 
     private func capture(_ window: NSWindow, to url: URL) async throws {
@@ -146,6 +171,19 @@ private final class WheelSample: NSEvent {
         return nil
     }
 
+    private func pressKey(_ text: String, code: UInt16, in window: NSWindow) async throws {
+        let flags: NSEvent.ModifierFlags = code == 36 ? [] : [.numericPad, .function]
+        for type in [NSEvent.EventType.keyDown, .keyUp] {
+            guard let event = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags,
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                context: nil, characters: text, charactersIgnoringModifiers: text, isARepeat: false, keyCode: code) else {
+                throw ReplayError("Cannot construct window keyboard input")
+            }
+            NSApp.postEvent(event, atStart: false)
+            try await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
     private func clickSettings(_ window: NSWindow, at point: CGPoint) async throws -> Bool {
         let location = CGPoint(x: point.x, y: window.frame.height - point.y)
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
@@ -158,15 +196,139 @@ private final class WheelSample: NSEvent {
         }
         try await Task.sleep(for: .milliseconds(400))
         let opened = presentation.scene.settingsOpen
-        if opened { presentation.scene.closeSettings() }
-        return opened
+        guard opened, let content = window.contentView,
+              let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else { return false }
+        let camera = presentation.canvas.camera
+        let before = camera.transform
+        let wheel = WheelSample(window: window, point: monitor.windowPoint(CGPoint(x: 8, y: 230)), x: 200, y: 30)
+        let blocked = monitor.handle(wheel) != nil && camera.transform == before
+            && !presentation.overviewInteractionActions.contains("overview.scroll")
+        presentation.scene.closeSettings()
+        try await Task.sleep(for: .milliseconds(650))
+        return blocked && camera.transform == before
+    }
+
+    private func cardInteraction(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+        guard window.isKeyWindow, let content = window.contentView,
+              let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else {
+            throw ReplayError("Expected the isolated key window with mounted scroll input")
+        }
+        let canvas = presentation.canvas
+        let camera = canvas.camera
+        let size = monitor.configuration.size
+        let viewport = CGRect(origin: .zero, size: size)
+        let blank = CGPoint(x: 8, y: monitor.configuration.toolbarBottom + 3)
+        let point = monitor.windowPoint(blank)
+        func mouse(_ type: NSEvent.EventType, _ position: CGPoint) async throws {
+            guard let event = NSEvent.mouseEvent(with: type, location: monitor.windowPoint(position), modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil,
+                eventNumber: 0, clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1) else {
+                throw ReplayError("Cannot construct window mouse input")
+            }
+            NSApp.postEvent(event, atStart: false)
+            try await Task.sleep(for: .milliseconds(45))
+        }
+        _ = monitor.handle(WheelSample(window: window, point: point, x: 10000, y: 0))
+        let initiallyOffscreen = canvas.presentedPlacements.filter { canvas.visibleFrame(for: $0.id) == nil }
+        _ = monitor.handle(WheelSample(window: window, point: point, x: -10000, y: 50))
+        let atEnd = camera.scrollOffset
+        try await Task.sleep(for: .milliseconds(200))
+        guard atEnd == camera.maximumOffset, atEnd > 0, !initiallyOffscreen.isEmpty else {
+            throw ReplayError("Dense fixture did not reach its trailing boundary")
+        }
+        let windowOrigin = window.frame.origin
+        for end in [CGPoint(x: blank.x + 90, y: blank.y), CGPoint(x: blank.x, y: blank.y + 80)] {
+            try await mouse(.leftMouseDown, blank)
+            try await mouse(.leftMouseDragged, end)
+            try await mouse(.leftMouseUp, end)
+        }
+        try await mouse(.leftMouseDown, blank)
+        try await mouse(.leftMouseUp, blank)
+        try await Task.sleep(for: .milliseconds(450))
+        guard camera.scrollOffset == atEnd, window.frame.origin == windowOrigin, presentation.selected == nil else {
+            throw ReplayError("Background drag or click moved the window, scrolled Overview or opened a card")
+        }
+        let frames = canvas.presentedPlacements.compactMap { canvas.displayedFrame(for: $0.id) }
+        guard frames.count == 18, frames.allSatisfy({ $0.minY >= 0 && $0.maxY <= size.height }),
+              !frames.enumerated().contains(where: { index, frame in frames.dropFirst(index + 1).contains(where: frame.intersects) }),
+              let target = initiallyOffscreen.first(where: { card in
+                  canvas.displayedFrame(for: card.id).map(viewport.contains) == true
+              }), let frame = canvas.displayedFrame(for: target.id) else {
+            throw ReplayError("Overflow cards overlap, spill vertically or are unreachable")
+        }
+        let center = CGPoint(x: frame.midX, y: frame.midY)
+        let windowPoint = monitor.windowPoint(center)
+        let clickedView = content.hitTest(content.superview?.convert(windowPoint, from: nil) ?? windowPoint)
+        try await mouse(.mouseMoved, center)
+        try await mouse(.leftMouseDown, center)
+        try await mouse(.leftMouseUp, center)
+        try await Task.sleep(for: .milliseconds(850))
+        guard presentation.selected?.threadID.string == target.id else {
+            throw ReplayError("Click missed \(target.id), selected=\(String(describing: presentation.selected)), "
+                + "viewport=\(size), frame=\(frame), windowPoint=\(windowPoint), hit=\(String(describing: clickedView)), "
+                + "active=\(canvas.allowsActivation(cardID: target.id)), key=\(window.isKeyWindow)")
+        }
+        presentation.showOverview()
+        try await Task.sleep(for: .seconds(1))
+        guard presentation.selected == nil, camera.scrollOffset == atEnd else {
+            throw ReplayError("Returning from the reader changed the scroll position")
+        }
+        if CommandLine.arguments.contains("--keyboard") {
+            try await keyboardInteraction(window, directory: directory, id: target.id, atEnd: atEnd)
+        }
+        try await installTasks(20, revision: 2, authority: authority)
+        try await Task.sleep(for: .milliseconds(700))
+        guard canvas.presentedPlacements.count == 20, camera.scrollOffset == atEnd else {
+            throw ReplayError("Inserting cards moved the scroll position")
+        }
+        try await installTasks(2, revision: 3, authority: authority)
+        try await Task.sleep(for: .milliseconds(700))
+        guard canvas.presentedPlacements.count == 2, camera.maximumOffset == 0, camera.scrollOffset == 0 else {
+            throw ReplayError("Removing cards did not clamp the offset to the new range")
+        }
+        let record: [String: Any] = ["denseCount": frames.count, "trailingOffset": atEnd, "clickedCard": target.id,
+            "backgroundDragAndClickStable": true, "readerReturnOffset": atEnd, "insertOffset": atEnd,
+            "removedOffset": camera.scrollOffset, "window": [size.width, size.height]]
+        try JSONSerialization.data(withJSONObject: record, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "overview-scroll.json"))
+    }
+
+    private func keyboardInteraction(_ window: NSWindow, directory: URL, id: String, atEnd: Double) async throws {
+        let camera = presentation.canvas.camera
+        let identifier = "overview-card-\(id)"
+        let workspace = directory.deletingLastPathComponent()
+        try identifier.write(to: workspace.appending(path: "keyboard-target"), atomically: true, encoding: .utf8)
+        let receipt = workspace.appending(path: "keyboard-focus")
+        let deadline = ContinuousClock.now + .seconds(5)
+        while !FileManager.default.fileExists(atPath: receipt.path), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        guard let result = try? String(contentsOf: receipt, encoding: .utf8), result == "focused" else {
+            throw ReplayError("The system accessibility client could not focus \(identifier). See keyboard-focus.log.")
+        }
+        try await pressKey("\u{F702}", code: 123, in: window)
+        let keyboardOffset = camera.scrollOffset
+        guard keyboardOffset == atEnd - NativeOverviewLayout.columnPitch else {
+            throw ReplayError("A focused card did not scroll one column left, offset=\(keyboardOffset)")
+        }
+        try await pressKey("\u{F703}", code: 124, in: window)
+        try await pressKey("\r", code: 36, in: window)
+        guard camera.scrollOffset == atEnd, presentation.selected?.threadID.string == id else {
+            throw ReplayError("A focused card did not scroll right and open with Return")
+        }
+        presentation.showOverview()
+        try await Task.sleep(for: .seconds(1))
+        let record: [String: Any] = ["focusedCard": id, "leftArrowOffset": keyboardOffset,
+            "rightArrowOffset": camera.scrollOffset, "openedCard": id]
+        try JSONSerialization.data(withJSONObject: record, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "overview-keyboard.json"))
     }
 
     private func inspect(_ window: NSWindow, scale: CGFloat, filterTop: CGFloat) throws -> [String: Any] {
         guard let content = window.contentView, let frame = content.superview,
               let host = descendant(NativeReadingParentView.self, in: content),
               let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: host),
-              let filter = descendant(NSScrollView.self, in: host), let input = monitor.input else {
+              let filter = descendant(NSScrollView.self, in: host) else {
             throw ReplayError("Missing nested Overview, its directory scroller or its input monitor")
         }
         let size = monitor.configuration.size
@@ -176,14 +338,27 @@ private final class WheelSample: NSEvent {
         let above = CGPoint(x: below.x, y: boundary - 1)
         let camera = presentation.overview.canvasState.camera
         let rejectsHeader = !monitor.canStart(at: above)
-        let wheel = WheelSample(window: window, point: monitor.windowPoint(below))
-        let before = camera.liveTransform
-        let scrolled = monitor.handle(wheel) == nil && camera.manual && camera.liveTransform.y != before.y
-        camera.returnToAuto()
-        input.pinch(magnification: 1.1, anchor: below, camera: camera)
-        let pinched = camera.manual
-        input.endPinch()
-        camera.returnToAuto()
+        let point = monitor.windowPoint(below)
+        func wheel(_ x: CGFloat, _ y: CGFloat, precise: Bool = true,
+                   phase: NSEvent.Phase = .began, momentum: NSEvent.Phase = []) -> Bool {
+            monitor.handle(WheelSample(window: window, point: point, x: x, y: y,
+                precise: precise, phase: phase, momentum: momentum)) == nil
+        }
+        let leading = wheel(0, 10000, precise: false, phase: []) && camera.scrollOffset == 0
+        let before = camera.transform
+        let factor = monitor.canvasPerWindowPoint ?? 0
+        let diagonal = wheel(-24, 60) && abs(camera.scrollOffset - min(24 * factor, camera.maximumOffset)) < 0.01
+        let directOffset = camera.scrollOffset
+        let vertical = wheel(0, -50, phase: .changed) && camera.scrollOffset == directOffset
+        _ = wheel(0, 0, phase: .ended)
+        let inertia = wheel(-20, 36, phase: [], momentum: .began)
+            && abs(camera.scrollOffset - min(44 * factor, camera.maximumOffset)) < 0.01
+        _ = wheel(0, 0, phase: [], momentum: .ended)
+        let trailing = wheel(0, -10000, precise: false, phase: []) && camera.scrollOffset == camera.maximumOffset
+        let reversed = wheel(0, 1, precise: false, phase: [])
+            && abs(camera.scrollOffset - max(0, camera.maximumOffset - 40 * factor)) < 0.01
+        let scrolled = camera.maximumOffset > 0 && factor > 0 && before.y == camera.transform.y
+            && leading && diagonal && vertical && inertia && trailing && reversed
 
         let buttons = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap(window.standardWindowButton)
         let rects = buttons.map { $0.convert($0.bounds, to: nil) }
@@ -210,8 +385,9 @@ private final class WheelSample: NSEvent {
                 "expectedFilterTopInWindow": filterTop * scale, "filterBottomInWindow": filterBottom,
                 "buttonCentersFromTopLeft": buttonCenters.map { [$0.x, $0.y] }, "buttonHits": hits,
                 "headerInputBottom": boundary, "canvasStripHeight": strip, "inputPointInWindow": [inputPoint.x, inputPoint.y],
-                "rejectsHeader": rejectsHeader, "wheelPanned": scrolled, "pinchEnteredManual": pinched,
+                "rejectsHeader": rejectsHeader, "wheelAndTrackpad": scrolled, "diagonal": diagonal, "vertical": vertical,
+                "systemMomentum": inertia, "mouseWheelEdges": leading && trailing && reversed,
                 "passed": buttons.count == 3 && hits && positioned && filterPositioned && filterInside && filterExcluded
-                    && strip >= 8 && pointInside && rejectsHeader && scrolled && pinched]
+                    && strip >= 8 && pointInside && rejectsHeader && scrolled]
     }
 }

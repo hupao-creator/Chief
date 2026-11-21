@@ -10,9 +10,7 @@ private struct ProductionTagMorphReplay: View {
     @State private var filters: [NativeOverviewFilter] = []
     @State private var selected: NativeOverviewFilter?
     @State private var dark = true
-    @State private var cameraManual = false
     @State private var generation = 0
-    @State private var focusRequest = 0
     @State private var playing = false
     @State private var replayIndex = 0
 
@@ -50,11 +48,9 @@ private struct ProductionTagMorphReplay: View {
             }.controlSize(.large)
             HStack(spacing: 18) {
                 Toggle("深色", isOn: $dark)
-                Toggle("手动相机", isOn: $cameraManual)
             }.toggleStyle(.checkbox).font(.system(size: 12))
             HStack {
                 Button("新场景（空）") { filters = []; selected = nil; generation += 1 }
-                Button("键盘聚焦当前筛选") { focusRequest += 1 }
                 Button("选择别名 Design") { selected = .init(tag: "Design", count: 4) }
                 Button(playing ? "停止回放" : "自动增删回放") { playing.toggle() }
                 Spacer()
@@ -97,9 +93,8 @@ private struct ProductionTagMorphReplay: View {
     private var chrome: some View {
         NativeOverviewChrome(filters: filters, selectedTag: selected?.tag ?? "",
             selectedKind: selected.map { $0.isDirectory ? .directory : .semantic },
-            cameraManual: cameraManual, focusFilterRequestKey: focusRequest,
-            onTagChange: { selected = $0 }, onReturnToAuto: { cameraManual = false },
-            onSettings: { dark.toggle() }, onFocusFilterRequestConsumed: { focusRequest = 0 })
+            onTagChange: { selected = $0 },
+            onSettings: { dark.toggle() })
     }
 }
 

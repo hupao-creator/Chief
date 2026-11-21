@@ -10,8 +10,7 @@ commands or independent copy of page state.
 `interactionSnapshot()` reports the semantic route, mounted reading/settings
 surface, navigation animation activity, settings save state, filter and
 thread identities, available action names and errors. Overview camera observations
-contain ordinary framing, viewport, motion and pause facts; they expose no
-automatic per-card target. `settings.appearance` reports the effective AppKit
+include viewport size, transform, horizontal offset, trailing limit and input pause reasons. `settings.appearance` reports the effective AppKit
 appearance (`light` or `dark`) and `settings.locale` reports the resolved interface
 language (`zh-CN` or `en-US`), including when Settings is closed or the Runtime is
 unavailable. Thread targets are the current Overview projection;

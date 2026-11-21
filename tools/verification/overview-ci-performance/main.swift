@@ -515,7 +515,7 @@ private final class OverviewProbe {
         guard let screen = NSScreen.main else { throw ProbeFailure(description: "No screen is available to host Overview") }
         let style: NSWindow.StyleMask = [.titled, .closable, .resizable]
         let capacity = NSWindow.contentRect(forFrameRect: screen.visibleFrame, styleMask: style)
-        let content = CGRect(x: 0, y: 0, width: min(1291, capacity.width), height: min(600, capacity.height))
+        let content = CGRect(x: 0, y: 0, width: min(1456, capacity.width), height: min(600, capacity.height))
         let window = NSWindow(contentRect: content, styleMask: style, backing: .buffered, defer: false)
         self.window = window
         window.title = "Chief Overview CI performance"
@@ -525,10 +525,7 @@ private final class OverviewProbe {
         workspace.start()
         let mountStart = monotonicNanoseconds()
         try await waitForStableLayout(model: model, workspace: workspace)
-        try setFixedCamera(model)
-        // A manual camera assignment must finish its actual hosted layout before
-        // the independent source is allowed to begin its five-second warmup.
-        try await waitForStableLayout(model: model, workspace: workspace)
+        requestedCamera = model.canvasState.camera.transform
         report["mountAndSettleMilliseconds"] = Double(monotonicNanoseconds() - mountStart) / 1e6
         let beforeEnvironment = environmentJSON()
         report["environment"] = ["start": beforeEnvironment]
@@ -734,7 +731,7 @@ private final class OverviewProbe {
             let state = model.canvasState
             if workspace.runtimeAvailable && workspace.catalog.threads.count == 40 && model.items.count == 40
                 && state.mountedCardIDs.count == 40 && state.presentedPlacements.count == 40
-                && !state.isLayingOut && state.camera.isInitialized && !state.camera.isAnimating
+                && !state.isLayingOut && state.camera.isInitialized
                 && state.presentedPlacements == last {
                 stable += 1
                 if stable == 10 { return }
@@ -746,23 +743,6 @@ private final class OverviewProbe {
         report["startupConnection"] = workspace.connection.rawValue
         report["startupConnectionError"] = workspace.connectionError.map { $0 as Any } ?? NSNull()
         throw ProbeFailure(description: "Production Overview did not reach stable N40 geometry before timeout")
-    }
-
-    private func setFixedCamera(_ model: NativeOverviewWorkspaceModel) throws {
-        let state = model.canvasState
-        let active = state.presentedPlacements.filter { (0..<4).map { "card-\($0)" }.contains($0.id) }
-        guard active.count == 4, let viewport = state.camera.viewport else { throw ProbeFailure(description: "Missing active card geometry") }
-        let bounds = active.reduce(CGRect.null) { $0.union($1.cardFrame) }
-        let region = NativeOverviewCameraGeometry.contentRegion(viewport)
-        let scale = 0.85
-        let transform = NativeOverviewTransform(scale: scale,
-            x: region.left + region.width / 2 - bounds.midX * scale,
-            y: region.top + region.height / 2 - bounds.midY * scale)
-        state.camera.setManualTransform(transform)
-        guard state.camera.liveTransform == transform, state.camera.manual else {
-            throw ProbeFailure(description: "Production camera could not accept fixed scale 0.85")
-        }
-        requestedCamera = transform
     }
 
     private func validateCardShapes(_ model: NativeOverviewWorkspaceModel, workspace: NativeWorkspaceModel) throws {
@@ -793,7 +773,7 @@ private final class OverviewProbe {
         if !window.occlusionState.contains(.visible) { reasons.append("window-occluded") }
         if !insideScreen { reasons.append("window-not-contained-in-visible-display") }
         if visibility["allFull"] as? Bool != true { reasons.append("active-card-not-fully-visible") }
-        if !state.camera.manual || state.camera.isAnimating || state.camera.hasScheduledMotion || state.camera.liveTransform != requestedCamera {
+        if state.camera.transform != requestedCamera {
             reasons.append("camera-not-fixed")
         }
         if state.isLayingOut || state.mountedCardIDs.count != 40 { reasons.append("geometry-not-stable-N40") }
@@ -819,7 +799,7 @@ private final class OverviewProbe {
         }
         let fixtureHash = sha256(try JSONSerialization.data(withJSONObject: fixture, options: [.sortedKeys]))
         guard let screen = window.screen else { throw ProbeFailure(description: "Window is not attached to a real display") }
-        let transform = model.canvasState.camera.liveTransform
+        let transform = model.canvasState.camera.transform
         return ["condition": options.condition, "n": options.n, "k": 4, "seed": options.seed,
             "sourceProtocolVersion": SourceProtocol.version, "sourceQueueCapacity": SourceProtocol.queueCapacity,
             "measurementClockVersion": MeasurementClock.version, "measurementClockID": MeasurementClock.id,

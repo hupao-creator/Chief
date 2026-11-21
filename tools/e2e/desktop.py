@@ -55,47 +55,51 @@ class Desktop:
             and c["value"].get("state") == "ready" and c["value"].get("visibleRowCount", 0) > 0
             for c in controls)
 
-    def overview_camera(self, thread):
-        def settled(state, manual):
+    def overview_scroll(self, thread):
+        def settled(state):
             overview = state["overview"]
-            camera = overview["camera"]
             return (state["page"] == "overview" and state["runtimeAvailable"]
-                    and camera["initialized"] and camera["manual"] is manual
-                    and not any(camera[key] for key in ("animating", "motionPending", "automaticFitPending"))
-                    and not overview["layingOut"] and bool(overview["placements"])
+                    and "overview.scroll" in state["actions"] and not overview["layingOut"]
                     and any(card.get("ref", {}).get("threadId") == thread
                             and card["id"] in overview["mountedCardIds"] for card in overview["cards"]))
 
-        state = self.stable(lambda s: settled(s, False))
-        save(self.session.output / "overview-automatic.json", state)
+        state = self.stable(settled)
+        save(self.session.output / "overview-leading.json", state)
         initial = state["overview"]["camera"]
-        viewport = initial["viewport"]
         placements = state["overview"]["placements"]
         assert {p["id"] for p in placements} == {c["id"] for c in state["overview"]["cards"]}
-        gap = 16
-        column_pitch, row_pitch = 320 + gap, 196 + gap
-        left = min(p["column"] for p in placements) * column_pitch
-        right = max(p["column"] + p["columns"] for p in placements) * column_pitch - gap
-        top = min(p["row"] for p in placements) * row_pitch
-        bottom = max(p["row"] + p["rows"] for p in placements) * row_pitch - gap
-        center_y = (viewport["height"] + max(0, viewport["toolbarBottom"] - viewport["bottomReservedHeight"])) / 2
-        expected_x = (viewport["width"] - left - right) / 2
-        expected_y = center_y - (top + bottom) / 2
+        viewport = initial["viewport"]
+        width = max(p["column"] + p["columns"] for p in placements) * 336 - 16
+        height = max(p["row"] + p["rows"] for p in placements) * 212 - 16
+        inset = 32 if viewport["width"] <= 620 else 64
+        usable_width = viewport["width"] - 2 * inset
+        maximum = max(0, width * initial["scale"] - usable_width)
+        left = inset + max(0, usable_width - width * initial["scale"]) / 2
+        assert math.isclose(initial["maximumOffset"], maximum, abs_tol=.01)
+        assert math.isclose(initial["x"], left, abs_tol=.01) and initial["scrollOffset"] == 0
+        assert initial["y"] >= 0 and initial["y"] + height * initial["scale"] <= viewport["height"] + .01
+        if not self.session.peer.collection_projects:
+            assert {p["id"] for p in placements} == {r["threadId"] for r in self.session.peer.receipts.values()}
+            assert maximum > 0, "dense workspace did not exercise overflow"
 
-        def check_pose(camera, x, y):
-            assert (camera["scale"] == 1 and math.isclose(camera["x"], x, abs_tol=.01)
-                    and math.isclose(camera["y"], y, abs_tol=.01)), (camera, x, y)
+        def scroll(distance, expected, filename):
+            self.request({"name": "overview.scroll", "distance": distance})
+            state = self.stable(settled)
+            camera = state["overview"]["camera"]
+            assert math.isclose(camera["scrollOffset"], expected, abs_tol=.01)
+            assert math.isclose(camera["x"], left - expected, abs_tol=.01)
+            assert camera["y"] == initial["y"] and camera["scale"] == initial["scale"]
+            save(self.session.output / filename, state)
 
-        check_pose(initial, expected_x, expected_y)
-        self.request({"name": "overview.pan", "deltaX": 48, "deltaY": -90})
-        moved = self.stable(lambda s: settled(s, True))
-        save(self.session.output / "overview-panned.json", moved)
-        check_pose(moved["overview"]["camera"], expected_x + 48, expected_y - 90)
-
-        self.request({"name": "overview.auto"})
-        returned = self.stable(lambda s: settled(s, False))
-        save(self.session.output / "overview-recentered.json", returned)
-        check_pose(returned["overview"]["camera"], expected_x, expected_y)
+        scroll(10000, maximum, "overview-trailing.json")
+        self.request({"name": "settings.open"})
+        covered = self.stable(lambda s: s["page"] == "settings")
+        assert "overview.scroll" not in covered["actions"]
+        self.request({"name": "settings.close"})
+        restored = self.stable(settled)
+        save(self.session.output / "overview-uncovered.json", restored)
+        assert restored["overview"]["camera"]["scrollOffset"] == maximum
+        scroll(-10000, 0, "overview-start.json")
 
     def read(self, thread, initial, followup):
         overview = self.stable(lambda s: s["page"] == "overview" and s["runtimeAvailable"])

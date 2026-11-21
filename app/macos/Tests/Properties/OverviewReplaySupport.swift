@@ -24,7 +24,7 @@ final class OverviewReplayFixture {
 
     init(items: [NativeOverviewItem] = [], scene: String = "replay", selection: String? = "all",
          size: CGSize = .init(width: 1180, height: 780),
-         memory: NativeOverviewCameraMemory = .init(), hasFilters: Bool = true,
+         hasFilters: Bool = true,
          toolbarBottom: Double? = nil) {
         self.scene = scene
         self.selection = selection
@@ -32,7 +32,7 @@ final class OverviewReplayFixture {
         self.hasFilters = hasFilters
         self.toolbarBottom = toolbarBottom
             ?? NativeOverviewWorkspaceView.viewport(in: size, hasFilters: hasFilters, hasDock: false).toolbarBottom
-        state = .init(memory: memory)
+        state = .init()
         content.install(items)
     }
 
@@ -49,7 +49,7 @@ final class OverviewReplayFixture {
     }
     var projectionError: Double {
         guard !state.presentedPlacements.isEmpty else { return 0 }
-        let camera = state.camera.liveTransform
+        let camera = state.camera.transform
         return state.presentedPlacements.map { placement in
             guard let frame = frames[placement.id] else { return Double.infinity }
             let world = placement.cardFrame
@@ -95,9 +95,6 @@ enum OverviewReplay {
                 && !fixture.state.isLayingOut
                 && fixture.state.presentedPlacements.map(\.id).sorted() == ids.sorted()
                 && fixture.frames.keys.sorted() == ids.sorted()
-                && !fixture.state.camera.isAnimating
-                && !fixture.state.camera.hasPendingAutomaticFit
-                && !fixture.state.camera.hasScheduledMotion
                 && fixture.projectionError < 1 / window.backingScaleFactor
         }
     }

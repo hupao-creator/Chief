@@ -163,7 +163,7 @@ public extension NativeWorkspacePresentation {
             let filter = id.flatMap { id in interactionFilters.first { $0.id == id } }
             guard id == nil || filter != nil else { throw NativeInteractionError("not_found", "Filter is unavailable") }
             overview.selectTag(filter)
-        case .overviewPan, .overviewZoom, .overviewAuto, .overviewRetry,
+        case .overviewScroll, .overviewRetry,
              .overviewDirectoryOpen, .overviewDirectoryClose, .overviewDirectorySelect,
              .overviewScrollFilter,
              .toggleMokuInput, .toggleMokuHistory, .toggleMokuNote:

@@ -121,7 +121,7 @@ An inactive scene or a hidden window settles the mark immediately,
 while reading/content readiness still gates input. See the
 [entrance contract](../../../../../design/reading.md).
 
-[NativeMokuDock](NativeMokuDock.swift) uses one native glass capsule with a bottom-center anchor. Idle size is 168×44 points; expanded width is bounded to 560 points and the available viewport. [NativeMokuComposer](NativeMokuComposer.swift) shares the input row between the Dock and history. Collapsing and reopening the Dock input restores the caret/selection saved while it was open; the first open keeps the existing autofocus behavior. The native editor snapshots selection before becoming unavailable during collapse and restores it on a rapid reopen; the scene retains the selection and its exact UTF-16 text for a later editor remount. Unchanged multiline/Unicode text retains the native range. Changed text reopens at its end rather than reusing stale offsets. Selection restoration neither requests focus nor changes draft persistence; draft context changes clear the scene snapshot, and marked text remains owned by the input method. A normal click can acquire the native editor without being undone by a delayed SwiftUI focus report.
+[NativeMokuDock](NativeMokuDock.swift) uses one native glass capsule with a bottom-center anchor. Idle size is 168×44 points; expanded width is bounded to 560 points and the available viewport. [NativeMokuComposer](NativeMokuComposer.swift) shares the input row between the Dock and history. Collapsing and reopening the Dock input restores the caret/selection saved while it was open. On Overview, the capsule and Compose command explicitly request editor focus. Landing can show the editor before the user focuses it. The native editor snapshots selection before becoming unavailable during collapse and restores it on a rapid reopen; the scene retains the selection and its exact UTF-16 text for a later editor remount. Unchanged multiline/Unicode text retains the native range. Changed text reopens at its end rather than reusing stale offsets. Selection restoration neither requests focus nor changes draft persistence; draft context changes clear the scene snapshot, and marked text remains owned by the input method. A normal click can acquire the native editor without being undone by a delayed SwiftUI focus report.
 
 Dock and history clear submitted text, directory references and ready attachment
 chips in the mounted editor as soon as the draft captures the send. The
@@ -155,7 +155,7 @@ editing immediately. See the [Overview Dock replay](../../../../../demos/moku-pa
 
 The foreground workspace's Compose command (⌘⇧B) requests focus when it
 admits an opening. The mounted editor can receive keystrokes during the ink
-transition. Pointer openings use the ink reveal for autofocus. Closing the
+transition. The Overview capsule button also requests editor focus on activation. Closing the
 input or replacing its draft invalidates an unfinished command request. An
 open pinned editor uses Compose to request focus again. See the
 [Chief shortcut replay](../../../../../tools/e2e/README.md#chief-compose-shortcut).
@@ -455,8 +455,9 @@ control supplies named keyboard/accessibility activation.
 
 Pointer and accessibility activation dispatch the same exact execution reference.
 The Dock closes the Note and retains its reading position. Once the Note has
-closed, Overview reveals the destination in its filter and, for a grouped Report,
-on its Collection page. The settled Overview card supplies the reader’s origin.
+closed, Overview preserves its filter and scroll position. A visible Collection
+turns to the cited Report. A visible card supplies the reader’s origin and
+a filtered or offscreen target opens directly.
 A unique Super Thread owner opens its Report with the cited execution selected
 in Related executions. Other links open the ordinary Agent reader, including
 eligible Threads hidden from Overview. Both readers start at the cited run’s
