@@ -7,6 +7,7 @@ import SwiftUI
 /// Thread scope is a directory. Only visible opaque rows acquire their complete
 /// native content; neither overview previews nor manifests become transcript.
 public struct CodexThreadView: View {
+    @Environment(\.locale) private var locale
     @Environment(\.threadAgentDetail) private var agentDetail
     public let input: HarnessThreadInput
     public let actions: HarnessThreadActions
@@ -25,11 +26,11 @@ public struct CodexThreadView: View {
                 if case .row(let key) = context.content {
                     if let turn = (state.forkHistory + state.turns).first(where: { $0.rowID == key }) {
                         if codexTurnVisible(turn.executionId, context: context) { turnView(turn, state: state) }
-                    } else { CodexContentFailure(message: "历史执行不可用") }
+                    } else { ThreadTranscriptFailure(message: codexLocalized("历史执行不可用", locale: locale)) }
                 } else {
                     conversation(state)
                 }
-            case .failure(let error): CodexContentFailure(message: error.localizedDescription)
+            case .failure(let error): ThreadTranscriptFailure(message: codexLocalized(error.localizedDescription, locale: locale))
             case nil:
                 NativeReadingPlaceholder(placement: loadingPlacement)
                     .id(input.thread.id)
@@ -95,17 +96,20 @@ public struct CodexThreadView: View {
         var rows: [ThreadConversationRow] = []
         if !state.backgroundTerminals.isEmpty {
             rows.append(ThreadConversationRow(id: "codex:background-terminals", createdAt: state.updatedAt,
-                node: AnyView(CodexBackgroundTerminals(terminals: state.backgroundTerminals))))
+                node: AnyView(ThreadBackgroundWork(id: "codex:background-terminals", title: "后台终端", items: state.backgroundTerminals.map {
+                    .init(id: $0.codexIdentity("id"), label: $0["command"]?.stringValue ?? "", detail: $0["cwd"]?.stringValue, status: "running")
+                }))))
         }
         if state.nativeActivity?["status"]?.stringValue?.contains("systemError") == true {
             rows.append(ThreadConversationRow(id: "codex:system-error", createdAt: state.nativeActivity?["updatedAt"]?.numberValue ?? state.updatedAt,
-                node: AnyView(CodexContentFailure(message: "Codex 线程发生系统错误"))))
+                node: AnyView(ThreadTranscriptFailure(message: codexLocalized("Codex 线程发生系统错误", locale: locale)))))
         }
         return rows
     }
 }
 
 private struct CodexLazyTurnRow: View {
+    @Environment(\.locale) private var locale
     let key: JSONText
     let input: HarnessThreadInput
     let actions: HarnessThreadActions
@@ -118,7 +122,7 @@ private struct CodexLazyTurnRow: View {
             if let resource {
                 switch resource.state {
                 case .loading: NativeReadingPlaceholder(placement: .inline).id(key)
-                case .error(let message): CodexContentError(message: message, retry: { try await resource.retry() })
+                case .error(let message): ThreadTranscriptFailure(message: codexLocalized("读取对话内容失败。", locale: locale) + " " + codexLocalized(message, locale: locale), retry: { try await resource.retry() })
                 case .ready(let raw):
                     ThreadDeferredExecutionContent(raw: raw, rowKey: key, context: context) { value in
                         CodexLoadedTurnRow(key: key, input: input, actions: actions, context: context, onAnchor: onAnchor, raw: value)
@@ -149,6 +153,7 @@ private struct CodexLazyTurnRow: View {
 }
 
 private struct CodexLoadedTurnRow: View {
+    @Environment(\.locale) private var locale
     let key: JSONText
     let input: HarnessThreadInput
     let actions: HarnessThreadActions
@@ -174,7 +179,7 @@ private struct CodexLoadedTurnRow: View {
                             }
                         }
                 }
-            } else if case .some = stateCache.result { CodexContentFailure(message: "Codex sessionState 无效") }
+            } else if case .some = stateCache.result { ThreadTranscriptFailure(message: codexLocalized("Codex sessionState 无效", locale: locale)) }
             else { NativeReadingPlaceholder(placement: .inline).id(key) }
         }
         .task(id: raw) { await stateCache.load(raw) }
@@ -187,84 +192,6 @@ private struct CodexLoadedTurnRow: View {
     switch context.presentation {
     case .main(let excluded): !excluded.contains(executionID)
     case .execution(let id): id == executionID
-    }
-}
-
-struct CodexContentFailure: View {
-    let message: String
-    var translatesMessage = true
-    var retry: (() async throws -> Void)?
-    @Environment(\.locale) private var locale
-    @State private var retryError: String?
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 8) {
-                NativeIcon(name: "CircleAlert", size: 13)
-                Text(translatesMessage ? codexLocalized(retryError ?? message, locale: locale) : retryError ?? message).textSelection(.enabled)
-            }
-            if let retry {
-                Button(codexLocalized("重试", locale: locale)) {
-                    Task { do { try await retry(); retryError = nil } catch { retryError = error.localizedDescription } }
-                }.buttonStyle(.plain)
-            }
-        }.font(NativeTypography.inter(size: 12)).foregroundStyle(NativePalette.thread.danger.swiftUI)
-            .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14)
-            .overlay(alignment: .top) { Rectangle().fill(NativePalette.thread.lineSoft.swiftUI).frame(height: 1) }
-            .padding(.vertical, 12)
-            .accessibilityElement(children: .contain)
-            .nativeThreadDocumentMargins()
-            .nativeReadingContentReady()
-    }
-}
-
-private struct CodexContentError: View {
-    let message: String
-    var retry: (() async throws -> Void)?
-    @State private var retryError: String?
-    @Environment(\.locale) private var locale
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(codexLocalized("读取对话内容失败。", locale: locale) + " " + codexLocalized(retryError ?? message, locale: locale))
-            if let retry {
-                Button(codexLocalized("重试", locale: locale)) {
-                    Task { do { try await retry() } catch { retryError = error.localizedDescription } }
-                }.buttonStyle(.plain).padding(.horizontal, 9).padding(.vertical, 5)
-                    .foregroundStyle(NativePalette.thread.ink.swiftUI)
-                    .background(NativePalette.thread.surface.swiftUI, in: RoundedRectangle(cornerRadius: 4))
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(NativePalette.thread.line.swiftUI, lineWidth: 1))
-            }
-        }.foregroundStyle(NativePalette.thread.muted.swiftUI).frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 16).accessibilityElement(children: .contain)
-            .nativeThreadDocumentMargins()
-            .nativeReadingContentReady()
-    }
-}
-
-private struct CodexBackgroundTerminals: View {
-    let terminals: [JSONValue]
-    @Environment(\.locale) private var locale
-    @Environment(\.threadAgentDetail) private var agentDetail
-    @Environment(\.threadDetailVisibility) private var visibility
-    var body: some View {
-        Group { if !agentDetail || visibility.work {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                NativeIcon(name: "Terminal", size: 14)
-                Text(codexLocalized("后台终端", locale: locale) + (agentDetail ? " · \(terminals.count.formatted(.number.locale(locale)))" : "")).fontWeight(.medium)
-            }.foregroundStyle(NativePalette.thread.muted.swiftUI)
-            if !agentDetail { ForEach(Array(terminals.enumerated()), id: \.offset) { _, terminal in
-                HStack(alignment: .top, spacing: 8) {
-                    CodexStatusSpinner(size: 12)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(terminal["command"]?.stringValue ?? "").font(.system(size: 11, design: .monospaced)).lineLimit(1)
-                        Text(terminal["cwd"]?.stringValue ?? "").foregroundStyle(NativePalette.thread.muted.swiftUI).lineLimit(1)
-                    }
-                }
-            } }
-        }.font(NativeTypography.inter(size: 11)).frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 16).overlay(alignment: .top) { Rectangle().fill(NativePalette.thread.lineSoft.swiftUI).frame(height: 1) }.padding(.top, 24)
-        } }
-        .preference(key: ThreadWorkPreference.self, value: ["codex:background-terminals": !terminals.isEmpty])
     }
 }
 

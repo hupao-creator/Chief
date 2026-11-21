@@ -16,57 +16,35 @@ struct CodexInteractionPanel: View {
     @State private var parseError: String?
 
     var body: some View {
-        if interaction.status != "pending" {
-            HStack(spacing: 5) {
-                NativeIcon(name: "Check", size: 13)
-                Text(interaction.title + " · " + codexLocalized(resolution, locale: locale))
-            }.font(NativeTypography.inter(size: 11)).foregroundStyle(NativePalette.thread.muted.swiftUI)
-                .padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .leading)
-        } else {
-            ThreadDetailRequest {
-                VStack(alignment: .leading, spacing: 0) {
-                    header
-                    if publicInteraction == nil {
-                        commandDetail
-                        errorText(codexLocalized("该 Codex 请求已失效。", locale: locale))
-                    } else if interaction.kind == "mcp-elicitation" {
-                        elicitationBody
-                    } else if interaction.kind == "user-input" {
-                        ForEach(questions) { question in
-                            InteractionQuestionField(question: question, answers: $answers, disabled: busy,
-                                                     style: .compact).padding(.top, 14)
-                        }
-                        errorText(error)
-                        buttons(questionActions)
-                    } else {
-                        commandDetail
-                        errorText(error)
-                        buttons(permissionActions)
+        ThreadDetailRequest {
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                if publicInteraction == nil {
+                    commandDetail
+                    errorText(codexLocalized("该 Codex 请求已失效。", locale: locale))
+                } else if interaction.kind == "mcp-elicitation" {
+                    elicitationBody
+                } else if interaction.kind == "user-input" {
+                    ForEach(questions) { question in
+                        InteractionQuestionField(question: question, answers: $answers, disabled: busy,
+                                                 style: .compact).padding(.top, 14)
                     }
+                    errorText(error)
+                    buttons(questionActions)
+                } else {
+                    commandDetail
+                    errorText(error)
+                    buttons(permissionActions)
                 }
             }
         }
     }
 
-    private var resolution: String {
-        ["allowed": "已允许", "denied": "已拒绝", "submitted": "已提交", "cancelled": "已取消"][interaction.status] ?? "已处理"
-    }
-
     private var header: some View {
-        HStack(alignment: .top, spacing: 9) {
-            NativeIcon(name: publicInteraction != nil && interaction.kind == "user-input" ? "MessageSquare" : "ShieldCheck", size: 15)
-                .foregroundStyle(NativePalette.thread.muted.swiftUI).padding(.top, 3)
-            VStack(alignment: .leading, spacing: 9) {
-                Text(interaction.title).font(NativeTypography.inter(size: 16, weight: 600))
-                    .foregroundStyle(NativePalette.thread.inkStrong.swiftUI).textSelection(.enabled)
-                if publicInteraction != nil, interaction.kind == "mcp-elicitation", interaction.elicitation?["mode"]?.stringValue == "url" {
-                    Text(interaction.elicitation?["url"]?.stringValue ?? "")
-                        .font(.system(size: 12, design: .monospaced)).foregroundStyle(NativePalette.thread.muted.swiftUI).textSelection(.enabled)
-                } else if interaction.kind != "command-approval", publicInteraction == nil || interaction.kind != "mcp-elicitation", let detail = interaction.detail, !detail.isEmpty {
-                    Text(detail).font(NativeTypography.inter(size: 13)).foregroundStyle(NativePalette.thread.muted.swiftUI).textSelection(.enabled)
-                }
-            }.frame(maxWidth: .infinity, alignment: .leading)
-        }.padding(.bottom, 17)
+        let urlMode = publicInteraction != nil && interaction.kind == "mcp-elicitation" && interaction.elicitation?["mode"] == .text("url")
+        let detail = urlMode ? interaction.elicitation?["url"]?.stringValue :
+            interaction.kind != "command-approval" && (publicInteraction == nil || interaction.kind != "mcp-elicitation") ? interaction.detail : nil
+        return ThreadRequestHeader(interaction.title, description: detail, question: publicInteraction != nil && interaction.kind == "user-input", monospaced: urlMode)
     }
 
     @ViewBuilder private var commandDetail: some View {
@@ -144,7 +122,7 @@ struct CodexInteractionPanel: View {
     private func buttons(_ items: [JSONValue]) -> some View {
         // Button order follows the native action order, with the single primary
         // approval placed first just as the existing detail CSS orders it.
-        CodexActionFlow {
+        ThreadRequestActions {
             ForEach(Array(items.enumerated()), id: \.offset) { _, action in
                 let id = action.codexIdentity("id")
                 let intent = action["intent"]?.stringValue ?? ""
@@ -153,7 +131,7 @@ struct CodexInteractionPanel: View {
                     : interaction.kind == "user-input" ? intent == "submit"
                     : id == interaction.actions.first(where: { $0["intent"]?.stringValue == "allow" })?.codexIdentity("id")
                 Button(codexActionLabel(publicAction, locale: locale)) { submit(action) }
-                    .buttonStyle(CodexInteractionButtonStyle(primary: primary))
+                    .buttonStyle(ThreadRequestButtonStyle(primary: primary))
                     .disabled(busy || (missingSchemaDisplay && (intent == "submit" || intent == "allow")) ||
                         (interaction.kind == "user-input" && intent == "submit" && !answers.isComplete(for: questions)))
                     .accessibilityIdentifier("codex-interaction-\(id.string)")
@@ -191,45 +169,6 @@ struct CodexInteractionPanel: View {
             .padding(.horizontal, 16).padding(.vertical, 14)
             .background(NativePalette.thread.surface.swiftUI, in: RoundedRectangle(cornerRadius: 4))
             .padding(.top, 12).padding(.bottom, 16)
-    }
-}
-
-private struct CodexInteractionButtonStyle: ButtonStyle {
-    let primary: Bool
-    @Environment(\.isEnabled) private var enabled
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(NativeTypography.inter(size: 11, weight: 500))
-            .foregroundStyle(primary ? NativePalette.thread.canvas.swiftUI : NativePalette.thread.muted.swiftUI)
-            .padding(.horizontal, 12).padding(.vertical, 8).frame(minHeight: 34)
-            .background(primary ? NativePalette.thread.accent.swiftUI : configuration.isPressed ? NativePalette.thread.surface.swiftUI : Color.clear,
-                        in: RoundedRectangle(cornerRadius: 8))
-            .opacity(enabled ? (configuration.isPressed ? 0.85 : 1) : 0.45)
-    }
-}
-
-private struct CodexActionFlow: Layout {
-    private let gap: CGFloat = 8
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        positions(proposal: proposal, subviews: subviews).size
-    }
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let layout = positions(proposal: ProposedViewSize(width: bounds.width, height: nil), subviews: subviews)
-        for (index, view) in subviews.enumerated() {
-            let item = layout.items[index]
-            view.place(at: CGPoint(x: bounds.minX + item.origin.x, y: bounds.minY + item.origin.y), proposal: ProposedViewSize(item.size))
-        }
-    }
-    private func positions(proposal: ProposedViewSize, subviews: Subviews) -> (items: [CGRect], size: CGSize) {
-        let width = proposal.width ?? .infinity
-        var items: [CGRect] = []; var x: CGFloat = 0; var y: CGFloat = 0; var rowHeight: CGFloat = 0; var maxX: CGFloat = 0
-        for view in subviews {
-            let natural = view.sizeThatFits(.unspecified)
-            let size = view.sizeThatFits(ProposedViewSize(width: min(width, natural.width), height: nil))
-            if x > 0 && x + size.width > width { x = 0; y += rowHeight + gap; rowHeight = 0 }
-            items.append(CGRect(x: x, y: y, width: size.width, height: size.height))
-            maxX = max(maxX, x + size.width); x += size.width + gap; rowHeight = max(rowHeight, size.height)
-        }
-        return (items, CGSize(width: proposal.width ?? maxX, height: y + rowHeight))
     }
 }
 

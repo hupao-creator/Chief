@@ -155,7 +155,7 @@ func (h *Harness) Fork(ctx context.Context, r plugin.ForkRequest) (plugin.ForkRe
 					return plugin.ForkResult{}, errors.New("invalid Claude " + kind + " timeline reference")
 				}
 				value := map[string]any{}
-				keys := []string{"kind", "label", "status", "detail", "toolName"}
+				keys := []string{"kind", "label", "status", "detail", "output", "toolName"}
 				if kind == "interaction" {
 					keys = []string{"kind", "title", "description", "toolName", "questions", "status"}
 				}

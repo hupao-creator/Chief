@@ -196,7 +196,7 @@ func compactTurn(t *Turn, preview, current, overview bool) {
 			if !selected {
 				continue
 			}
-			item["content"] = overviewTimelineText(item, originalTimeline, 1200)
+			item["content"] = timelineExcerpt(item, originalTimeline, 1200, false)
 			t.Timeline = append(t.Timeline, item)
 		}
 	} else if overview {
@@ -205,7 +205,7 @@ func compactTurn(t *Turn, preview, current, overview bool) {
 		// than a second aggregate body.
 		if item := overviewItem(card, reply); item != nil {
 			copy := cloneObject(item)
-			copy["content"] = overviewTimelineText(item, originalTimeline, 600)
+			copy["content"] = timelineExcerpt(item, originalTimeline, 600, false)
 			t.Timeline = append(t.Timeline, copy)
 		}
 	} else if preview {
@@ -214,7 +214,7 @@ func compactTurn(t *Turn, preview, current, overview bool) {
 		// references whose tables are compacted below.
 		if item := latestAssistantItem(originalTimeline); item != nil {
 			copy := cloneObject(item)
-			copy["content"] = overviewTimelineText(item, originalTimeline, 600)
+			copy["content"] = timelineExcerpt(item, originalTimeline, 600, true)
 			t.Timeline = append(t.Timeline, copy)
 		}
 	}
@@ -286,18 +286,21 @@ func overviewItem(card, reply map[string]any) map[string]any {
 func latestAssistantItem(timeline []map[string]any) map[string]any {
 	for index := len(timeline) - 1; index >= 0; index-- {
 		item := timeline[index]
-		if str(item["kind"]) == "assistant" && strings.TrimSpace(str(item["content"])) != "" {
+		if str(item["kind"]) == "assistant" && item["status"] != "streaming" && item["status"] != "failed" && strings.TrimSpace(str(item["content"])) != "" {
 			return item
 		}
 	}
 	return nil
 }
 
-func overviewTimelineText(item map[string]any, original []map[string]any, limit int) string {
+func timelineExcerpt(item map[string]any, original []map[string]any, limit int, settledOnly bool) string {
 	var text strings.Builder
 	remaining := limit
 	if str(item["kind"]) == "assistant" && str(item["messageId"]) != "" {
 		for _, segment := range original {
+			if settledOnly && (segment["status"] == "streaming" || segment["status"] == "failed") {
+				continue
+			}
 			if str(segment["kind"]) == "assistant" && str(segment["messageId"]) == str(item["messageId"]) {
 				appendBoundedText(&text, str(segment["content"]), &remaining)
 				if remaining == 0 {

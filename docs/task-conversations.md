@@ -2,7 +2,9 @@
 
 ## Read a result
 
-Click the task card in [Overview](overview.md). The conversation keeps finished replies and failure messages. When a run ends, the reading area usually shows its final answer on its own. Click **Show work** when it appears for a summary, including the number of reasoning steps and tool calls when available. If you scroll up during a live run, use **Jump to latest** when it appears to return to the newest output.
+Click a task card in Overview to read its conversation. Each reply appears when the agent finishes that message, even if the run continues. When the run ends, the latest finished answer stays on the page. If the run also reports an error, you can read the error alongside the answer. Reopening the conversation brings back the same result. [Overview](overview.md)
+
+Click **Show work** when it appears for a summary, including the number of reasoning steps and tool calls when available. If you scroll up during a live run, use **Jump to latest** when it appears to return to new replies.
 
 Click the blank margin outside the conversation to return to Overview. The input bar folds as the conversation closes.
 

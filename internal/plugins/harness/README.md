@@ -60,6 +60,19 @@
 2. 在 SwiftPM 增加 `ChiefHarness<Name>` target，按需依赖 `ChiefCore`、`ChiefPluginAPI`、`ChiefPluginUI`，加入 `ChiefComposition` 的 dependencies。然后在 `NativePlugins.swift` 导入模块，把具体插件用 `AnyHarnessPlugin` 包装后加入 `NativePlugins.make()` 的 `harnesses` 数组。[Package.swift](../../../app/macos/Package.swift) · [NativePlugins.swift](../../../app/macos/Sources/Composition/NativePlugins.swift)
 3. 让插件解码 Go 生成的私有 renderer 投影，按 execution ID 关联卡片、交互和正文。共享 Host 通过 `HarnessPluginRegistry` 按 ID 找插件，并通过已认证的 HTTP/NDJSON 获取状态、订阅内容和发命令。阅读视图使用 `HarnessThreadActions`，Overview 卡片只收到回答已有交互和打开 Thread 的回调。[注册表与渲染检查](../../../app/macos/Sources/Shared/PluginAPI/HarnessRegistry.swift) · [原生宿主](../../../app/macos/Sources/Host/HarnessHost/NativeHarnessHost.swift) · [传输与 scope](../../platform/transport/README.md)
 
+### Thread Markdown
+
+四个注册项分别实现 Go `SessionStateAdapter` 和 macOS `HarnessPlugin`。以下路径既用于实时更新，也用于打开已存执行。宿主以 `harnessId` 选择插件，先取 `thread` 目录，再按行键取 `turn`。终态轻量行用 `nonempty` 标记折叠内容，展开详情按需取 `execution`。
+
+| Harness ID | 协议和历史入口 | 状态、显示投影和语义转换 |
+| --- | --- | --- |
+| `codex` · Codex | [app-server JSON-RPC](codex/native.go) 处理带 item ID 的增量、完成帧和请求。重开读取保存的 turns，原生 `thread/read` 用于校验分支历史。 | [ReduceEvent](codex/state.go) 保存消息、活动和按顺序排列的引用，[阅读投影](codex/presentation.go) 选择目录回复，[CodexTurn](../../../app/macos/Sources/Plugins/Harnesses/Codex/CodexTurnRows.swift) 解析引用。保存格式为 `mokusei.harness.codex.thread.v1`。 |
+| `claude` · Claude Code | [stream-json](claude/parser.go) 按 message ID 和 block index 合并流与完整消息。[分支读取](claude/session.go) 用 checkpoint 对应原生会话并把继承记录存为只读快照。 | [v2 turn](claude/state.go) 保存 timeline 与实体表，[目录投影](claude/projection.go) 选择已结束的回复，[Claude timeline](../../../app/macos/Sources/Plugins/Harnesses/Claude/ClaudeTimeline.swift) 读取实体引用或继承快照。 |
+| `pi` · Pi Agent | [RPC frame decoder](pi/protocol.go) 接收完整消息和增量，[Thread reducer](pi/thread.go) 按执行、消息和工具调用归并。原生 JSONL 保存恢复或分支所需的历史。 | [v1 状态投影](pi/state.go) 从保存的消息生成阅读数据，[Pi transcript](../../../app/macos/Sources/Plugins/Harnesses/Pi/PiTranscript.swift) 按原生块次序恢复文本、思考和工具。 |
+| `opencode` · OpenCode | [HTTP/SSE 会话](opencode/thread.go) 消费事件并从原生消息接口补齐历史，[Reduce 与 MergeMessages](opencode/state.go) 按 durable cursor、消息、part 和调用 ID 对齐重复数据。 | [v2 状态到 v1 显示投影](opencode/renderer.go) 保留有序 parts 和独立工具结果，[OpenCode transcript](../../../app/macos/Sources/Plugins/Harnesses/OpenCode/OpenCodeTranscript.swift) 把父子会话放入同一执行的阅读顺序。 |
+
+Swift adapter 在校验自己的 wire 格式后交出普通输入、回复、思考、活动、请求及诊断。共用阅读层按执行状态和定位目标选行，工具按出现位置归组，回复经 `ThreadMessage` 进入原生 Markdown。原生响应、鉴权、会话续接和工具执行由各 adapter 按协议处理。[阅读规则](../../../design/reading.md#content-and-execution-identity) · [共享消息布局](../../../app/macos/Sources/Shared/PluginUI/Conversation/ThreadTranscript.swift) · [离线回放](../../../tools/e2e/README.md#harness-thread-markdown)
+
 ## 6. 从发现走到一次真实执行
 
 从仓库根目录运行 `make lint` 检查 Go 注册、依赖、格式及 vet，在 macOS 构建环境运行 `make typecheck` 编译 Go 和 Swift。改动触及 Runtime 准入时，可运行 `make pbt-go PBT_ARGS='--property PBT-RUNTIME-ADMISSION'`。该属性使用可控 Harness 驱动真实 Runtime 与 SQLite。现有 Codex 终态和目录属性只覆盖各自生成的输入域。[检查入口](../../../Makefile) · [属性清单](../../../tools/verification/pbt/README.md)

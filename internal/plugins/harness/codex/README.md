@@ -133,6 +133,12 @@ renderer projection. The native execution summary counts distinct paths across
 activities, so one patch touching several files reports its actual file scope.
 A source without path facts uses a neutral changed-files label.
 
+The shared reader consumes the ordered timeline with its referenced entities.
+An error notice and the turn's summary marker can describe one failure.
+The reader shows that diagnostic once and retains separate notice identities,
+including notices with equal text. Terminal replay of a previously published
+native failure retains the first occurrence. [Thread Markdown](../README.md#thread-markdown)
+
 ## Initial response cards
 
 The overview renderer supplies `initialResponseScope`, computed from the full

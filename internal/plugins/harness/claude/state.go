@@ -296,6 +296,10 @@ func (t *Turn) reasoning(delta string) {
 	if same {
 		offset = int(number(t.Foreground["textOffset"]))
 	}
+	t.reasoningForeground(text, offset, !same && str(t.Foreground["kind"]) == "reasoning")
+}
+
+func (t *Turn) reasoningForeground(text string, offset int, newGroup bool) {
 	points := []rune(text)
 	if len(points) > 32768 {
 		removed := points[:len(points)-32768]
@@ -312,7 +316,7 @@ func (t *Turn) reasoning(delta string) {
 	if offset > 0 {
 		fields["textOffset"] = offset
 	}
-	if !same && str(t.Foreground["kind"]) == "reasoning" {
+	if newGroup {
 		t.Foreground["sequence"] = number(t.Foreground["sequence"]) + 1
 	}
 	t.foreground("reasoning", fields)
@@ -335,9 +339,6 @@ func (t *Turn) activity(value map[string]any) {
 		}
 		t.Activities = append(t.Activities, value)
 	}
-	if str(value["kind"]) != "command" && !(str(value["kind"]) == "agent" && str(value["label"]) == "Workflow") {
-		delete(value, "detail")
-	}
 	if !known {
 		t.reference("activity", "activityId", id)
 		if str(value["toolName"]) != "" {
@@ -350,8 +351,13 @@ func (t *Turn) activityEnd(id, status, detail string) {
 		if str(a["id"]) == id {
 			a = cloneObject(a)
 			a["status"] = status
-			if str(a["kind"]) == "command" && detail != "" {
-				a["detail"] = clip(detail, 100000)
+			if detail != "" {
+				field := "detail"
+				if a["kind"] == "agent" && a["label"] == "Workflow" {
+					// Overview still needs the workflow descriptor while children finish.
+					field = "output"
+				}
+				a[field] = clip(detail, 100000)
 			}
 			t.activity(a)
 			return
@@ -876,6 +882,7 @@ func (StateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 				}
 				hide(id, "detail", str(activity["detail"]))
 				delete(activity, "detail")
+				delete(activity, "output")
 				activity["label"] = ""
 			}
 			for _, turn := range turns {

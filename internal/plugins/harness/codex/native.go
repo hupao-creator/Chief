@@ -46,6 +46,7 @@ type NativeSession struct {
 	bridge                  *ToolBridge
 	completed               chan struct{}
 	failure                 string
+	publishedFailure        string
 	closed                  bool
 	closeOnce               sync.Once
 	closeErr                error
@@ -284,7 +285,7 @@ func (n *NativeSession) Start(ctx context.Context, o NativeOptions, executionID 
 	n.executionID = executionID
 	n.turnID = ""
 	n.terminal = false
-	n.failure = ""
+	n.failure, n.publishedFailure = "", ""
 	n.reasoning = map[nativeReasoningPart]string{}
 	n.finals = map[string]string{}
 	n.finalOrder = nil
@@ -657,7 +658,7 @@ func (n *NativeSession) notification(method string, p Map, wireID any) {
 			n.retrying(message)
 		} else {
 			n.mu.Lock()
-			n.failure = message
+			n.failure, n.publishedFailure = message, message
 			n.mu.Unlock()
 			n.publish(Map{"type": "error", "message": message})
 		}
@@ -741,6 +742,7 @@ func (n *NativeSession) finish(turn Map) {
 	toolWorkers := n.toolWorkers
 	status := str(turn["status"])
 	failure := first(str(obj(turn["error"])["message"]), n.failure)
+	publishedFailure := n.publishedFailure
 	pending := n.pending
 	n.pending = map[string]*nativePending{}
 	done := n.completed
@@ -799,7 +801,7 @@ func (n *NativeSession) finish(turn Map) {
 	} else if status == "failed" || failure != "" {
 		outcome = "failed"
 	}
-	if failure != "" {
+	if failure != "" && failure != publishedFailure {
 		n.publish(Map{"type": "error", "message": failure})
 	}
 	if outcome == "completed" {

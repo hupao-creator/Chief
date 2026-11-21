@@ -22,7 +22,7 @@ public struct ThreadMessageAnnotation: Identifiable, Hashable, Sendable {
     }
 }
 
-/// Ordinary messages use native Markdown; plugin-specific notices and activities use their own slots.
+/// User and assistant messages render through the native Markdown document.
 public struct ThreadMessage: View {
     public enum Author: String, Sendable { case user, assistant }
     public let id: JSONText
@@ -173,5 +173,16 @@ private struct ThreadAttachmentFlow: Layout {
             x += size.width + 6; rowHeight = max(rowHeight, size.height)
         }
         return (CGSize(width: width, height: y + rowHeight), frames)
+    }
+}
+
+package extension ThreadMessageAnnotation {
+    init(json: JSONValue) {
+        let id: JSONText
+        if case .string(let value) = json["id"] { id = value } else { id = "" }
+        let screenshot: JSONText?
+        if case .string(let value) = json["screenshotId"] { screenshot = value } else { screenshot = nil }
+        self.init(id: id, url: json["url"]?.stringValue ?? "", title: json["title"]?.stringValue,
+                  comment: json["comment"]?.stringValue ?? "", screenshotId: screenshot)
     }
 }

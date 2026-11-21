@@ -46,7 +46,7 @@ struct OpenCodeState: Hashable, Sendable {
             case "permission":
                 try ocOnly(item, ["id", "executionId", "sessionId", "title", "status", "kind", "action", "resources", "save", "description", "metadata"])
                 _ = try ocRequiredText(item, "action", nonempty: true)
-                guard let resources = item["resources"]?.arrayValue, resources.allSatisfy({ $0.ocString != nil }) else { throw OpenCodeError.invalidState }
+                if let resources = item["resources"], resources.arrayValue?.allSatisfy({ $0.ocString != nil }) != true { throw OpenCodeError.invalidState }
                 try ocOptionalText(item, ["description"])
                 if let save = item["save"], save.arrayValue?.allSatisfy({ $0.ocString != nil }) != true { throw OpenCodeError.invalidState }
             case "form":
@@ -103,13 +103,13 @@ struct OpenCodeState: Hashable, Sendable {
 struct OpenCodeMessage: Hashable, Sendable, Identifiable {
     let raw: JSONValue
     init(_ value: JSONValue) throws {
-        try ocOnly(value, ["id", "executionId", "role", "text", "nativeSessionId", "nativeMessageId", "createdAt", "status", "parts", "toolCallId", "toolName", "arguments", "result", "toolError", "argumentsDisplay", "resultDisplay", "isError", "model", "provider", "variant", "usage", "attachments", "todos", "inherited", "annotations", "presentation", "followUp"])
+        try ocOnly(value, ["id", "executionId", "role", "text", "nativeSessionId", "nativeMessageId", "createdAt", "status", "parts", "toolCallId", "toolName", "arguments", "result", "toolError", "argumentsDisplay", "resultDisplay", "replyError", "isError", "model", "provider", "variant", "usage", "attachments", "todos", "inherited", "annotations", "presentation", "followUp"])
         _ = try ocRequiredText(value, "id", nonempty: true); _ = try ocRequiredText(value, "executionId", nonempty: true)
         try ocOptionalText(value, ["text"])
         guard ["user", "assistant", "tool"].contains(value["role"]?.stringValue ?? "") else { throw OpenCodeError.invalidState }
         if let presentation = value["presentation"], !["ordinary", "internal"].contains(presentation.stringValue ?? "") { throw OpenCodeError.invalidState }
         if let followUp = value["followUp"], value["role"] != .text("user") || followUp.boolValue == nil { throw OpenCodeError.invalidState }
-        try ocOptionalText(value, ["nativeSessionId", "nativeMessageId", "toolCallId", "toolName", "model", "provider", "variant", "argumentsDisplay", "resultDisplay"])
+        try ocOptionalText(value, ["nativeSessionId", "nativeMessageId", "toolCallId", "toolName", "model", "provider", "variant", "argumentsDisplay", "resultDisplay", "replyError"])
         if value["role"] == .text("tool") {
             guard value["arguments"] == nil || value["argumentsDisplay"] == nil,
                   value["result"] == nil || value["resultDisplay"] == nil,

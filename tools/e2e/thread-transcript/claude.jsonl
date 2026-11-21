@@ -1,0 +1,20 @@
+{"type":"assistant","message":{"id":"m1","content":[{"type":"text","text":"First note"}],"stop_reason":"end_turn"}}
+{"steer":"Retry once"}
+{"type":"stream_event","event":{"type":"message_start","message":{"id":"work"}}}
+{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"ch"}}}
+{"type":"assistant","message":{"id":"work","content":[{"type":"thinking","thinking":"check once"},{"type":"tool_use","id":"call","name":"inspect","input":{}}],"stop_reason":"end_turn"}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"call","content":"tool diagnostic","is_error":true}]}}
+{"type":"stream_event","event":{"type":"message_start","message":{"id":"m2"}}}
+{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"# Res"}}}
+{"sample":"stream"}
+{"type":"assistant","message":{"id":"m2","content":[{"type":"text","text":"# Result\n\nUse **"},{"type":"text","text":"café**."}],"stop_reason":"end_turn"}}
+{"type":"assistant","message":{"id":"m2","content":[{"type":"text","text":"# Result\n\nUse **"},{"type":"text","text":"café**."}],"stop_reason":"end_turn"}}
+{"type":"stream_event","event":{"type":"message_stop"}}
+{"sample":"reply"}
+{"when":"waiting","type":"control_request","request_id":"approval","request":{"subtype":"can_use_tool","tool_name":"inspect","input":{}}}
+{"sample":"waiting","when":"waiting"}
+{"type":"result","is_error":false,"result":"# Result\n\nUse **café**.","when":"success"}
+{"type":"result","is_error":true,"result":"independent failure","when":"failure"}
+{"sample":"done","when":"success"}
+{"sample":"reopen","when":"success"}
+{"sample":"failed","when":"failure"}

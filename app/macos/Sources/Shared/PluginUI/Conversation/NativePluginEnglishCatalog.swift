@@ -1,6 +1,7 @@
 // Exact shared renderer catalog; Harness-specific additions stay with each plugin.
 enum NativePluginEnglishCatalog {
     static let values: [String: String] = [
+        "回复失败": "Reply failed", "只读历史": "Read-only history", "后台终端": "Background terminals", "后台任务": "Background tasks",
         "思考过程": "Reasoning",
         "执行过程": "Execution process",
         "1 段思考": "1 reasoning segment",

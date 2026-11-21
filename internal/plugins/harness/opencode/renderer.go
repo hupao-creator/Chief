@@ -81,6 +81,9 @@ func rendererMessage(message *Message, source rendererSource) Object {
 		}
 	case "assistant":
 		result["parts"] = rendererParts(message.Parts)
+		if message.ReplyError != "" {
+			result["replyError"] = message.ReplyError
+		}
 	case "tool":
 		result["toolCallId"] = message.ToolCallID
 		if message.ToolName != "" {
@@ -106,17 +109,15 @@ func rendererToolArguments(message *Message, source rendererSource) (string, boo
 	return rendererToolDisplay(raw, message.Arguments), true
 }
 func rendererToolResult(message *Message, source rendererSource) (string, bool) {
-	if message.ToolError != nil {
-		return strings.TrimSpace(contentText(message.Result) + "\n" + nativeFailure(message.ToolError)), true
-	}
 	raw := source.field("messages", message.ID, "result")
-	if raw == nil && message.Result == nil {
-		return "", false
+	text := contentText(message.Result)
+	if text == "" && (raw != nil || message.Result != nil) {
+		text = rendererToolDisplay(raw, message.Result)
 	}
-	if text := contentText(message.Result); text != "" {
-		return text, true
+	if message.ToolError != nil {
+		return strings.TrimSpace(text + "\n" + nativeFailure(message.ToolError)), true
 	}
-	return rendererToolDisplay(raw, message.Result), true
+	return text, raw != nil || message.Result != nil
 }
 func rendererProjectedMessage(message *Message, source rendererSource) Object {
 	return rendererMessage(message, source)
@@ -312,7 +313,7 @@ func rendererDirectory(state *State, base Object, scope model.RendererScope, sou
 	}
 	card, reply := rendererCardMessage(state, latest, cardStatus), rendererReplyMessage(state)
 	for _, message := range []*Message{card, reply} {
-		if message != nil {
+		if scope.Kind == "overview" && message != nil {
 			selected[message], previews[message] = true, true
 		}
 	}
@@ -337,13 +338,13 @@ func rendererDirectory(state *State, base Object, scope model.RendererScope, sou
 				if message.NativeSessionID != "" && message.NativeSessionID != state.NativeSessionID {
 					continue
 				}
-				if message.Role == "user" {
+				if message.Role == "user" && (scope.Kind != "thread" || message.Presentation != "internal") {
 					if first == nil {
 						first = message
 					}
 					last = message
 				}
-				if message.Role == "assistant" && rendererTrim(messageText(message)) != "" {
+				if message.Role == "assistant" && message.Status != "streaming" && message.Status != "failed" && !message.IsError && rendererTrim(messageText(message)) != "" {
 					answer = message
 				}
 			}

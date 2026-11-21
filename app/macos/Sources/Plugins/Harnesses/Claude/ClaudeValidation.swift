@@ -2,12 +2,12 @@ import Foundation
 import ChiefCore
 
 func claudeValidateActivity(_ value: JSONValue, history: Bool = false) throws {
-    try claudeKeys(value, history ? ["kind","label","status","detail","toolName"] : ["id","kind","label","status","toolName","detail","parentId","taskId"])
+    try claudeKeys(value, history ? ["kind","label","status","detail","output","toolName"] : ["id","kind","label","status","toolName","detail","output","parentId","taskId"])
     if !history { try claudeText(value["id"], max: 512, nonempty: true) }
     guard ["command","file","tool","search","thinking","agent","task","hook","review","subagent"].contains(value.claudeKind),
           (history ? ["completed","failed","cancelled"] : ["running","completed","failed","cancelled"]).contains(value["status"]?.stringValue ?? "") else { throw claudeInvalid() }
     try claudeText(value["label"], max: 2_000)
-    for (key, max) in [("toolName",512),("detail",100_000),("parentId",512),("taskId",512)] {
+    for (key, max) in [("toolName",512),("detail",100_000),("output",100_000),("parentId",512),("taskId",512)] {
         if let item = value[key] { try claudeText(item, max: max, nonempty: key == "toolName") }
     }
 }

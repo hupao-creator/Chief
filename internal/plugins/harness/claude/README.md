@@ -9,12 +9,11 @@ they are actionable data. Assistant and reasoning bodies appear only in the
 timeline (no aggregate `text`/`reasoning` duplicate); summaries, search and
 completed replies derive from that single representation. Plans and usage remain
 current turn fields rather than timeline snapshots; diffs are not retained in
-this reader state. This is a breaking state/wire change: version 1 and inline
-timeline snapshots are rejected rather than migrated. Fork history resolves the
+this reader state. The current turn decoder accepts version 2 with entity references. Fork history resolves the
 referenced entities into its separate read-only inline shape.
 
 Native message IDs and thinking-block indexes delimit reasoning paragraphs.
-Only the first nonempty chunk of a new block inserts a blank line, respecting
+The parser reconciles text and thinking by native message ID and block index. An authoritative full block replaces its streamed prefix in place, including corrections received after a tool starts. Only the first nonempty chunk of a new thinking block inserts a blank line, respecting
 existing newlines. Streamed and completed-message-only input share this rule;
 duplicate completed messages do not repeat text. The resulting timeline feeds
 both live foreground/Overview and persisted history. Already concatenated text carries no information for reconstructing paragraph
@@ -87,6 +86,12 @@ explicit `supportsEffort=false` remain authoritative; disabled models, invalid
 applied efforts, native mismatches and catalog acquisition failures reject the
 capture. The editor's unknown-capability notice remains visible. Ordinary Thread
 creation continues to require advertised thinking controls.
+
+The thread directory uses the latest settled, non-error assistant message.
+Text tool results and native failures remain on the activity for their call ID.
+A Workflow can retain both its descriptor for the card and its output for the
+reader. The shared activity row presents that output in the execution work.
+[Thread Markdown](../README.md#thread-markdown)
 
 ## Initial response cards
 

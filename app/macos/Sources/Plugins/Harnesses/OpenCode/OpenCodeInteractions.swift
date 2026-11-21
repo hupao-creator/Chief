@@ -56,8 +56,7 @@ struct OpenCodeInteractionPanel: View {
     var body: some View {
         ThreadDetailRequest {
         VStack(alignment: .leading, spacing: 12) {
-            Text(interaction.title.string).font(NativeTypography.inter(size: 13, weight: 600))
-            if let description = interaction.description { Text(description.string).foregroundStyle(NativePalette.thread.muted.swiftUI) }
+            ThreadRequestHeader(interaction.title.string, description: interaction.description?.string, question: interaction.kind != .permission)
             if native?["kind"]?.stringValue == "permission", let resources = native?["resources"]?.arrayValue, !resources.isEmpty {
                 OpenCodeToolOutput(text: resources.compactMap(\.stringValue).joined(separator: "\n"))
             }
@@ -71,15 +70,15 @@ struct OpenCodeInteractionPanel: View {
             }
             if interaction.kind == .permission {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(ocLocalized("OpenCode 拒绝原因（可选）", locale: locale))
+                    Text(ocLocalized("拒绝原因", locale: locale) + " · " + ocLocalized("可选", locale: locale))
                     TextEditor(text: $message).nativeControlScrollbars().scrollContentBackground(.hidden).frame(height: 48).modifier(OpenCodeFieldDecoration()).disabled(busy != nil)
                 }
             }
             if let failure { Text(failure).foregroundStyle(NativePalette.thread.danger.swiftUI).textSelection(.enabled) }
-            OpenCodeActionFlow {
+            ThreadRequestActions {
                 ForEach(interaction.actions, id: \.id) { action in
                     Button(ocActionLabel(action, locale: locale)) { respond(action) }
-                        .buttonStyle(OpenCodeButtonStyle()).disabled(busy != nil || (action.intent == .submit && !complete))
+                        .buttonStyle(ThreadRequestButtonStyle(primary: action.intent == .submit || action.intent == .allow)).disabled(busy != nil || (action.intent == .submit && !complete))
                 }
             }.padding(.top, 2)
         }.font(NativeTypography.inter(size: 12)).foregroundStyle(NativePalette.thread.ink.swiftUI)
@@ -246,18 +245,6 @@ struct OpenCodeButtonStyle: ButtonStyle {
         configuration.label.padding(.horizontal, 10).padding(.vertical, 5).foregroundStyle(NativePalette.thread.ink.swiftUI)
             .background(NativePalette.thread.surface.swiftUI.opacity(configuration.isPressed ? 0.7 : 1), in: RoundedRectangle(cornerRadius: 6))
             .overlay(RoundedRectangle(cornerRadius: 6).stroke(NativePalette.thread.line.swiftUI)).opacity(enabled ? 1 : 0.5)
-    }
-}
-struct OpenCodeActionFlow: Layout {
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize { layout(subviews, width: proposal.width ?? 744).size }
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let frames = layout(subviews, width: bounds.width).frames
-        for (index, view) in subviews.enumerated() { view.place(at: .init(x: bounds.minX + frames[index].minX, y: bounds.minY + frames[index].minY), proposal: .init(frames[index].size)) }
-    }
-    private func layout(_ views: Subviews, width: CGFloat) -> (size: CGSize, frames: [CGRect]) {
-        var x: CGFloat = 0, y: CGFloat = 0, height: CGFloat = 0; var frames: [CGRect] = []
-        for view in views { let size = view.sizeThatFits(.unspecified); if x > 0 && x + size.width > width { x = 0; y += height + 8; height = 0 }; frames.append(.init(x: x, y: y, width: size.width, height: size.height)); x += size.width + 8; height = max(height, size.height) }
-        return (.init(width: width, height: y + height), frames)
     }
 }
 private func ocActionLabel(_ action: PublicInteractionAction, locale: Locale) -> String {

@@ -15,7 +15,7 @@ struct PiThreadView: View {
             if let (preparedInput, result, _) = decoder.snapshot(input: input) {
                 switch result {
                 case .success(let state): PiPreparedThreadView(input: preparedInput, actions: actions, context: context, state: state)
-                case .failure(let failure): PiFailure(message: piLocalized("Pi 状态不可用", locale) + " · " + failure.localizedDescription)
+                case .failure(let failure): ThreadTranscriptFailure(message: piLocalized("Pi 状态不可用", locale) + " · " + failure.localizedDescription)
                 }
             } else { NativeThreadLoadingIndicator() }
         }.task(id: HarnessReadingRequest(input: input, raw: input.thread.sessionState)) {
@@ -48,8 +48,8 @@ private struct PiPreparedThreadView: View {
             let messages = state.messagesByExecution[execution.executionID] ?? []
             return ThreadConversationRow(id: execution.executionID, createdAt: execution.startedAt,
                 execution: ThreadConversationExecution(id: execution.executionID, title: input.thread.executionTitles[execution.executionID]?.string,
-                    prompt: messages.first { $0.role == "user" }?.text.string ?? "",
-                    answer: messages.filter { $0.role == "assistant" }.map(\.text.string).joined(separator: "\n"),
+                    prompt: messages.first { $0.role == "user" && $0.raw["presentation"] != .text("internal") }?.text.string ?? "",
+                    answer: messages.last(where: { $0.isReaderReply(execution.status) })?.text.string ?? "",
                     completedAt: execution.status == .completed ? execution.finishedAt : nil,
                     isActive: execution.status == .running || execution.status == .waitingForUser),
                 node: AnyView(PiTurn(input: input, state: state, execution: execution, actions: actions, context: context)))
@@ -57,7 +57,7 @@ private struct PiPreparedThreadView: View {
         let latest = input.thread.observation.latestExecution
         return ThreadConversation(threadId: input.thread.id,
             title: agentDetail ? input.thread.title.string : nativeGeneratedThreadDocumentTitle(metadata: input.thread.metadataState, title: input.thread.title,
-                initialPrompt: state.messages.first { $0.role == "user" }?.text),
+                initialPrompt: state.messages.first { $0.role == "user" && $0.raw["presentation"] != .text("internal") }?.text),
             icon: nativeGeneratedThreadEmoji(metadata: input.thread.metadataState), rows: rows,
             readingTarget: readingTarget(state), running: latest?.status == .running,
             runningTurnId: latest.map { [.running, .waitingForUser].contains($0.status) ? $0.executionID : nil } ?? nil,
@@ -89,7 +89,7 @@ private struct PiLazyRow: View {
             if let resource {
                 switch resource.state {
                 case .loading: NativeThreadLoadingIndicator()
-                case .error(let message): PiFailure(message: message, retry: { try await resource.retry() })
+                case .error(let message): ThreadTranscriptFailure(message: message, retry: { try await resource.retry() })
                 case .ready(let raw):
                     ThreadDeferredExecutionContent(raw: raw, rowKey: key, context: context) { value in
                         PiLoadedRow(key: key, input: input, actions: actions, context: context, onAnchor: onAnchor, raw: value)
@@ -127,7 +127,7 @@ private struct PiLoadedRow: View {
                         .onChange(of: AnchorRequest(request: preparedInput.readingTarget?.requestID, anchor: anchor), initial: true) { _, request in
                             if let id = request.request, let anchor = request.anchor { onAnchor(id, anchor) }
                         }
-                } else { PiFailure(message: "Invalid Pi session state") }
+                } else { ThreadTranscriptFailure(message: "Invalid Pi session state") }
             } else { NativeThreadLoadingIndicator() }
         }.task(id: HarnessReadingRequest(input: input, raw: raw, presence: presence, hasLoader: loader != nil)) { await decoder.load(input: input, raw: raw, environment: readingEnvironment) }
     }
@@ -151,18 +151,34 @@ private struct PiTurn: View {
     private var active: Bool { current && [.running, .waitingForUser].contains(input.thread.observation.latestExecution?.status ?? .completed) }
     var body: some View {
         let usage = state.executionUsage[execution.executionID]
-        VStack(alignment: .leading, spacing: 8) {
-            if let failure { PiFailure(message: failure) }
+        let waiting = current && input.thread.observation.latestExecution?.status == .waitingForUser
+        let pending = waiting ? input.thread.observation.latestExecution?.interactions ?? [] : []
+        var items = piTranscript(messages, execution: execution, presence: executionPresence)
+        for interaction in pending { items.append(.init(interaction.id, .request(interaction.id))) }
+        let layout = ThreadTranscriptLayout(items, agentDetail: agentDetail, active: execution.status == .running || execution.status == .waitingForUser,
+                                            waiting: waiting, completed: execution.status == .completed, target: visibility.messageAnchorID)
+        let rows = layout.detailRows(executionID: execution.executionID,
+            workVisible: visibility.work && (visibility.workTurnID == nil || visibility.workTurnID == execution.executionID),
+            active: current && execution.status == .running, actions: actions, context: context) { id in
+            guard let interaction = pending.first(where: { $0.id == id }) else { return nil }
+            return AnyView(PiInteraction(interaction: interaction, busy: busy) { actionID, answers in
+                guard !busy else { return }
+                busy = true
+                failure = nil
+                defer { busy = false }
+                do { try await actions.respond(HarnessRespondRequest(interactionID: id, actionID: actionID, answers: answers)) }
+                catch { failure = error.localizedDescription }
+            }.id(id))
+        }
+        return VStack(alignment: .leading, spacing: 8) {
+            if let failure { ThreadTranscriptFailure(message: failure) }
             ThreadDetailTurn(id: execution.executionID, author: author, rows: rows,
                 reasoningUsage: usage?.reasoning.map { ThreadReasoningUsage(tokens: $0, scope: .turn) },
                 createdAt: execution.startedAt, updatedAt: execution.finishedAt ?? execution.startedAt,
-                status: execution.status.rawValue, completedAt: execution.status == .completed ? execution.finishedAt : nil,
+                status: NativePluginLocalization.localize(threadExecutionStatus(waiting ? .waitingForUser : execution.status), locale: locale), completedAt: execution.status == .completed ? execution.finishedAt : nil,
                 usage: usage.map { AnyView(ThreadTokenUsage(input: $0.prompt, output: $0.output, cached: $0.cacheRead,
                     cacheWrite: $0.cacheWrite, reasoning: $0.reasoning)) }, active: active, executionRunning: execution.status == .running && input.thread.observation.latestExecution?.status == .running,
-                    executionTailIsWork: messages.last.map { message in
-                        message.role == "tool" || message.role == "assistant" && message.text.codeUnits.isEmpty &&
-                            message.thinking.map { !$0.codeUnits.isEmpty } == true
-                    } ?? false)
+                    executionTailIsWork: layout.tailIsWork, workAvailable: layout.hasWork(reasoningTokens: usage?.reasoning))
                 .nativeReadingExecutionReady(execution.executionID, settled: ![.running, .waitingForUser].contains(execution.status))
         }
     }
@@ -178,75 +194,6 @@ private struct PiTurn: View {
         }
         return .object(author)
     }
-    private var rows: [ThreadDetailRow] {
-        let waiting = current && input.thread.observation.latestExecution?.status == .waitingForUser
-        let withholdingReplies = [.running, .waitingForUser].contains(execution.status)
-        let finalID = waiting && withholdingReplies ? nil : messages.last { $0.role == "assistant" && (!withholdingReplies || $0.status != "streaming") && (!agentDetail || !$0.isError && $0.status != "failed") && !piTrim($0.text).codeUnits.isEmpty }?.id
-        var rows: [ThreadDetailRow] = []
-        for message in messages where !agentDetail || message.role == "assistant" || message.role == "tool" || message.isSteer {
-            let final = message.role == "assistant" && message.id == finalID
-            if message.role == "assistant",
-               message.thinking.map({ !piTrim($0).codeUnits.isEmpty }) == true || executionPresence.contains(message.id, "thinking") {
-                // Lightweight history omits empty fields after stripping the body.
-                // Its presence marker still contributes a reasoning segment.
-                let thinking = message.thinking?.string ?? ""
-                rows.append(ThreadDetailRow(id: JSONText(codeUnits: message.id.codeUnits + Array(":thinking".utf16)), kind: .work,
-                    node: AnyView(ThreadSurfaceDisclosure(label: piLocalized("思考过程", locale)) {
-                        NativeMarkdownView(text: thinking, streaming: message.status == "streaming", openExternal: openExternal, resolveMedia: context.resolveMedia)
-                    }), execution: .member, executionSummary: ThreadExecutionSummary(reasoningSegments: 1)))
-            }
-            // Pi may terminate an execution without settling its last message.
-            // Release that retained text once the execution is no longer active.
-            if message.role == "assistant" && withholdingReplies && message.status == "streaming" { continue }
-            if message.role == "assistant" && piTrim(message.text).codeUnits.isEmpty && !executionPresence.contains(message.id, "text") { continue }
-            let kind: ThreadDetailRow.Kind
-            if agentDetail && message.role != "tool" && (message.isError || message.status == "failed") { kind = .attention }
-            else if message.role == "user" { kind = agentDetail ? .steer : .user }
-            else if agentDetail && message.role == "assistant" && (withholdingReplies || final || message.id == visibility.messageAnchorID) { kind = .content }
-            else { kind = message.role == "tool" || !final ? .work : .content }
-            rows.append(ThreadDetailRow(id: message.id, kind: kind,
-                node: AnyView(messageView(message)), execution: message.role == "tool" || (message.role == "assistant" && kind == .work) ? .member : nil,
-                executionSummary: message.role == "tool" && message.toolCallID != nil ? ThreadExecutionSummary(toolCalls: 1) : nil, finalReply: final))
-        }
-        if execution.status == .failed, let error = execution.error, !error.codeUnits.isEmpty {
-            rows.append(ThreadDetailRow(id: "execution-error", kind: .attention, node: AnyView(PiFailure(message: error.string))))
-        }
-        if waiting {
-            for interaction in input.thread.observation.latestExecution?.interactions ?? [] {
-                rows.append(ThreadDetailRow(id: interaction.id, kind: .content,
-                    node: AnyView(PiInteraction(interaction: interaction, busy: busy) { actionID, answers in
-                        guard !busy else { return }; busy = true; failure = nil
-                        defer { busy = false }
-                        do { try await actions.respond(HarnessRespondRequest(interactionID: interaction.id, actionID: actionID, answers: answers)) }
-                        catch { failure = error.localizedDescription }
-                    }.id(interaction.id))))
-            }
-        }
-        return rows
-    }
-    @ViewBuilder private func messageView(_ message: PiMessage) -> some View {
-        if message.role == "tool" {
-            let label = message.toolName?.codeUnits.isEmpty == false ? message.toolName!.string : piLocalized("工具", locale)
-            let failed = message.isError || (agentDetail && message.status == "failed")
-            ThreadSurfaceDisclosure(label: label + (agentDetail && failed ? " · " + piLocalized("失败", locale) : "")) {
-                Text(message.text.string).font(NativeTypography.mono(size: 11)).textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .foregroundStyle(failed ? NativePalette.thread.danger.swiftUI : NativePalette.thread.ink.swiftUI)
-            }
-        } else {
-            let fullMessage = ThreadMessage(id: message.id, author: message.role == "user" ? .user : .assistant, content: message.text.string,
-                annotations: message.annotations.compactMap { value in
-                    guard let id = piText(value["id"]) else { return nil }
-                    return ThreadMessageAnnotation(id: id, url: value["url"]?.stringValue ?? "", title: value["title"]?.stringValue,
-                        comment: value["comment"]?.stringValue ?? "", screenshotId: piText(value["screenshotId"]))
-                }, openExternal: openExternal, resolveMedia: context.resolveMedia, previewAttachment: context.previewAttachment)
-            if agentDetail && message.isSteer {
-                ThreadSteerMessage(content: message.text.string, createdAt: message.createdAt,
-                    details: message.annotations.isEmpty ? nil : AnyView(fullMessage))
-            } else { fullMessage }
-        }
-    }
-    private func openExternal(_ url: URL) { Task { do { try await actions.openExternal(JSONText(url.absoluteString)) } catch { failure = error.localizedDescription } } }
 }
 
 private struct PiInteraction: View {
@@ -262,48 +209,20 @@ private struct PiInteraction: View {
     var body: some View {
         ThreadDetailRequest {
             VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: 9) {
-                    Text(interaction.title.string).font(NativeTypography.inter(size: 16, weight: 600))
-                        .foregroundStyle(NativePalette.thread.inkStrong.swiftUI)
-                    if let description = interaction.description {
-                        Text(description.string).font(NativeTypography.inter(size: 13))
-                            .foregroundStyle(NativePalette.thread.muted.swiftUI).textSelection(.enabled)
-                    }
-                }.padding(.bottom, 17)
+                ThreadRequestHeader(interaction.title.string, description: interaction.description?.string, question: interaction.kind != .permission)
                 ForEach(questions) { question in InteractionQuestionField(question: question, answers: $answers, disabled: busy) }
-                HStack(spacing: 8) {
+                ThreadRequestActions {
                     ForEach(interaction.actions, id: \.id) { action in
                         Button(action.label.string) {
                             let values = action.intent == .submit ? answers.answersFor(questions).mapValues { answer -> HarnessResponseAnswer in
                                 switch answer { case .single(let v): .text(v); case .multiple(let v): .multiple(v) }
                             } : nil
                             Task { await respond(action.id, values) }
-                        }.buttonStyle(PiRequestButtonStyle())
+                        }.buttonStyle(ThreadRequestButtonStyle(primary: action.intent == .submit || action.intent == .allow))
                             .disabled(busy || (action.intent == .submit && !questions.allSatisfy { answers.answered($0) }))
                     }
                 }.padding(.top, 22)
             }
-        }
-    }
-}
-
-private struct PiRequestButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var enabled
-    func makeBody(configuration: Configuration) -> some View {
-        PiRequestButtonLabel(label: configuration.label, pressed: configuration.isPressed, enabled: enabled)
-    }
-    private struct PiRequestButtonLabel: View {
-        let label: ButtonStyleConfiguration.Label
-        let pressed: Bool
-        let enabled: Bool
-        @State private var hovered = false
-        var body: some View {
-            label.font(NativeTypography.inter(size: 11, weight: 500))
-                .foregroundStyle(NativePalette.thread.muted.swiftUI)
-                .padding(.horizontal, 12).padding(.vertical, 8).frame(minHeight: 34)
-                .background(hovered || pressed ? NativePalette.thread.surface.swiftUI : .clear, in: RoundedRectangle(cornerRadius: 8))
-                .contentShape(RoundedRectangle(cornerRadius: 8)).onHover { hovered = $0 }
-                .opacity(enabled ? 1 : 0.45)
         }
     }
 }

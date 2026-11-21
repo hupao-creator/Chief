@@ -30,27 +30,28 @@ type userEcho struct {
 	Echoed                bool
 }
 type threadHandle struct {
-	host                      plugin.HostContext
-	open                      plugin.OpenContext
-	ctx                       context.Context
-	cancel                    context.CancelFunc
-	mu                        sync.Mutex
-	sendMu                    sync.Mutex
-	eventMu                   sync.Mutex
-	connMu                    sync.Mutex
-	state                     State
-	rpc                       *Session
-	connectionConfig          string
-	connectionCancel          context.CancelFunc
-	closed, closing           bool
-	assistantID, readSnapshot string
-	interactions              map[string]pendingInteraction
-	echoes                    []*userEcho
-	streamTimer               *time.Timer
-	reads                     sync.WaitGroup
-	closeDone                 chan struct{}
-	closeErr                  error
-	cleanupErr                error
+	host                              plugin.HostContext
+	open                              plugin.OpenContext
+	ctx                               context.Context
+	cancel                            context.CancelFunc
+	mu                                sync.Mutex
+	sendMu                            sync.Mutex
+	eventMu                           sync.Mutex
+	connMu                            sync.Mutex
+	state                             State
+	rpc                               *Session
+	connectionConfig                  string
+	connectionCancel                  context.CancelFunc
+	closed, closing                   bool
+	assistantID, readSnapshot         string
+	lastAssistantRow, assistantNative string
+	interactions                      map[string]pendingInteraction
+	echoes                            []*userEcho
+	streamTimer                       *time.Timer
+	reads                             sync.WaitGroup
+	closeDone                         chan struct{}
+	closeErr                          error
+	cleanupErr                        error
 }
 
 func newID(prefix string) string {
@@ -150,7 +151,7 @@ func (h *threadHandle) finishLocked(status, reason string) error {
 	h.readSnapshot = ""
 	h.clearInteractionsLocked()
 	h.echoes = nil
-	h.assistantID = ""
+	h.assistantID, h.assistantNative, h.lastAssistantRow = "", "", ""
 	return nil
 }
 func (h *threadHandle) stop(status, reason string) error { return h.stopSession(nil, status, reason) }
@@ -741,8 +742,11 @@ func (h *threadHandle) reduceLocked(event Event) error {
 	id := execution.ExecutionID
 	switch event.Type {
 	case "assistant":
-		if event.Phase == "start" || h.assistantID == "" {
+		if event.Phase == "end" && h.assistantID == "" && event.ID != "" && event.ID == h.assistantNative {
+			h.assistantID = h.lastAssistantRow
+		} else if event.Phase == "start" || h.assistantID == "" {
 			h.assistantID = newID("pi-")
+			h.assistantNative = event.ID
 		}
 		index := -1
 		for i, row := range h.state.Messages {
@@ -765,7 +769,7 @@ func (h *threadHandle) reduceLocked(event Event) error {
 				status = "cancelled"
 			}
 		}
-		row := MessageState{ID: h.assistantID, ExecutionID: id, Role: "assistant", Text: event.Text, Thinking: event.Thinking, Status: status, Model: event.Model, Provider: event.Provider, Usage: event.Usage}
+		row := MessageState{ID: h.assistantID, ExecutionID: id, Role: "assistant", Text: event.Text, Thinking: event.Thinking, ContentOrder: event.ContentOrder, Status: status, Model: event.Model, Provider: event.Provider, Usage: event.Usage}
 		if index < 0 {
 			h.state.Messages = append(h.state.Messages, row)
 		} else {
@@ -782,6 +786,7 @@ func (h *threadHandle) reduceLocked(event Event) error {
 			execution.Summary = &summary
 		}
 		if event.Phase == "end" {
+			h.assistantNative, h.lastAssistantRow = event.ID, h.assistantID
 			h.assistantID = ""
 		}
 		if event.Phase == "update" {
@@ -802,15 +807,33 @@ func (h *threadHandle) reduceLocked(event Event) error {
 			h.state.Messages = append(h.state.Messages, MessageState{ID: newID("pi-"), ExecutionID: id, Role: "user", Text: event.Text})
 		}
 	case "tool":
-		rowID := "tool:" + event.CallID
+		callID := piToolCallID(event.CallID)
+		rowID := "tool:" + callID
 		index := -1
 		for i, row := range h.state.Messages {
-			if row.ID == rowID {
+			if row.ID == rowID && row.ExecutionID != id {
+				rowID = newID("tool-")
+			}
+			if row.ExecutionID == id && row.ToolCallID == callID {
 				index = i
 				break
 			}
 		}
-		row := MessageState{ID: rowID, ExecutionID: id, Role: "tool", ToolName: event.Name, ToolCallID: clean(event.CallID, 1024), Text: event.Text, IsError: event.IsError, Todos: event.Todos}
+		var input *string
+		if index >= 0 {
+			rowID = h.state.Messages[index].ID
+			input = h.state.Messages[index].ToolInput
+		}
+		status, text := "streaming", event.Text
+		if event.Phase == "start" {
+			input, text = &event.Text, ""
+		} else if event.Phase == "end" {
+			status = "complete"
+			if event.IsError {
+				status = "failed"
+			}
+		}
+		row := MessageState{ID: rowID, ExecutionID: id, Role: "tool", ToolInput: input, Status: status, ToolName: event.Name, ToolCallID: callID, Text: text, IsError: event.IsError, Todos: event.Todos}
 		if index < 0 {
 			h.state.Messages = append(h.state.Messages, row)
 		} else {
@@ -826,7 +849,7 @@ func (h *threadHandle) reduceLocked(event Event) error {
 	case "interaction":
 		return h.interactionLocked(event, execution)
 	case "notification":
-		h.state.Messages = append(h.state.Messages, MessageState{ID: newID("pi-"), ExecutionID: id, Role: "tool", ToolName: "Pi " + event.Method, Text: clean(event.Text, 100000)})
+		h.state.Messages = append(h.state.Messages, MessageState{ID: newID("pi-"), ExecutionID: id, Role: "tool", ToolName: "Pi " + event.Method, IsError: event.IsError, Text: clean(event.Text, 100000)})
 	case "extension-error":
 		return fmt.Errorf("Pi extension failed: %s", event.Error)
 	case "settled":

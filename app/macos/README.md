@@ -25,7 +25,7 @@ gutter measurement, with a persistent knob whenever scrolling is possible.
 | [Sources/Host/Git](Sources/Host/Git/README.md) | Built-in worktree facts and card extensions |
 | [Sources/Shared/PluginAPI](Sources/Shared/PluginAPI/README.md) | Public presentation/capability contracts |
 | [Sources/Shared/PluginUI](Sources/Shared/PluginUI/README.md) | Reading, forms, composer, cards and design resources |
-| Sources/Plugins/Harnesses | Codex, Claude, Pi and OpenCode projections and views |
+| [Sources/Plugins/Harnesses](Sources/Plugins/Harnesses) | Codex, Claude Code, Pi Agent and OpenCode decode their projections into the [shared Thread reader](Sources/Shared/PluginUI/README.md#harness-transcript). |
 | Sources/Plugins/Applications | Report and Tag native contributions |
 | [Sources/Plugins/Sidecards](Sources/Plugins/Sidecards/README.md) | Conversation and browser |
 

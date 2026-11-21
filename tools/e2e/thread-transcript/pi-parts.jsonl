@@ -1,0 +1,8 @@
+{"type":"message_start","message":{"role":"assistant","id":"m","content":[]}}
+{"type":"message_update","assistantMessageEvent":{"type":"text_delta","delta":"Body 🌲","contentIndex":0}}
+{"type":"message_start","message":{"role":"assistant","id":"m","content":[]}}
+{"type":"message_update","assistantMessageEvent":{"type":"thinking_delta","delta":"one","contentIndex":1}}
+{"type":"message_end","message":{"role":"assistant","id":"m","content":[{"type":"text","text":"Body 🌲"},{"type":"thinking","thinking":"one"},{"type":"toolCall","id":"call","name":"bash","arguments":{}},{"type":"text","text":"Tail"}],"stopReason":"toolUse"}}
+{"type":"tool_execution_start","toolCallId":"call","toolName":"bash","args":{"command":"pwd"}}
+{"type":"tool_execution_end","toolCallId":"call","toolName":"bash","result":{"content":[{"type":"text","text":"workspace"}]}}
+{"type":"agent_settled"}

@@ -22,6 +22,23 @@ reasoning/tool-count summaries, not nested commands, reasoning bodies or tool
 diagnostics; other conversation surfaces retain their disclosure policy.
 Empty no-output bookkeeping does not create a visible execution summary.
 
+Codex, Claude Code, Pi Agent and OpenCode each decode their own native protocol
+and saved state into ordered transcript occurrences. The shared layout selects
+replies by message identity. Adjacent text parts of one reply share one Markdown
+document so headings, emphasis and links can cross a native part boundary.
+Intervening reasoning or tool calls keep their position. Child-session messages
+belong to execution work and an explicit visit can reveal the selected message.
+Only a primary reply supplies the execution result and its directory preview.
+Repeated native snapshots update their occurrence. Separate calls, messages or
+diagnostics may legitimately have identical text.
+
+The thread manifest carries a bounded preview, the turn resource supplies the
+reading body, and an execution-detail resource carries deferred work. A terminal
+turn retains message anchors, pending or independent diagnostics, and presence
+for stripped bodies. The same layout selects visible rows after reopening.
+Request forms use a common header and action layout. Each plugin owns its
+native field types, permitted answers and response identity. [Adapter paths](../internal/plugins/harness/README.md#thread-markdown) · [Transcript layout](../app/macos/Sources/Shared/PluginUI/Conversation/ThreadTranscript.swift)
+
 Current and historical documents resolve the title and author for their exact
 execution. Missing historical titles use its instruction or timestamp, never the
 mutable current Thread title. Outgoing and incoming title/author ink follows the

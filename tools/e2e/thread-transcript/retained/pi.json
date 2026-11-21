@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "latestExecutionId": "run",
+  "executions": [
+    {
+      "executionId": "run",
+      "startedAt": 1,
+      "finishedAt": 9,
+      "status": "completed",
+      "summary": "Saved **answer**."
+    }
+  ],
+  "messages": [
+    {
+      "id": "note",
+      "role": "tool",
+      "toolName": "Pi notify",
+      "executionId": "run",
+      "text": "extension status"
+    },
+    {
+      "id": "problem",
+      "role": "tool",
+      "toolName": "Pi notify",
+      "isError": true,
+      "executionId": "run",
+      "text": "saved diagnostic"
+    },
+    {
+      "id": "answer",
+      "executionId": "run",
+      "role": "assistant",
+      "status": "streaming",
+      "text": "Saved **answer**."
+    }
+  ]
+}

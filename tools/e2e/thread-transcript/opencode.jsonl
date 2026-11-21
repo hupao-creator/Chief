@@ -1,0 +1,22 @@
+{"type":"session.text.ended","data":{"sessionID":"primary","assistantMessageID":"m1","ordinal":0,"text":"First note"},"durable":{"aggregateID":"primary","seq":1}}
+{"type":"session.step.ended","data":{"sessionID":"primary","assistantMessageID":"m1"},"durable":{"aggregateID":"primary","seq":2}}
+{"steer":"Retry once"}
+{"type":"session.reasoning.ended","data":{"sessionID":"primary","assistantMessageID":"work","ordinal":0,"text":"check once"},"durable":{"aggregateID":"primary","seq":3}}
+{"type":"session.tool.called","data":{"sessionID":"primary","assistantMessageID":"work","id":"call","name":"inspect","input":{}},"durable":{"aggregateID":"primary","seq":4}}
+{"type":"session.tool.failed","data":{"sessionID":"primary","assistantMessageID":"work","id":"call","name":"inspect","error":{"message":"tool diagnostic"}},"durable":{"aggregateID":"primary","seq":5}}
+{"type":"session.step.ended","data":{"sessionID":"primary","assistantMessageID":"work"},"durable":{"aggregateID":"primary","seq":6}}
+{"type":"session.text.delta","data":{"sessionID":"primary","assistantMessageID":"m2","ordinal":0,"delta":"# Res"},"durable":{"aggregateID":"primary","seq":7}}
+{"type":"session.text.delta","data":{"sessionID":"primary","assistantMessageID":"m2","ordinal":0,"delta":"# Res"},"durable":{"aggregateID":"primary","seq":7}}
+{"sample":"stream"}
+{"type":"session.text.ended","data":{"sessionID":"primary","assistantMessageID":"m2","ordinal":0,"text":"# Result\n\nUse **café**."},"durable":{"aggregateID":"primary","seq":8}}
+{"type":"session.step.ended","data":{"sessionID":"primary","assistantMessageID":"m2"},"durable":{"aggregateID":"primary","seq":9}}
+{"sample":"reply"}
+{"when":"waiting","type":"permission.asked","data":{"sessionID":"primary","id":"approval","action":"inspect","resources":[]}}
+{"sample":"waiting","when":"waiting"}
+{"settle":"completed","when":"success"}
+{"settle":"failed","error":"independent failure","when":"failure"}
+{"sample":"done","when":"success"}
+{"history":[{"type":"assistant","id":"m1","time":{"created":1,"completed":5},"content":[{"type":"text","text":"First note"}]},{"type":"assistant","id":"work","time":{"created":1,"completed":5},"content":[{"type":"reasoning","text":"check once"},{"type":"tool","id":"call","name":"inspect","state":{"status":"error","input":{},"error":{"message":"tool diagnostic"}}}]},{"type":"assistant","id":"m2","time":{"created":1,"completed":5},"content":[{"type":"text","text":"# Result\n\nUse **café**."}]}],"when":"success"}
+{"history":[{"type":"assistant","id":"m1","time":{"created":1,"completed":5},"content":[{"type":"text","text":"First note"}]},{"type":"assistant","id":"work","time":{"created":1,"completed":5},"content":[{"type":"reasoning","text":"check once"},{"type":"tool","id":"call","name":"inspect","state":{"status":"error","input":{},"error":{"message":"tool diagnostic"}}}]},{"type":"assistant","id":"m2","time":{"created":1,"completed":5},"content":[{"type":"text","text":"# Result\n\nUse **café**."}]}],"when":"success"}
+{"sample":"reopen","when":"success"}
+{"sample":"failed","when":"failure"}
