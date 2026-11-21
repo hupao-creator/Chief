@@ -199,8 +199,12 @@ carousel member, execution identities and link position alongside the recording.
    then the reader expanding from that card. Compare the panel travel with a
    direct click on the same card at the same window size and camera position.
    Repeat the comparison for an ordinary Thread and an individual Report.
-   After a brief Report visit, close the reader and check the carousel page and
-   collapsed Note. Reopen the Note to check its contents. On the ordinary
+   After a brief Report visit, type an unsent draft in its source conversation
+   and close the report. From the same window recording, check that the input
+   folds in its source column, travels while compact and settles at the canvas
+   center. Check the carousel page, collapsed Note and retired editor focus.
+   Reopen the Note and follow the same citation to recover the focused draft.
+   Check the separate Overview draft through its Compose shortcut. On the ordinary
    Thread route, use Escape to check the restored Note’s scroll position.
 4. Repeat the three routes with system AXPress. Check English and Simplified
    Chinese. Record the capture rate. Track source revision, executable identity, scoped replies,

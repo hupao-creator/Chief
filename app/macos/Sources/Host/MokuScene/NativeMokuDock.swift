@@ -245,7 +245,11 @@ public struct NativeMokuDock: View {
     // The native replay supplies a sampling clock only for admitted reading input.
     var readingInputAnimation: Animation?
     private var settlingNoteDock: Bool {
-        linkedNoteLayout != nil && (state.notePanelOpen || !state.inputInteractionReady)
+        guard linkedNoteLayout != nil else { return false }
+        if state.notePanelOpen { return true }
+        guard let origin = state.noteReadingOrigin else { return false }
+        // With the Note closed, a reader returning to Overview owns its fold and travel.
+        return !state.inputInteractionReady && (origin.phase != .reading || origin.returnsToNote)
     }
     private var surfaceAnimation: Animation? {
         if settlingNoteDock { return nil }
@@ -518,8 +522,11 @@ public struct NativeMokuDock: View {
                     .animation(nil, value: destination.verticalOffset)
                     // The panel owns this handoff. Keep the outgoing composer's
                     // width animation from carrying into the restored Note.
-                    .transaction(value: state.noteReadingOrigin?.phase == .reading) {
-                        $0.animation = nil; $0.disablesAnimations = true
+                    .transaction(value: state.noteReadingOrigin?.phase == .reading) { transaction in
+                        if state.notePanelOpen || state.noteReadingOrigin?.phase == .reading {
+                            transaction.animation = nil
+                            transaction.disablesAnimations = true
+                        }
                     }
                     // Direct resize settles the native trip and shell together.
                     .transaction(value: geometry.size) {

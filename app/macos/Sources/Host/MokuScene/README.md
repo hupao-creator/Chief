@@ -462,7 +462,9 @@ command returns to Overview with the Note closed. Only an explicit Back to the
 Note restores its retained viewport. Escape in the ordinary cited document
 performs that Back action. In the Report, the sidebar arrow restores the related
 list. The Report’s Close button returns to Overview with the Note closed from
-either the execution or the list.
+either the execution or the list. Closing from a cited execution uses the same
+column fold and compact travel as closing a directly opened Report. The linked
+Note keeps its reading layout for an explicit return to the Note.
 The closed Note remains ineligible for input, accessibility and exposure.
 
 ## Settings expansion
