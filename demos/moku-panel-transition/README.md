@@ -78,6 +78,23 @@ The replay uses real rendering and native editor state with synthetic routes
 and no Runtime or system input. Pixel review is manual. A reused output
 directory, missing window capture or failed semantic check cannot establish a pass.
 
+### Capture diagnostics
+
+The movie records the replay's own borderless window. This keeps AppKit's
+title-bar sharing indicator outside the measured layout. ScreenCaptureKit
+attaches the movie output off the main actor because that call can perform
+trust checks. The recorder keeps the native display timestamps and waits for
+the movie to finish before closing the stream.
+
+For a Fault investigation, record the executable, PID and launch-to-exit
+interval for each run. Query the macOS unified log for that PID and interval,
+confirm it contains process events and retain every Fault with its backtrace.
+Compare the recorded route with a Release workspace in a temporary profile
+opening the same kind of Agent from Overview and returning without recording.
+An empty AppKit panel can isolate the recorder by varying only the title bar,
+the stream or its recording output. Use the mounted events and frame checker
+to verify that the recorded route still performs each interaction.
+
 ## Agent entrance replay
 
 Use the same isolated preview build and the shared verification lease.

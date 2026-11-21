@@ -137,23 +137,33 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
     init(window: NSWindow, folder: String) async throws {
         directory = Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent(folder)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        delegate = CollapseRecordingDelegate()
+        (stream, recording) = try await Self.prepareRecording(
+            windowID: CGWindowID(window.windowNumber), size: window.frame.size,
+            url: directory.appendingPathComponent("window.mp4"), delegate: delegate)
+        try await stream.startCapture()
+    }
+
+    // ScreenCaptureKit can synchronously evaluate trust while attaching the movie output.
+    @concurrent nonisolated private static func prepareRecording(
+        windowID: CGWindowID, size: CGSize, url: URL, delegate: CollapseRecordingDelegate
+    ) async throws -> sending (SCStream, SCRecordingOutput) {
         let shareable = try await SCShareableContent.currentProcess
-        guard let ownWindow = shareable.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
+        guard let ownWindow = shareable.windows.first(where: { $0.windowID == windowID }) else {
             throw CollapseCaptureError(description: "Replay window unavailable")
         }
         let config = SCStreamConfiguration()
-        config.width = Int(window.frame.width * 2)
-        config.height = Int(window.frame.height * 2)
+        config.width = Int(size.width * 2)
+        config.height = Int(size.height * 2)
         config.minimumFrameInterval = CMTime(value: 1, timescale: 60)
         config.showsCursor = false
         config.ignoreShadowsSingleWindow = true
-        stream = SCStream(filter: SCContentFilter(desktopIndependentWindow: ownWindow), configuration: config, delegate: nil)
+        let stream = SCStream(filter: SCContentFilter(desktopIndependentWindow: ownWindow), configuration: config, delegate: nil)
         let output = SCRecordingOutputConfiguration()
-        output.outputURL = directory.appendingPathComponent("window.mp4")
-        delegate = CollapseRecordingDelegate()
-        recording = SCRecordingOutput(configuration: output, delegate: delegate)
+        output.outputURL = url
+        let recording = SCRecordingOutput(configuration: output, delegate: delegate)
         try stream.addRecordingOutput(recording)
-        try await stream.startCapture()
+        return (stream, recording)
     }
 
     func finish() async throws {

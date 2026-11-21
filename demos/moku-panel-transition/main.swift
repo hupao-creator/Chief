@@ -251,7 +251,8 @@ private struct Controls: View {
             }
             let width: CGFloat = CommandLine.arguments.contains("--narrow") ? 480 : 1024
             let frame = NSRect(x: 100, y: 100, width: width, height: 650)
-            let style: NSWindow.StyleMask = [.titled, .nonactivatingPanel]
+            let style: NSWindow.StyleMask = model.collapseCapture
+                ? [.borderless, .nonactivatingPanel] : [.titled, .nonactivatingPanel]
             window = ComposerReplayPanel(contentRect: frame, styleMask: style, backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             window.ignoresMouseEvents = true
@@ -382,7 +383,7 @@ private struct Controls: View {
         model.running = false
         model.draft = model.overviewDraft
         let panel = CollapseCapturePanel(contentRect: .init(x: 100, y: 100, width: 1024, height: 650),
-            styleMask: [.titled, .nonactivatingPanel], backing: .buffered, defer: false)
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         window = panel
         panel.isReleasedWhenClosed = false
         panel.title = "Moku Agent entrance replay"
