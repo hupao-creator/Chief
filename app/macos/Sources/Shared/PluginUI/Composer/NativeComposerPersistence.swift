@@ -99,6 +99,9 @@ public struct NativeComposerDraftPersistence: Sendable {
             guard case .string(let name) = value["name"], case .string(let path) = value["path"] else {
                 throw PluginContractError("保存的草稿目录无法读取")
             }
+            if value["devicePicked"]?.boolValue == true {
+                return .init(name: name, path: path, source: .devicePicker)
+            }
             return .init(name: name, path: path, hostID: value["hostID"]?.stringValue)
         }
         let restoredAttachments = try attachments.map { value -> NativeComposerAttachment in
@@ -149,8 +152,13 @@ public struct NativeComposerDraftPersistence: Sendable {
     private func fields(_ contents: Contents) -> [JSONText: JSONValue] {
         let directories = contents.directories, attachments = contents.attachments
         let directoryValues = directories.map { directory in
-            JSONValue.object(["name": .string(directory.name), "path": .string(directory.path),
-                "hostID": directory.hostID.map(JSONValue.text) ?? .null])
+            var value: [JSONText: JSONValue] = ["name": .string(directory.name), "path": .string(directory.path)]
+            switch directory.source {
+            case .catalog: break
+            case .devicePicker: value["devicePicked"] = .bool(true)
+            case .host(let id): value["hostID"] = .text(id)
+            }
+            return JSONValue.object(value)
         }
         let attachmentValues = attachments.map { draft -> JSONValue in
             var value: [JSONText: JSONValue] = ["id": .string(draft.id), "name": .string(draft.name)]

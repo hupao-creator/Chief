@@ -293,7 +293,7 @@ struct NativeMokuComposerInput: View {
             .accessibilityIdentifier("moku-stop")
     }
     private var attachmentButton: some View {
-        Button(action: chooseDeviceFiles) {
+        Button(action: chooseDeviceItems) {
             Image(systemName: "plus")
                 .font(.system(size: 14, weight: .medium))
                 .frame(width: 28, height: 32).contentShape(Rectangle())
@@ -306,12 +306,12 @@ struct NativeMokuComposerInput: View {
             }
         }
         .disabled(actionsUnavailable || draft.importing || readOnly)
-        .help(localize("添加图片或文件", "Add images or files"))
-        .accessibilityLabel(localize("添加图片或文件", "Add images or files"))
+        .help(localize("添加文件或文件夹", "Add files or folders"))
+        .accessibilityLabel(localize("添加文件或文件夹", "Add files or folders"))
         .accessibilityIdentifier("moku-add-attachment")
     }
-    private func chooseDeviceFiles() {
-        Task.immediate { await draft.chooseFiles(cwd: cwd) }
+    private func chooseDeviceItems() {
+        Task.immediate { await draft.chooseItems(cwd: cwd) }
     }
     private var stopLabel: String {
         targetsThread ? localize("停止此 Thread", "Stop this thread") : localize("停止 Chief", "Stop Chief")

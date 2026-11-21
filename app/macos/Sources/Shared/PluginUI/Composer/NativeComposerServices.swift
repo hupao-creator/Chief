@@ -18,7 +18,7 @@ import ChiefPluginAPI
 /// a general runtime client or chooses another thread's authority.
 @MainActor
 public struct NativeComposerServices {
-    public typealias ChooseFiles = (JSONText, Int, PluginLifetime) async throws -> [NativeComposerFile]
+    public typealias ChooseItems = (JSONText, PluginLifetime) async throws -> [URL]
     public typealias StageFiles = ([NativeComposerFile], PluginLifetime) async throws -> [NativeComposerStoredAttachment]
     public typealias AttachmentPolicy = (PluginLifetime) async throws -> RuntimeAttachmentPolicy
     public typealias HostDirectory = (RuntimeHostFileReference?, PluginLifetime) async throws -> RuntimeHostDirectory
@@ -26,7 +26,7 @@ public struct NativeComposerServices {
     public typealias OpenHostFile = (RuntimeHostFileReference, PluginLifetime) async throws -> Void
     public typealias RetainAttachments = ([JSONText]) throws -> RuntimeAttachmentOwner
     public let receipts: NativeComposerReceiptActions?
-    public let chooseFiles: ChooseFiles
+    public let chooseItems: ChooseItems
     public let stageFiles: StageFiles
     public let discardAttachments: ([JSONText]) async throws -> Void
     public let attachmentPolicy: AttachmentPolicy?
@@ -35,7 +35,7 @@ public struct NativeComposerServices {
     public let openHostFile: OpenHostFile?
     public let retainAttachments: RetainAttachments?
 
-    public init(chooseFiles: ChooseFiles? = nil, stageFiles: @escaping StageFiles,
+    public init(chooseItems: ChooseItems? = nil, stageFiles: @escaping StageFiles,
                 attachmentPolicy: AttachmentPolicy? = nil, hostDirectory: HostDirectory? = nil,
                 previewAttachment: PreviewAttachment? = nil, openHostFile: OpenHostFile? = nil,
                 retainAttachments: RetainAttachments? = nil, receipts: NativeComposerReceiptActions? = nil,
@@ -46,20 +46,9 @@ public struct NativeComposerServices {
         self.openHostFile = openHostFile
         self.retainAttachments = retainAttachments
         self.discardAttachments = discardAttachments
-        self.chooseFiles = chooseFiles ?? { cwd, limit, lifetime in
+        self.chooseItems = chooseItems ?? { cwd, lifetime in
             try lifetime.checkCancellation()
-            guard limit > 0 else { throw PluginContractError("附件数量不能超过 20 个") }
-            // POSIX APIs cannot represent malformed UTF-16 paths. Reject at
-            // this explicit native boundary instead of silently repairing one.
-            guard Array(cwd.string.utf16) == cwd.codeUnits else {
-                throw PluginContractError("The working directory cannot be represented as a native file path")
-            }
-            let panel = NSOpenPanel()
-            panel.canChooseFiles = true
-            panel.canChooseDirectories = false
-            panel.allowsMultipleSelection = true
-            panel.resolvesAliases = true
-            if !cwd.codeUnits.isEmpty { panel.directoryURL = URL(fileURLWithPath: cwd.string, isDirectory: true) }
+            let panel = try Self.devicePicker(cwd: cwd)
             let cancellation = lifetime.onCancel { panel.cancel(nil) }
             defer { lifetime.removeHandler(cancellation) }
             let result = await withCheckedContinuation { continuation in
@@ -71,8 +60,22 @@ public struct NativeComposerServices {
             }
             try lifetime.checkCancellation()
             guard result == .OK else { return [] }
-            guard panel.urls.count <= limit else { throw PluginContractError("附件数量不能超过 20 个") }
-            return panel.urls.map(NativeComposerFile.init(url:))
+            return panel.urls
         }
+    }
+
+    static func devicePicker(cwd: JSONText) throws -> NSOpenPanel {
+        // POSIX APIs cannot represent malformed UTF-16 paths. Reject at
+        // this explicit native boundary instead of silently repairing one.
+        guard Array(cwd.string.utf16) == cwd.codeUnits else {
+            throw PluginContractError("The working directory cannot be represented as a native file path")
+        }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.resolvesAliases = true
+        if !cwd.codeUnits.isEmpty { panel.directoryURL = URL(fileURLWithPath: cwd.string, isDirectory: true) }
+        return panel
     }
 }

@@ -49,7 +49,7 @@ public func composerLocalized(_ text: String, locale: Locale) -> String {
         "附件数量超过主机限制": "The attachments exceed the host file limit",
         "附件大小超过主机限制": "The attachments exceed the host size limit",
         "Chief 正在协调任务…": "Chief is coordinating tasks…", "让 Chief 发起、协调或汇报任务…": "Ask Chief to start, coordinate, or report on tasks…",
-        "添加图片或文件": "Add images or files", "停止 Chief": "Stop Chief", "发送": "Send", "Chief 附件": "Chief attachments",
+        "目录引用不能超过 50 个": "You can reference up to 50 folders", "停止 Chief": "Stop Chief", "发送": "Send", "Chief 附件": "Chief attachments",
         "从此设备导入": "Import from this device", "从主机选择文件": "Choose host files", "从主机选择目录": "Choose a host directory",
         "移除目录": "Remove directory", "移除附件": "Remove attachment", "暂存中…": "Staging…",
         "附件数量不能超过 20 个": "You can attach up to 20 files", "附件正在处理中，请稍候": "Attachments are being processed. Please wait.",

@@ -257,9 +257,9 @@ private struct ReplayFailure: Error, CustomStringConvertible {
         let folder = NativeComposerDirectory(name: "docs", path: "/fixture/docs")
         let file = NativeComposerStoredAttachment(id: .init(UUID().uuidString.lowercased()), path: "/fixture/note.txt",
             name: "note.txt", mimeType: "text/plain", size: 4, kind: .file)
-        let services = NativeComposerServices(chooseFiles: { _, _, _ in
-            [.init(data: Data("note".utf8), name: "note.txt", mimeType: "text/plain")]
-        }, stageFiles: { _, _ in [file] }, discardAttachments: { _ in })
+        let note = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("note.txt")
+        try Data("note".utf8).write(to: note)
+        let services = NativeComposerServices(chooseItems: { _, _ in [note] }, stageFiles: { _, _ in [file] }, discardAttachments: { _ in })
         func checkPeerEdit(_ edit: PeerEdit, reject: Bool, unmark: Bool = false) async throws {
             let deliveries = sent.count
             replace("A")
@@ -276,7 +276,7 @@ private struct ReplayFailure: Error, CustomStringConvertible {
             var independent: String?
             switch edit {
             case .directory: try require(peer.insertDirectory(folder), "Could not add directory")
-            case .attachment: await peer.chooseFiles(cwd: "/fixture")
+            case .attachment: await peer.chooseItems(cwd: "/fixture")
             case .differentText, .sameText:
                 let replacement = edit == .sameText ? "pin" : "B"
                 other.selectAll(nil)

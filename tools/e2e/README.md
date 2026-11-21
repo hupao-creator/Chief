@@ -536,10 +536,11 @@ own the control and its draft import. Start on Overview and click the plus next
 to the eyes with the system mouse. Check that the native chooser opens on the
 first click, cancel it, and check that the draft text and chips are still present.
 Use AXPress on the same button and confirm the chooser opens directly. Select a
-known text file and image. Check their ready chips, open and dismiss the image
-preview, and send. Independently read the current Chief transcript through
+known text file, image and empty folder together. Check the two ready file chips
+and the single folder chip. Open and dismiss the image preview, then send. Independently read the current Chief transcript through
 Runtime and match the user message, attachment names and sizes. Check the
-managed file bytes against the fixtures and confirm the draft clears. A
+managed file bytes against the fixtures, verify the selected folder path in the
+submitted input and confirm the draft clears. A
 deterministic external peer can observe native delivery without a provider account.
 
 On a host-enabled draft, Control-click the plus and check that each host option

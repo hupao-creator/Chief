@@ -81,15 +81,18 @@ at the trailing edge with its existing cancellation and accessibility semantics.
 The shared input row places the attachment plus immediately to the right of
 the identity seat. Below 260pt the editor takes the upper row and the plus
 stays beside the identity on the lower row. A primary click or accessibility press opens
-the device file chooser directly. For host-enabled drafts, the contextual
+the macOS chooser directly. A single confirmation can select multiple files and
+folders. Files enter attachment staging. Each selected folder adds one explicit
+directory reference by path, including empty folders. The draft counts the two
+kinds independently (20 files and 50 distinct directories) and rejects an
+over-count selection before adding any of its items. For host-enabled drafts, the contextual
 menu on the same button offers host files and host directory references.
 The composer remains dark in both macOS appearances. A native chooser keeps
 its Escape and Cancel behavior. Cancelling adds no chips and leaves the draft
 available. The same current Chief draft and send route serve Overview and
 Chief history. The editor treats `@` as ordinary text. The send route appends
-saved directory chips without a host identity to the message as plain paths.
-Directory references added through the host picker retain their structured
-form. The history reader displays the stored message, and receipt lookup uses
+saved catalog directory chips to the message as plain paths. Explicit directory
+selections from either chooser retain their structured form across draft restoration. The history reader displays the stored message, and receipt lookup uses
 the saved command ID. Chief's delegation tools take text prompts. When a
 delegated Agent needs a file, its prompt can refer to the file by its managed path.
 

@@ -289,19 +289,39 @@ private extension RuntimeClient {
         }, optimisticallyClear: true)
         try require(changed.text.isEmpty && changed.error == nil && changed.cleanupReceipt == nil,
             "EXECUTION_CHANGED fork handoff failed: " + (changed.error ?? ""))
-        try await checkOwners(root: rootProfile)
+        try await checkOwners(root: rootProfile, moku: moku)
     }
 
-    @MainActor private static func checkOwners(root: URL) async throws {
+    @MainActor private static func checkOwners(root: URL, moku: NativeMokuSubmission) async throws {
         let fixture = root.deletingLastPathComponent().appendingPathComponent("files.json")
         let files = try JSONValue(data: Data(contentsOf: fixture)).arrayValue!.map { file in
             NativeComposerStoredAttachment(id: .init(file["id"]!.stringValue!), path: .init(file["path"]!.stringValue!),
                 name: .init(file["name"]!.stringValue!), mimeType: .init(file["mimeType"]!.stringValue!),
                 size: file["size"]!.intValue!, kind: .init(rawValue: file["kind"]!.stringValue!)!)
         }
+        let folder = root.deletingLastPathComponent().appendingPathComponent("Project 空", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let mixed = NativeComposerDraft(services: .init(chooseItems: { _, _ in
+            [folder] + files.map { URL(fileURLWithPath: $0.path.string) }
+        }, stageFiles: { selected, _ in
+            try require(selected.map(\.name) == files.map { URL(fileURLWithPath: $0.path.string).lastPathComponent },
+                "Mixed picker output did not pass both files to staging")
+            return files
+        }, receipts: moku.receipts, discardAttachments: { _ in }),
+            persistence: .init(storageDirectory: root, scope: "mixed-picker"))
+        mixed.text = "mixed picker"
+        await mixed.chooseItems(cwd: JSONText(root.path))
+        await mixed.submit({ submission in
+            let input = submission.input(knownDirectoryReferencesAsText: true)
+            try await moku.send(input: input, source: .object([:]), commandID: submission.commandID) {
+                .object(["input": input])
+            }
+        }, optimisticallyClear: true)
+        try require(mixed.error == nil && mixed.text.isEmpty && mixed.directories.isEmpty && mixed.attachments.isEmpty,
+            "Mixed picker submission was not accepted: " + (mixed.error ?? ""))
         var selection = 0
-        let services = NativeComposerServices(chooseFiles: { _, _, _ in
-            [.init(url: URL(fileURLWithPath: files[selection].path.string))]
+        let services = NativeComposerServices(chooseItems: { _, _ in
+            [URL(fileURLWithPath: files[selection].path.string)]
         }, stageFiles: { _, _ in
             defer { selection += 1 }
             return [files[selection]]
@@ -309,7 +329,7 @@ private extension RuntimeClient {
         let storage = NativeComposerDraftPersistence(storageDirectory: root, scope: "owners")
         let original = NativeComposerDraft(services: services, persistence: storage)
         original.inputText = "A"
-        await original.chooseFiles(cwd: "/fixture")
+        await original.chooseItems(cwd: "/fixture")
         var winner: NativeComposerDraft?
         var callbacks = 0
         await original.submit({ _ in
@@ -317,7 +337,7 @@ private extension RuntimeClient {
             let next = NativeComposerDraft(services: services, persistence: storage)
             winner = next
             next.inputText = "winner"
-            await next.chooseFiles(cwd: "/fixture")
+            await next.chooseItems(cwd: "/fixture")
             original.inputText = "unsaved local edit"
             try require(original.error != nil, "Expected losing CAS")
             let child = Process()

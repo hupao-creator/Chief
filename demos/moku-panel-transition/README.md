@@ -184,6 +184,9 @@ reveals a recorded message with a directory mention from fixture subscription
 data. A reopened draft sends a saved catalog path as plain text. The replay
 feeds host metadata to the draft action used by the directory picker's
 **Choose** button and checks that the explicit selection stays structured.
+The replay checks the production macOS panel's selection settings, then exercises
+the mounted plus with fixture selections. It checks cancellation, a folder-only
+send and a mixed selection with two files against the submitted parts.
 The app prints the covered cases and exits nonzero on a failed assertion.
 The isolated callback captures the payload without starting a Runtime.
 The [Chief file picker procedure](../../tools/e2e/README.md#chief-file-picker)
@@ -243,6 +246,8 @@ Historical fork and follow-up phases cover explicit local recovery, with the
 peer counting each mutation. A new send from the same historical checkpoint
 must fork from that checkpoint again after late acceptance. A competing process tests the scope lock. The Go
 attachment repository stages two real files, contends for the ownership lock,
-and collects again after the editors exit. The replay checks the surviving bytes
+and collects again after the editors exit. A mixed picker selection sends a folder and both staged files through the Chief
+submission route. The Go handler log must contain the folder mention and the
+two repository file IDs. The replay checks the surviving bytes
 and the released file's removal. The fixture supplies service bootstrap and
 command outcomes.

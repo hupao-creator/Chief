@@ -10,6 +10,7 @@ public final class NativeComposerDraft {
     private final class WeakDraft { weak var value: NativeComposerDraft?; init(_ value: NativeComposerDraft) { self.value = value } }
     private final class AttachmentImport {
         var retired = false
+        var directoryRevisions: [JSONText: UUID] = [:]
         var attachments: [NativeComposerAttachment] = []
     }
     private static var owners: [WeakDraft] = []
@@ -154,20 +155,29 @@ public final class NativeComposerDraft {
 
     @discardableResult
     public func insertDirectory(_ directory: NativeComposerDirectory) -> Bool {
-        guard !isDisposed, !directory.path.codeUnits.isEmpty else { return false }
-        if let index = directories.firstIndex(where: { $0.path == directory.path }) {
-            // A host picker selection for the same path gives a saved catalog
-            // reference the explicit host identity used for submission.
-            if directories[index].hostID == nil, directory.hostID != nil {
-                directories[index] = directory
-                directoryRevisions[directory.path] = UUID()
-            }
-            return true
-        }
+        insertDirectories([directory])
+    }
+
+    private func insertDirectories(_ selection: [NativeComposerDirectory], operation: AttachmentImport? = nil) -> Bool {
+        guard !isDisposed, selection.allSatisfy({ !$0.path.codeUnits.isEmpty }) else { return false }
         let used = Set(directories.map(\.path)).union(pending?.original.directories.map(\.path) ?? [])
-        guard used.contains(directory.path) || used.count < Self.maximumDirectories else { return false }
-        directories.append(directory)
-        directoryRevisions[directory.path] = UUID()
+        guard used.union(selection.map(\.path)).count <= Self.maximumDirectories else { return false }
+        var updated = directories
+        for directory in selection {
+            if let index = updated.firstIndex(where: { $0.path == directory.path }) {
+                switch (updated[index].source, directory.source) {
+                case (.catalog, .devicePicker), (.catalog, .host), (.devicePicker, .host):
+                    updated[index] = directory
+                default: continue
+                }
+            } else {
+                updated.append(directory)
+            }
+            let revision = UUID()
+            directoryRevisions[directory.path] = revision
+            operation?.directoryRevisions[directory.path] = revision
+        }
+        if directories != updated { directories = updated }
         return true
     }
 
@@ -203,13 +213,27 @@ public final class NativeComposerDraft {
         attachments[index] = NativeComposerAttachment(id: draft.id, name: draft.name, status: draft.status, preview: preview)
     }
 
-    public func chooseFiles(cwd: JSONText) async {
+    public func chooseItems(cwd: JSONText) async {
         guard let operation = beginImport(count: nil) else { return }
         defer { finishImport(operation) }
         do {
-            let selected = try await services.chooseFiles(cwd, Self.maximumAttachments - reservedAttachmentCount, lifetime)
-            guard !selected.isEmpty, !isDisposed, !operation.retired else { return }
-            await importFiles(selected, operation: operation)
+            let urls = try await services.chooseItems(cwd, lifetime)
+            guard !urls.isEmpty, !isDisposed, !operation.retired else { return }
+            let remainingFiles = Self.maximumAttachments - reservedAttachmentCount
+            var files: [NativeComposerFile] = []
+            var folders: [NativeComposerDirectory] = []
+            for url in urls {
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                if try url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory == true {
+                    folders.append(.init(name: JSONText(url.lastPathComponent), path: JSONText(url.path), source: .devicePicker))
+                } else {
+                    guard files.count < remainingFiles else { throw PluginContractError("附件数量不能超过 20 个") }
+                    files.append(.init(url: url))
+                }
+            }
+            guard insertDirectories(folders, operation: operation) else { throw PluginContractError("目录引用不能超过 50 个") }
+            if !files.isEmpty { await importFiles(files, operation: operation) }
         } catch { if !operation.retired { record(error) } }
     }
 
@@ -375,7 +399,8 @@ public final class NativeComposerDraft {
 
     public func clear(_ clearSession: () async throws -> Void) async {
         guard !isDisposed, !clearing, !submitting, pending == nil else { return }
-        let revision = editRevision, discarded = attachments, mentioned = directoryRevisions
+        let revision = editRevision, discarded = attachments
+        var mentioned = directoryRevisions
         let importAtStart = activeImport
         let pasteAtStart = pastePreparation
         clearing = true; operationError = nil
@@ -387,7 +412,10 @@ public final class NativeComposerDraft {
             // while preserving imports started after clear admission.
             pasteAtStart?.finish()
             importAtStart?.retired = true
-            if let importAtStart { finishImport(importAtStart) }
+            if let importAtStart {
+                mentioned.merge(importAtStart.directoryRevisions) { _, picked in picked }
+                finishImport(importAtStart)
+            }
             let consumed = discarded + (importAtStart?.attachments ?? [])
             guard !isDisposed else {
                 // Import progress can advance persistence while clear awaits its
@@ -585,7 +613,7 @@ public final class NativeComposerDraft {
         guard !isDisposed else { return nil }
         guard !staging else { operationError = "附件正在处理中，请稍候"; return nil }
         let remaining = Self.maximumAttachments - reservedAttachmentCount
-        guard remaining > 0, (count ?? 0) <= remaining else { operationError = "附件数量不能超过 20 个"; return nil }
+        if let count, remaining == 0 || count > remaining { operationError = "附件数量不能超过 20 个"; return nil }
         staging = true; operationError = nil
         let operation = AttachmentImport()
         activeImport = operation

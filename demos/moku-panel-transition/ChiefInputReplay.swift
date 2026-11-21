@@ -14,8 +14,36 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
     let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
     let hostDirectory = try JSONDecoder().decode(RuntimeHostDirectory.self, from: Data(
         #"{"reference":{"hostID":"fixture-host","path":"/fixture/Old directory"},"entries":[]}"#.utf8))
-    let services = NativeComposerServices(stageFiles: { _, _ in [] }, hostDirectory: { _, _ in hostDirectory },
-        discardAttachments: { _ in })
+    let storage = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    let folder = storage.appendingPathComponent("Project 空", isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let files = ["one.txt", "two.txt"].map { storage.appendingPathComponent($0) }
+    let capacityFiles = files + (3...20).map { storage.appendingPathComponent("file-\($0).txt") }
+    let fileIDs = Dictionary(uniqueKeysWithValues: capacityFiles.map { ($0, UUID().uuidString.lowercased()) })
+    for file in capacityFiles { try Data(file.lastPathComponent.utf8).write(to: file) }
+    let picker = try NativeComposerServices.devicePicker(cwd: JSONText(storage.path))
+    try require(picker.canChooseFiles && picker.canChooseDirectories && picker.allowsMultipleSelection,
+        "The primary macOS chooser must allow files and folders together")
+    var selection: [URL] = []
+    var pickerVisits = 0
+    var staged: [URL] = []
+    let services = NativeComposerServices(chooseItems: { _, _ in
+        pickerVisits += 1
+        return selection
+    }, stageFiles: { selected, _ in
+        try selected.map { file in
+            guard case .file(let url) = file.source, let id = fileIDs[url] else {
+                throw ChiefInputReplayFailure(description: "Unexpected item in file staging: \(file.name)")
+            }
+            staged.append(url)
+            return .init(id: JSONText(id), path: JSONText(url.path), name: JSONText(file.name),
+                         mimeType: JSONText(file.mimeType), size: file.size, kind: .file)
+        }
+    }, hostDirectory: { _, _ in hostDirectory }, discardAttachments: { _ in })
+    let mention = JSONValue.object(["kind": .text("mention"), "pathType": .text("directory"),
+                                    "name": .text(folder.lastPathComponent), "path": .text(folder.path)])
+    let fileParts = files.map { JSONValue.object(["kind": .text("local-file"),
+                                                  "file": .object(["id": .text(fileIDs[$0]!)])]) }
     for history in [false, true] {
         let surface = history ? "Chief history" : "Overview Chief Dock"
         let draft = NativeComposerDraft(services: services)
@@ -102,6 +130,53 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
         plainEditor.keyDown(with: key("\r", code: 36, panel: panel))
         try require(sent == [textInput("@"), textInput("@team@example.com"), textInput("ordinary request")],
             "\(surface) did not send ordinary text")
+        if !history { scene.setInputOpen(true) }
+        let pickerEditor = try await focusEditor()
+        func pick(_ urls: [URL]) async throws {
+            selection = urls
+            let previous = pickerVisits
+            let editor = try await focusEditor()
+            // The capsule can still be travelling after Return or a chip-strip resize.
+            // Deliver the window-local click after its 420ms transition settles.
+            try await Task.sleep(for: .milliseconds(500))
+            let deadline = ContinuousClock.now + .seconds(4)
+            guard let seat = editor.enclosingScrollView else { throw ChiefInputReplayFailure(description: "Missing editor seat") }
+            let bounds = seat.convert(seat.bounds, to: nil)
+            let point = NSPoint(x: bounds.minX - 14, y: bounds.midY)
+            func mouse(_ kind: NSEvent.EventType) -> NSEvent {
+                NSEvent.mouseEvent(with: kind, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: panel.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
+            }
+            let up = mouse(.leftMouseUp)
+            NSApp.postEvent(up, atStart: true)
+            panel.sendEvent(mouse(.leftMouseDown))
+            if NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: false) === up {
+                _ = NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true)
+                panel.sendEvent(up)
+            }
+            while previous == pickerVisits || draft.importing {
+                try require(ContinuousClock.now < deadline, "Picker did not finish in \(surface) at \(point), editor \(bounds), visits \(pickerVisits)/\(previous)")
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            try require(draft.error == nil, draft.error ?? "Picker failed")
+        }
+        staged = []
+        try await pick([folder])
+        try await pick([])
+        try require(draft.directories.map(\.path) == [JSONText(folder.path)] && draft.attachments.isEmpty
+            && draft.canSubmit && staged.isEmpty, "Cancel changed the folder-only draft")
+        pickerEditor.keyDown(with: key("\r", code: 36, panel: panel))
+        try require(sent.last == .object(["parts": .array([mention])]), "Folder-only submission lost its path")
+        if !history { scene.setInputOpen(true) }
+        let mixedEditor = try await focusEditor()
+        try await pick([files[0], folder, files[1]])
+        try await pick([folder])
+        try require(staged == files && draft.attachments.count == 2 && draft.directories.count == 1,
+            "Mixed selection did not stage both files and reference the folder once")
+        mixedEditor.keyDown(with: key("\r", code: 36, panel: panel))
+        try require(sent.last == .object(["parts": .array([mention] + fileParts)])
+            && draft.attachments.isEmpty && draft.directories.isEmpty, "Mixed submission or draft consumption failed")
+        print("Passed \(surface): attachment plus, cancel, folder-only and mixed submissions.")
         if history {
             let controlDeadline = ContinuousClock.now + .seconds(4)
             while true {
@@ -124,7 +199,21 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
         print("Passed \(surface): typed @ without completion, pasted and edited @ text, and sent both literal and ordinary text.")
     }
 
-    let storage = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    let full = NativeComposerDraft(services: services)
+    selection = capacityFiles
+    await full.chooseItems(cwd: JSONText(storage.path))
+    selection = [folder]
+    await full.chooseItems(cwd: JSONText(storage.path))
+    try require(full.error == nil && full.attachments.count == 20 && full.directories.map(\.path) == [JSONText(folder.path)],
+        "A full file allowance blocked an independent folder reference")
+    for index in 1..<50 {
+        try require(full.insertDirectory(.init(name: "Project", path: JSONText("/fixture/\(index)"))), "Could not fill folder allowance")
+    }
+    await full.removeAttachment(full.attachments[0].id)
+    selection = [storage, files[0]]
+    await full.chooseItems(cwd: JSONText(storage.path))
+    try require(full.error != nil && full.directories.count == 50 && full.attachments.count == 19,
+        "Over-limit mixed selection changed the draft")
     let persistence = NativeComposerDraftPersistence(storageDirectory: storage, scope: JSONText(UUID().uuidString))
     let previous = NativeComposerDraft(services: services, persistence: persistence)
     previous.text = "Old @ draft"
@@ -143,6 +232,11 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
     try require(recovered == .object(["parts": .array([.object([
         "kind": .string("mention"), "name": .string(picked.name), "path": .string(picked.path), "pathType": .string("directory"),
     ])])]), "Explicit host directory did not preserve its structured reference")
+    selection = [folder]
+    await reopened.chooseItems(cwd: JSONText(storage.path))
+    let restored = NativeComposerDraft(services: services, persistence: persistence)
+    await restored.submit({ recovered = $0.input(knownDirectoryReferencesAsText: true) }, optimisticallyClear: true)
+    try require(recovered == .object(["parts": .array([mention])]), "Restored device selection lost its directory mention")
     try require(!NSApp.isActive && foreground == NSWorkspace.shared.frontmostApplication?.processIdentifier,
         "Replay activated itself or the foreground app changed")
     print("Passed persisted Chief draft and explicit host directory serialization.")

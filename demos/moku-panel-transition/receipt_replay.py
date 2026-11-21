@@ -133,9 +133,20 @@ try:
                 print(channel, "recovered", receipt, "client lookups", queries.count(receipt), flush=True)
             actual = defaultdict(list)
             for entry in map(json.loads, calls.read_text().splitlines()):
-                actual[entry["channel"]].append(input_text(entry["channel"], entry["args"]))
+                text = input_text(entry["channel"], entry["args"])
+                actual[entry["channel"]].append(text)
+                if text == "mixed picker":
+                    folder = replay.workspace / "Project 空"
+                    assert entry["args"][0]["input"]["parts"] == [
+                        {"kind": "text", "text": text},
+                        {"kind": "mention", "pathType": "directory", "path": str(folder), "name": folder.name},
+                        *({"kind": "local-file", "file": {"id": f["id"]}} for f in files),
+                    ], entry
+                    print("Go handler received the selected folder and both staged file IDs", flush=True)
             for channel in ("moku:submit", "thread:follow-up", "thread:fork"):
                 expected = ["A", "D", "BC", "rejected", "boundary", "direct"]
+                if channel == "moku:submit":
+                    expected += ["mixed picker"]
                 if channel == "thread:follow-up":
                     expected += ["after-fork", "historical", "after-followup", "historical", "same-checkpoint", "changed", "changed"]
                 if channel == "thread:fork":

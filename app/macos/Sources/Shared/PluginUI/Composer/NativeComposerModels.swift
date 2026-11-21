@@ -4,9 +4,21 @@ import ChiefCore
 public struct NativeComposerDirectory: Hashable, Sendable, Identifiable {
     public let name: JSONText
     public let path: JSONText
-    public let hostID: String?
+    enum Source: Hashable, Sendable { case catalog, devicePicker, host(String) }
+    let source: Source
+    public var hostID: String? {
+        if case .host(let id) = source { return id }
+        return nil
+    }
     public var id: JSONText { path }
-    public init(name: JSONText, path: JSONText, hostID: String? = nil) { self.name = name; self.path = path; self.hostID = hostID }
+
+    public init(name: JSONText, path: JSONText, hostID: String? = nil) {
+        self.init(name: name, path: path, source: hostID.map(Source.host) ?? .catalog)
+    }
+
+    init(name: JSONText, path: JSONText, source: Source) {
+        self.name = name; self.path = path; self.source = source
+    }
 }
 
 /// Validated runtime attachment metadata. Identity and paths retain UTF-16 wire
@@ -104,14 +116,14 @@ public struct NativeComposerSubmission: Sendable {
     public func input(knownDirectoryReferencesAsText: Bool) -> JSONValue {
         var parts: [JSONValue] = []
         var body = NativeComposerSubmissionPolicy.trimmedText(JSONText(text)).codeUnits
-        // Completion stored a path but no host identity or original query. The
-        // explicit host picker records its host identity and keeps its reference.
-        for directory in directories where knownDirectoryReferencesAsText && directory.hostID == nil {
+        // Older Chief drafts carry catalog paths as text. Explicit selections
+        // from either chooser travel as directory mentions.
+        for directory in directories where knownDirectoryReferencesAsText && directory.source == .catalog {
             if !body.isEmpty { body.append(0x0A) }
             body.append(contentsOf: directory.path.codeUnits)
         }
         if !body.isEmpty { parts.append(.object(["kind": .string("text"), "text": .string(JSONText(codeUnits: body))])) }
-        for directory in directories where !knownDirectoryReferencesAsText || directory.hostID != nil {
+        for directory in directories where !knownDirectoryReferencesAsText || directory.source != .catalog {
             parts.append(.object([
                 "kind": .string("mention"), "name": .string(directory.name), "path": .string(directory.path), "pathType": .string("directory")
             ]))
