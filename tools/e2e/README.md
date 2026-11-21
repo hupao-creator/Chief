@@ -22,7 +22,7 @@ contains every requested ID, including blocked and unreached entries.
 | --- | --- | --- | --- |
 | `E2E-OVERVIEW-001` | Observe a mounted task at 1×, pan by (+48, −90)pt, and restore the center of all card placements. Cell spans and window clearances determine the expected coordinates. | One task in the default suite, two tasks and eight reports in the Collection suite. The automatic, panned and recentered snapshots record the three poses. | Semantic camera actions and mounted identity. Pointer hit testing and drawn pixels need separate evidence. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
-| `E2E-SETTINGS-001` | Open Settings with Chief selected and only Chief, Tag and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
+| `E2E-SETTINGS-001` | Open Settings with Chief Agent selected and only Chief Agent, Auto-Categorization and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief Agent and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
 | `E2E-COLLECTION-001` | Open a grouped member, return, then revisit and read. Switch directory and archive/restore unrelated reports while All remains mounted. | Two isolated directories, two completed tasks and eight reports from a deterministic peer. | The 18-cell All groups two fresh reports. A nine-cell directory releases them. A brief visit holds the cover, a qualified visit promotes the report, and the group releases when the expanded view reaches 14 cells. |
 | `E2E-COMPOSER-001` | Type a follow-up and activate the actual Send button; observe accepted draft clearing and completed output; send a held task, observe Stop in the empty action seat, activate it and observe interruption and an editable empty composer without navigating away | Exclusive desktop, accessible isolated bundle, external operator; `operator-send/stop.json` AX observations, exact persisted prompts, `composer-send-content/oracle/ui.json`, `composer-running/stopped/stop-content/stop-ui.json` | Operator-assisted OS input, not unattended CI; current ordinary Thread text input and cancellation only, not pause/resume, historical forks, IME or uncertain receipt recovery |
 
@@ -70,9 +70,13 @@ owns resolution, profile compatibility and window appearance.
    visible language and `snapshot.settings.locale`, including after changing the
    preferred order while Chief is running. Check the profile's output locale
    receipt before starting a generated-output operation.
-3. Open Settings from loaded Overview and confirm Chief is selected and the
-   available tabs are Chief, Tag and Super Thread. Select another tab, close
-   Settings, and reopen on Chief. Repeat the open on a previously loaded Overview
+3. Open Settings from loaded Overview and confirm Chief Agent is selected and the
+   English tabs read Chief Agent, Auto-Categorization and Super Thread, in order.
+   In Chinese, check Chief Agent, 自动归类 and 超级线程. At normal and narrow widths,
+   select each tab and check its content and selection indicator. On Chief Agent,
+   choose an available model under Chief Model (Chief 模型 in Chinese). Check the
+   selected value after switching away and back. Close Settings from another
+   tab and reopen on Chief Agent. Repeat the open on a previously loaded Overview
    while disconnected.
 4. Change macOS Appearance from Light to Dark and back with Overview, a reader
    and an attachment preview open. Record effective appearance in the snapshot

@@ -15,11 +15,11 @@ enum NativeSettingsRole: String {
         }
     }
 
-    var tabLabel: String {
+    func tabLabel(_ locale: DesktopLocale) -> String {
         switch self {
-        case .moku: "Chief"
-        case .tag: "Tag"
-        case .report: "Super Thread"
+        case .moku: "Chief Agent"
+        case .tag: locale.text("自动归类", "Auto-Categorization")
+        case .report: locale.text("超级线程", "Super Thread")
         }
     }
     func title(_ locale: DesktopLocale) -> String {

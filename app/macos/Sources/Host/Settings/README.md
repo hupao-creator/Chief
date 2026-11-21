@@ -105,9 +105,10 @@ invalid-field focus and save flushing. Quit waits for the pending valid save
 before Runtime teardown; invalid or failed saves offer Keep Editing and Quit
 Without Saving. The existing bounded cleanup deadline and repeated Quit remain
 available.
-The horizontal header starts with Chief, followed by Tag, Super Thread and any
-other enabled application sections. Each opening selects Chief, including after
-disconnection. Native tab semantics, a selected underline and roving keyboard
+The horizontal header starts with Chief Agent, followed by Auto-Categorization, Super Thread and any
+other enabled application sections. Each opening selects Chief Agent, including after
+disconnection. The coordinating Harness form labels its model selector Chief Model.
+Native tab semantics, a selected underline and roving keyboard
 focus are shared at every width; the header scrolls when its tabs no longer fit.
 Switching sections scrolls the whole padded form to its top, retaining the same
 18-point content inset whether the selected form fits or overflows. At extreme
@@ -362,7 +363,7 @@ Harness editors report acquisition and incomplete local model choices through
 Settings starts with a 900-point preferred height and grows to the active tab's
 natural document height (including header and form insets). The shared Dock shell
 keeps its 780-point preferred width and caps both dimensions to the workspace
-viewport with 24-point margins. Chief, Tag and Super Thread use this same sizing,
+viewport with 24-point margins. Chief Agent, Auto-Categorization and Super Thread use this same sizing,
 including inherited and independent Harness forms. Smaller windows, app zoom,
 expanded editors and notices retain native scrolling; extreme zoom also scrolls
 the whole shell so navigation remains accessible. No scrollbar is hidden to fit
@@ -388,11 +389,11 @@ and carousel selection are session presentation state. See the
 [`E2E-SETTINGS-001`](../../../../../tools/e2e/README.md) operates the actual
 `moku.routingPreset.economy|balanced|performance|custom` mounted action controls.
 The fresh connected profile uses real Runtime and Codex discovery. From Overview,
-the runner opens Settings, verifies that Chief is selected and that the only tabs
-are Chief, Tag and Super Thread, then activates an unselected Economy or Performance
+the runner opens Settings, verifies that Chief Agent is selected and that the only tabs
+are Chief Agent, Auto-Categorization and Super Thread, then activates an unselected Economy or Performance
 capsule using its observed handle, and observes its selected value after refresh.
 It closes through the normal save gate, checks the exact saved preset through
-public `state:load`, then reopens on Chief and observes the same selection. The four
+public `state:load`, then reopens on Chief Agent and observes the same selection. The four
 `settings-before/edited/persisted/reopened.json` artifacts and UI/API transcripts
 retain the criterion inputs.
 

@@ -277,7 +277,9 @@ struct NativeSettingsPreferredHeightKey: PreferenceKey {
                                          visitPlaybackStarted: role == .tag ? $animationVisits.tag : role == .report ? $animationVisits.report : nil) {
                 if role == .moku {
                     NativeMokuSettings(model: model, harnesses: harnesses, locale: locale, focusRequest: navigation.focusRequest, motion: mokuMotion,
-                        harnessSettings: harnessSettings, controller: mokuController, onCoordinatorFrame: onCoordinatorFrame,
+                        harnessSettings: { request in
+                            AnyView(harnessSettings(request).environment(\.nativeSettingsModelLabel, locale.text("Chief 模型", "Chief Model")))
+                        }, controller: mokuController, onCoordinatorFrame: onCoordinatorFrame,
                         onCloseRequest: requestClose, presentation: .compact, showsRoutingGuidance: true, illustrationWidth: illustrationWidth)
                 } else if let application = activeApplications.first(where: { $0.id == activeSection }) {
                     applicationContent(application)
@@ -300,7 +302,7 @@ struct NativeSettingsPreferredHeightKey: PreferenceKey {
         navigation.requestClose(model: model, onClose: onClose)
     }
     private func sectionLabel(_ id: String) -> String {
-        NativeSettingsRole(section: id)?.tabLabel
+        NativeSettingsRole(section: id)?.tabLabel(locale)
             ?? activeApplications.first(where: { $0.id == id }).map { locale.text($0.label, $0.englishLabel) }
             ?? id
     }

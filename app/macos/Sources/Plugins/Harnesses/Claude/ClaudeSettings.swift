@@ -271,6 +271,7 @@ private struct ClaudeModelField: View {
     let required: Bool
     let disabled: Bool
     @NativeSettingsEditorState("customModel") private var custom = false
+    @Environment(\.nativeSettingsModelLabel) private var modelLabel
     @Environment(\.locale) private var locale
     @Environment(\.nativeSettingsFormPage) private var formPage
     private var selected: JSONValue? { models.first { $0["value"] == .string(value) } }
@@ -285,7 +286,7 @@ private struct ClaudeModelField: View {
             + [.init(id: customKey, label: t("自定义模型…"))]
     }
     var body: some View {
-        NativeSettingsRow(label: t("模型"), description: selected?["description"]?.stringValue,
+        NativeSettingsRow(label: modelLabel ?? t("模型"), description: selected?["description"]?.stringValue,
                           layout: formPage ? .inline : .stacked) {
             NativeModelSelector(value: Binding(get: { selection }, set: { key in
                 if key == customKey { custom = true; return }

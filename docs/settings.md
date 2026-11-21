@@ -4,19 +4,19 @@
 
 From **Overview**, click the **Settings** gear in the upper-right corner, press **⌘,**, or choose **Settings…** from the Chief menu. If you're reading a conversation or a Super Thread, press **⌘K** to return to Overview first.
 
-Settings opens on **Chief**. Agent changes save when you close Settings. If the panel stays open, check the message and complete any required choices. If a save error appears after the panel closes, reopen Settings and click **Retry saving**. If the saved settings changed elsewhere, choose **Keep my changes and retry** to apply your choices or **Discard draft and load latest settings** to use the saved ones.
+Settings opens on **Chief Agent**. Agent changes save when you close Settings. If the panel stays open, check the message and complete any required choices. If a save error appears after the panel closes, reopen Settings and click **Retry saving**. If the saved settings changed elsewhere, choose **Keep my changes and retry** to apply your choices or **Discard draft and load latest settings** to use the saved ones.
 
 ## Choose who coordinates and who can take tasks
 
-On the **Chief** tab, choose the coordinating agent in the top row and at least one agent it can assign tasks to in the bottom row. Dashed lines connect Chief to the agents it can assign work to. Complete any required model choices. Before switching the coordinating agent, finish work that's running, waiting for a response, or waiting to send. Switching to a different agent starts a new Chief conversation and keeps your note.
+On the **Chief Agent** tab, choose the coordinating agent in the top row and at least one agent it can assign tasks to in the bottom row. Dashed lines connect Chief to the agents it can assign work to. Use **Chief Model** to choose the coordinating agent’s model. Before switching the coordinating agent, finish work that's running, waiting for a response, or waiting to send. Switching to a different agent starts a new Chief conversation and keeps your note.
 
-If Chief says no agents are available, install and sign in to a supported agent on your Mac, then return to the **Chief** tab and click **Retry**. [Supported agents](getting-started.md#connect-an-agent)
+If Chief says no agents are available, install and sign in to a supported agent on your Mac, then return to the **Chief Agent** tab and click **Retry**. [Supported agents](getting-started.md#connect-an-agent)
 
 Use **Task Orchestration Preferences** to guide which models Chief chooses when it assigns tasks. Pick **Economy**, **Balanced**, or **Performance**, or select **Custom** and click the text box below. When the cursor appears, describe what you prefer. The hint disappears as you type. Hover over a choice marked with an info icon to read its description. Chief keeps your custom text if you switch presets. Chief chooses from the agents you've enabled and the models available when it assigns the work.
 
 ## Set up Tag Agent and Super Thread Agent
 
-Use **Tag** to set up Tag Agent and **Super Thread** to set up Super Thread Agent. When an agent is available, an illustration on a rounded glass panel plays above the role's settings. In the Super Thread illustration, several documents come together into one page with three diagrams. You can turn either role on independently. Hover over a choice marked with an info icon to see what it does.
+Use **Auto-Categorization** to set up Tag Agent and **Super Thread** to set up Super Thread Agent. When an agent is available, an illustration on a rounded glass panel plays above the role's settings. In the Super Thread illustration, several documents come together into one page with three diagrams. You can turn either role on independently. Hover over a choice marked with an info icon to see what it does.
 
 - **Agent off** stops automatic work for that role and keeps its existing tags or Super Threads and saved choices. Pending work resumes when you turn the agent back on.
 - **Use Chief** uses Chief's agent and model settings for future work.

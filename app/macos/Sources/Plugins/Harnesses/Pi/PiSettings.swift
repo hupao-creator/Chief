@@ -230,6 +230,7 @@ private struct PiDefaultFields: View {
     let formPage: Bool
     let snapshot: Bool
     let change: (JSONValue) -> Void
+    @Environment(\.nativeSettingsModelLabel) private var modelLabel
     @Environment(\.locale) private var locale
     private var models: [JSONValue] { if case .ready(let value) = resource.state { return value["models"]?.arrayValue ?? [] }; return [] }
     private var provider: JSONText { piText(value["provider"]) ?? "" }
@@ -245,7 +246,7 @@ private struct PiDefaultFields: View {
             NativeSettingsRow(label: piLocalized("提供商", locale)) {
                 NativeSettingsSelect(value: Binding(get: { provider }, set: { changeProvider($0) }), options: options(providers.map { ($0, $0.string) }, current: provider)).nativeSettingsControl("provider")
             }
-            NativeSettingsRow(label: piLocalized("模型", locale)) {
+            NativeSettingsRow(label: modelLabel ?? piLocalized("模型", locale)) {
                 NativeModelSelector(value: Binding(get: { modelValue }, set: { changeModel($0) }), options: options(available.map { (modelKey($0), ($0["provider"]?.stringValue ?? "") + " · " + ($0["name"]?.stringValue ?? "")) },
                     current: modelValue, label: (provider.codeUnits.isEmpty ? "" : provider.string + " · ") + model.string)).nativeSettingsControl("model")
             }

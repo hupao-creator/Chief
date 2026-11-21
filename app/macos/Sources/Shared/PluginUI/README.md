@@ -1174,6 +1174,9 @@ Read-only inherited profiles keep the disclosure and resource retry available.
 The host sets `nativeSettingsReadOnly`; the shared wrapper disables basic and
 advanced value controls without disabling inspection. The host also rejects
 value changes independently of the presentation state.
+Harness model rows accept an optional `nativeSettingsModelLabel` from the host.
+The Chief Agent settings tab supplies its localized model title.
+
 Hosts can supply `nativeSettingsBeforeAdvanced` for one host-owned region between
 basic fields and the disclosure; Pi snapshots use the same wrapper without an
 empty disclosure. The slot clears itself for descendants to avoid recursive

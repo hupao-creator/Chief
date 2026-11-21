@@ -377,6 +377,7 @@ private struct CodexProfileFields: View {
     let label: String
     var defaults: Binding<Bool>? = nil
     let change: (CodexThreadSettings) -> Void
+    @Environment(\.nativeSettingsModelLabel) private var modelLabel
     @Environment(\.locale) private var locale
 
     private var selected: CodexSettingsModel? { models.first { $0.value == value.text("model") } }
@@ -404,9 +405,9 @@ private struct CodexProfileFields: View {
     var body: some View {
         VStack(alignment: .leading, spacing: page ? 0 : 14) {
             NativeHarnessSettingsFields(defaults: defaults) {
-                CodexSettingsField(label: t("模型"), description: page ? nil : selected?.description, page: page) {
+                CodexSettingsField(label: modelLabel ?? t("模型"), description: page ? nil : selected?.description, page: page) {
                     NativeModelSelector(value: binding("model", setter: selectModel), options: modelOptions,
-                                        accessibilityLabel: label + " " + t("模型")).nativeSettingsControl("model")
+                                        accessibilityLabel: modelLabel ?? (label + " " + t("模型"))).nativeSettingsControl("model")
                         .disabled(disabled)
                 }
                 if explicitThinking { thinkingField } else { effortField }

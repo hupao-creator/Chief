@@ -29,6 +29,8 @@ private struct NativeSettingsBeforeAdvancedKey: EnvironmentKey { static var defa
 private struct NativeSettingsRowVerticalPaddingKey: EnvironmentKey { static let defaultValue = CGFloat(15) }
 private struct NativeSettingsGroupBottomSpacingKey: EnvironmentKey { static let defaultValue = CGFloat(22) }
 public extension EnvironmentValues {
+    /// Host-provided title for the primary model selector in a Harness form.
+    @Entry var nativeSettingsModelLabel: String? = nil
     /// Locks configuration values while allowing disclosures and resource retries.
     var nativeSettingsReadOnly: Bool {
         get { self[NativeSettingsReadOnlyKey.self] }

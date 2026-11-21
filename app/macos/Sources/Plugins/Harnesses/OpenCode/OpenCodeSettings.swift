@@ -129,6 +129,7 @@ private struct OpenCodeProfileFields: View {
     var defaults: Binding<Bool>? = nil
     var disabled = false
     let change: (JSONValue) -> Void
+    @Environment(\.nativeSettingsModelLabel) private var modelLabel
     @Environment(\.locale) private var locale
     private var presentation: OpenCodeSettingsPresentationData? { if case .ready(let data) = resource.state { data } else { nil } }
     private var models: [JSONValue] { presentation?.models ?? [] }
@@ -147,7 +148,7 @@ private struct OpenCodeProfileFields: View {
                     change(ocReplacing(base, key: "provider", value: next))
                 }, options: providerOptions).nativeSettingsControl("provider").disabled(disabled)
             }
-            NativeSettingsRow(label: t("模型")) {
+            NativeSettingsRow(label: modelLabel ?? t("模型")) {
                 NativeModelSelector(value: Binding(get: { selected.map { ocJSONStringID([$0["provider"]!, $0["id"]!]) } ?? value.ocText("model") ?? "" }, set: { key in
                     let model = models.first { ocJSONStringID([$0["provider"]!, $0["id"]!]) == key }
                     var next = base.objectValue ?? [:]
