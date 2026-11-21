@@ -128,8 +128,8 @@ Thread, Report and Moku history panels share
 `nativeReadingPanelClose` places the 32pt circular target 14pt from the panel's
 top-left edge. Pair it with `nativeReadingPanelViewport`: its default 48pt top
 clearance keeps both scrolling content and native scrollers below Close. The
-main Agent reader instead clears Close horizontally with its reserved history
-rail, allowing 22pt viewport insets at both ends. Report uses 8pt insets on all
+main Agent and Chief history readers clear Close horizontally with the history
+rail, allowing 22pt vertical viewport insets and additional Chief composer clearance. Report uses 8pt insets on all
 sides and `overlaysContent: true` for an opaque canvas backing under Close.
 The Report host clips the viewport with a 14pt radius before applying its 8pt
 insets, matching the outer panel's 22pt radius. Spacing outside the circle
@@ -264,11 +264,11 @@ semantic palette and locale follow the reader. This is presentation state only:
 content acquisition, decoding, caching and resource release are unchanged.
 See the [recording review and validation limits](../../../../../design/reading.md).
 
-The Agent reader hides its work visibility control when the mounted execution
+The shared Agent and Chief reader hides its work visibility control when the mounted execution
 content reports no displayable work. Missing reports during scoped loading remain
 unknown, and later content updates can restore the control. Summary admission
 and background terminal/task presence determine availability independently of the
-current work toggle; other conversation readers retain their controls.
+current work toggle.
 
 Agent execution summaries suppress a group only when every member explicitly
 reports no summary content and no positive reasoning usage is reported for that
@@ -276,8 +276,8 @@ group. Empty reasoning and completed Hooks without output qualify; tool calls,
 other activity kinds, running/failed/cancelled Hooks, interactions and unknown
 rows remain admitted. Classification follows content and native identity rather
 than position or zero counts. Lightweight Codex/Claude history carries output
-presence independently of stripped detail. Full/Moku readers retain the original
-disclosures and detail loading. See the [contract](../../../../../design/reading.md)
+presence independently of stripped detail. Agent and Chief summary rows do not
+acquire deferred detail. See the [contract](../../../../../design/reading.md)
 for the current execution-summary admission rules.
 
 Execution summaries label execution-scoped reported reasoning usage as “总共思考
@@ -437,7 +437,7 @@ visible-row projection is shared by the document and registration per body pass.
 See the [scroll contract](../../../../../design/reading.md)
 for the measured update counts and the remaining validation limits.
 
-Ordinary Agent Thread detail withholds assistant reply bodies while their native
+The shared Agent and Chief reader withholds assistant reply bodies while their native
 message status is `streaming`. While an execution is running or waiting for the
 user, each settled message renders its complete Markdown; a later streaming reply does not replace the
 last settled reply. Once the execution terminates, intermediate ordinary replies
@@ -453,8 +453,7 @@ Harness can leave a message marked streaming after settlement. OpenCode applies
 the gate to reply text parts, including child sessions, without hiding reasoning
 or tools in the same native message. Execution status, pending interactions,
 reasoning/tool records, composer and backend event delivery retain their own
-lifecycles. This policy lives in the four Harness readers, not the shared
-Markdown renderer or other conversation surfaces.
+lifecycles. The four Harness readers apply this policy before Markdown rendering.
 
 The following streaming renderer capability is separate from Agent Thread reply
 admission. Ordinary Agent main and Execution Sidecard readers withhold unfinished
@@ -542,7 +541,7 @@ does not become width-dependent merely because its document enables capsules.
 See the [Note performance measurements](../../../../../tools/verification/moku-note-performance/README.md)
 for the isolated production-control comparison and its visual limitations.
 
-[Conversation/ThreadConversation.swift](Conversation/ThreadConversation.swift) and [ThreadTimeline.swift](Conversation/ThreadTimeline.swift) organize reading from the Harness's public turn index. [ThreadExecutionGroups.swift](Conversation/ThreadExecutionGroups.swift) presents adjacent execution rows under a summary with reasoning/tool counts and reported reasoning usage. Only the latest process summary in the latest running Agent execution carries a left-to-right text highlight, and only while it is also the final message-stream group. Harnesses classify the native tail before withholding streaming replies; a later assistant reply stops the sweep immediately, including before its text is mounted. OpenCode checks the last native part because replies, reasoning and tools can share a message. The 64pt band uses opaque strong reading ink with a broad center and soft edges. Only while motion is admitted, its text base uses 55% muted ink so both sides of the band visibly recede; the wrench keeps normal ink. Inactive scenes and pending entrance restore normal static ink. Colors follow the light/dark palette; earlier groups, history, completed/interrupted/failed executions and waiting-for-user states stay static. Harnesses supply execution-running state separately from reader activity. The decorative leaf uses the shared frame cadence, pauses outside the active scene or before reading admission; it adds no accessibility content or hit target. The highlight travels at roughly 180pt/s with a short gap between passes, without animating the wrench or changing text layout. In Agent Thread detail, the reading header's execution visibility control shows only this summary: nested Used tools group titles, Hooks, tool calls, commands, reasoning bodies and failed-tool diagnostics are details and never mount. Agent-only background terminal/task sections likewise show static counts/status rather than commands or descriptions, and hide with work; task failure is not a standalone Harness error. Summary-only historical groups do not acquire the scoped loader in [ThreadDeferredExecution.swift](Conversation/ThreadDeferredExecution.swift). Other conversation surfaces retain full member rows and scoped historical demand while visible. Execution membership takes precedence over attention styling, so a tool failure cannot escape the visibility group. Standalone errors and pending interactions keep their own timeline rows; a visible nonmember splitting a native run receives distinct summary identities. The summary itself has no disclosure arrow, hover treatment, keyboard focus or accessibility/reading action. Individual activity disclosures on other conversation surfaces retain their existing behavior.
+[Conversation/ThreadConversation.swift](Conversation/ThreadConversation.swift) and [ThreadTimeline.swift](Conversation/ThreadTimeline.swift) organize reading from the Harness's public turn index. [ThreadExecutionGroups.swift](Conversation/ThreadExecutionGroups.swift) presents adjacent execution rows under a summary with reasoning/tool counts and reported reasoning usage. Only the latest process summary in the running execution carries a left-to-right text highlight, and only while it is also the final message-stream group. Harnesses classify the native tail before withholding streaming replies; a later assistant reply stops the sweep immediately, including before its text is mounted. OpenCode checks the last native part because replies, reasoning and tools can share a message. The 64pt band uses opaque strong reading ink with a broad center and soft edges. Only while motion is admitted, its text base uses 55% muted ink so both sides of the band visibly recede; the wrench keeps normal ink. Inactive scenes and pending entrance restore normal static ink. Colors follow the light/dark palette; earlier groups, history, completed/interrupted/failed executions and waiting-for-user states stay static. Harnesses supply execution-running state separately from reader activity. The decorative leaf uses the shared frame cadence, pauses outside the active scene or before reading admission; it adds no accessibility content or hit target. The highlight travels at roughly 180pt/s with a short gap between passes, without animating the wrench or changing text layout. In Agent detail and Chief history, the reading header's execution visibility control shows only this summary: nested Used tools group titles, Hooks, tool calls, commands, reasoning bodies and failed-tool diagnostics are details and never mount. Agent-only background terminal/task sections likewise show static counts/status rather than commands or descriptions, and hide with work; task failure is not a standalone Harness error. Summary-only historical groups do not acquire the scoped loader in [ThreadDeferredExecution.swift](Conversation/ThreadDeferredExecution.swift). The full member-row presentation uses scoped historical demand when explicitly selected. Execution membership takes precedence over attention styling, so a tool failure cannot escape the visibility group. Standalone errors and pending interactions keep their own timeline rows; a visible nonmember splitting a native run receives distinct summary identities. The summary itself has no disclosure arrow, hover treatment, keyboard focus or accessibility/reading action. Individual activity disclosures on other conversation surfaces retain their existing behavior.
 
 Pending connection/status text in an otherwise empty active execution reuses
 the summary's `ThreadLoadingTextStyle`, including its 64pt band, 180pt/s travel,
@@ -708,7 +707,7 @@ closing one cannot revoke the other's content.
 
 [ThreadReadingHeader.swift](Conversation/ThreadReadingHeader.swift) places the
 mounted turn's resolved author under the title, beside the execution visibility
-control. Agent detail has no user-message visibility toggle, including historical
+control. Agent detail and Chief history have no user-message visibility toggle, including historical
 and execution-card visits. Harness readers explicitly admit assistant replies and
 execution records, plus errors (including error-level notices); general warnings
 and input messages do not become work rows. Failed assistant messages and independent
@@ -732,10 +731,9 @@ user instruction, trimmed at its edges; blank or unavailable instructions use th
 row's execution timestamp. This applies to new executions awaiting naming and
 older executions without stored names. The fallback is a live reading projection:
 later generated names replace it without persisting the instruction as a title. The current catalog title and other executions' instructions are never substituted. This also applies when main retains an older execution while the newest one
-occupies a Sidecard. Thread title/emoji remain catalog metadata. Each Harness
-entry sets `threadAgentDetail` from the public thread's Moku/current-history identity; Moku conversations keep their original
-input visibility controls, prompts and notices. No stored history or other
-surface is filtered. Narrow widths wrap the control and truncate the visible
+occupies a Sidecard. Thread title and emoji remain catalog metadata. The four Harnesses use the same
+execution reader for ordinary Threads, the current Chief session and its archives.
+The public Chief identity governs coordinator data and permitted actions. Narrow widths wrap the control and truncate the visible
 author while preserving its complete accessible label, tooltip and text selection. For the selected running execution, work stays visible and its visibility control
 is absent; completion restores the previous visibility behavior. Historical and
 result visits compare their own execution identity with the running execution. The author comes from the actual Harness-rendered body, including runtime model
@@ -1256,12 +1254,12 @@ keep their existing presentation. `NativeReadingPanelGeometry` is the shared
 viewport/margin contract for production and the standalone native fixture.
 
 `nativeReadingPanelViewport()` reserves an inner frame of 8pt horizontally,
-48pt above and 22pt below by default for Moku history
-reading panels. Report panels opt into
+48pt above and 22pt below by default. Report panels opt into
 `topInset: 8, balancedVerticalInsets: true`, reserving 8pt at both ends. The main
-Agent Thread panel and live execution Sidecard use `topInset: 22`, matching their
-bottom viewport clearance. The Sidecard has no Close control of its own.
-The main Agent reader and the related-execution reader in a Report overlay
+Agent and Chief panels share `nativeThreadReadingViewport`. Both use 22pt
+vertical clearance, with additional room for an overlapping Chief composer. The
+live execution Sidecard also uses a 22pt top inset. The Sidecard has no Close control of its own.
+The Agent and Chief readers and the related-execution reader in a Report overlay
 the TOC on the page stack. The timeline reports the actual leading edge of its
 centered column. Within that margin each mark has a hit target up to 24pt wide
 and one row high, inset up to 4pt from the viewport edge. The index keeps 64pt
@@ -1336,7 +1334,7 @@ inset gives the same 34pt boundary at each scroll limit. Its horizontal insets,
 scrolling, launcher and dismissal ownership remain unchanged. Report uses the
 balanced viewport argument with an 8pt top inset; its related-execution reader
 retains its own page-stack spacing.
-Moku viewport defaults are unchanged.
+Chief history uses the main Agent viewport and its separate capsule's bottom clearance.
 
 No mounted viewport correctness replay is configured in this source tree.
 

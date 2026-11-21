@@ -9,7 +9,7 @@ import ChiefPluginAPI
 @testable import ChiefHarnessPi
 import SwiftUI
 
-private struct Mismatch: Error, CustomStringConvertible {
+struct Mismatch: Error, CustomStringConvertible {
     var description: String
     init(_ message: String) { description = message }
 }
@@ -38,7 +38,7 @@ private func inspect(_ id: String, _ raw: JSONValue, _ presence: ThreadExecution
     }
 }
 
-private func checkRows(_ items: [ThreadTranscriptItem], stage: String, deferred: Bool) throws {
+private func checkRows(_ items: [ThreadTranscriptItem], stage: String, deferred: Bool, hasDispatch: Bool) throws {
     let live = ["stream", "reply", "waiting"].contains(stage)
     let layout = ThreadTranscriptLayout(items, agentDetail: true, active: live)
     var sequence: [String] = []
@@ -54,6 +54,11 @@ private func checkRows(_ items: [ThreadTranscriptItem], stage: String, deferred:
                 throw Mismatch("Missing reasoning body or summary: \(text)")
             }
             sequence.append("reasoning")
+        case let .activity(tool) where tool.id == "dispatch":
+            guard deferred || tool.label == "create_thread", tool.status == "completed", tool.countsAsTool, row.kind == .work else {
+                throw Mismatch("Missing completed dispatch call \(tool)")
+            }
+            sequence.append("dispatch")
         case let .activity(tool):
             guard tool.label.contains("inspect"), tool.status == "failed", tool.countsAsTool, row.kind == .work,
                   deferred || tool.detail?.contains("tool diagnostic") == true else { throw Mismatch("Tool result \(tool)") }
@@ -65,7 +70,9 @@ private func checkRows(_ items: [ThreadTranscriptItem], stage: String, deferred:
         default: throw Mismatch("Unexpected occurrence \(row.item.id)")
         }
     }
-    var expected = [(live ? "content" : "work") + " First note", "Retry once", "reasoning", "tool"]
+    var expected = [(live ? "content" : "work") + " First note", "Retry once", "reasoning"]
+    if hasDispatch { expected.append("dispatch") }
+    expected.append("tool")
     if stage != "stream" { expected.append("content " + final) }
     if stage == "failed" { expected.append("error") }
     guard sequence == expected, layout.hasWork() else { throw Mismatch("Expected \(expected), got \(sequence)") }
@@ -115,7 +122,7 @@ private func checkRetained(_ id: String, _ items: [ThreadTranscriptItem], sample
     }
 }
 
-@MainActor private func textViews(_ view: NSView) -> [NSTextView] {
+@MainActor func textViews(_ view: NSView) -> [NSTextView] {
     if let text = view as? NSTextView { return [text] }
     return view.subviews.flatMap(textViews)
 }
@@ -168,15 +175,22 @@ private func checkRetained(_ id: String, _ items: [ThreadTranscriptItem], sample
 }
 
 @main struct Replay {
-    @MainActor static func main() async {
+    @MainActor static func main() throws {
+        try prepareIsolatedNativeReplay()
+        NativeTypography.registerFonts()
+        let app = NSApplication.shared
+        app.setActivationPolicy(.accessory)
+        Task { await run(); app.terminate(nil) }
+        app.run()
+    }
+
+    @MainActor private static func run() async {
         do {
-            try prepareIsolatedNativeReplay()
-            NSApplication.shared.setActivationPolicy(.prohibited)
             let directory = URL(fileURLWithPath: CommandLine.arguments[1])
-            let registry = try NativePlugins.make().harnesses
+            let plugins = try NativePlugins.make()
             var results: [[String: Any]] = []
             for id in ["codex", "claude", "pi", "opencode"] {
-                let plugin = try registry.require(JSONText(id))
+                let plugin = try plugins.harnesses.require(JSONText(id))
                 for stage in stages + (["pi", "claude"].contains(id) ? ["parts"] : []) {
                     do {
                         let sample = try JSONValue(data: Data(contentsOf: directory.appendingPathComponent("\(id)-\(stage).json")))
@@ -200,12 +214,13 @@ private func checkRetained(_ id: String, _ items: [ThreadTranscriptItem], sample
                                       resource["state"] != nil || (tool.input?.contains("pwd") == true && tool.detail == "workspace")
                                 else { throw Mismatch("Lost interleaved Pi call or output") }
                             } else if stage == "retained" { try checkRetained(id, items, sample: sample) }
-                            else { try checkRows(items, stage: stage, deferred: resource["kind"] == .text("deferred-execution")) }
+                            else { try checkRows(items, stage: stage, deferred: resource["kind"] == .text("deferred-execution"), hasDispatch: id == "codex") }
                         }
                         let mounted = try await mount(plugin, sample: sample, id: id, stage: stage)
                         results.append(["harness": id, "stage": stage, "markdown": mounted, "directory": preview])
                     } catch { throw Mismatch("\(id)/\(stage): \(error)") }
                 }
+                results += try await replayConversationReaders(harness: id, directory: directory, plugins: plugins)
             }
             try JSONSerialization.data(withJSONObject: results, options: [.prettyPrinted, .sortedKeys])
                 .write(to: URL(fileURLWithPath: CommandLine.arguments[2]), options: .atomic)

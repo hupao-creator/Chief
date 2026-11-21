@@ -182,9 +182,10 @@ The nonactivating panel mounts the production Overview Dock and current Chief
 history in turn. It delivers local AppKit key events, pastes through a private
 pasteboard, edits the text and submits through Return. The replay checks that
 typing `@` opens no completion UI and that bare `@` and messages with and without
-`@` reach the submission callback as exact text parts. **Show user messages**
-reveals a recorded message with a directory mention from fixture subscription
-data. A reopened draft sends a saved catalog path as plain text. The replay
+`@` reach the submission callback as exact text parts. The earlier run's table
+of contents entry uses its stored instruction, including a literal directory
+mention, and opens that run. Return in that view submits through the current
+Chief composer. A reopened draft sends a saved catalog path as plain text. The replay
 feeds host metadata to the draft action used by the directory picker's
 **Choose** button and checks that the explicit selection stays structured.
 The replay checks the production macOS panel's selection settings, then exercises

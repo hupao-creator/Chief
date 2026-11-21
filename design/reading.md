@@ -11,15 +11,18 @@ scenarios. Actual runs and their fixed revisions are separate evidence.
 
 ## Content and execution identity
 
-Agent detail displays settled assistant replies and compact ordinary follow-up
+Agent detail and Chief history display settled assistant replies and compact live follow-up
 text/time rows. Initial/internal user input, plans and ordinary info/warning
 notices do not appear. Pending permissions/questions and independent errors remain
 readable. Unfinished assistant bodies stay hidden until the message settles.
 Running/waiting executions retain settled replies; terminal executions retain the
 last non-error reply and an explicitly targeted reply outside work summaries.
-Intermediate replies and failed tools remain execution work. Agent detail shows
-reasoning/tool-count summaries, not nested commands, reasoning bodies or tool
-diagnostics; other conversation surfaces retain their disclosure policy.
+Intermediate replies and failed tools remain execution work. Both readers show
+reasoning and tool counts when work is visible. The current Chief session and
+read-only archives consume their owning Harness's manifest and scoped turn
+resources. The coordinator's audit identifies the child Thread admitted by a delegation.
+Note links carry the Harness execution and message identities into the reader.
+The current Chief session owns the history composer.
 Empty no-output bookkeeping does not create a visible execution summary.
 
 Codex, Claude Code, Pi Agent and OpenCode each decode their own native protocol
@@ -83,7 +86,8 @@ identity fences all preparation and completion callbacks.
 
 [Chief history](../app/macos/Sources/Host/MokuScene/README.md) uses the same
 settled card frame. Its live reader and bottom input capsule share one native
-overlay that fades and moves at a fixed layout. Its return can reverse while
+overlay that fades and moves at a fixed layout. The document uses the Agent
+reader’s scoped loading skeleton and one-time 200ms text entrance. Its return can reverse while
 retaining the same reading visit.
 
 The reading parent uses the window's existing material, without capturing the

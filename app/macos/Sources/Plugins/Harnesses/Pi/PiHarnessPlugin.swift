@@ -49,7 +49,7 @@ public struct PiHarnessPlugin: HarnessPlugin {
     }
     public func projectMokuDock(input: HarnessThreadInput) throws -> HarnessMokuPresentation? { piMokuPresentation(try PiState(input.thread.sessionState)) }
     public func threadView(input: HarnessThreadInput, actions: HarnessThreadActions, context: HarnessRenderContext) -> some View {
-        PiThreadView(input: input, actions: actions, context: context).environment(\.threadAgentDetail, input.thread.moku != true && !input.thread.mokuHistory).id(input.thread.id)
+        PiThreadView(input: input, actions: actions, context: context).id(input.thread.id)
     }
     public func overviewCard(input: HarnessThreadInput, projection: PiOverviewView, respond: @escaping (HarnessRespondRequest) async throws -> Void, openThread: @escaping () -> Void) -> some View {
         PiOverviewCard(input: input, projection: projection, respondToInteraction: respond, openThread: openThread)

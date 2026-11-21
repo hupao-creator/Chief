@@ -49,6 +49,15 @@ Opening **Chief history** from Note dismisses Note. History covers the outside
 Dock and owns the current-session composer. See the
 [desktop replay](../../../../../tools/e2e/README.md#chief-history-panel).
 
+The current session and read-only archives use the ordinary Harness execution
+reader. Its native turn timeline owns reply settlement, errors, author, usage,
+work summaries and exact message anchors. Chief's audit records feed the Dock,
+dispatch and Note. A successful delegation records admission to the child
+Thread. The child's result belongs to that Thread. Message links carry the
+Harness's opaque target into the reader, including for a reply within collapsed
+work. Choosing a historical turn leaves the composer bound to the current
+Chief session. [Execution reading rules](../../../../../design/reading.md#content-and-execution-identity)
+
 ## Dock and composer
 
 Dock and history composer placeholders stay on one line and truncate at the tail.
@@ -92,7 +101,7 @@ its Escape and Cancel behavior. Cancelling adds no chips and leaves the draft
 available. The same current Chief draft and send route serve Overview and
 Chief history. The editor treats `@` as ordinary text. The send route appends
 saved catalog directory chips to the message as plain paths. Explicit directory
-selections from either chooser retain their structured form across draft restoration. The history reader displays the stored message, and receipt lookup uses
+selections from either chooser retain their structured form across draft restoration. An earlier run with no generated title uses its stored instruction, including literal directory mentions. Receipt lookup uses
 the saved command ID. Chief's delegation tools take text prompts. When a
 delegated Agent needs a file, its prompt can refer to the file by its managed path.
 

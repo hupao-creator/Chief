@@ -87,13 +87,18 @@ public struct NativeMokuThreadView: View {
 
     private var conversation: some View {
         VStack(spacing: 0) {
-            NativeHarnessThreadView(host: harnessHost, input: HarnessThreadInput(thread: thread, readingTarget: readingTarget),
-                routes: NativeHarnessThreadRoutes(interrupt: { onCancel() }, openFollowUp: { initialDraft in
-                    draft.text = initialDraft.string
-                    focusRequest &+= 1
-                }, openExternal: externalRoute))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if let message = displayError, !message.isEmpty, draft.error == nil {
+            NativeThreadPreparedReader(bodyLayoutReady: entranceReady) {
+                NativeHarnessThreadView(host: harnessHost, input: HarnessThreadInput(thread: thread, readingTarget: readingTarget),
+                    routes: NativeHarnessThreadRoutes(interrupt: { onCancel() }, openFollowUp: { initialDraft in
+                        draft.text = initialDraft.string
+                        focusRequest &+= 1
+                    }, openExternal: externalRoute))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .environment(\.nativeThreadUsesLoadingSkeleton, true)
+            // Execution diagnostics belong to the selected turn. Only a host
+            // operation error can apply independently of the open document.
+            if let message = error, !message.isEmpty, draft.error == nil {
                 Text(message).font(NativeTypography.inter(size: 10)).foregroundStyle(NativePalette.thread.danger.swiftUI)
                     .textSelection(.enabled).padding(.horizontal, 24).padding(.bottom, 12)
             }
@@ -106,11 +111,5 @@ public struct NativeMokuThreadView: View {
                 open(value)
             }
         }
-    }
-    private var displayError: String? {
-        if let error, !error.isEmpty { return error }
-        guard let execution = thread.observation.latestExecution, execution.status == .failed else { return nil }
-        return execution.error?.string ?? execution.summary?.string
-            ?? (locale.language.languageCode?.identifier == "zh" ? "操作失败" : "Operation failed")
     }
 }

@@ -6,6 +6,7 @@
 {"type":"message_end","message":{"role":"assistant","timestamp":20,"content":[{"type":"thinking","thinking":"check once"}],"stopReason":"toolUse"}}
 {"type":"tool_execution_start","toolCallId":"call","toolName":"inspect","args":{}}
 {"type":"tool_execution_end","toolCallId":"call","toolName":"inspect","result":{"content":[{"type":"text","text":"tool diagnostic"}]},"isError":true}
+{"sample":"work"}
 {"type":"message_start","message":{"role":"assistant","timestamp":30,"content":[]}}
 {"type":"message_update","assistantMessageEvent":{"type":"text_delta","contentIndex":0,"delta":"# Res"}}
 {"sample":"stream"}
