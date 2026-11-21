@@ -1,0 +1,62 @@
+{
+  "version": 2,
+  "nativeNotifications": [],
+  "turns": [
+    {
+      "executionId": "run",
+      "createdAt": 1,
+      "finishedAt": 9,
+      "updatedAt": 9,
+      "status": "completed",
+      "prompts": [
+        "Initial"
+      ],
+      "promptAttachments": [
+        []
+      ],
+      "interactions": [],
+      "plan": [],
+      "notices": [],
+      "activities": [],
+      "timeline": [
+        {
+          "id": "r",
+          "kind": "assistant",
+          "status": "complete",
+          "content": "Saved **answer**.",
+          "createdAt": 3
+        }
+      ]
+    }
+  ],
+  "forkHistory": {
+    "sourceSessionId": "ancestor",
+    "items": [
+      {
+        "id": "u",
+        "kind": "user-message",
+        "content": "Earlier turn",
+        "createdAt": 1
+      },
+      {
+        "id": "a",
+        "kind": "activity",
+        "activity": {
+          "kind": "command",
+          "label": "inspect",
+          "detail": "saved output",
+          "status": "completed",
+          "toolName": "inspect"
+        },
+        "createdAt": 2
+      },
+      {
+        "id": "f",
+        "kind": "assistant",
+        "content": "Ancestor answer",
+        "status": "complete",
+        "createdAt": 3
+      }
+    ]
+  }
+}

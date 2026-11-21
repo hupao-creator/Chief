@@ -108,15 +108,9 @@ struct ClaudeInteractionView: View {
     var body: some View {
         ThreadDetailRequest {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 9) {
-                NativeIcon(name: kind == "permission" ? "ShieldAlert" : "FileQuestion", size: 15)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(interaction["title"]?.stringValue ?? "").font(NativeTypography.inter(size:16,weight:600)).lineSpacing(8)
-                    if let description = interaction["description"]?.stringValue { Text(description).font(NativeTypography.inter(size:13)).lineSpacing(8.45).padding(.top,4).foregroundStyle(NativePalette.thread.muted.swiftUI) }
-                    if let tool = interaction["toolName"]?.stringValue { Text(tool).font(NativeTypography.mono(size: 11)) }
-                }
-            }.padding(.bottom,5)
-            if publicInteraction == nil { ClaudeFailure(message: "该请求已失效。") }
+            ThreadRequestHeader(interaction["title"]?.stringValue ?? "", description: interaction["description"]?.stringValue, question: kind == "question")
+            if let tool = interaction["toolName"]?.stringValue { Text(tool).font(NativeTypography.mono(size: 11)) }
+            if publicInteraction == nil { ThreadTranscriptFailure(message: t("该请求已失效。")) }
             else {
                 if let command = interaction["input"]?["command"]?.stringValue, kind == "permission" { Text(command).font(NativeTypography.mono(size: 11)).textSelection(.enabled) }
                 if let cwd = interaction["input"]?["cwd"]?.stringValue, kind == "permission" { LabeledContent(t("工作目录"), value: cwd) }
@@ -134,12 +128,12 @@ struct ClaudeInteractionView: View {
                     if interaction["schema"] != nil, let display = claudeInteractionDisplay(interaction,field:"schema") { DisclosureGroup(t("字段约束")) { Text(display.string).font(NativeTypography.mono(size: 11)).textSelection(.enabled) } }
                     Text(t("JSON 表单内容")); TextEditor(text: $jsonText).nativeControlScrollbars().font(NativeTypography.mono(size: 12)).modifier(ClaudeRequestEditor(height:110))
                 } else { Text(t("回复 Claude")); TextEditor(text: $message).nativeControlScrollbars().modifier(ClaudeRequestEditor(height:75)) }
-                if missingDisplay { ClaudeFailure(message:"JSON 展示文本不可用") }
-                if let error { ClaudeFailure(message: error) }
-                HStack(spacing: 8) {
+                if missingDisplay { ThreadTranscriptFailure(message: t("JSON 展示文本不可用")) }
+                if let error { ThreadTranscriptFailure(message: claudeRedacted(error)) }
+                ThreadRequestActions {
                     ForEach(visibleActions, id: \.id) { action in
                         Button(t(claudeActionLabel(action, kind: kind))) { perform(action) }
-                            .buttonStyle(ClaudeRequestButtonStyle(primary:action.intent == .submit || action.id == "allow"))
+                            .buttonStyle(ThreadRequestButtonStyle(primary: action.intent == .submit || action.id == "allow"))
                             .disabled(busy != nil || submitDisabled(action))
                     }
                     if busy != nil { ProgressView().controlSize(.small) }
@@ -216,22 +210,5 @@ private struct ClaudeRequestEditor: ViewModifier {
             .padding(.vertical,10).padding(.horizontal,12).frame(height:height)
             .background(Color.clear,in:RoundedRectangle(cornerRadius:6))
             .overlay(RoundedRectangle(cornerRadius:6).stroke(NativePalette.thread.line.swiftUI))
-    }
-}
-private struct ClaudeRequestButtonStyle: ButtonStyle {
-    let primary:Bool
-    func makeBody(configuration:Configuration) -> some View { ClaudeRequestButtonBody(configuration:configuration,primary:primary) }
-}
-private struct ClaudeRequestButtonBody: View {
-    let configuration:ButtonStyleConfiguration
-    let primary:Bool
-    @State private var hovered=false
-    @Environment(\.isEnabled) private var enabled
-    var body: some View {
-        configuration.label.font(NativeTypography.inter(size:11,weight:500))
-            .padding(.horizontal,12).padding(.vertical,8).frame(minHeight:34)
-            .foregroundStyle((primary ? NativePalette.thread.canvas : NativePalette.thread.muted).swiftUI)
-            .background(primary ? NativePalette.thread.accent.swiftUI.opacity(configuration.isPressed ? 0.85 : 1) : hovered || configuration.isPressed ? NativePalette.thread.surface.swiftUI : .clear,in:RoundedRectangle(cornerRadius:8))
-            .contentShape(RoundedRectangle(cornerRadius:8)).opacity(enabled ? 1 : 0.45).onHover { hovered=$0 }
     }
 }

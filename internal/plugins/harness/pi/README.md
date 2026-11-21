@@ -153,6 +153,15 @@ missing mappings, disabled levels and request overrides remain unavailable.
 Unsupported or unconfirmed thinking dialects stay
 unavailable instead of silently selecting a different setting.
 
+Version 1 reading state stores assistant text and thinking once. Interleaved
+parts can additionally carry their kind and UTF-16 length, or a tool-call ID.
+The reader resolves these positions against the same execution's messages.
+Repeated completion snapshots with the same native identity update the existing
+reply. Tool start and result share one call and can retain separate input and
+output. RPC extension notifications retain their text and severity as notices.
+For saved terminal runs with a remaining streaming row, the owning execution
+supplies its display status on read. [Thread Markdown](../README.md#thread-markdown)
+
 ## Initial response cards
 
 The overview renderer supplies `initialResponseScope`, computed from the full

@@ -1,6 +1,7 @@
 package pi
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -74,27 +75,28 @@ type Todo struct {
 // Event contains one normalized native event. Only settled includes Completion;
 // agent_end is deliberately ignored because queued native work may follow it.
 type Event struct {
-	Type       string      `json:"type"`
-	Phase      string      `json:"phase,omitempty"`
-	Text       string      `json:"text,omitempty"`
-	Thinking   string      `json:"thinking,omitempty"`
-	Model      string      `json:"model,omitempty"`
-	Provider   string      `json:"provider,omitempty"`
-	StopReason string      `json:"stopReason,omitempty"`
-	Error      string      `json:"error,omitempty"`
-	Usage      *Usage      `json:"usage,omitempty"`
-	CallID     string      `json:"callId,omitempty"`
-	Name       string      `json:"name,omitempty"`
-	IsError    bool        `json:"isError,omitempty"`
-	Todos      []Todo      `json:"todos,omitzero"`
-	ID         string      `json:"id,omitempty"`
-	Method     string      `json:"method,omitempty"`
-	Title      string      `json:"title,omitempty"`
-	Message    string      `json:"message,omitempty"`
-	Prefill    *string     `json:"prefill,omitempty"`
-	Options    []string    `json:"options,omitempty"`
-	Timeout    *float64    `json:"timeout,omitempty"`
-	Completion *Completion `json:"completion,omitempty"`
+	ContentOrder []ContentBlockOrder `json:"contentOrder,omitempty"`
+	Type         string              `json:"type"`
+	Phase        string              `json:"phase,omitempty"`
+	Text         string              `json:"text,omitempty"`
+	Thinking     string              `json:"thinking,omitempty"`
+	Model        string              `json:"model,omitempty"`
+	Provider     string              `json:"provider,omitempty"`
+	StopReason   string              `json:"stopReason,omitempty"`
+	Error        string              `json:"error,omitempty"`
+	Usage        *Usage              `json:"usage,omitempty"`
+	CallID       string              `json:"callId,omitempty"`
+	Name         string              `json:"name,omitempty"`
+	IsError      bool                `json:"isError,omitempty"`
+	Todos        []Todo              `json:"todos,omitzero"`
+	ID           string              `json:"id,omitempty"`
+	Method       string              `json:"method,omitempty"`
+	Title        string              `json:"title,omitempty"`
+	Message      string              `json:"message,omitempty"`
+	Prefill      *string             `json:"prefill,omitempty"`
+	Options      []string            `json:"options,omitempty"`
+	Timeout      *float64            `json:"timeout,omitempty"`
+	Completion   *Completion         `json:"completion,omitempty"`
 }
 
 func piRecord(value any, field string) (map[string]any, error) {
@@ -199,6 +201,63 @@ func piContent(value any, kind string) (string, error) {
 	return strings.Join(parts, "\n"), nil
 }
 
+// The text and thinking aggregates own the bytes. Lengths locate native blocks
+// inside their respective newline-joined aggregate without storing a second body.
+type ContentBlockOrder struct {
+	Kind       string `json:"kind"`
+	Length     int    `json:"length,omitempty"`
+	CallID     string `json:"callId,omitempty"`
+	HasContent bool   `json:"hasContent,omitempty"`
+}
+
+// Some RPC versions only echo a timestamp. Correlate repeats within a
+// message lifecycle; a new start after settlement always opens a new row.
+func piAssistantIdentity(message map[string]any) string {
+	if id, ok := message["id"].(string); ok && id != "" {
+		return "id:" + id
+	}
+	if timestamp, err := piCount(message["timestamp"], "message timestamp"); err == nil {
+		return fmt.Sprintf("time:%d", timestamp)
+	}
+	return ""
+}
+
+// Retain the identity of long native calls within the bounded public wire field.
+func piToolCallID(id string) string {
+	if len(id) <= 1024 || utf16Length(id) <= 1024 {
+		return id
+	}
+	return fmt.Sprintf("pi-call:%x", sha256.Sum256([]byte(id)))
+}
+
+func piContentOrder(value any) []ContentBlockOrder {
+	blocks, _ := value.([]any)
+	var order []ContentBlockOrder
+	for _, raw := range blocks {
+		block, _ := raw.(map[string]any)
+		kind, _ := block["type"].(string)
+		switch kind {
+		case "text", "thinking":
+			content, _ := block[kind].(string)
+			order = append(order, ContentBlockOrder{Kind: kind, Length: int(utf16Length(content)), HasContent: kind == "thinking" && strings.TrimSpace(content) != ""})
+		case "toolCall":
+			if id, ok := block["id"].(string); ok && id != "" {
+				order = append(order, ContentBlockOrder{Kind: kind, CallID: piToolCallID(id)})
+			}
+		}
+	}
+	// The ordinary thinking-then-text layout is already lossless in the two
+	// aggregates. Keep the extra ordering facts only when they add information.
+	seenText := false
+	for _, block := range order {
+		if block.Kind == "toolCall" || block.Kind == "thinking" && seenText {
+			return order
+		}
+		seenText = seenText || block.Kind == "text"
+	}
+	return nil
+}
+
 func piUsage(value any) (*Usage, error) {
 	source, err := piRecord(value, "usage")
 	if err != nil {
@@ -287,7 +346,8 @@ func decodeEvent(frame map[string]any) (*Event, error) {
 		if message["role"] != "assistant" {
 			return nil, nil
 		}
-		e := &Event{Type: "assistant", Phase: strings.TrimPrefix(typ, "message_")}
+		e := &Event{Type: "assistant", Phase: strings.TrimPrefix(typ, "message_"), ContentOrder: piContentOrder(message["content"])}
+		e.ID = piAssistantIdentity(message)
 		e.Text, err = piContent(message["content"], "text")
 		if err != nil {
 			return nil, err
@@ -366,7 +426,7 @@ func decodeEvent(frame map[string]any) (*Event, error) {
 		}
 		switch method {
 		case "notify", "setStatus", "setWidget", "setTitle", "set_editor_text":
-			e := &Event{Type: "notification", Method: method}
+			e := &Event{Type: "notification", Method: method, IsError: method == "notify" && frame["notifyType"] == "error"}
 			value, hasValue := frame["text"]
 			for _, key := range []string{"message", "statusText", "title"} {
 				if frame[key] != nil {
@@ -461,6 +521,9 @@ func (d *eventDecoder) decode(frame map[string]any) (*Event, error) {
 		if previous != nil && previous["type"] != kind {
 			return nil, fmt.Errorf("Pi assistant content type changed while streaming")
 		}
+		if phase == "start" && previous != nil {
+			return nil, nil
+		}
 		value := ""
 		if phase == "end" {
 			value, err = piText(delta["content"], "completed content")
@@ -499,6 +562,9 @@ func (d *eventDecoder) decode(frame map[string]any) (*Event, error) {
 		return event, err
 	}
 	if event.Type == "assistant" {
+		if event.Phase == "start" && d.assistant != nil && event.ID != "" && event.ID == piAssistantIdentity(d.assistant) {
+			return nil, nil
+		}
 		d.reset()
 		if event.Phase != "end" {
 			d.assistant, _ = piRecord(frame["message"], "message")
@@ -506,7 +572,7 @@ func (d *eventDecoder) decode(frame map[string]any) (*Event, error) {
 			if content, ok := d.assistant["content"].([]any); ok {
 				for index, block := range content {
 					item, _ := piRecord(block, "content block")
-					if item["type"] == "text" || item["type"] == "thinking" {
+					if item["type"] == "text" || item["type"] == "thinking" || item["type"] == "toolCall" {
 						d.blocks[int64(index)] = cloneRecord(item)
 					}
 				}

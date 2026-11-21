@@ -1,0 +1,18 @@
+{"method":"item/completed","params":{"item":{"type":"agentMessage","id":"m1","text":"First note"}}}
+{"steer":"Retry once"}
+{"method":"item/reasoning/summaryTextDelta","params":{"itemId":"r","summaryIndex":0,"delta":"check once"}}
+{"method":"item/started","params":{"item":{"type":"dynamicToolCall","id":"call","tool":"inspect","arguments":{}}}}
+{"method":"item/completed","params":{"item":{"type":"dynamicToolCall","id":"call","tool":"inspect","arguments":{},"status":"failed","error":{"message":"tool diagnostic"}}}}
+{"method":"item/agentMessage/delta","params":{"itemId":"m2","delta":"# Res"}}
+{"sample":"stream"}
+{"method":"item/completed","params":{"item":{"type":"agentMessage","id":"m2","text":"# Result\n\nUse **café**."}}}
+{"method":"item/completed","params":{"item":{"type":"agentMessage","id":"m2","text":"# Result\n\nUse **café**."}}}
+{"sample":"reply"}
+{"when":"waiting","method":"item/commandExecution/requestApproval","id":11,"params":{"itemId":"approval","command":"inspect"}}
+{"sample":"waiting","when":"waiting"}
+{"method":"turn/completed","params":{"turn":{"id":"run","status":"completed","items":[{"type":"agentMessage","id":"m1","text":"First note"},{"type":"agentMessage","id":"m2","text":"# Result\n\nUse **café**."}]}},"when":"success"}
+{"method":"error","params":{"error":{"message":"independent failure"},"willRetry":false},"when":"failure"}
+{"method":"turn/completed","params":{"turn":{"id":"run","status":"failed","error":{"message":"independent failure"}}},"when":"failure"}
+{"sample":"done","when":"success"}
+{"sample":"reopen","when":"success"}
+{"sample":"failed","when":"failure"}

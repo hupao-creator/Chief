@@ -92,6 +92,7 @@ struct PiMessage: Identifiable, Sendable {
     let role: JSONText
     let text: JSONText
     let status: JSONText?
+    let contentOrder: [PiContentBlock]
     let thinking: JSONText?
     let toolCallID: JSONText?
     let toolName: JSONText?
@@ -116,8 +117,8 @@ struct PiMessage: Identifiable, Sendable {
             if let presentation = try r.optionalText("presentation"), !["ordinary", "internal"].contains(presentation) { throw PiReader.failure }
             _ = try r.optionalBool("followUp")
             if r.value["createdAt"] != nil { _ = try r.integer("createdAt") }
-        case "assistant": try r.only(common.union(["status", "thinking", "model", "provider", "usage"]))
-        case "tool": try r.only(common.union(["toolCallId", "toolName", "isError", "todos"]))
+        case "assistant": try r.only(common.union(["status", "thinking", "model", "provider", "usage", "contentOrder"]))
+        case "tool": try r.only(common.union(["toolCallId", "toolName", "isError", "todos", "status", "toolInput"]))
         default: throw PiReader.failure
         }
         status = try r.optionalText("status")
@@ -125,6 +126,25 @@ struct PiMessage: Identifiable, Sendable {
         thinking = try r.optionalText("thinking"); model = try r.optionalText("model"); provider = try r.optionalText("provider")
         toolCallID = try r.optionalText("toolCallId", maximum: 1_024, nonempty: true, noNUL: true)
         toolName = try r.optionalText("toolName")
+        _ = try r.optionalText("toolInput")
+        var consumed: [JSONText: Int] = [:]
+        let bodies: [JSONText: JSONText] = ["text": text, "thinking": thinking ?? ""]
+        contentOrder = try (raw["contentOrder"]?.arrayValue ?? []).map { value in
+            var block = try PiContentBlock(value)
+            if let body = bodies[block.kind] {
+                // Consecutive blocks of one kind share a newline-joined aggregate.
+                let offset = consumed[block.kind].map { $0 + (body.codeUnits.isEmpty ? 0 : 1) } ?? 0
+                guard offset <= body.codeUnits.count, block.length <= body.codeUnits.count - offset else { throw PiReader.failure }
+                let end = offset + block.length
+                block.text = String(decoding: body.codeUnits[offset..<end], as: UTF16.self)
+                consumed[block.kind] = end
+            }
+            return block
+        }
+        if !contentOrder.isEmpty {
+            for (kind, body) in bodies where (consumed[kind] ?? 0) != body.codeUnits.count { throw PiReader.failure }
+        }
+        if raw["contentOrder"] != nil && raw["contentOrder"]?.arrayValue == nil { throw PiReader.failure }
         isError = try r.optionalBool("isError") ?? false
         usage = try r.value["usage"].map(PiUsage.init)
         if r.value["todos"] != nil {
@@ -136,6 +156,25 @@ struct PiMessage: Identifiable, Sendable {
         annotations = r.value["annotations"] == nil ? [] : try r.array("annotations")
         guard annotations.count <= 20 else { throw PiReader.failure }
         for annotation in annotations { try piValidateAnnotation(annotation) }
+    }
+}
+
+struct PiContentBlock: Sendable {
+    var text = ""
+    let kind: JSONText
+    let length: Int
+    let callID: JSONText?
+    let hasContent: Bool
+
+    init(_ value: JSONValue) throws {
+        let reader = try PiReader(value)
+        try reader.only(["kind", "length", "callId", "hasContent"])
+        kind = try reader.text("kind")
+        guard ["text", "thinking", "toolCall"].contains(kind) else { throw PiReader.failure }
+        length = value["length"] == nil ? 0 : try reader.integer("length")
+        callID = try reader.optionalText("callId", nonempty: true)
+        guard (kind == "toolCall") == (callID != nil) else { throw PiReader.failure }
+        hasContent = try reader.optionalBool("hasContent") ?? false
     }
 }
 

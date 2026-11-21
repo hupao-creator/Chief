@@ -1,0 +1,22 @@
+{"type":"message_start","message":{"role":"assistant","timestamp":10,"content":[]}}
+{"type":"message_end","message":{"role":"assistant","timestamp":10,"content":[{"type":"text","text":"First note"}],"stopReason":"stop"}}
+{"steer":"Retry once"}
+{"type":"message_start","message":{"role":"user","content":"Retry once"}}
+{"type":"message_start","message":{"role":"assistant","timestamp":20,"content":[{"type":"thinking","thinking":"check once"}]}}
+{"type":"message_end","message":{"role":"assistant","timestamp":20,"content":[{"type":"thinking","thinking":"check once"}],"stopReason":"toolUse"}}
+{"type":"tool_execution_start","toolCallId":"call","toolName":"inspect","args":{}}
+{"type":"tool_execution_end","toolCallId":"call","toolName":"inspect","result":{"content":[{"type":"text","text":"tool diagnostic"}]},"isError":true}
+{"type":"message_start","message":{"role":"assistant","timestamp":30,"content":[]}}
+{"type":"message_update","assistantMessageEvent":{"type":"text_delta","contentIndex":0,"delta":"# Res"}}
+{"sample":"stream"}
+{"type":"message_end","message":{"role":"assistant","timestamp":30,"content":[{"type":"text","text":"# Result\n\nUse **café**."}],"stopReason":"stop"}}
+{"type":"message_end","message":{"role":"assistant","timestamp":30,"content":[{"type":"text","text":"# Result\n\nUse **café**."}],"stopReason":"stop"}}
+{"sample":"reply"}
+{"when":"waiting","type":"extension_ui_request","id":"approval","method":"confirm","title":"Allow inspect?"}
+{"sample":"waiting","when":"waiting"}
+{"type":"message_start","message":{"role":"assistant","timestamp":40,"content":[]},"when":"failure"}
+{"type":"message_end","message":{"role":"assistant","timestamp":40,"content":[],"stopReason":"error","errorMessage":"independent failure"},"when":"failure"}
+{"type":"agent_settled"}
+{"sample":"done","when":"success"}
+{"sample":"reopen","when":"success"}
+{"sample":"failed","when":"failure"}

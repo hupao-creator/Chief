@@ -1,5 +1,6 @@
 import Foundation
 import ChiefCore
+import ChiefPluginUI
 import ChiefPluginAPI
 
 /// Private wire values retain exact UTF-16 identities and absence versus null.
@@ -56,6 +57,13 @@ struct ClaudeTurn: Hashable, Sendable, Identifiable {
     var updatedAt: Double { raw["updatedAt"]!.numberValue! }
     var finishedAt: Double? { raw["finishedAt"]?.numberValue }
     var prompts: [JSONValue] { raw["prompts"]!.arrayValue! }
+    var readerAnswer: String {
+        guard let item = timeline.last(where: { $0.claudeKind == "assistant" && $0["status"] != .text("failed") &&
+            $0["status"] != .text("streaming") && threadHasText($0["content"]?.stringValue ?? "") }) else { return "" }
+        guard let message = item["messageId"] else { return item["content"]?.stringValue ?? "" }
+        return timeline.filter { $0.claudeKind == "assistant" && $0["messageId"] == message &&
+            $0["status"] != .text("streaming") && $0["status"] != .text("failed") }.compactMap { $0["content"]?.stringValue }.joined()
+    }
     var timeline: [JSONValue] { raw["timeline"]!.arrayValue! }
     var activities: [JSONValue] { raw["activities"]!.arrayValue! }
     var interactions: [JSONValue] { raw["interactions"]!.arrayValue! }
@@ -160,16 +168,6 @@ func claudeProjectTimeline(_ turn: ClaudeTurn) -> [JSONValue] {
             return item
         }
     }
-}
-func claudeActivityRunStarts(_ turn: ClaudeTurn) -> Set<JSONText> {
-    let current = Set(turn.activities.map { $0.claudeID("id") }); var seen = Set<JSONText>(), result = Set<JSONText>(), boundary = true
-    for item in turn.timeline {
-        guard item.claudeKind == "activity" else { boundary = true; continue }
-        let id = item.claudeID("activityId")
-        guard current.contains(id), seen.insert(id).inserted else { continue }
-        if boundary { result.insert(item.claudeID("id")) }; boundary = false
-    }
-    return result
 }
 func claudeValidateTimelineReferences(_ timeline: [JSONValue], activities: [JSONValue], interactions: [JSONValue], notices: [JSONValue]) throws {
     let activityIDs = Set(activities.map { $0.claudeID("id") }), interactionIDs = Set(interactions.map { $0.claudeID("id") }), noticeIDs = Set(notices.map { $0.claudeID("id") })

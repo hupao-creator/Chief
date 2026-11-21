@@ -887,6 +887,10 @@ func (t *Transport) handleFrame(frame map[string]any) {
 		t.emit(NativeEvent{ExecutionID: executionID, Frame: frame})
 	}
 }
+func claudeResultFailed(frame map[string]any) bool {
+	return frame["is_error"] == true || str(frame["subtype"]) != "" && str(frame["subtype"]) != "success"
+}
+
 func (t *Transport) handleResult(frame map[string]any) {
 	id := str(frame["user_message_uuid"])
 	t.mu.Lock()
@@ -916,7 +920,7 @@ func (t *Transport) handleResult(frame map[string]any) {
 	active.boundaries = live
 	outcome := "completed"
 	message := ""
-	if frame["is_error"] == true || str(frame["subtype"]) != "" && str(frame["subtype"]) != "success" {
+	if claudeResultFailed(frame) {
 		outcome = "failed"
 		parts := []string{}
 		for _, v := range arr(frame["errors"]) {

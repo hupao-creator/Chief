@@ -39,6 +39,7 @@ type Message struct {
 	ToolName        string          `json:"toolName,omitempty"`
 	Arguments       any             `json:"arguments,omitempty"`
 	Result          any             `json:"result,omitempty"`
+	ReplyError      string          `json:"replyError,omitempty"`
 	ToolError       any             `json:"toolError,omitempty"`
 	IsError         bool            `json:"isError,omitempty"`
 	Model           string          `json:"model,omitempty"`
@@ -507,7 +508,7 @@ func contentText(value any) string {
 	}
 	return strings.Join(parts, "\n")
 }
-func toolResult(t *Message, content, nativeError any) {
+func toolResult(t *Message, content, nativeError any, failed bool) {
 	t.Result = content
 	t.Status = "complete"
 	// Native retries can settle the same call successfully after an earlier
@@ -515,7 +516,8 @@ func toolResult(t *Message, content, nativeError any) {
 	// stale error beside a successful result.
 	t.IsError = false
 	t.ToolError = nil
-	if nativeError != nil {
+	t.Todos = nil
+	if failed || nativeError != nil {
 		t.IsError = true
 		t.Status = "failed"
 		t.ToolError = nativeError
@@ -564,7 +566,9 @@ func (s *State) MergeMessages(messages []any, session, execution string, inherit
 		m.Model = str(ref["id"])
 		m.Variant = str(ref["variant"])
 		m.Usage = nativeUsage(v["tokens"], v["cost"])
+		m.ReplyError = ""
 		if v["error"] != nil {
+			m.ReplyError = clip(nativeFailure(v["error"]), 100000)
 			m.Status = "failed"
 		} else if object(v["time"])["completed"] != nil {
 			m.Status = "complete"
@@ -595,7 +599,7 @@ func (s *State) MergeMessages(messages []any, session, execution string, inherit
 				tool.Arguments = state["input"]
 				tool.Status = "streaming"
 				if state["status"] == "completed" || state["status"] == "error" {
-					toolResult(tool, state["content"], state["error"])
+					toolResult(tool, state["content"], state["error"], state["status"] == "error")
 				}
 			}
 		}
@@ -754,7 +758,11 @@ func (s *State) Reduce(event Event, owner string) error {
 	}
 	if t == "session.step.ended" || t == "session.step.failed" {
 		m.Status = "complete"
+		m.ReplyError = ""
 		if t == "session.step.failed" {
+			if data["error"] != nil {
+				m.ReplyError = clip(nativeFailure(data["error"]), 100000)
+			}
 			m.Status = "failed"
 		}
 		m.Usage = nativeUsage(data["tokens"], data["cost"])
@@ -799,9 +807,9 @@ func (s *State) Reduce(event Event, owner string) error {
 		case "session.tool.called":
 			tool.Arguments = data["input"]
 		case "session.tool.success":
-			toolResult(tool, data["content"], nil)
+			toolResult(tool, data["content"], nil, false)
 		case "session.tool.failed":
-			toolResult(tool, data["content"], data["error"])
+			toolResult(tool, data["content"], data["error"], true)
 		}
 	}
 	return nil

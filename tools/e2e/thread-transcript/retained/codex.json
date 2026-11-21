@@ -1,0 +1,54 @@
+{
+  "schema": "mokusei.harness.codex.thread.v1",
+  "updatedAt": 9,
+  "turns": [
+    {
+      "createdAt": 1,
+      "updatedAt": 9,
+      "finishedAt": 9,
+      "executionId": "run",
+      "status": "completed",
+      "messages": [],
+      "timeline": [
+        {
+          "id": "reply",
+          "itemId": "message",
+          "kind": "assistant",
+          "content": "Saved **answer**.",
+          "status": "complete",
+          "createdAt": 3
+        },
+        {
+          "id": "marker4",
+          "kind": "notice",
+          "noticeId": "note4",
+          "createdAt": 4
+        },
+        {
+          "id": "marker5",
+          "kind": "notice",
+          "noticeId": "note5",
+          "createdAt": 5
+        }
+      ],
+      "activities": [],
+      "notices": [
+        {
+          "id": "note4",
+          "level": "error",
+          "message": "saved diagnostic"
+        },
+        {
+          "id": "note5",
+          "level": "error",
+          "message": "saved diagnostic"
+        }
+      ],
+      "interactions": [],
+      "plan": [],
+      "answer": "Saved **answer**.",
+      "reasoning": ""
+    }
+  ],
+  "backgroundTerminals": []
+}

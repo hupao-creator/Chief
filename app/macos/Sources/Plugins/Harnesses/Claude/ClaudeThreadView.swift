@@ -6,9 +6,11 @@ import SwiftUI
 
 public struct ClaudeThreadView: View {
     @Environment(\.threadAgentDetail) private var agentDetail
+    @Environment(\.threadExecutionPresence) private var presence
     let input: HarnessThreadInput
     let actions: HarnessThreadActions
     let context: HarnessRenderContext
+    @Environment(\.locale) private var locale
     private var providedState: ClaudeState?
     @State private var stateCache = HarnessReadingState<ClaudeState>(decode: decodeClaudeReadingState)
     @State private var resolvedAnchor: (request: JSONText, anchor: JSONText)?
@@ -29,7 +31,7 @@ public struct ClaudeThreadView: View {
                     ClaudeThreadView(input: preparedInput, actions: actions, context: context, state: state)
                 case .failure(let error):
                     let failure = claudeFailurePresentation(preparedInput, decodeError: error)
-                    ClaudeFailure(message: failure.message, detail: failure.detail)
+                    ThreadTranscriptFailure(message: failure.message, detail: failure.detail)
                 }
             } else { NativeThreadLoadingIndicator() }
         }.task(id: HarnessReadingRequest(input: input, raw: input.thread.sessionState)) {
@@ -41,10 +43,10 @@ public struct ClaudeThreadView: View {
         if !state.history.isEmpty { rows.append(ThreadConversationRow(id: "fork-history", createdAt: 0, history: true, node: AnyView(row("fork-history", state: state)))) }
         rows += state.turns.map { turn in
             ThreadConversationRow(id: turn.id, createdAt: turn.createdAt,
-                execution: ThreadConversationExecution(id: turn.id, title: input.thread.executionTitles[turn.id]?.string, prompt: turn.visiblePrompts.first?.stringValue ?? "", answer: turn.assistantText, completedAt: turn.status == "completed" ? turn.finishedAt : nil, isActive: turn.status == "running"),
+                execution: ThreadConversationExecution(id: turn.id, title: input.thread.executionTitles[turn.id]?.string, prompt: turn.visiblePrompts.first?.stringValue ?? "", answer: turn.readerAnswer, completedAt: turn.status == "completed" ? turn.finishedAt : nil, isActive: turn.status == "running"),
                 node: AnyView(row(turn.id, state: state)))
         }
-        if !state.tasks.isEmpty { rows.append(ThreadConversationRow(id: "native-background-tasks", createdAt: input.thread.updatedAt, node: AnyView(ClaudeBackgroundTasks(tasks: state.tasks)))) }
+        if !state.tasks.isEmpty { rows.append(ThreadConversationRow(id: "native-background-tasks", createdAt: input.thread.updatedAt, node: AnyView(backgroundTasks(state.tasks)))) }
         let anchor = claudeReplyAnchor(state, message: input.readingTarget?.message) ?? (resolvedAnchor?.request == input.readingTarget?.requestID ? resolvedAnchor?.anchor : nil)
         return ThreadConversation(threadId: input.thread.id, title: agentDetail ? input.thread.title.string : claudeDocumentTitle(input.thread, state: state), icon: claudeEmoji(input.thread), rows: rows,
             readingTarget: input.readingTarget.map { ThreadConversationReadingTarget(requestId: $0.requestID, mode: $0.mode == .current ? .current : .history, executionId: $0.executionID, anchorId: anchor, position: $0.position,
@@ -54,19 +56,26 @@ public struct ClaudeThreadView: View {
             activeExecutionId: input.thread.observation.isExecutionActive ? input.thread.observation.latestExecution?.executionID : nil,
             context: context,
             renderRow: context.content == .manifest ? { key in
-                if key == "native-background-tasks" { return AnyView(ClaudeBackgroundTasks(tasks: state.tasks)) }
+                if key == "native-background-tasks" { return AnyView(backgroundTasks(state.tasks)) }
                 return AnyView(ClaudeLazyRow(key: key, input: input, actions: actions, context: context, onAnchor: { request, anchor in resolvedAnchor = (request, anchor) }))
             } : nil)
     }
     @ViewBuilder private func row(_ key: JSONText, state: ClaudeState) -> some View {
         if key == "fork-history" {
-            if case .main = context.presentation { ClaudeForkHistory(items: state.history, actions: actions, context: context) }
+            if case .main = context.presentation { ThreadTranscriptHistory(id: key, items: claudeTranscript(state.history, presence: presence), createdAt: input.thread.createdAt, actions: actions, context: context) }
         } else if let turn = state.turns.first(where: { $0.id == key }), claudeVisible(key, context: context) {
             ClaudeTurnView(turn: turn, active: runningID(state) == key,
                 waiting: input.thread.observation.latestExecution?.executionID == key && input.thread.observation.latestExecution?.status == .waitingForUser,
                 publicInteractions: claudePublicInteractions(state, input.thread.observation), actions: actions, context: context)
-        } else { ClaudeFailure(message: "历史执行不可用") }
+        } else { ThreadTranscriptFailure(message: NativePluginLocalization.localize("历史执行不可用", locale: locale)) }
     }
+    private func backgroundTasks(_ tasks: [JSONValue]) -> some View {
+        ThreadBackgroundWork(id: "native-background-tasks", title: "后台任务", items: tasks.map {
+            .init(id: $0.claudeID("id"), label: $0["description"]?.stringValue ?? "",
+                  detail: $0["type"]?.stringValue, status: $0["status"]?.stringValue ?? "")
+        })
+    }
+
     private func runningID(_ state: ClaudeState) -> JSONText? {
         guard let execution = input.thread.observation.latestExecution, execution.status == .running else { return nil }
         return state.turns.last(where: { $0.id == execution.executionID && $0.status == "running" })?.id
@@ -84,7 +93,7 @@ private struct ClaudeLazyRow: View {
             if let resource {
                 switch resource.state {
                 case .loading: NativeThreadLoadingIndicator()
-                case .error(let message): ClaudeFailure(message: message, retry: { try await resource.retry() })
+                case .error(let message): ThreadTranscriptFailure(message: claudeRedacted(message), retry: { try await resource.retry() })
                 case .ready(let raw):
                     ThreadDeferredExecutionContent(raw: raw, rowKey: key, context: context) { value in
                         ClaudeLoadedRow(key: key, input: input, actions: actions, context: context, onAnchor: onAnchor, raw: value)
@@ -121,7 +130,7 @@ private struct ClaudeLoadedRow: View {
                         }
                 case .failure(let error):
                     let failure = claudeFailurePresentation(preparedInput, decodeError: error)
-                    ClaudeFailure(message: failure.message, detail: failure.detail)
+                    ThreadTranscriptFailure(message: failure.message, detail: failure.detail)
                 }
             } else { NativeThreadLoadingIndicator() }
         }.task(id: HarnessReadingRequest(input: input, raw: raw, presence: presence, hasLoader: loader != nil)) { await stateCache.load(input: input, raw: raw, environment: readingEnvironment) }
@@ -145,104 +154,23 @@ struct ClaudeTurnView: View {
     var body: some View {
         let usage = turn.raw["usage"]
         let inputs = [usage?["inputTokens"]?.numberValue, usage?["cachedTokens"]?.numberValue, usage?["cacheWriteTokens"]?.numberValue]
-        ThreadDetailTurn(id: turn.id, author: turn.raw["author"], rows: rows,
+        let layout = ThreadTranscriptLayout(turn.transcript(presence: executionPresence), agentDetail: agentDetail,
+            active: turn.status == "running", waiting: waiting, completed: turn.status == "completed", target: visibility.messageAnchorID)
+        let workVisible = visibility.work && (visibility.workTurnID == nil || visibility.workTurnID == turn.id)
+        let rows = layout.detailRows(executionID: turn.id, workVisible: workVisible, active: active, actions: actions, context: context) { id in
+            guard let interaction = turn.interactions.first(where: { $0.claudeID("id") == id }) else { return nil }
+            return AnyView(ClaudeInteractionView(interaction: interaction, publicInteraction: publicInteractions[id], actions: actions))
+        }
+        return ThreadDetailTurn(id: turn.id, author: turn.raw["author"], rows: rows,
             reasoningUsage: usage?["reasoningTokens"]?.numberValue.map { ThreadReasoningUsage(tokens: $0, scope: .reportedTurn) },
             createdAt: turn.createdAt, updatedAt: turn.finishedAt ?? turn.updatedAt,
-            status: claudeLocalized(waiting ? "等待你的响应" : turn.raw["statusLabel"]?.stringValue ?? claudeStatus(turn.status), locale: locale),
+            status: claudeLocalized(waiting ? "等待输入" : turn.status == "interrupted" ? "已取消" : turn.raw["statusLabel"]?.stringValue ?? claudeStatus(turn.status), locale: locale),
             completedAt: turn.status == "completed" ? turn.finishedAt : nil,
             usage: AnyView(ThreadTokenUsage(input: inputs.allSatisfy { $0 != nil } ? inputs.compactMap { $0 }.reduce(0,+) : nil,
                 output: usage?["outputTokens"]?.numberValue, cached: usage?["cachedTokens"]?.numberValue,
                 cacheWrite: usage?["cacheWriteTokens"]?.numberValue, reasoning: usage?["reasoningTokens"]?.numberValue)), active: active, executionRunning: turn.status == "running" && !waiting,
-                executionTailIsWork: claudeProjectTimeline(turn).last(where: {
-                    claudeDetailIncludes($0) && ($0.claudeKind != "user-message" || !turn.internalIndexes.contains($0["promptIndex"]?.intValue ?? -1))
-                })
-                    .map { ["reasoning", "activity"].contains($0.claudeKind) } ?? false)
+                executionTailIsWork: layout.tailIsWork, workAvailable: layout.hasWork(reasoningTokens: usage?["reasoningTokens"]?.numberValue))
             .nativeReadingExecutionReady(turn.id, settled: turn.status != "running")
-    }
-    private var rows: [ThreadDetailRow] {
-        let timeline = claudeProjectTimeline(turn).filter {
-            agentDetail ? claudeDetailIncludes($0) && ($0.claudeKind != "user-message" || !turn.internalIndexes.contains($0["promptIndex"]?.intValue ?? -1)) : $0.claudeKind != "plan"
-        }, starts = claudeActivityRunStarts(turn)
-        let final = waiting && turn.status == "running" ? nil : timeline.last(where: { $0.claudeKind == "assistant" && $0["status"]?.stringValue != "streaming" && (!agentDetail || $0["status"]?.stringValue != "failed") && !claudeTrim($0["content"]).isEmpty })?.claudeID("id")
-        var rows: [ThreadDetailRow] = [], index = 0
-        while index < timeline.count {
-            let item = timeline[index]; index += 1
-            if item.claudeKind == "assistant" && item["status"]?.stringValue == "streaming" { continue }
-            if item.claudeKind == "assistant" && claudeTrim(item["content"]).isEmpty { continue }
-            if item.claudeKind == "user-message", turn.internalIndexes.contains(item["promptIndex"]?.intValue ?? -1) { continue }
-            if item.claudeKind == "activity" {
-                var activities = [item["activity"]!]
-                while index < timeline.count, timeline[index].claudeKind == "activity", !starts.contains(timeline[index].claudeID("id")) {
-                    activities.append(timeline[index]["activity"]!); index += 1
-                }
-                rows.append(ThreadDetailRow(id: item.claudeID("id"), kind: .work, node: AnyView(ClaudeActivities(activities: activities)), executionSummary: ThreadExecutionSummary(toolCalls: activities.filter { $0["toolName"] != nil }.count, hasContent: activities.contains { claudeActivityHasContent($0, presence: executionPresence) })))
-            } else { rows.append(detail(item, final: item.claudeID("id") == final)) }
-        }
-        let kinds = Set(timeline.map(\.claudeKind))
-        if !agentDetail {
-            let referencedPrompts = Set(timeline.filter { $0.claudeKind == "user-message" }.compactMap { $0["promptIndex"]?.intValue })
-            for (index, _) in turn.prompts.enumerated() where !referencedPrompts.contains(index) && !turn.internalIndexes.contains(index) {
-                rows.append(detail(synthetic("prompt:\(index)", kind: "user-message", fields: ["promptIndex": .integer(index)]), final: false))
-            }
-        }
-        let activityIDs = Set(timeline.filter { $0.claudeKind == "activity" }.map { $0.claudeID("activityId") })
-        let remaining = turn.activities.filter { !activityIDs.contains($0.claudeID("id")) }
-        if agentDetail {
-            for activity in remaining {
-                let row = detail(syntheticID(JSONText(codeUnits: Array("activity:".utf16) + activity.claudeID("id").codeUnits), kind: "activity", fields: ["activity": activity]), final: false)
-                rows.append(ThreadDetailRow(id: row.id, kind: row.kind, node: row.node, execution: .member,
-                    executionSummary: ThreadExecutionSummary(toolCalls: activity["toolName"] == nil ? 0 : 1, hasContent: claudeActivityHasContent(activity, presence: executionPresence))))
-            }
-        } else if !remaining.isEmpty {
-            rows.append(ThreadDetailRow(id: synthetic("activities", kind: "activity").claudeID("id"), kind: .work,
-                node: AnyView(ClaudeActivities(activities: remaining)), execution: .member,
-                executionSummary: ThreadExecutionSummary(toolCalls: remaining.filter { $0["toolName"] != nil }.count, hasContent: remaining.contains { claudeActivityHasContent($0, presence: executionPresence) })))
-        }
-        for (kind, values) in [("interaction",turn.interactions),("notice",turn.notices.filter { !agentDetail || $0["level"]?.stringValue == "error" })] {
-            let referenced = Set(timeline.filter { $0.claudeKind == kind }.map { $0.claudeID(kind + "Id") })
-            for value in values where !referenced.contains(value.claudeID("id")) { rows.append(detail(syntheticID(JSONText(codeUnits: Array((kind + ":").utf16) + value.claudeID("id").codeUnits), kind: kind, fields: [kind:value]), final: false)) }
-        }
-        if !kinds.contains("error"), !turn.raw.claudeID("error").codeUnits.isEmpty, let error = turn.raw["error"] {
-            rows.append(detail(synthetic("error", kind: "error", fields: ["message": error]), final: false))
-        }
-        if !kinds.contains("context-compaction"), turn.raw["compacted"] == .bool(true) {
-            rows.append(detail(synthetic("context-compaction", kind: "context-compaction"), final: false))
-        }
-        let interimReplies = Set(rows.filter { agentDetail && $0.kind == .work }.map(\.id))
-        return bindThreadExecutionSource(rows: rows, source: agentDetail ? timeline : turn.timeline.filter { $0.claudeKind != "plan" }, id: { $0.claudeID("id") }, isExecution: { ["reasoning","activity"].contains($0.claudeKind) || $0.claudeKind == "assistant" && interimReplies.contains($0.claudeID("id")) })
-    }
-    private func synthetic(_ id: String, kind: String, fields: [String: JSONValue] = [:]) -> JSONValue {
-        syntheticID(JSONText(id), kind: kind, fields: fields)
-    }
-    private func syntheticID(_ id: JSONText, kind: String, fields: [String: JSONValue] = [:]) -> JSONValue {
-        claudeObject(fields.merging(["id": .string(JSONText(codeUnits: turn.id.codeUnits + Array(":unreferenced:".utf16) + id.codeUnits)), "kind": .text(kind), "createdAt": .number(turn.createdAt)], uniquingKeysWith: { _, new in new }))
-    }
-    private func detail(_ item: JSONValue, final: Bool) -> ThreadDetailRow {
-        ThreadDetailRow(id: item.claudeID("id"), kind: claudeRowKind(item, final: final, agentDetail: agentDetail, executionActive: turn.status == "running", messageAnchorID: visibility.messageAnchorID),
-            node: AnyView(ClaudeTimelineEntry(item: item, turn: turn, active: active, publicInteractions: publicInteractions, actions: actions, context: context)),
-            executionSummary: claudeExecutionSummary(item, presence: executionPresence), finalReply: final && item.claudeKind == "assistant")
-    }
-}
-// Shared by current turns, legacy fallbacks and inherited transcripts. Keep
-// this at the reader boundary; notices remain available to other consumers.
-func claudeDetailIncludes(_ item: JSONValue) -> Bool {
-    switch item.claudeKind {
-    case "user-message": (item["promptIndex"]?.intValue ?? 0) > 0
-    case "assistant", "reasoning", "activity", "interaction", "review", "context-compaction", "error": true
-    case "notice": item["notice"]?["level"]?.stringValue == "error"
-    default: false
-    }
-}
-func claudeRowKind(_ item: JSONValue, final: Bool, agentDetail: Bool = true, executionActive: Bool = false, messageAnchorID: JSONText? = nil) -> ThreadDetailRow.Kind {
-    switch item.claudeKind {
-    case "user-message": agentDetail ? .steer : .user
-    case "assistant": agentDetail && item["status"]?.stringValue == "failed" ? .attention : final || agentDetail && (executionActive || item.claudeID("id") == messageAnchorID) ? .content : .work
-    case "activity": .work
-    case "interaction": item["interaction"]?["status"]?.stringValue == "pending" ? .attention : .work
-    case "error": .attention
-    case "notice": !agentDetail && item["notice"]?["level"]?.stringValue == "info" ? .work : .attention
-    case "review": .content
-    default: .work
     }
 }
 

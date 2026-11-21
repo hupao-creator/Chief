@@ -19,41 +19,32 @@ struct CodexTurnRows: View {
     @State private var actionError: (id: JSONText, message: String)?
 
     var body: some View {
-        ThreadDetailTurn(id: turn.executionId, author: author, rows: rows,
+        let layout = ThreadTranscriptLayout(turn.transcript(presence: executionPresence), agentDetail: agentDetail,
+            active: turn.active, waiting: turn.status == "waiting-input", completed: turn.status == "completed", target: visibility.messageAnchorID)
+        let workVisible = visibility.work && (visibility.workTurnID == nil || visibility.workTurnID == turn.executionId)
+        let interactions = firstByID(turn.interactions)
+        let rows = layout.detailRows(executionID: turn.executionId, workVisible: workVisible,
+                                     active: active, actions: actions, context: context) { id in
+            guard let interaction = interactions[id] else { return nil }
+            return AnyView(CodexInteractionPanel(interaction: interaction, publicInteraction: publicInteractions[id],
+                busy: busyInteractionID == id, error: actionError?.id == id ? actionError?.message : nil,
+                respond: { action, answers in respond(interaction: interaction, actionID: action, answers: answers) }))
+        }
+        return ThreadDetailTurn(id: turn.executionId, author: author, rows: rows,
             reasoningUsage: executionReasoningTokens.map { ThreadReasoningUsage(tokens: $0, scope: .turn) },
             createdAt: turn.createdAt, updatedAt: turn.finishedAt ?? turn.updatedAt,
             status: statusLabel, completedAt: turn.status == "completed" ? turn.finishedAt : nil,
             usage: AnyView(ThreadTokenUsage(input: turn.usage?["inputTokens"]?.numberValue,
                 output: turn.usage?["outputTokens"]?.numberValue, cached: turn.usage?["cachedInputTokens"]?.numberValue,
                 reasoning: turn.usage?["reasoningTokens"]?.numberValue)), active: active, executionRunning: turn.status == "running",
-            executionTailIsWork: turn.timeline.last.map { ["reasoning", "activity"].contains($0.kind) } ?? false,
-            workAvailable: hasDisplayableWork)
+            executionTailIsWork: layout.tailIsWork,
+            workAvailable: layout.hasWork(reasoningTokens: executionReasoningTokens))
             .nativeReadingExecutionReady(turn.executionId, settled: !["running", "waiting-input"].contains(turn.status))
             .onChange(of: turn.interactions) { _, interactions in
                 if let busyInteractionID, !interactions.contains(where: { $0.id == busyInteractionID && $0.status == "pending" && $0.blocksTurn }) {
                     self.busyInteractionID = nil
                 }
             }
-    }
-
-    // Codex deliberately skips constructing collapsed work rows. Inspect its
-    // native facts instead, so availability can change while work is hidden.
-    private var hasDisplayableWork: Bool {
-        if turn.activities.contains(where: activityHasContent) { return true }
-        let reasoning = turn.timeline.filter { $0.kind == "reasoning" }
-        if reasoning.contains(where: reasoningHasContent) ||
-            (!reasoning.isEmpty && (executionReasoningTokens ?? 0) > 0) { return true }
-        let replies = turn.timeline.filter {
-            $0.kind == "assistant" && $0.status != "streaming" && $0.status != "failed" &&
-                !codexTrim($0.raw["content"]).codeUnits.isEmpty
-        }
-        if replies.count > 1 || (!turn.active && turn.status == "waiting-input" && !replies.isEmpty) { return true }
-        let interactions = firstByID(turn.interactions)
-        return turn.timeline.contains { item in
-            if item.kind == "context-compaction" { return true }
-            guard item.kind == "interaction", let interaction = interactions[item.raw.codexIdentity("interactionId")] else { return false }
-            return interaction.status != "pending"
-        }
     }
 
     private var executionReasoningTokens: Double? {
@@ -82,165 +73,6 @@ struct CodexTurnRows: View {
         codexPublicInteractionsByNativeId(state: state.raw, observation: observation)
     }
 
-    private var rows: [ThreadDetailRow] {
-        let workVisible = visibility.work && (visibility.workTurnID == nil || visibility.workTurnID == turn.executionId)
-        let messages = firstByID(turn.messages)
-        let notices = Dictionary(turn.notices.map { ($0.codexIdentity("id"), $0) }, uniquingKeysWith: { first, _ in first })
-        // Reader policy only. Error severity is an explicit exception to the
-        // allowlist, including rejected follow-ups after a completed execution.
-        var activityIDs = Set<JSONText>()
-        var noticeIDs = Set<JSONText>()
-        let timeline = turn.timeline.filter {
-            // Native references may be repeated during history reconciliation.
-            // Deduplicate identities, never equal labels or output text.
-            if $0.kind == "activity", !activityIDs.insert($0.raw.codexIdentity("activityId")).inserted { return false }
-            if $0.kind == "notice", !noticeIDs.insert($0.raw.codexIdentity("noticeId")).inserted { return false }
-            if !agentDetail { return $0.kind != "plan" }
-            return switch $0.kind {
-            case "user-message": messages[$0.raw.codexIdentity("messageId")].map { $0.role == "user" && $0.kind == "follow-up" && !$0.isInternal } ?? false
-            case "assistant", "reasoning", "activity", "interaction", "review", "context-compaction", "error": true
-            case "notice": notices[$0.raw.codexIdentity("noticeId")]?["level"]?.stringValue == "error"
-            default: false
-            }
-        }
-        let interactions = firstByID(turn.interactions)
-        let activities = workVisible ? firstByID(turn.activities) : [:]
-        let lastReplyID = turn.lastReaderReply?.id
-        let lastAssistant = timeline.lastIndex { item in
-            agentDetail ? item.id == lastReplyID : item.kind == "assistant" && item.status != "streaming" && !codexTrim(item.raw["content"]).codeUnits.isEmpty
-        }
-        var result: [ThreadDetailRow] = []
-        var interimReplies = Set<JSONText>()
-        var index = 0
-        while index < timeline.count {
-            let item = timeline[index]
-            if item.kind == "activity" {
-                if !workVisible { index += 1; continue }
-                var group: [CodexActivity] = []
-                var next = index
-                while next < timeline.count && timeline[next].kind == "activity" {
-                    if let activity = activities[timeline[next].raw.codexIdentity("activityId")] {
-                        group.append(activity)
-                    }
-                    next += 1
-                }
-                if !group.isEmpty {
-                    let count = Set(group.filter { $0.toolCall || ["command", "file", "tool", "search"].contains($0.kind) }.map(\.id)).count
-                    let groupID = JSONText(codeUnits: turn.executionId.codeUnits + Array(":".utf16) + item.id.codeUnits + Array(":tools".utf16))
-                    result.append(ThreadDetailRow(id: item.id, kind: .work,
-                        node: AnyView(CodexToolActivityGroup(activities: group, groupID: groupID)),
-                        executionSummary: ThreadExecutionSummary(toolCalls: count, hasContent: group.contains(where: activityHasContent))))
-                }
-                index = next; continue
-            }
-            let kind: ThreadDetailRow.Kind
-            let failure = item.kind == "error" ||
-                (item.kind == "notice" && notices[item.raw.codexIdentity("noticeId")]?["level"]?.stringValue == "error") ||
-                (agentDetail && item.kind == "assistant" && item.status == "failed")
-            if item.kind == "user-message" { kind = agentDetail ? .steer : .user }
-            else if (failure && (agentDetail || turn.status != "completed")) ||
-                (item.kind == "interaction" && interactions[item.raw.codexIdentity("interactionId")]?.status == "pending") { kind = .attention }
-            else if item.kind == "review" || (item.kind == "assistant" && (agentDetail && (turn.active || item.id == visibility.messageAnchorID) || turn.status != "waiting-input" && index == lastAssistant)) { kind = .content }
-            else { kind = .work }
-            // Message settlement is not execution settlement. Keep live replies
-            // readable, then fold terminal interim text into summary-only work.
-            if agentDetail && item.kind == "assistant" && kind == .work { interimReplies.insert(item.id) }
-            // Skip construction, trimming and closures for hidden work. The
-            // shared turn still owns disclosure policy for every admitted row.
-            if kind == .work && !workVisible { index += 1; continue }
-            if let node = node(item, messages: messages, interactions: interactions, notices: notices) {
-                result.append(ThreadDetailRow(id: item.id, kind: kind, node: node,
-                    executionSummary: item.kind == "reasoning" ? ThreadExecutionSummary(
-                        reasoningSegments: reasoningHasContent(item) ? 1 : 0, hasContent: reasoningHasContent(item)) : nil,
-                    finalReply: item.kind == "assistant" && index == lastAssistant))
-            }
-            index += 1
-        }
-        // Older snapshots can retain diagnostics without their timeline marker.
-        let referencedNotices = Set(timeline.filter { $0.kind == "notice" }.map { $0.raw.codexIdentity("noticeId") })
-        for notice in turn.notices where agentDetail && notice["level"]?.stringValue == "error" && !referencedNotices.contains(notice.codexIdentity("id")) {
-            result.append(ThreadDetailRow(id: JSONText(codeUnits: turn.executionId.codeUnits + Array(":notice:".utf16) + notice.codexIdentity("id").codeUnits),
-                kind: .attention, node: AnyView(CodexContentFailure(message: notice["message"]?.stringValue ?? "", translatesMessage: false))))
-        }
-        var referencedActivities = workVisible ? Set(timeline.filter { $0.kind == "activity" }.map { $0.raw.codexIdentity("activityId") }) : []
-        for activity in turn.activities where workVisible && agentDetail && referencedActivities.insert(activity.id).inserted {
-            result.append(ThreadDetailRow(id: JSONText(codeUnits: turn.executionId.codeUnits + Array(":activity:".utf16) + activity.id.codeUnits),
-                kind: .work,
-                node: AnyView(CodexActivityRow(activity: activity)), execution: .member,
-                executionSummary: ThreadExecutionSummary(toolCalls: activity.toolCall || ["command", "file", "tool", "search"].contains(activity.kind) ? 1 : 0, hasContent: activityHasContent(activity))))
-        }
-        if agentDetail, !timeline.contains(where: { $0.kind == "error" }), let error = turn.error, !error.isEmpty {
-            result.append(ThreadDetailRow(id: JSONText(codeUnits: turn.executionId.codeUnits + Array(":error".utf16)),
-                kind: .attention, node: AnyView(CodexContentFailure(message: error, translatesMessage: false))))
-        }
-        return bindThreadExecutionSource(rows: result, source: timeline, id: { $0.id }, isExecution: { $0.kind == "reasoning" || $0.kind == "activity" || interimReplies.contains($0.id) })
-    }
-
-    private func reasoningHasContent(_ item: CodexTimelineItem) -> Bool {
-        !codexTrim(item.raw["content"]).codeUnits.isEmpty || executionPresence.contains(item.id, "content")
-    }
-
-    private func activityHasContent(_ activity: CodexActivity) -> Bool {
-        // A completed no-output Hook reports lifecycle bookkeeping. Tools and
-        // running/failed/cancelled Hooks remain execution facts, even without text.
-        activity.kind != "hook" || activity.toolCall || activity.raw["toolName"] != nil || activity.status != "completed" ||
-            activityHasOutput(activity) || executionPresence.contains(activity.id, "detail")
-    }
-
-    private func activityHasOutput(_ activity: CodexActivity) -> Bool {
-        guard !codexTrim(activity.raw["detail"]).codeUnits.isEmpty else { return false }
-        // Codex serializes hook/completed's run object as detail. Matching
-        // lifecycle metadata is not output; unknown fields remain conservative.
-        guard let detail = activity.detail,
-              let metadata = try? JSONValue(data: Data(detail.utf8)), let fields = metadata.objectValue,
-              metadata["id"] == .string(activity.id), metadata["status"] == .text("completed"),
-              fields.keys.allSatisfy({ ["id", "status", "name"].contains($0.string) }),
-              metadata["name"] == nil || metadata["name"] == .text("") || metadata["name"] == .text(activity.label)
-        else { return true }
-        return false
-    }
-
-    private func node(_ item: CodexTimelineItem, messages: [JSONText: CodexMessage], interactions: [JSONText: CodexInteraction], notices: [JSONText: JSONValue]) -> AnyView? {
-        switch item.kind {
-        case "user-message":
-            guard let message = messages[item.raw.codexIdentity("messageId")], !message.isInternal else { return nil }
-            return AnyView(CodexUserMessage(message: message, actions: actions, context: context))
-        case "assistant":
-            // A message can settle before its execution; keep completed replies
-            // readable while the Harness continues with tools or another reply.
-            guard item.status != "streaming", !codexTrim(item.raw["content"]).codeUnits.isEmpty else { return nil }
-            return AnyView(ThreadMessage(id: item.id, author: .assistant, content: item.content, openExternal: openExternal, resolveMedia: context.resolveMedia))
-        case "reasoning":
-            return AnyView(ThreadSurfaceDisclosure(label: codexLocalized("思考过程", locale: locale)) {
-                NativeMarkdownView(text: item.content, streaming: active && turn.timeline.last?.id == item.id,
-                    muted: true, openExternal: openExternal, resolveMedia: context.resolveMedia)
-            })
-        case "interaction":
-            guard let interaction = interactions[item.raw.codexIdentity("interactionId")] else { return nil }
-            return AnyView(CodexInteractionPanel(interaction: interaction, publicInteraction: publicInteractions[interaction.id],
-                busy: busyInteractionID == interaction.id, error: actionError?.id == interaction.id ? actionError?.message : nil,
-                respond: { actionID, answers in respond(interaction: interaction, actionID: actionID, answers: answers) }))
-        case "notice":
-            guard let notice = notices[item.raw.codexIdentity("noticeId")] else { return nil }
-            return agentDetail ? AnyView(CodexContentFailure(message: notice["message"]?.stringValue ?? "", translatesMessage: false)) : AnyView(CodexNotice(message: notice["message"]?.stringValue ?? ""))
-        case "review":
-            guard let review = turn.review, !review.isEmpty else { return nil }
-            return AnyView(CodexReviewDisclosure {
-                NativeMarkdownView(text: review, openExternal: openExternal, resolveMedia: context.resolveMedia)
-            })
-        case "context-compaction": return AnyView(CodexNotice(message: codexLocalized("上下文已压缩", locale: locale)))
-        case "error":
-            guard let error = turn.error, !error.isEmpty else { return nil }
-            return AnyView(CodexContentFailure(message: error, translatesMessage: false))
-        default:
-            // The native diff marker has no reader node in the existing Codex
-            // renderer. Preserving that is intentional; it is not a Git diff UI.
-            return nil
-        }
-    }
-
-    private func openExternal(_ url: URL) { Task { try? await actions.openExternal(JSONText(url.absoluteString)) } }
-
     private func respond(interaction: CodexInteraction, actionID: JSONText, answers: JSONValue?) {
         let matches = state.turns.flatMap(\.interactions).filter { $0.id == interaction.id && $0.status == "pending" && $0.blocksTurn }
         guard matches.count == 1, let owned = matches.first, let publicInteraction = publicInteractions[interaction.id],
@@ -268,76 +100,94 @@ private func firstByID<T: Identifiable>(_ items: [T]) -> [T.ID: T] {
     return result
 }
 
-private struct CodexNotice: View {
-    let message: String
-    var body: some View {
-        Text(message).font(NativeTypography.inter(size: 11)).foregroundStyle(NativePalette.thread.muted.swiftUI)
-            .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8).textSelection(.enabled)
-    }
-}
-
-private struct CodexToolActivityGroup: View {
-    let activities: [CodexActivity]
-    let groupID: JSONText
-    var body: some View {
-        let summary = codexActivitySummary(activities)
-        HarnessToolActivityGroup(groupID: groupID,
-            items: activities.map { activity in ThreadActivitySlot(id: activity.id,
-                node: AnyView(CodexActivityRow(activity: activity)), running: activity.status == "running") },
-            summary: AnyView(Text(summary.text)), summaryLabel: summary.fullText,
-            summaryState: state, defaultExpanded: true)
-    }
-    private var state: AnyView {
-        if activities.contains(where: { $0.status == "running" }) { return AnyView(CodexStatusSpinner(size: 11)) }
-        let name = activities.contains(where: { $0.status == "failed" }) ? "CircleAlert"
-            : activities.contains(where: { $0.status == "cancelled" }) ? "Circle" : "Check"
-        return AnyView(NativeIcon(name: name, size: 13))
-    }
-}
-
-private struct CodexActivityRow: View {
-    let activity: CodexActivity
-    @Environment(\.locale) private var locale
-    var body: some View {
-        ThreadActivityRow(id: activity.id, state: state,
-            label: AnyView(Text(activity.label + (activity.status == "failed" ? " · " + codexLocalized("失败", locale: locale) : ""))),
-            detail: activity.detail.map { AnyView(Text($0).font(.system(size: 12, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)) })
-    }
-    private var state: AnyView {
-        if activity.status == "running" { return AnyView(CodexStatusSpinner(size: 11)) }
-        let name = activity.status == "failed" ? "CircleAlert" : ["command": "Terminal", "file": "FilePenLine", "search": "Search", "agent": "Bot", "subagent": "Bot", "review": "GitPullRequest"][activity.kind] ?? "Wrench"
-        return AnyView(NativeIcon(name: name, size: 14))
-    }
-}
-
-private func codexActivitySummary(_ activities: [CodexActivity]) -> (text: String, fullText: String) {
-    var order: [String] = []; var counts: [String: Int] = [:]
-    var filePaths: Set<JSONText> = []
-    var unknownFileChanges = false
-    for activity in activities {
-        let kind = ["file", "command", "search"].contains(activity.kind) ? activity.kind : "other"
-        if counts[kind] == nil { order.append(kind) }
-        if kind == "file" {
-            if let paths = activity.filePaths { filePaths.formUnion(paths) }
-            else { unknownFileChanges = true }
-            counts[kind] = filePaths.count
-        } else { counts[kind, default: 0] += 1 }
-    }
-    let labels = order.enumerated().map { index, kind in
-        let count = counts[kind]!
-        let text: String
-        switch kind {
-        case "file": text = unknownFileChanges ? "Changed files" : "Touched \(count) \(count == 1 ? "file" : "files")"
-        case "command": text = "Ran \(count) \(count == 1 ? "command" : "commands")"
-        case "search": text = "Searched \(count) \(count == 1 ? "time" : "times")"
-        default: text = "Used \(count) \(count == 1 ? "tool" : "tools")"
+extension CodexTurn {
+    func transcript(presence: ThreadExecutionPresence) -> [ThreadTranscriptItem] {
+        let messages = firstByID(messages)
+        let activities = firstByID(activities)
+        let interactions = firstByID(interactions)
+        let notices = Dictionary(self.notices.map { ($0.codexIdentity("id"), $0) }, uniquingKeysWith: { first, _ in first })
+        var seenActivities = Set<JSONText>()
+        var seenNotices = Set<JSONText>()
+        // The reducer stores an error notice for each occurrence plus one
+        // turn-level marker. The marker points to the current terminal error.
+        let errorHasNotice = error.map { message in
+            self.notices.contains { $0["level"] == .text("error") && $0["message"]?.stringValue == message }
+        } ?? false
+        var hasError = errorHasNotice
+        var items: [ThreadTranscriptItem] = []
+        for entry in timeline {
+            let body: ThreadTranscriptItem.Body
+            switch entry.kind {
+            case "user-message":
+                guard let message = messages[entry.raw.codexIdentity("messageId")], message.role == "user", !message.isInternal else { continue }
+                body = .user(message.transcriptInput)
+            case "assistant":
+                body = .reply(entry.content, phase: .init(status: entry.status), anchor: entry.id)
+            case "reasoning":
+                body = .reasoning(entry.content, hasContent: threadHasText(entry.content) || presence.contains(entry.id, "content"))
+            case "activity":
+                let id = entry.raw.codexIdentity("activityId")
+                guard seenActivities.insert(id).inserted, let activity = activities[id] else { continue }
+                body = .activity(transcriptActivity(activity, presence: presence))
+            case "interaction":
+                guard let interaction = interactions[entry.raw.codexIdentity("interactionId")] else { continue }
+                body = interaction.status == "pending" ? .request(interaction.id)
+                    : .resolution(title: interaction.title, status: threadRequestResolution(interaction.status))
+            case "notice":
+                let id = entry.raw.codexIdentity("noticeId")
+                guard seenNotices.insert(id).inserted, let notice = notices[id] else { continue }
+                body = transcriptNotice(notice)
+            case "review":
+                guard let review, !review.isEmpty else { continue }
+                body = .review(review)
+            case "context-compaction": body = .compaction
+            case "error":
+                guard !hasError, let error, !error.isEmpty else { continue }
+                body = .error(error)
+                hasError = true
+            default: continue
+            }
+            items.append(.init(entry.id, body))
         }
-        return index == 0 ? text : text.prefix(1).lowercased() + text.dropFirst()
+        // Older snapshots can retain an entity without a chronological marker.
+        for notice in self.notices where notice["level"] == .text("error") && seenNotices.insert(notice.codexIdentity("id")).inserted {
+            items.append(.init(JSONText(codeUnits: executionId.codeUnits + Array(":notice:".utf16) + notice.codexIdentity("id").codeUnits),
+                               transcriptNotice(notice)))
+        }
+        for activity in self.activities where seenActivities.insert(activity.id).inserted {
+            items.append(.init(JSONText(codeUnits: executionId.codeUnits + Array(":activity:".utf16) + activity.id.codeUnits),
+                               .activity(transcriptActivity(activity, presence: presence))))
+        }
+        if !hasError, let error, !error.isEmpty {
+            items.append(.init(JSONText(codeUnits: executionId.codeUnits + Array(":error".utf16)), .error(error)))
+        }
+        return items
     }
-    let text = labels.count <= 1 ? labels.first ?? "" : labels.count == 2 ? labels.joined(separator: " and ") : labels.dropLast().joined(separator: ", ") + ", and " + labels.last!
-    let statuses = [("running", "running"), ("failed", "failed"), ("cancelled", "stopped")].compactMap { status, label -> String? in
-        let count = activities.filter { $0.status == status }.count
-        return count > 0 ? "\(count) \(label)" : nil
+
+    private func transcriptNotice(_ notice: JSONValue) -> ThreadTranscriptItem.Body {
+        let text = notice["message"]?.stringValue ?? ""
+        return notice["level"] == .text("error") ? .error(text) : .notice(text)
     }
-    return (text, statuses.isEmpty ? text : text + " · " + statuses.joined(separator: " · "))
+
+    private func transcriptActivity(_ activity: CodexActivity, presence: ThreadExecutionPresence) -> ThreadTranscriptActivity {
+        let hasContent = activity.kind != "hook" || activity.toolCall || activity.raw["toolName"] != nil ||
+            activity.status != "completed" || presence.contains(activity.id, "detail") || activityHasOutput(activity)
+        return .init(id: activity.id, kind: activity.kind, label: activity.label, status: activity.status,
+            detail: activity.detail, filePaths: activity.filePaths,
+            countsAsTool: activity.toolCall || ["command", "file", "tool", "search"].contains(activity.kind), hasContent: hasContent)
+    }
+
+    private func activityHasOutput(_ activity: CodexActivity) -> Bool {
+        guard !codexTrim(activity.raw["detail"]).codeUnits.isEmpty else { return false }
+        // Codex serializes hook/completed's run object as detail. Matching
+        // lifecycle metadata is not output; unknown fields remain conservative.
+        guard let detail = activity.detail,
+              let metadata = try? JSONValue(data: Data(detail.utf8)), let fields = metadata.objectValue,
+              metadata["id"] == .string(activity.id), metadata["status"] == .text("completed"),
+              fields.keys.allSatisfy({ ["id", "status", "name"].contains($0.string) }),
+              metadata["name"] == nil || metadata["name"] == .text("") || metadata["name"] == .text(activity.label)
+        else { return true }
+        return false
+    }
+
 }

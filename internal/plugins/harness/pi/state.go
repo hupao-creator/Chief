@@ -4,30 +4,34 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hupao-creator/Chief/internal/core/model"
-	"github.com/hupao-creator/Chief/internal/core/plugin"
 	"slices"
 	"strings"
+	"unicode/utf8"
+
+	"github.com/hupao-creator/Chief/internal/core/model"
+	"github.com/hupao-creator/Chief/internal/core/plugin"
 )
 
 type MessageState struct {
-	ID           string          `json:"id"`
-	ExecutionID  string          `json:"executionId"`
-	Role         string          `json:"role"`
-	Presentation string          `json:"presentation,omitempty"`
-	FollowUp     bool            `json:"followUp,omitempty"`
-	CreatedAt    int64           `json:"createdAt,omitempty"`
-	Text         string          `json:"text"`
-	Status       string          `json:"status,omitempty"`
-	Thinking     string          `json:"thinking,omitempty"`
-	ToolCallID   string          `json:"toolCallId,omitempty"`
-	ToolName     string          `json:"toolName,omitempty"`
-	IsError      bool            `json:"isError,omitempty"`
-	Todos        []Todo          `json:"todos,omitzero"`
-	Model        string          `json:"model,omitempty"`
-	Provider     string          `json:"provider,omitempty"`
-	Usage        *Usage          `json:"usage,omitempty"`
-	Annotations  json.RawMessage `json:"annotations,omitempty"`
+	ContentOrder []ContentBlockOrder `json:"contentOrder,omitempty"`
+	ToolInput    *string             `json:"toolInput,omitempty"`
+	ID           string              `json:"id"`
+	ExecutionID  string              `json:"executionId"`
+	Role         string              `json:"role"`
+	Presentation string              `json:"presentation,omitempty"`
+	FollowUp     bool                `json:"followUp,omitempty"`
+	CreatedAt    int64               `json:"createdAt,omitempty"`
+	Text         string              `json:"text"`
+	Status       string              `json:"status,omitempty"`
+	Thinking     string              `json:"thinking,omitempty"`
+	ToolCallID   string              `json:"toolCallId,omitempty"`
+	ToolName     string              `json:"toolName,omitempty"`
+	IsError      bool                `json:"isError,omitempty"`
+	Todos        []Todo              `json:"todos,omitzero"`
+	Model        string              `json:"model,omitempty"`
+	Provider     string              `json:"provider,omitempty"`
+	Usage        *Usage              `json:"usage,omitempty"`
+	Annotations  json.RawMessage     `json:"annotations,omitempty"`
 }
 type ForkSource struct {
 	JSONL string `json:"jsonl"`
@@ -67,8 +71,11 @@ func decodeState(raw json.RawMessage) (State, error) {
 		if strings.ContainsRune(row.ID, 0) || strings.ContainsRune(row.ExecutionID, 0) || utf16Length(row.ID) > 100000 || utf16Length(row.ExecutionID) > 1024 {
 			return state, errors.New("invalid Pi message identity")
 		}
-		if row.Role != "tool" && (row.ToolCallID != "" || row.ToolName != "" || row.IsError || row.Todos != nil) {
+		if row.Role != "tool" && (row.ToolCallID != "" || row.ToolName != "" || row.ToolInput != nil || row.IsError || row.Todos != nil) {
 			return state, errors.New("non-tool Pi message carries tool fields")
+		}
+		if len(row.ContentOrder) != 0 && !validContentOrder(row) {
+			return state, errors.New("invalid Pi assistant block order")
 		}
 		if row.Role != "user" && len(row.Annotations) > 0 {
 			return state, errors.New("Pi annotations belong only to user messages")
@@ -93,7 +100,7 @@ func decodeState(raw json.RawMessage) (State, error) {
 		if row.Status != "" && !slices.Contains([]string{"streaming", "complete", "failed", "cancelled"}, row.Status) {
 			return state, errors.New("invalid Pi message status")
 		}
-		if row.Role != "assistant" && (row.Usage != nil || row.Thinking != "" || row.Status != "") {
+		if row.Role != "assistant" && (row.Usage != nil || row.Thinking != "" || len(row.ContentOrder) != 0 || row.Role != "tool" && row.Status != "") {
 			return state, errors.New("non-assistant Pi message carries assistant fields")
 		}
 		if row.Todos != nil && (row.Role != "tool" || row.ToolName != "todo" || row.IsError) {
@@ -307,6 +314,18 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 				out.Foregrounds = append(out.Foregrounds, f)
 			}
 		}
+		// Old Pi histories can retain a streaming row after the owning run has
+		// stopped. Resolve its display status without rewriting the saved session.
+		if len(out.Executions) == 1 {
+			for i := range out.Messages {
+				row := &out.Messages[i]
+				if row.Role == "tool" && row.Status == "streaming" && out.Executions[0].Terminal() {
+					row.Status = "cancelled"
+				} else {
+					row.Status = readerStatus(row.Status, out.Executions[0].Status)
+				}
+			}
+		}
 		out.ExecutionUsage = executionUsage(out.Messages)
 		deferred := scope.Kind == "turn" && len(out.Executions) > 0
 		for _, execution := range out.Executions {
@@ -319,10 +338,11 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 			for index := range out.Messages {
 				row := &out.Messages[index]
 				// Error bodies must remain readable without opening deferred work.
-				if row.Role == "user" || row.IsError || row.Status == "failed" {
+				if row.Role == "user" || row.IsError || row.Status == "failed" || row.Role == "tool" && row.ToolCallID == "" {
 					continue
 				}
 				row.Todos = nil
+				row.ToolInput = nil
 				// Reply text is conversation content even before the final model
 				// call. Summary-only readers never acquire the detail resource.
 				if row.Role != "assistant" {
@@ -333,6 +353,15 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 				}
 				if strings.TrimSpace(row.Thinking) != "" {
 					nonempty = append(nonempty, model.Object{"id": row.ID, "field": "thinking"})
+				}
+				if len(row.ContentOrder) > 0 {
+					blocks := append([]ContentBlockOrder(nil), row.ContentOrder...)
+					for i := range blocks {
+						if blocks[i].Kind == "thinking" {
+							blocks[i].Length = 0
+						}
+					}
+					row.ContentOrder = blocks
 				}
 				row.Thinking = ""
 			}
@@ -347,8 +376,10 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 		out.InitialResponseScope = &initial
 	}
 	out.ExecutionUsage = executionUsage(state.Messages)
+	statuses := map[string]string{}
 	completed := map[string]bool{}
 	for _, e := range state.Executions {
+		statuses[e.ExecutionID] = e.Status
 		if e.Status == "completed" {
 			completed[e.ExecutionID] = true
 		}
@@ -384,7 +415,7 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 	}
 	selected, preview := map[int]bool{}, map[int]bool{}
 	for _, i := range []int{card, reply} {
-		if i >= 0 {
+		if scope.Kind == "overview" && i >= 0 {
 			selected[i] = true
 			preview[i] = true
 		}
@@ -397,14 +428,14 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 		first, last, answer, usage := -1, -1, -1, -1
 		for _, i := range indexes {
 			row := state.Messages[i]
-			if row.Role == "user" {
+			if row.Role == "user" && (scope.Kind != "thread" || row.Presentation != "internal") {
 				if first < 0 {
 					first = i
 				}
 				last = i
 			}
 			if row.Role == "assistant" {
-				if strings.TrimSpace(row.Text) != "" {
+				if status := readerStatus(row.Status, statuses[id]); status != "streaming" && status != "failed" && strings.TrimSpace(row.Text) != "" {
 					answer = i
 				}
 				if row.Usage != nil {
@@ -444,7 +475,7 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 			continue
 		}
 		result := MessageState{ID: row.ID, ExecutionID: row.ExecutionID, Role: row.Role, Text: ""}
-		if preview[i] {
+		if preview[i] && (scope.Kind != "thread" || row.Role != "user" || row.Presentation != "internal") {
 			limit := 1200
 			if row.Role == "user" {
 				limit = 600
@@ -453,6 +484,9 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 		}
 		if row.Role == "assistant" {
 			result.Status = row.Status
+			if scope.Kind == "thread" {
+				result.Status = readerStatus(row.Status, statuses[row.ExecutionID])
+			}
 			result.Model = row.Model
 			result.Provider = row.Provider
 			result.Usage = row.Usage
@@ -495,6 +529,62 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 		}
 	}
 	return json.Marshal(out)
+}
+
+// Each part must consume whole scalars of the matching aggregate. Its separator
+// belongs to neither part and cannot silently consume a character of user text.
+func validContentOrder(row MessageState) bool {
+	remaining := map[string]string{"text": row.Text, "thinking": row.Thinking}
+	seen := map[string]bool{}
+	for _, block := range row.ContentOrder {
+		if block.Kind == "toolCall" {
+			if block.CallID == "" || strings.ContainsRune(block.CallID, 0) || utf16Length(block.CallID) > 1024 || block.Length != 0 {
+				return false
+			}
+			continue
+		}
+		body, known := remaining[block.Kind]
+		if !known || block.CallID != "" || block.Length < 0 {
+			return false
+		}
+		if seen[block.Kind] {
+			var ok bool
+			body, ok = strings.CutPrefix(body, "\n")
+			if !ok {
+				return false
+			}
+		}
+		for units := block.Length; units > 0; {
+			scalar, size := utf8.DecodeRuneInString(body)
+			if size == 0 {
+				return false
+			}
+			units--
+			if scalar > 0xffff {
+				if units == 0 {
+					return false
+				}
+				units--
+			}
+			body = body[size:]
+		}
+		seen[block.Kind], remaining[block.Kind] = true, body
+	}
+	return remaining["text"] == "" && remaining["thinking"] == ""
+}
+
+func readerStatus(status, execution string) string {
+	if status == "streaming" {
+		switch execution {
+		case "completed":
+			return "complete"
+		case "failed":
+			return "failed"
+		case "interrupted":
+			return "cancelled"
+		}
+	}
+	return status
 }
 
 func utf16Length(text string) int64 {

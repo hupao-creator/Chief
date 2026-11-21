@@ -188,7 +188,7 @@ func rendererBoundMessage(message Object, limits rendererLimits) bool {
 		}
 		message["toolCallId"] = toolCallID
 	}
-	for _, key := range []string{"toolName", "model", "provider", "variant"} {
+	for _, key := range []string{"toolName", "model", "provider", "variant", "replyError"} {
 		if value, exists := message[key]; exists {
 			message[key] = rendererBoundText(value, limits.short)
 		}

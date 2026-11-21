@@ -192,6 +192,13 @@ failure retains the owned workspace.
 Reserved JavaScript property names remain valid tool aliases in the bridge;
 no installed-native thread replay is configured here.
 
+The reader places child-session work in the execution timeline at its recorded
+message and part positions. A child message can be visited explicitly. The
+directory and terminal result select eligible primary-session replies. The
+assistant's optional `replyError` carries the protocol diagnostic across SSE,
+history reconciliation and reopening. Failed tool results can carry both output
+and a native diagnostic. A permission with an empty resource list keeps its native actions in the reading view. [Thread Markdown](../README.md#thread-markdown)
+
 ## Initial response cards
 
 The overview renderer supplies `initialResponseScope`, computed from the full

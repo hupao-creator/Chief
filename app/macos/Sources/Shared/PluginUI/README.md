@@ -238,6 +238,15 @@ Hosts can set `placeholderLineLimit` independently of the multiline draft editor
 Moku uses one line with tail truncation and trailing editor clearance; the optional
 placeholder icon retains its fixed square seat when the text is compressed.
 
+## Harness transcript
+
+All four Harness plugins supply ordered semantic items to `ThreadTranscriptLayout`.
+It selects the visible message anchors for live, terminal and historical views.
+`ThreadTranscriptBody` renders user and assistant Markdown, steer text, reasoning,
+reviews and diagnostics. `ThreadTranscriptActivities` builds grouped tool rows.
+`ThreadRequestHeader` and `ThreadRequestActions` give pending requests a common
+presentation while each plugin validates the response. [Adapter inventory](../../../../../internal/plugins/harness/README.md#thread-markdown) · [Reading rules](../../../../../design/reading.md#content-and-execution-identity)
+
 ## Reading placeholders
 
 [NativeReadingPlaceholder](Conversation/NativeReadingPlaceholder.swift) separates
@@ -711,9 +720,7 @@ assistant text stays readable while its execution is running/waiting. After
 termination only the last non-error reply and an explicitly targeted message
 remain ordinary content; intermediate replies join summary-only execution work. Lightweight Pi/OpenCode turn projections retain interim replies for explicit
 message visits without a detail lease. A targeted OpenCode child reply retains
-all its text parts without exposing sibling replies or tools. OpenCode child sessions group their
-execution rows into the same summaries and expose independent errors without
-exposing sibling tools. An OpenCode assistant failure with no reply text
+all its text parts without exposing sibling replies or tools. Child-session work keeps its ordered position among the parent execution’s rows and contributes to the same summaries. Independent child errors remain readable. An OpenCode assistant failure with no reply text
 retains an independent failure-status message; a failed tool alone cannot create it. The same policy applies to live, completed, loaded
 historical and inherited content across the four Harnesses. Empty filtered turns retain their execution status and result anchor; filtering
 happens before grouping and rendering, so hidden events create no row gaps or scroll destinations. The

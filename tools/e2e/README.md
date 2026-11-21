@@ -11,6 +11,12 @@ content reads establish prerequisites and independent result evidence; they are
 not counted as interaction coverage. Runtime invariants belong to PBT; UX timing,
 resource use and visual-performance measurements belong to benchmarks.
 
+## Harness Thread Markdown
+
+Run `python3 tools/e2e/thread-transcript/run.py --output /tmp/chief-thread-transcript-evidence` on macOS with the pinned dependencies cached. Specify a fresh output directory. The isolated executable mounts the registered Swift plugins in an offscreen window. The fixture driver feeds Codex app-server, Claude stream-json, Pi RPC and OpenCode SSE frames to their production parsers and reducers. OpenCode also replays the authoritative message list twice.
+
+The replay checks the manifest preview, the turn projection with deferred presence, full execution rows and the text in the native Markdown views. It covers the partial and settled message, a pending permission, success, failure with a previous answer, and a serialized reopen. Retained-state fixtures exercise independent equal-text Codex notices, Claude fork history, a Pi extension notification and terminal partial reply, and an explicitly targeted OpenCode child reply. Additional frames exercise interleaved Unicode text, reasoning and a tool in Pi, and corrected Claude blocks around a moving review. The evidence directory contains the revision, platform, status and mounted text for each case. This component e2e exercises local protocol and display semantics. Installed CLI transport, real account permissions, durable database transactions and rendering latency have separate verification boundaries. [Reading contract](../../design/reading.md#content-and-execution-identity) · [Fixtures and launcher](thread-transcript)
+
 ## Current scenario contract
 
 [scenarios.json](scenarios.json) is the executable inventory. IDs remain stable

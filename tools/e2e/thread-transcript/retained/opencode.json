@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "nativeSessionId": "primary",
+  "latestExecutionId": "run",
+  "interactions": [],
+  "executions": [
+    {
+      "executionId": "run",
+      "startedAt": 1,
+      "finishedAt": 9,
+      "status": "completed",
+      "summary": "Saved **answer**."
+    }
+  ],
+  "messages": [
+    {
+      "id": "answer",
+      "executionId": "run",
+      "role": "assistant",
+      "status": "complete",
+      "nativeSessionId": "primary",
+      "parts": [
+        {
+          "type": "text",
+          "ordinal": 0,
+          "text": "Saved **answer**."
+        }
+      ]
+    },
+    {
+      "id": "child-reply",
+      "executionId": "run",
+      "role": "assistant",
+      "status": "complete",
+      "nativeSessionId": "child",
+      "parts": [
+        {
+          "type": "text",
+          "ordinal": 0,
+          "text": "Delegated "
+        },
+        {
+          "type": "reasoning",
+          "ordinal": 0,
+          "text": "child reasoning"
+        },
+        {
+          "type": "text",
+          "ordinal": 1,
+          "text": "answer"
+        }
+      ]
+    }
+  ]
+}

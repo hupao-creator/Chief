@@ -1,0 +1,7 @@
+{"type":"review_update","text":"first review"}
+{"type":"stream_event","event":{"type":"message_start","message":{"id":"m"}}}
+{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Body 🌲"}}}
+{"type":"stream_event","event":{"type":"content_block_delta","index":1,"delta":{"type":"thinking_delta","thinking":"one"}}}
+{"type":"review_update","text":"settled review"}
+{"type":"assistant","message":{"id":"m","content":[{"type":"text","text":"Body 🌲 updated"},{"type":"thinking","thinking":"two"},{"type":"text","text":"Tail"}],"stop_reason":"end_turn"}}
+{"type":"result","result":"Body 🌲 updatedTail","is_error":false}

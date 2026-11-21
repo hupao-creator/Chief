@@ -12,26 +12,62 @@ type nativeTool struct {
 	Input             any
 }
 type streamMessage struct{ ID, Model string }
+
+// Byte offsets into one bounded timeline body, taken only at UTF-8 boundaries.
+type reasoningSpan struct {
+	row        timelinePosition
+	start, end int
+}
+
+// A singleton review/error marker may move while a native block is still open.
+// Cache its position without retaining a body from a replaced state snapshot.
+type timelinePosition struct {
+	index int
+	id    string
+}
+
+func lastPosition(t *Turn) timelinePosition {
+	index := len(t.Timeline) - 1
+	return timelinePosition{index, str(t.Timeline[index]["id"])}
+}
+
+func (p *timelinePosition) resolve(t *Turn) map[string]any {
+	if p.index < len(t.Timeline) && t.Timeline[p.index]["id"] == p.id {
+		return t.Timeline[p.index]
+	}
+	for index, row := range t.Timeline {
+		if row["id"] == p.id {
+			p.index = index
+			return row
+		}
+	}
+	return nil
+}
+
 type frameParser struct {
-	onUsage             func(model, generation, kind string, usage map[string]any)
-	contextTokens       float64
-	messages            map[string]streamMessage
-	tools               map[string]*nativeTool
-	known               map[string]bool
-	textMessages        map[string]bool
-	reasoningMessages   map[string]bool
-	textBoundaries      map[string]bool
-	reasoningBoundaries map[string]bool
-	lastReasoningPart   string
-	usage               map[string]map[string]any
-	costs               map[string]float64
-	taskMutations       map[string]*nativeTool
-	tasks               map[string]map[string]any
-	taskOrder           []string
+	onUsage         func(model, generation, kind string, usage map[string]any)
+	contextTokens   float64
+	messages        map[string]streamMessage
+	tools           map[string]*nativeTool
+	known           map[string]bool
+	textBlocks      map[string]*timelinePosition
+	reasoningBlocks map[string]*reasoningSpan
+	textBoundaries  map[string]bool
+
+	usage         map[string]map[string]any
+	costs         map[string]float64
+	taskMutations map[string]*nativeTool
+	tasks         map[string]map[string]any
+	taskOrder     []string
 }
 
 func newParser() *frameParser {
-	return &frameParser{messages: map[string]streamMessage{}, tools: map[string]*nativeTool{}, known: map[string]bool{}, textMessages: map[string]bool{}, reasoningMessages: map[string]bool{}, textBoundaries: map[string]bool{}, reasoningBoundaries: map[string]bool{}, usage: map[string]map[string]any{}, costs: map[string]float64{}, taskMutations: map[string]*nativeTool{}, tasks: map[string]map[string]any{}}
+	return &frameParser{
+		messages: map[string]streamMessage{}, tools: map[string]*nativeTool{}, known: map[string]bool{},
+		textBlocks: map[string]*timelinePosition{}, reasoningBlocks: map[string]*reasoningSpan{}, textBoundaries: map[string]bool{},
+		usage: map[string]map[string]any{}, costs: map[string]float64{},
+		taskMutations: map[string]*nativeTool{}, tasks: map[string]map[string]any{},
+	}
 }
 func (p *frameParser) apply(s *State, t *Turn, f map[string]any, canonical func(string) string) {
 	typ := str(f["type"])
@@ -124,14 +160,13 @@ func (p *frameParser) apply(s *State, t *Turn, f map[string]any, canonical func(
 			b := obj(v)
 			switch str(b["type"]) {
 			case "text":
-				if parent == "" && !p.textMessages[id] {
-					t.text(str(b["text"]), id, false)
-					p.textBoundaries[boundary] = true
+				if parent == "" {
+					p.textBlock(t, id, fmt.Sprintf("%s:%d", id, index), str(b["text"]), true)
+					p.textBoundaries[boundary] = p.textBoundaries[boundary] || str(b["text"]) != ""
 				}
 			case "thinking":
-				if parent == "" && !p.reasoningMessages[id] {
-					p.reasoning(t, str(b["thinking"]), fmt.Sprintf("%s:%v", id, index))
-					p.reasoningBoundaries[boundary] = true
+				if parent == "" {
+					p.reasoningBlock(t, fmt.Sprintf("%s:%d", id, index), str(b["thinking"]), true)
 				}
 			case "tool_use":
 				toolID := str(b["id"])
@@ -141,10 +176,6 @@ func (p *frameParser) apply(s *State, t *Turn, f map[string]any, canonical func(
 					p.recordTask(tool)
 				}
 			}
-		}
-		if parent == "" {
-			p.textMessages[id] = true
-			p.reasoningMessages[id] = true
 		}
 		if parent == "" && str(message["stop_reason"]) != "" {
 			p.messageEnd(t, id)
@@ -174,7 +205,7 @@ func (p *frameParser) apply(s *State, t *Turn, f map[string]any, canonical func(
 			s.PrimarySessionID = session
 			s.PendingFork = nil
 		}
-		if !p.textBoundaries[boundary] {
+		if !p.textBoundaries[boundary] && !claudeResultFailed(f) {
 			text := str(f["result"])
 			if structured, ok := f["structured_output"]; ok {
 				if v, ok := structured.(string); ok {
@@ -189,7 +220,6 @@ func (p *frameParser) apply(s *State, t *Turn, f map[string]any, canonical func(
 			}
 		}
 		delete(p.textBoundaries, boundary)
-		delete(p.reasoningBoundaries, boundary)
 		for model, v := range obj(f["modelUsage"]) {
 			usage := obj(v)
 			cost := number(usage["costUSD"])
@@ -279,8 +309,24 @@ func (p *frameParser) stream(t *Turn, e map[string]any, parent, boundary string,
 			p.tools[fmt.Sprintf("%s:%v", stream, e["index"])] = tool
 			p.startTool(t, tool, parent, canonical)
 		}
+		if str(b["type"]) == "text" && parent == "" {
+			id := p.messages[stream].ID
+			key := fmt.Sprintf("%s:%v", id, e["index"])
+			if _, started := p.textBlocks[key]; !started {
+				p.textBlock(t, id, key, str(b["text"]), true)
+			}
+			if str(b["text"]) != "" {
+				p.textBoundaries[boundary] = true
+			}
+		}
 		if str(b["type"]) == "thinking" && parent == "" {
 			t.StatusLabel = "正在思考"
+			if text := str(b["thinking"]); text != "" {
+				key := fmt.Sprintf("%s:%v", p.messages[stream].ID, e["index"])
+				if p.reasoningBlocks[key] == nil {
+					p.reasoningBlock(t, key, text, true)
+				}
+			}
 		}
 	case "content_block_delta":
 		d := obj(e["delta"])
@@ -288,14 +334,12 @@ func (p *frameParser) stream(t *Turn, e map[string]any, parent, boundary string,
 		case "text_delta":
 			if parent == "" {
 				p.textBoundaries[boundary] = true
-				p.textMessages[p.messages[stream].ID] = true
-				t.text(str(d["text"]), p.messages[stream].ID, false)
+				id := p.messages[stream].ID
+				p.textBlock(t, id, fmt.Sprintf("%s:%v", id, e["index"]), str(d["text"]), false)
 			}
 		case "thinking_delta":
 			if parent == "" {
-				p.reasoningBoundaries[boundary] = true
-				p.reasoningMessages[p.messages[stream].ID] = true
-				p.reasoning(t, str(d["thinking"]), fmt.Sprintf("%s:%v", p.messages[stream].ID, e["index"]))
+				p.reasoningBlock(t, fmt.Sprintf("%s:%v", p.messages[stream].ID, e["index"]), str(d["thinking"]), false)
 			}
 		case "input_json_delta":
 			if tool := p.tools[fmt.Sprintf("%s:%v", stream, e["index"])]; tool != nil {
@@ -342,23 +386,104 @@ func (p *frameParser) stream(t *Turn, e map[string]any, parent, boundary string,
 		delete(p.messages, stream)
 	}
 }
-func (p *frameParser) reasoning(t *Turn, delta, part string) {
-	delta = strings.ReplaceAll(delta, "\x00", "")
-	if delta == "" {
+
+// A final assistant frame is authoritative for each indexed content block.
+// Keep its original occurrence across partial deltas, corrections and repeats.
+func (p *frameParser) textBlock(t *Turn, message, block, value string, snapshot bool) {
+	value = strings.ReplaceAll(value, "\x00", "")
+	position := p.textBlocks[block]
+	if position == nil {
+		if len(t.Timeline) >= 50000 {
+			return
+		}
+		fields := map[string]any{"content": "", "status": "streaming"}
+		if message != "" {
+			fields["messageId"] = message
+		}
+		t.append("assistant", fields)
+		last := lastPosition(t)
+		position = &last
+		p.textBlocks[block] = position
+	}
+	item := position.resolve(t)
+	if item == nil {
 		return
 	}
-	// Native messages and thinking blocks are paragraphs, not stream chunks.
-	// Keep this boundary in the timeline shared by live and historical readers.
-	if part != p.lastReasoningPart && len(t.Timeline) > 0 {
-		last := t.Timeline[len(t.Timeline)-1]
-		if previous := str(last["content"]); last["kind"] == "reasoning" && previous != "" {
+	previous := str(item["content"])
+	if !snapshot {
+		if item["status"] != "streaming" || value == "" {
+			return
+		}
+		value = previous + value
+	}
+	if value == previous {
+		return
+	}
+	item["content"] = clip(value, 4000000)
+	t.at()
+	if position.index == len(t.Timeline)-1 {
+		t.StatusLabel = ""
+		t.foreground("assistant-text", nil)
+	}
+}
+
+func (p *frameParser) reasoningBlock(t *Turn, key, value string, snapshot bool) {
+	value = strings.ReplaceAll(value, "\x00", "")
+	span := p.reasoningBlocks[key]
+	if span == nil {
+		if value == "" || len(t.Timeline) >= 50000 {
+			return
+		}
+		start := 0
+		prefix := ""
+		if n := len(t.Timeline); n > 0 && t.Timeline[n-1]["kind"] == "reasoning" {
+			previous := str(t.Timeline[n-1]["content"])
 			trailing := len(previous) - len(strings.TrimRight(previous, "\n"))
-			leading := len(delta) - len(strings.TrimLeft(delta, "\n"))
-			delta = strings.Repeat("\n", max(0, 2-trailing-leading)) + delta
+			leading := len(value) - len(strings.TrimLeft(value, "\n"))
+			prefix = strings.Repeat("\n", max(0, 2-trailing-leading))
+			start = len(previous) + len(prefix)
+		}
+		t.reasoning(prefix + value)
+		row := lastPosition(t)
+		end := len(str(t.Timeline[row.index]["content"]))
+		p.reasoningBlocks[key] = &reasoningSpan{row, min(start, end), end}
+		return
+	}
+	row := span.row.resolve(t)
+	if row == nil {
+		return
+	}
+	body := str(row["content"])
+	previous := body[span.start:span.end]
+	if !snapshot {
+		value = previous + value
+	}
+	if value == previous {
+		return
+	}
+	tail := span.row.index == len(t.Timeline)-1
+	if tail && span.end == len(body) && strings.HasPrefix(value, previous) {
+		t.reasoning(value[len(previous):])
+		span.end = len(str(row["content"]))
+		return
+	}
+	// Full frames may correct an earlier block after a tool or another
+	// reasoning block has arrived. Replace that occurrence in place.
+	corrected := clip(body[:span.start]+value+body[span.end:], 4000000)
+	end := min(span.start+len(value), len(corrected))
+	shift := len(value) - len(previous)
+	for _, other := range p.reasoningBlocks {
+		if other != span && other.row.id == span.row.id && other.start >= span.end {
+			other.start = min(other.start+shift, len(corrected))
+			other.end = min(other.end+shift, len(corrected))
 		}
 	}
-	p.lastReasoningPart = part
-	t.reasoning(delta)
+	span.end = end
+	row["content"] = corrected
+	t.at()
+	if tail && t.Foreground["kind"] == "reasoning" {
+		t.reasoningForeground(corrected, 0, false)
+	}
 }
 
 func (p *frameParser) messageStart(t *Turn, id, model string) {
