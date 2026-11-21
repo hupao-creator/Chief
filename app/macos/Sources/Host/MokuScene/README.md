@@ -340,12 +340,16 @@ cannot expand it into the note's history actions.
 
 Text shorter than the Talk viewport is vertically centered in its row.
 The Dock's Stop
-square is revealed by pointer hover, keyboard focus or VoiceOver focus and fades
-out otherwise. The Button itself stays in the accessibility tree, while pointer
+square is revealed by pointer hover, keyboard focus or VoiceOver focus. Its
+[opacity layer](NativeMokuInk.swift) follows the 120 ms ease-in/out curve on reveal
+and hide. A reversal continues the outgoing trajectory while moving toward the
+new target. A transaction that disables animation applies the new value immediately.
+The surrounding Button owns cancellation and stays in the accessibility tree, while pointer
 hit testing follows the visual state so an invisible square cannot be clicked.
 Running messages reserve a 48-point trailing inset even before hover/focus,
 keeping text and dispatch content clear of the 30-point Stop target and its
 7-point edge inset. Revealing the square therefore does not rewrap the message.
+See the [Stop window and input measurements](../../../../../design/research/chief-bar-evidence/independent/stop.md).
 This is cancellation (`moku:cancel`), with no pause/resume action. Composer Stop
 shares the Send seat for an active Thread execution; other composer routes retain
 their separate Stop item. Blink/cloud clock pauses are animation lifecycle state,

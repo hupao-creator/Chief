@@ -1043,12 +1043,10 @@ public struct NativeMokuDock: View {
                 if stopControlPresent {
                     Button(action: onCancel) {
                         // Keep the Button in accessibility while hiding its ink.
-                        RoundedRectangle(cornerRadius: 1).fill(.foreground).frame(width: 10, height: 10)
-                            // The hover fade owns only ink. The moving button's
-                            // position and hit seat follow the shell's transaction.
-                            .animation(.easeInOut(duration: 0.12)) {
-                                $0.opacity(stopVisible ? 1 : 0)
-                            }
+                        NativeMokuInk(visible: stopVisible, curve: .easeInOut, duration: 0.12, passive: true) {
+                            RoundedRectangle(cornerRadius: 1).fill(.foreground).frame(width: 10, height: 10)
+                        }
+                            .frame(width: 10, height: 10)
                             .geometryGroup()
                             .frame(width: composerStop ? 32 : 30, height: composerStop ? 32 : 30)
                             .contentShape(Circle())
