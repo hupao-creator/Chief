@@ -1,5 +1,7 @@
 # Settings HTTP latency
 
+The [measurement report](RESULTS.md) includes source revisions, raw samples and limits.
+
 This headless macOS benchmark measures authenticated commands against a production
 `chief-runtime serve` on loopback. A new profile, private home and deterministic
 Claude control peer isolate the [configuration admission](../../../internal/core/runtime/README.md#settings)
@@ -52,8 +54,8 @@ python3 tools/verification/local-http/run.py .build/diagnostic .build/seed --int
 ```
 
 Each `presentation-ns` line gives scope, Harness, Moku-binding flag, time inside
-the settings handler, number of configuration gate acquisitions, time until
-acquisition returned, and time inside the native presentation adapter. The two
+the settings handler, number of calls to acquire the configuration gate, time until
+those calls returned, and time inside the native presentation adapter. The two
 subintervals are inside handler time. Record instrumented runs separately.
 The interval override omits wall-clock aging and is only for attribution.
 
