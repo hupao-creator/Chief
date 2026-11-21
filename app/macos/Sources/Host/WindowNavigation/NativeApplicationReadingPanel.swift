@@ -61,6 +61,8 @@ struct NativeApplicationReadingPanel: ViewModifier {
             // Clip before padding so the 8pt border follows the outer 22pt curve.
             content.clipShape(RoundedRectangle(cornerRadius: 14))
                 .nativeReadingPanelViewport(topInset: 8, balancedVerticalInsets: true)
+        } else if identifier == "moku-reading-panel" {
+            content.nativeThreadReadingViewport(minimumBottomInset: minimumBottomInset)
         } else {
             content.nativeReadingPanelViewport(minimumBottomInset: minimumBottomInset)
         }

@@ -167,8 +167,8 @@ including when the shared history document has no navigation host. History retai
 TOC navigation, Escape and its close action with the existing route-visit fence.
 Other application navigation retains its own window-navigation behavior.
 Moku history retains the underlying route and owns a separate nested navigation
-scope; its current/archived session picker reserves space inside the panel for
-Close, and its transcript does not drive window navigation. Report panel HTML keeps its trusted
+scope. Its current conversation and earlier turns share the Thread document
+margins and Close clearance. Its transcript does not drive window navigation. Report panel HTML keeps its trusted
 DOM Escape/editing/dialog handling without installing the scroll-driven window
 navigation portal; scrolling never moves the traffic lights. Opening an application from an
 Agent still restores that Agent and its reading target on Close. Overview entry
@@ -176,8 +176,9 @@ remembers the actual source card, and refreshes
 its return frame after resize. These routes share panel margins, source-frame
 animation, rounded surfaces and the full-circle Close target.
 The shared Close sits at the panel's upper-left. Viewports normally reserve
-48pt below the top edge; the main Agent reader uses symmetric 22pt viewport
-insets and clears Close through its symmetric document margins. The history
+48pt below the top edge. The main Agent and Chief readers clear Close through
+their symmetric document margins and use 22pt vertical viewport insets.
+Chief reserves additional bottom space when its composer overlaps the card. The history
 marks overlay the leading margin and retain 64pt of vertical clearance.
 The document margins apply to both opening
 heading preparation and the live current/history reader, retaining measured

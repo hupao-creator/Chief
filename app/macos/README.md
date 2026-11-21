@@ -38,13 +38,13 @@ a scoped rendering policy, leaving ordinary launches flat. Its public
 The [external comparison runner](../../tools/benchmarks/README.md#agent-emoji-badge-material-comparison)
 uses only the built artifact and that protocol, without linking product modules.
 
-Agent Thread detail admits assistant replies and execution records: reasoning,
+Agent Thread detail and Chief history display assistant replies and execution records including reasoning,
 tools/activities, approvals/questions, review, context compaction, background work,
 execution status, author and usage. Errors are exempt from the content allowlist:
 explicit error records, error-level notices, failed assistant messages and
 execution failures remain readable, including after completion and with work collapsed.
-Explicit ordinary follow-up inputs remain in their native chronological position,
-including after execution completion. They use a compact two-line surface: literal
+Ordinary follow-ups appear in their native chronological position while the execution is running.
+They use a compact two-line surface with literal
 text and the recorded message time, without an author/sequence heading or delivery
 status. Long text and attachment/annotation details expand on demand; absent
 message times stay absent. Initial user input, internal/developer/system input,
@@ -57,9 +57,8 @@ fill missing historical titles.
 
 This is a native reader policy shared by Codex, Claude, Pi and OpenCode across
 live, loaded historical, inherited/fork and deferred execution content (including
-OpenCode child sessions). Canonical history, transport, Overview, Moku, Agent grep
-and other conversation surfaces retain their data and policies. Adjacent
-execution entries remain grouped across hidden entries. Running/waiting
+OpenCode child sessions). Chief's coordinator audit, Note and Dock retain
+their own projections. Adjacent execution entries stay grouped across hidden entries. Running/waiting
 executions retain settled assistant replies. Unfinished assistant messages do
 not display incrementally: each message renders its complete body only after
 it settles, even if the execution continues. This also applies to the Execution
@@ -68,15 +67,15 @@ After termination, intermediate ordinary replies belong to summary-only executio
 work; only the last non-error reply, independent errors, pending interactions
 and an explicitly targeted reply remain separate from summaries.
 Failed tools remain execution work: hiding work hides their rows and diagnostics
-as well. Showing execution work in Agent Thread detail displays only the shared
-reasoning/tool-count summary and reported reasoning usage. Tool-group titles
+as well. In both readers, showing work reveals the shared reasoning and tool
+counts and the reported reasoning usage. Tool-group titles
 (such as Used tools), Hooks, commands, reasoning bodies and failed-tool
 diagnostics are execution details and never mount here; deferred detail content
 is not acquired. This applies while running, streaming, waiting for an interaction
 and after completion; pending permissions/questions remain actionable.
 Background terminal/task sections expose only static counts
 and status, without commands, task descriptions or disclosures; hiding work
-hides those summaries too. Other conversation surfaces retain full execution disclosure.
+hides those summaries too.
 Failure status does not create another execution boundary or an independent
 error message.
 OpenCode child sessions retain independent assistant errors without revealing

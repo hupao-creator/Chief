@@ -4,6 +4,7 @@
 {"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"ch"}}}
 {"type":"assistant","message":{"id":"work","content":[{"type":"thinking","thinking":"check once"},{"type":"tool_use","id":"call","name":"inspect","input":{}}],"stop_reason":"end_turn"}}
 {"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"call","content":"tool diagnostic","is_error":true}]}}
+{"sample":"work"}
 {"type":"stream_event","event":{"type":"message_start","message":{"id":"m2"}}}
 {"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"# Res"}}}
 {"sample":"stream"}

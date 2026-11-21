@@ -5,6 +5,10 @@ private extension EnvironmentValues {
 }
 
 public extension View {
+    func nativeThreadReadingViewport(minimumBottomInset: CGFloat = 0) -> some View {
+        nativeReadingPanelViewport(topInset: 22, clearsCloseHorizontally: true, minimumBottomInset: minimumBottomInset)
+    }
+
     /// Inset the viewport itself, not its document or just the painted thumb.
     /// The host clips its rounded edge at the document's scroll limits.
     /// By default the top clears Close's 14pt inset + 32pt hit region. A reader

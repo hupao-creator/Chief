@@ -347,7 +347,7 @@ struct NativeSidecardWorkspaceLayout: View {
         }
         .onPreferenceChange(NativeReadingContentStatusKey.self, perform: onContentStatusChange)
         .environment(\.nativeThreadReservesSidecardColumn, snapshot.layoutSelection != nil)
-        .nativeReadingPanelViewport(topInset: 22, clearsCloseHorizontally: true)
+        .nativeThreadReadingViewport()
         .accessibilityElement(children: .contain)
         .accessibilityLabel(localize("对话轮次", "Conversation turns"))
         // History owns its own Escape. Keep this fallback out of Sidecards so

@@ -60,8 +60,7 @@ public extension EnvironmentValues {
     /// execution work; active references use the live process summary.
     @Entry var threadRelatedExecution = false
 
-    /// Moku's current/archived conversations reuse the Harness reader without
-    /// adopting the ordinary Agent detail content policy.
+    /// The default execution reader for Agent Threads and current or archived Chief sessions.
     var threadAgentDetail: Bool {
         get { self[ThreadAgentDetailKey.self] }
         set { self[ThreadAgentDetailKey.self] = newValue }

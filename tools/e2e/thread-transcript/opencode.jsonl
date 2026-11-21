@@ -5,6 +5,7 @@
 {"type":"session.tool.called","data":{"sessionID":"primary","assistantMessageID":"work","id":"call","name":"inspect","input":{}},"durable":{"aggregateID":"primary","seq":4}}
 {"type":"session.tool.failed","data":{"sessionID":"primary","assistantMessageID":"work","id":"call","name":"inspect","error":{"message":"tool diagnostic"}},"durable":{"aggregateID":"primary","seq":5}}
 {"type":"session.step.ended","data":{"sessionID":"primary","assistantMessageID":"work"},"durable":{"aggregateID":"primary","seq":6}}
+{"sample":"work"}
 {"type":"session.text.delta","data":{"sessionID":"primary","assistantMessageID":"m2","ordinal":0,"delta":"# Res"},"durable":{"aggregateID":"primary","seq":7}}
 {"type":"session.text.delta","data":{"sessionID":"primary","assistantMessageID":"m2","ordinal":0,"delta":"# Res"},"durable":{"aggregateID":"primary","seq":7}}
 {"sample":"stream"}

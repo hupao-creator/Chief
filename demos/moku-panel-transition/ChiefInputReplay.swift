@@ -181,20 +181,29 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
             let controlDeadline = ContinuousClock.now + .seconds(4)
             while true {
                 let controls = readingControls.snapshot(visit: readingVisit)
-                if let filter = controls.first(where: { $0["role"] == .text("visibility.userMessages") && $0["enabled"] == .bool(true) }),
-                   let id = filter["id"]?.stringValue, let handle = filter["handle"]?.stringValue {
+                if let previous = controls.first(where: {
+                    $0["role"] == .text("history.open") && $0["label"]?.stringValue?.hasSuffix(archivedMessage) == true
+                }),
+                   let id = previous["id"]?.stringValue, let handle = previous["handle"]?.stringValue {
                     try readingControls.perform(id: id, handle: handle, operation: "activate", value: .null, visit: readingVisit)
                     break
                 }
-                try require(ContinuousClock.now < controlDeadline, "Chief history did not mount Show user messages")
+                try require(ContinuousClock.now < controlDeadline, "Chief history lost the directory mention in its earlier run's title")
                 try await Task.sleep(for: .milliseconds(10))
             }
             let deadline = ContinuousClock.now + .seconds(4)
-            while find(content, NSTextView.self, matching: { !$0.isEditable && $0.string.contains(archivedMessage) }) == nil {
-                try require(ContinuousClock.now < deadline, "Chief history did not render the recorded @ message")
+            while !readingControls.snapshot(visit: readingVisit).contains(where: {
+                $0["role"] == .text("history") && $0["value"]?["rowId"] == .text("turn:previous-execution")
+            }) {
+                try require(ContinuousClock.now < deadline, "Chief history did not open the run named by the saved message")
                 try await Task.sleep(for: .milliseconds(10))
             }
-            print("Passed reading a previously sent Chief message with a stored directory mention.")
+            let currentEditor = try await focusEditor()
+            currentEditor.insertText("Continue with Chief", replacementRange: currentEditor.selectedRange())
+            currentEditor.keyDown(with: key("\r", code: 36, panel: panel))
+            try require(sent.last == textInput("Continue with Chief") && draft.text.isEmpty,
+                "Selecting the historical run detached the current Chief composer")
+            print("Opened the earlier Chief run by its instruction and sent from the current Chief composer.")
         }
         print("Passed \(surface): typed @ without completion, pasted and edited @ text, and sent both literal and ordinary text.")
     }
@@ -267,6 +276,11 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
                     "role": .text("user"), "kind": .text("prompt"), "createdAt": .integer(1), "attachments": .array([])])]),
                 "timeline": .array([.object(["id": .text("previous-item"), "kind": .text("user-message"),
                     "createdAt": .integer(1), "messageId": .text("previous-message")])]),
+            ]), .object([
+                "executionId": .text("current-execution"), "createdAt": .integer(2), "updatedAt": .integer(2),
+                "finishedAt": .integer(2), "status": .text("completed"), "answer": .text(""), "reasoning": .text(""),
+                "messages": .array([]), "timeline": .array([]), "plan": .array([]), "activities": .array([]),
+                "interactions": .array([]), "notices": .array([]),
             ])])])
     }
 }

@@ -51,7 +51,7 @@ public struct CodexHarnessPlugin: HarnessPlugin {
         projectCodexMokuPresentation(state: try CodexState(input.thread.sessionState, createdAt: input.thread.createdAt).raw)
     }
     public func threadView(input: HarnessThreadInput, actions: HarnessThreadActions, context: HarnessRenderContext) -> some View {
-        CodexThreadView(input: input, actions: actions, context: context).environment(\.threadAgentDetail, input.thread.moku != true && !input.thread.mokuHistory)
+        CodexThreadView(input: input, actions: actions, context: context)
     }
     public func overviewCard(input: HarnessThreadInput, projection: CodexOverviewView, respond: @escaping (HarnessRespondRequest) async throws -> Void,
                              openThread: @escaping () -> Void) -> some View {
