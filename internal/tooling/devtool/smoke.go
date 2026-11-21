@@ -1,6 +1,7 @@
 package devtool
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -70,16 +71,38 @@ func Smoke(ctx context.Context, repo, application, channel, report string) error
 		return err
 	}
 	expected := map[string]string{
-		"CFBundleIdentifier":     product.BundleIdentifier,
-		"CFBundleName":           product.DisplayName,
-		"CFBundleDisplayName":    product.DisplayName,
-		"ChiefDataDirectoryName": product.DataDirectoryName,
-		"LSMinimumSystemVersion": "26.0",
-		"CFBundleExecutable":     "Chief",
+		"CFBundleIdentifier":        product.BundleIdentifier,
+		"CFBundleName":              product.DisplayName,
+		"CFBundleDisplayName":       product.DisplayName,
+		"CFBundleDevelopmentRegion": "en",
+		"ChiefDataDirectoryName":    product.DataDirectoryName,
+		"LSMinimumSystemVersion":    "26.0",
+		"CFBundleExecutable":        "Chief",
 	}
 	for key, value := range expected {
 		if info[key] != value {
 			return fmt.Errorf("unexpected bundle metadata %s", key)
+		}
+	}
+	localizations, ok := info["CFBundleLocalizations"].([]any)
+	if !ok || len(localizations) != 2 || localizations[0] != "en" || localizations[1] != "zh-Hans" {
+		return fmt.Errorf("unexpected bundle localizations")
+	}
+	if product.Channel == "alpha" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		for _, name := range []string{"Chief", "chief-runtime"} {
+			data, err := os.ReadFile(filepath.Join(application, "Contents/MacOS", name))
+			if err != nil {
+				return err
+			}
+			for _, path := range []string{repo, home} {
+				if bytes.Contains(data, []byte(filepath.Clean(path)+"/")) {
+					return fmt.Errorf("%s contains a local build path", name)
+				}
+			}
 		}
 	}
 	result := map[string]any{"application": application, "signature": signature, "runtimeSignature": runtimeSignature, "nodeFree": true, "headless": os.Getenv("CHIEF_HEADLESS") == "1", "scope": "Signed bundle, portable Go and Swift binaries, and packaged resources. No application processes are launched."}

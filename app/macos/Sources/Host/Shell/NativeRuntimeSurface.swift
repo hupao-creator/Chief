@@ -58,7 +58,7 @@ private struct RuntimeStartupScreen: View {
     private var loading: Bool { reconnecting || (error.isEmpty && (connecting || state == .connected)) }
     private var message: String {
         state == .stopped ? locale.text("后台服务已停止", "The background service has stopped")
-            : locale.text("暂时无法连接 Agent", "Unable to connect to the agent")
+            : locale.text("无法连接到 Chief 的后台服务", "Unable to connect to Chief’s background service")
     }
 
     var body: some View {
@@ -106,7 +106,7 @@ private struct RuntimeConnectionNotice: View {
     private var visible: Bool { state != .connected || synchronizing || !error.isEmpty || reconnecting }
     private var canReconnect: Bool { state == .stopped || state == .disconnected || !error.isEmpty }
     private var message: String {
-        if reconnecting { return locale.text("正在连接 Agent…", "Connecting to agent…") }
+        if reconnecting { return locale.text("正在重新连接后台服务…", "Reconnecting to the background service…") }
         if state == .stopped { return locale.text("后台服务已停止", "The background service has stopped") }
         // Trust/protocol failures stop automatic retry. Their reason must be
         // visible on touch devices, where a hover help tag is not reachable.

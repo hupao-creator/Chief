@@ -277,6 +277,8 @@ and propagates capture uncertainty; incomplete whole-task accounting stays visib
 The [measurement reports](baselines/) retain source/collector/artifact identities,
 raw-data links, failed preparations and capability limits. Their metrics describe
 only those artifacts; they do not certify current rendering or a regression gate.
+Local archive locations in public summaries are relative to the measurement
+checkout. The raw archives stay with the collector.
 
 ## Verification boundary
 

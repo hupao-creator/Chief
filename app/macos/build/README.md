@@ -104,6 +104,8 @@ atomic rename. An existing release directory is never replaced, including by a
 concurrent builder. Failed packaging leaves prior releases intact.
 The DMG contains `Chief Alpha.app`, an Applications shortcut and the
 [bilingual installation guide](alpha-installation.txt).
+The public [Releases page](https://github.com/hupao-creator/Chief/releases)
+lists the prerelease DMG, checksum and guide by version.
 The receipt records the source commit, dirty-worktree status, versions, signing
 mode, input executable hashes and DMG checksum. Build from a clean checkout when
 distributing a package tied to a commit. Run `shasum -a 256 -c SHA256SUMS` inside
@@ -240,7 +242,11 @@ HTTP destination.
 
 The packaging tool preserves Swift resource bundles, validates fonts and icon
 geometry, checks architecture and dynamic dependencies, and removes nonportable
-SwiftPM rpaths. The Go runtime and outer app are signed in dependency order with the
+SwiftPM rpaths. Release packaging strips the Swift linker's debug map from the
+staged executable before signing. The UI looks up resources relative to the
+installed app or SwiftPM product. The bundle carries the Chief and Go licenses,
+Unicode and dependency notices, and the licenses alongside its fonts and icons.
+The Go runtime and outer app are signed in dependency order with the
 same Apple Development team, or explicitly ad hoc for alpha. Go needs no JIT entitlement. App publication uses the existing locked atomic C
 publisher. Archives are created from the verified private staging tree.
 
@@ -254,7 +260,9 @@ correctness coverage.
 
 For alpha bundles, pass `--channel alpha --app PATH` to `smoke`. Only this explicit
 channel accepts ad-hoc signatures; production installation still requires a
-stable Apple Development identity. The alpha command runs this static check
+stable Apple Development identity. Alpha smoke also rejects either executable
+if it contains the current checkout or build account's home directory followed
+by a path separator. The alpha command runs this static check
 before image creation and runs `hdiutil verify` before publishing the image.
 These checks do not prove first-launch behavior, downloaded-file Gatekeeper
 acceptance or compatibility on another Mac.

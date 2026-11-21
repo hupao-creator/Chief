@@ -90,14 +90,15 @@ public enum NativeTypography {
 
 private final class FontResourceAnchor: NSObject {}
 
-/// SwiftPM's development accessor points beside the executable. A distributed
-/// app relocates its resource bundles into Contents/Resources instead.
+/// Packaged apps own their resources. SwiftPM also places them beside standalone
+/// products and test bundles. Resolve both layouts from the running product.
 enum NativeResources {
     static let platform = "macosx"
 
     static let bundle: Bundle = {
+        let name = "ChiefNative_ChiefPluginUI.bundle"
         if let resourceURL = Bundle.main.resourceURL {
-            let packagedURL = resourceURL.appendingPathComponent("ChiefNative_ChiefPluginUI.bundle", isDirectory: true)
+            let packagedURL = resourceURL.appendingPathComponent(name, isDirectory: true)
             if let packaged = Bundle(url: packagedURL) {
                 guard packaged.url(forResource: "inter-latin-wght-normal", withExtension: "ttf")
                         ?? packaged.url(forResource: "inter-latin-wght-normal", withExtension: "ttf", subdirectory: "fonts") != nil else {
@@ -110,7 +111,11 @@ enum NativeResources {
             }
         }
         #if SWIFT_PACKAGE
-        return Bundle.module
+        // SwiftPM's generated accessor embeds the builder's absolute checkout path.
+        let product = Bundle(for: FontResourceAnchor.self)
+        let sibling = product.bundleURL.deletingLastPathComponent().appendingPathComponent(name, isDirectory: true)
+        guard let resources = Bundle(url: sibling) else { preconditionFailure("Missing Chief UI resource bundle: \(name)") }
+        return resources
         #else
         return Bundle(for: FontResourceAnchor.self)
         #endif

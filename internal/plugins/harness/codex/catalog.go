@@ -468,7 +468,9 @@ func ReadThreadConfiguration(ctx context.Context, transport CatalogTransport, cw
 	config, _ := csRecord(response["config"])
 	out := Map{}
 	for _, key := range []string{"model", "model_provider", "model_providers", "model_reasoning_effort", "model_context_window", "model_auto_compact_token_limit", "model_reasoning_summary", "service_tier", "personality", "approval_policy", "approvals_reviewer", "sandbox_mode", "sandbox_workspace_write", "forced_chatgpt_workspace_id", "forced_login_method", "chatgpt_base_url"} {
-		if value, exists := config[key]; exists && value != nil {
+		// A reported null reviewer means the CLI exposes the option but the
+		// native profile has no override. Keep it distinct from a missing field.
+		if value, exists := config[key]; exists && (value != nil || key == "approvals_reviewer") {
 			out[key] = csCopy(value)
 		}
 	}
@@ -519,7 +521,8 @@ func supportsAutoReviewConfiguration(ctx context.Context, transport CatalogTrans
 	if !(major > 0 || minor > 153 || minor == 153 && patch >= 4) {
 		return false, nil
 	}
-	if config["approvals_reviewer"] != "user" && config["approvals_reviewer"] != "auto_review" {
+	reviewer, reported := config["approvals_reviewer"]
+	if !reported || (reviewer != nil && reviewer != "user" && reviewer != "auto_review") {
 		return false, nil
 	}
 	constraints, err := transport.Call(ctx, "configRequirements/read", Map{})

@@ -149,6 +149,13 @@ while live admission still checks the owning execution session. The launch's
 already observed version is reused. Standalone successful version probes cache
 by binary metadata/environment for five minutes and drain their own subprocess.
 
+Codex can report an explicit null `approvals_reviewer` on a new native profile.
+This leaves the reviewer unset. Chief checks the native CLI version and the
+allowed approval reviewers before capturing its `approve-for-me` default or
+starting a session with that selection. A missing reviewer field, an unknown
+reviewer, a failed requirements read or a restriction excluding `auto_review`
+keeps that mode unavailable. The isolated TOML excludes null settings.
+
 Catalog keys include cwd, executable selection, native environment and selected
 config/auth file metadata. Routing additionally observes ancestor `config.toml`
 files and explicit file references, not the native home's desktop state, caches

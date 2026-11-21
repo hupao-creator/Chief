@@ -1799,7 +1799,7 @@
     "No physical FPS, GPU, WindowServer or energy claim",
     "N10 blueIndigo dark only; mixed palettes, structural transitions, pan and first render not measured"
   ],
-  "evidenceRoot": "/Users/felixwang/Desktop/Mokusei/.scratch/overview-shared-prebaked-20261113",
+  "evidenceRoot": ".scratch/overview-shared-prebaked-20261113",
   "appleMaskReference": "https://developer.apple.com/documentation/quartzcore/calayer/mask",
   "evidenceSHA256": {
     "control/n-10/00-idle.active/manifest.json": "cb82079efd2fca6fa18b543b9ff782632a2565a48612e0a98f5bbbd8af9bf91b",

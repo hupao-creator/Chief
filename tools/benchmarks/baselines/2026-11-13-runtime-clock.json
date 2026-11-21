@@ -227,7 +227,7 @@
       "applicationCPUPercentDecrease": 18.668626828206648
     }
   ],
-  "evidenceDirectory": "/Users/felixwang/Desktop/Mokusei/.scratch/overview-runtime-clock-20261113",
+  "evidenceDirectory": ".scratch/overview-runtime-clock-20261113",
   "limits": [
     "One final-revision sample per scenario and variant; no statistical regression claim.",
     "All measurements remain incomplete and all benchmark comparisons remain not-comparable.",
