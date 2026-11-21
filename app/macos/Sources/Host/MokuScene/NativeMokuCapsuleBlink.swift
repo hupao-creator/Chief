@@ -69,6 +69,56 @@ enum NativeMokuCapsuleBlinkTiming {
     }
     func stop() { left.stop(); right.stop() }
 
+    func stopExpression() {
+        left.layer.removeAnimation(forKey: "moku.expression")
+        right.layer.removeAnimation(forKey: "moku.expression")
+    }
+
+    /// The open contours use the same coordinate system as the resident blink.
+    /// Only submit this track between blinks, so two animations never draw the
+    /// lid at the same time. The repeating blink stays on its original phase.
+    func playExpression(in bounds: CGRect, ink: CGColor, firstBlink: Date?, duration: TimeInterval,
+                        slope: Double, pose: (Double) -> NativeMokuCharacterPose) -> CFTimeInterval? {
+        let now = Date.now
+        let nextBlink = NativeMokuCapsuleBlinkTiming.window(at: now, first: firstBlink).lowerBound
+        guard nextBlink.timeIntervalSince(now) > duration else { return nil }
+        // The stationary endpoint has zero velocity. An interrupted reversal
+        // first travels to its turning point. Give CA each monotone part of
+        // the Hermite curve, including its two endpoint derivatives.
+        let turn = -slope / (6 - 3 * slope)
+        // Rounded rectangles approach the circular endpoint through different
+        // contours. Keep the actual intermediate paths on this common curve.
+        var times = (0...84).map { Double($0) / 84 }
+        if turn > 0, turn < 1, !times.contains(where: { abs($0 - turn) < 0.000001 }) {
+            times.append(turn)
+            times.sort()
+        }
+        func progress(_ t: Double) -> Double { t * t * (3 - 2 * t) + slope * t * (1 - t) * (1 - t) }
+        func derivative(_ t: Double) -> Double { (1 - t) * ((6 - 3 * slope) * t + slope) }
+        var curves = [CAMediaTimingFunction]()
+        for (a, b) in zip(times, times.dropFirst()) {
+            let distance = progress(b) - progress(a)
+            guard distance != 0 else { return nil }
+            let scale = (b - a) / (3 * distance)
+            curves.append(CAMediaTimingFunction(controlPoints: 1 / 3, Float(derivative(a) * scale),
+                                                2 / 3, Float(1 - derivative(b) * scale)))
+        }
+        let poses = times.map(pose), final = poses[poses.count - 1]
+        let leftTrack = left.expression(poses.map { $0.eye("l") }, times: times, curves: curves, in: bounds, duration: duration)
+        let rightTrack = right.expression(poses.map { $0.eye("r") }, times: times, curves: curves, in: bounds, duration: duration)
+        guard nextBlink.timeIntervalSinceNow > duration else { return nil }
+        let start = CACurrentMediaTime()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        defer { CATransaction.commit() }
+        update(left: final.eye("l"), right: final.eye("r"), bounds: bounds, ink: ink, active: true, first: firstBlink)
+        for (eye, track) in [(left, leftTrack), (right, rightTrack)] {
+            track.beginTime = eye.layer.convertTime(start, from: nil)
+            eye.layer.add(track, forKey: "moku.expression")
+        }
+        return start
+    }
+
     func update(left poseL: MokuEye, right poseR: MokuEye, bounds: CGRect, ink: CGColor, active: Bool, first: Date?) {
         let now = Date.now
         let start = NativeMokuCapsuleBlinkTiming.window(at: now, first: first).lowerBound
@@ -86,6 +136,26 @@ enum NativeMokuCapsuleBlinkTiming {
         private var scheduled = false
         private var first: Date?
         private let key = "moku.blink"
+        func expression(_ poses: [MokuEye], times: [Double], curves: [CAMediaTimingFunction],
+                        in bounds: CGRect, duration: TimeInterval) -> CAAnimationGroup {
+            func track(_ property: String, _ values: [Any]) -> CAKeyframeAnimation {
+                let animation = CAKeyframeAnimation(keyPath: property)
+                animation.values = values
+                animation.keyTimes = times.map { NSNumber(value: $0) }
+                animation.timingFunctions = curves
+                animation.duration = duration
+                return animation
+            }
+            let scale = NativeMokuCapsuleEyes.eyeScale
+            let group = CAAnimationGroup()
+            group.animations = [
+                track("position", poses.map { CGPoint(x: bounds.midX + $0.x * scale, y: bounds.midY + $0.y * scale) }),
+                track("transform.rotation.z", poses.map { $0.rotation * .pi / 180 }),
+                track("path", poses.map { NativeMokuCapsuleEyes.contour($0, blink: 1).cgPath })
+            ]
+            group.duration = duration
+            return group
+        }
         func stop() {
             if scheduled { layer.removeAnimation(forKey: key); scheduled = false }
         }

@@ -1,0 +1,82 @@
+{
+  "testedCommit": "56d2e65d4163ca75db3422b5a15d592c242c3575",
+  "reference": "9b61af09226e12e0c414273cf077154815e01e0a",
+  "platform": {
+    "os": "26.5.1",
+    "osBuild": "25F80",
+    "architecture": "arm64",
+    "sdk": "26.5"
+  },
+  "captureBackingScale": 2,
+  "replaySHA256": "44a5bf1c0519e6bc2776a179004addcdec734dcbc31e60a20433478b13698e34",
+  "release": {
+    "revision": "56d2e65d4163ca75db3422b5a15d592c242c3575",
+    "startedUTC": "2026-11-21T19:20:43.355273+00:00",
+    "wallSeconds": 200.70460241590627,
+    "exitCode": 0,
+    "argv": [
+      "xcrun",
+      "swift",
+      "build",
+      "--package-path",
+      "app/macos",
+      "-c",
+      "release",
+      "--product",
+      "Chief",
+      "--only-use-versions-from-resolved-file",
+      "-Xswiftc",
+      "-warnings-as-errors"
+    ],
+    "log": [
+      "[83/87] Compiling ChiefHarnessClaude ClaudeErrorPresentation.swift",
+      "[84/87] Compiling ChiefHarnessCodex CodexDTO.swift",
+      "[85/87] Compiling ChiefUI NativeApplicationBackgroundEditor.swift",
+      "[86/88] Compiling ChiefComposition NativePlugins.swift",
+      "[87/89] Compiling Chief Chief.swift",
+      "[87/89] Write Objects.LinkFileList",
+      "[88/89] Linking Chief",
+      "Build of product 'Chief' complete! (198.02s)"
+    ],
+    "binarySHA256": "9a3407944ac7fad27cc1bd2ec1022c0a7bc08e9fc00bafe2e1fa39183750c5ee"
+  },
+  "setupControls": {
+    "commit": "52fbe54c0cd0c6929ad0fcb4aa79e487a164860d",
+    "executableSHA256": "d8dc30cbefe44f53ce3e031b61f3ec4c9591040827dc39fdf454872d1ebc4d52",
+    "pids": {
+      "setup-controls": 92116,
+      "onboarding": 92213
+    }
+  },
+  "agentEntrance": {
+    "nativeExit": 0,
+    "frameCheckExit": 0,
+    "binarySHA256": "2edcfb77e35c13653e16f2dd511fbbc6d3ebb7f6d1c177cfe34547c04e96528b"
+  },
+  "command": "python3 demos/moku-panel-transition/remaining/run.py .build/bar-56d2e65d eyes routes routes-reduced onboarding presence collection cover cover-mask identity mask talk-mask talk-structure talk-cycle",
+  "casePIDs": {
+    "eyes": 76112,
+    "routes": 76478,
+    "routes-reduced": 76519,
+    "onboarding": 76607,
+    "presence": 76658,
+    "collection": 76729,
+    "cover": 76793,
+    "cover-mask": 76887,
+    "identity": 77004,
+    "mask": 77013,
+    "talk-mask": 78243,
+    "talk-structure": 78304,
+    "talk-cycle": 78327
+  },
+  "checksums": {
+    "agent-entrance.json.gz": "2d3e65fa8faf29832237bc282264587dafe72853ba6af6eb30ffaa2a09482980",
+    "agent-entrance.mp4": "f1846b0610b7de04b09a34708c0eaeb7fa190499737a547a1b989b68a9a392a2",
+    "development.json.gz": "224bafdf0be4e5ad4b2730ac6c57fb330a851e9c0d36ebcc730c0994515908ba",
+    "native-visits.png": "7c922347b3d5841279065f0e5d657a792a2101702758912b84e39b5849dff38d",
+    "observations.json.gz": "a057bdce89909a8a09d94fe8be15a57c0e2aa564be1df7b3e55f9768abc5dbfc",
+    "onboarding-forms.json.gz": "11f8521e1823a8e2b0524b6046ab3db441ce98a9a1d5dfb80e365728df0c4488",
+    "window-frames.zip": "3cb5d3b0738566817aec291cc677f450012eefa2cea605faac535d90e0bb51c6"
+  },
+  "windowFrameCount": 49
+}

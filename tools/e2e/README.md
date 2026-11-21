@@ -91,6 +91,12 @@ and the open interval between blinks. To isolate compositor progress, hold the
 fixture's main thread during a second blink and read complete window frames
 on an independent capture queue.
 
+The [compact eye and Dock replay](../../demos/moku-panel-transition/remaining/README.md)
+compares ordinary and redirected eyes at the same window coordinates, including
+during a main-thread hold. Its native input visits exercise reply read state,
+permission and questionnaire controls, Timer acknowledgment and editor reversal
+with ordinary and reduced motion.
+
 ### System appearance and language
 
 Use a private profile and a disposable macOS session for system-wide setting
