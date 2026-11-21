@@ -5,6 +5,7 @@
   {"id":"PBT-MOKU-SCOPE","suite":"go","engine":"rapid","package":"internal/services/moku","test":"TestToolScopeProperties","doc":"internal/services/moku/README.md","cases":100},
   {"id":"PBT-MOKU-QUEUE","suite":"go","engine":"rapid","package":"internal/services/moku","test":"TestAdmissionQueueProperties","doc":"internal/services/moku/README.md","cases":100},
   {"id":"PBT-STORE-SNAPSHOT","suite":"go","engine":"rapid","package":"tools/verification/pbt/store","test":"TestSnapshotProperties","doc":"internal/core/store/README.md","cases":100},
+  {"id":"PBT-STORE-STREAM","suite":"go","engine":"rapid","package":"tools/verification/pbt/store","test":"TestStreamStorageProperties","doc":"internal/core/store/README.md","cases":30},
   {"id":"PBT-STORE-LIFECYCLE","suite":"go","engine":"rapid","package":"tools/verification/pbt/store","test":"TestLifecycleProperties","doc":"internal/core/store/README.md","cases":100},
   {"id":"PBT-CODEX-TERMINAL","suite":"go","engine":"rapid","package":"tools/verification/pbt/codex","test":"TestCodexTerminalProperties","doc":"internal/plugins/harness/codex/README.md","cases":100},
   {"id":"PBT-CODEX-CATALOG","suite":"go","engine":"rapid","package":"internal/plugins/harness/codex","test":"TestNativeCatalogWriteProperties","doc":"internal/plugins/harness/codex/README.md","cases":100},

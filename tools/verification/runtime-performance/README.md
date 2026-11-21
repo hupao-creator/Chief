@@ -2,6 +2,8 @@
 
 本目录使用生产 Store、Runtime 和 Application host 的公开边界，在独立临时 SQLite 数据库上测量；不读取用户 profile、不调用真实模型。本工具在真实调用内保留必要结果断言，但不提供完整业务正确性覆盖。
 
+[SQLite 写量回放](sqlite-writes/README.md) 单独测量流式提交、WAL 页与文件写入字节。
+
 版本化场景 ID 即下表名称。基础设施的配对运行、指标预算、暂定阈值和覆盖边界以
 [性能门禁规范](../../benchmarks/gate/README.md) 的 `runtime-boundaries` 为准。
 裸命令仍只测量；统一入口完成有效性检查、配对判定、报告及退出码。

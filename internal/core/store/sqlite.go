@@ -11,10 +11,14 @@ import (
 	"github.com/hupao-creator/Chief/internal/platform/sqlite"
 )
 
-const schemaVersion = 1
+const inlineSchemaVersion = 1
+const chunkSchemaVersion = 2
 const applicationID = 0x4d4f4b53 // MOKS: on-disk transaction store identifier.
 
-type database struct{ handle *sqlite.DB }
+type database struct {
+	handle  *sqlite.DB
+	version int64
+}
 type fatalDatabaseError struct{ err error }
 
 func (e *fatalDatabaseError) Error() string {
@@ -60,7 +64,7 @@ func openDatabase(path string) (_ *database, err error) {
 		if count != 0 {
 			return nil, ErrInvalidState
 		}
-	} else if version != schemaVersion || app != applicationID {
+	} else if (version != inlineSchemaVersion && version != chunkSchemaVersion) || app != applicationID {
 		return nil, ErrInvalidState
 	}
 	if version == 0 {
@@ -93,12 +97,14 @@ CREATE TABLE store_meta (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NO
 INSERT INTO store_meta VALUES (1,0);
 PRAGMA application_id=%d;
 PRAGMA user_version=%d;
-COMMIT;`, applicationID, schemaVersion))
+COMMIT;`, applicationID, inlineSchemaVersion))
 		if err != nil {
 			_ = db.exec("ROLLBACK")
 			return nil, err
 		}
+		version = inlineSchemaVersion
 	}
+	db.version = version
 	if err = db.validateSchema(); err != nil {
 		return nil, err
 	}
@@ -112,6 +118,9 @@ func (d *database) validateSchema() error {
 		"records":      "CREATE TABLE records (key TEXT PRIMARY KEY, body BLOB NOT NULL CHECK(length(body)<=52428800)) STRICT",
 		"entity_order": "CREATE TABLE entity_order (kind TEXT NOT NULL, position INTEGER NOT NULL CHECK(position>=0), id TEXT NOT NULL, PRIMARY KEY(kind,position), UNIQUE(kind,id)) STRICT",
 		"store_meta":   "CREATE TABLE store_meta (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL CHECK(revision>=0)) STRICT",
+	}
+	if d.version == chunkSchemaVersion {
+		expected["record_chunks"] = chunkSchema
 	}
 	s, err := d.prepare("SELECT name,sql FROM sqlite_master WHERE sql IS NOT NULL")
 	if err != nil {
@@ -153,6 +162,11 @@ func (d *database) load() (_ *snapshotData, err error) {
 	}
 	if err = d.readRecords(data); err != nil {
 		return nil, err
+	}
+	if d.version == chunkSchemaVersion {
+		if err = d.readChunks(data); err != nil {
+			return nil, err
+		}
 	}
 	if err = d.readOrders(data); err != nil {
 		return nil, err
@@ -231,7 +245,7 @@ func (d *database) readRecords(data *snapshotData) error {
 		if !utf8.Valid(raw) || !json.Valid(raw) {
 			return ErrInvalidState
 		}
-		key, value := s.Text(0), newStoredRecord(raw)
+		key, value := s.Text(0), newStoredRecord(raw, false)
 		data.records = indexSet(data.records, key, value)
 		data.lifecycle.update(key, value)
 	}
@@ -287,13 +301,18 @@ func (d *database) commit(tx *Tx, revision uint64) (err error) {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
+	version := d.version
 	for _, key := range keys {
-		if body := tx.writes[key]; body == nil {
-			err = d.run("DELETE FROM records WHERE key=?", key)
-		} else {
-			err = d.run("INSERT INTO records(key,body) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET body=excluded.body", key, []byte(body.body))
+		next := tx.writes[key]
+		if version == inlineSchemaVersion && next != nil && next.chunked {
+			// Create the new representation in the same transaction as its first use.
+			if err = d.exec(chunkSchema + fmt.Sprintf("; PRAGMA user_version=%d", chunkSchemaVersion)); err != nil {
+				return err
+			}
+			version = chunkSchemaVersion
 		}
-		if err != nil {
+		old, _ := indexGet(tx.base.data.records, key)
+		if err = d.writeRecord(key, old, next); err != nil {
 			return err
 		}
 	}
@@ -315,7 +334,10 @@ func (d *database) commit(tx *Tx, revision uint64) (err error) {
 	if err = d.run("UPDATE store_meta SET revision=? WHERE id=1", int64(revision)); err != nil {
 		return err
 	}
-	return d.exec("COMMIT")
+	if err = d.exec("COMMIT"); err == nil {
+		d.version = version
+	}
+	return err
 }
 
 func (d *database) close() error                                  { return d.handle.Close() }
