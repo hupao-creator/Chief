@@ -135,14 +135,26 @@ def check_return(frames, codes, times, close, open_width, idle_width, name):
     # The first 10% of travel should be visible in the first half of the 420ms return.
     threshold = open_width - 0.1 * (open_width - idle_width)
     delay = None
+    source_center = sum(glass_edges(frames[close - 1])) / 2
+    idle_center = sum(glass_edges(frames[0])) / 2
+    max_fold_drift = 0.0
+    travel_frames = 0
     for i in range(close, len(frames)):
         if codes[i] != codes[close]:
             break
         left, right = glass_edges(frames[i])
-        if right - left + 1 <= threshold:
+        width = right - left + 1
+        center = (left + right) / 2
+        if delay is None and width <= threshold:
             delay = float(times[i] - times[close])
-            break
-    return dict(visit=name, secondsToTenPercentFold=delay, passed=delay is not None and delay <= 0.210)
+        if width > idle_width + 4:
+            max_fold_drift = max(max_fold_drift, abs(center - source_center))
+        elif idle_center + 4 < center < source_center - 4:
+            travel_frames += 1
+    return dict(visit=name, secondsToTenPercentFold=delay, maxExpandedCenterDriftPx=max_fold_drift,
+                compactTravelFrames=travel_frames, finalCenterErrorPx=abs(center - idle_center),
+                passed=delay is not None and delay <= 0.210 and max_fold_drift <= 4
+                and travel_frames > 0 and abs(center - idle_center) <= 4 and abs(width - idle_width) <= 4)
 
 
 def check_focus(frames, focus, times, start, end, x, y, name, *, reference_index=None, explicit=False):

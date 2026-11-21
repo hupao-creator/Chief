@@ -244,6 +244,15 @@ the next UI request after each gesture. A five-second request timeout fails
 this replay. For a short, settled text fixture, the extent at a fixed width
 must stay constant and the offset must travel in both directions.
 
+To check the [Dock return](../../design/composer.md#geometry-and-surfaces), type a
+draft beneath the selected execution. Record the window while clicking the
+upper-left **Close Super Thread** on the report. Measure the center and width
+of the glass on each frame through arrival in Overview. The expanded bar must
+narrow to its compact width at the execution column before its center moves.
+Compare its final center and size with the settled Overview bar. Reopen the
+same execution, verify its draft, and type in the editor. Repeat with Close
+during entry, a repeated Close, reselection during return, and Reduce Motion.
+
 For a long fixture, the [128 KiB mixed Markdown corpus](../benchmarks/reading/corpus.py)
 provides identifiable first and last blocks. Check first entry, scrolling to
 the final marker, scrolling back through visited sections, native text

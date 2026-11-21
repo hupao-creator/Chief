@@ -64,6 +64,25 @@ private struct ComposerInk: ViewModifier, @preconcurrency Animatable {
     }
 }
 
+/// Report the size being drawn. A normal layout observer can see the compact
+/// proposal while the glass is still interpolating from the editor's width.
+private struct CapsuleFoldObserver: ViewModifier, @preconcurrency Animatable {
+    var size: CGSize
+    let compactChanged: (Bool) -> Void
+
+    var animatableData: CGSize.AnimatableData {
+        get { size.animatableData }
+        set { size.animatableData = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let idle = NativeMokuCapsuleLayout.idleSize
+        content.onChange(of: size.width <= idle.width && size.height <= idle.height, initial: true) { _, compact in
+            compactChanged(compact)
+        }
+    }
+}
+
 /// One glass capsule. Production composer, transcript and interaction ownership stay in the scene.
 /// Moku history shares its draft; Agent detail supplies its own Thread draft.
 public struct NativeMokuDock: View {
@@ -96,12 +115,21 @@ public struct NativeMokuDock: View {
     @Environment(\.colorScheme) private var workspaceColorScheme
     @Environment(\.locale) private var locale
     @Environment(\.nativeOfflineDraftEditing) private var offlineDraftEditing
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.nativeExecutionDockPlacement) private var executionPlacement
     @State private var hovered = false
     @State private var hoverTask: Task<Void, Never>?
     @FocusState private var stopFocused: Bool
     @AccessibilityFocusState private var stopAccessibilityFocused: Bool
+    // The Report can withdraw its execution marker and draft before the shell
+    // finishes folding. Retain only the seat occupied by the visible input.
+    private struct InputColumn: Equatable {
+        let frame: CGRect
+        let viewport: CGSize
+    }
+    @State private var inputColumn: InputColumn?
+    @State private var shellIsCompact = true
     @State private var capsuleHeight: CGFloat = 58
     @State private var completionHeight: CGFloat = 0
     @State private var focusGeneration: UUID?
@@ -406,9 +434,15 @@ public struct NativeMokuDock: View {
             let viewport = state.dockViewport(in: geometry.size)
             // Keep the reading baseline; only the horizontal seat belongs to
             // the target execution column. Stacked layouts share its full width.
-            let executionFrame = state.readingPanelVisible && threadID != nil && !state.settingsOpen
+            let requestedFrame = state.readingPanelVisible && threadID != nil && !state.settingsOpen
                 && executionPlacement?.threadID == threadID
                 ? executionPlacement?.frame : nil
+            let immediate = scenePhase != .active || settlingNoteDock || reduceMotion
+            let holdingColumn = !expanded && !shellIsCompact && !immediate
+                && inputColumn?.viewport == geometry.size && executionPlacement?.dragging != true
+            let openColumn = expanded && (state.inputOpen || continuationPresenting)
+                ? requestedFrame.map { InputColumn(frame: $0, viewport: geometry.size) } : nil
+            let executionFrame = holdingColumn ? inputColumn?.frame : requestedFrame
             let column = executionFrame.map {
                 CGRect(x: $0.minX, y: viewport.minY, width: $0.width, height: viewport.height).intersection(viewport)
             }
@@ -450,12 +484,13 @@ public struct NativeMokuDock: View {
             let destination = NativeMokuHorizontalDestination(offset: placement.surface.midX - geometry.size.width / 2,
                 verticalOffset: readingOffset,
                 frame: executionFrame, revision: executionPlacement?.travelRevision ?? 0, viewport: geometry.size,
-                dragging: executionPlacement?.dragging == true, inactive: scenePhase != .active || settlingNoteDock,
+                dragging: executionPlacement?.dragging == true, inactive: immediate,
                 composer: state.composerGeneration, reading: state.readingPanelVisible)
             ZStack(alignment: .topLeading) {
                 capsule(width: width, room: max(58, frame.height - 18),
                         surface: surface, messageWidth: messageWidth, rowHeight: rowHeight, noteHeight: noteHeight,
                         noteAvailableHeight: noteAvailableHeight, decorationPadding: placement.decorationPadding, settingsSize: settingsSize)
+                    .modifier(CapsuleFoldObserver(size: surface.size) { shellIsCompact = $0 })
                     .nativeCanvasNavigationRegion()
                     .geometryGroup()
                     // Seat the native editor on the bottom edge. Animating a
@@ -470,6 +505,12 @@ public struct NativeMokuDock: View {
                     .animation(executionPlacement?.dragging == true ? nil
                         : NativeSidecardTiming.foldAnimation, value: executionFrame)
                     .animation(surfaceAnimation, value: placement)
+                    .transaction { transaction in
+                        if reduceMotion && (requestedFrame != nil || inputColumn != nil) {
+                            transaction.animation = nil
+                            transaction.disablesAnimations = true
+                        }
+                    }
                     // Keep the small reading-seat descent out of SwiftUI layout
                     // animation too: reader preparation must not stall its frames.
                     .geometryGroup()
@@ -503,10 +544,14 @@ public struct NativeMokuDock: View {
                     hitRects: [placement.surface.insetBy(dx: -5, dy: -5)]
                         + (interaction != nil && !state.settingsOpen ? [panel] : []),
                     onSettled: { arrived in
-                        guard state.composerGeneration == arrived.composer else { return }
+                        guard arrived.frame == requestedFrame,
+                              state.composerGeneration == arrived.composer else { return }
                         executionPlacement?.completeTravel(revision: arrived.revision)
                     })
                     .allowsHitTesting(false)
+            }
+            .onChange(of: holdingColumn ? inputColumn : openColumn, initial: true) { _, column in
+                inputColumn = column
             }
             .onPreferenceChange(NativeSettingsPreferredHeightKey.self) { height in
                 settingsPreferredHeight = max(900, ceil(height))

@@ -59,7 +59,8 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
     private var hitRects: [CGRect] = []
     private var onSettled: ((NativeMokuHorizontalDestination) -> Void)?
     private var generation = 0
-    private var travelling = false
+    private var activeAxes: [String: Int] = [:]
+    private var travelling: Bool { !activeAxes.isEmpty }
 
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { false }
@@ -115,46 +116,48 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
         defer { CATransaction.commit() }
         let origin = CGPoint(x: bounds.minX + next.offset, y: bounds.minY)
         if surface.frame.origin != origin { surface.setFrameOrigin(origin) }
-        layer.removeAnimation(forKey: "moku-travel")
-        travelling = !immediate && (abs(delta.x) > 0.01 || abs(delta.y) > 0.01)
-        guard travelling else {
-            deliverCompletion(generation: current)
-            return
-        }
-
         let columnChanged = previous?.frame != next.frame
         let duration: TimeInterval = columnChanged ? 0.38 : 0.42
         let timing = columnChanged
             ? CAMediaTimingFunction(controlPoints: 0.22, 1, 0.36, 1)
             : abs(delta.y) > 0.01 ? CAMediaTimingFunction(name: .easeInEaseOut)
             : next.reading ? NativeReadingPageTiming.emphasizedOpening : CAMediaTimingFunction(name: .easeInEaseOut)
-        // A column can be hundreds of points away. Give that translation a
-        // gentler start than the Sidecard fold, including on the trip back.
-        let movingBetweenColumns = columnChanged && abs(delta.x) > 0.01
-        let horizontal = CABasicAnimation(keyPath: "transform.translation.x")
-        horizontal.fromValue = delta.x; horizontal.toValue = 0
-        horizontal.duration = movingBetweenColumns ? 0.52 : duration
-        horizontal.timingFunction = movingBetweenColumns
-            ? CAMediaTimingFunction(controlPoints: 0.30, 0.12, 0.44, 1) : timing
-        // Keep the 12–16pt descent on its existing independent schedule.
-        let vertical = CABasicAnimation(keyPath: "transform.translation.y")
-        vertical.fromValue = delta.y; vertical.toValue = 0
-        vertical.duration = duration; vertical.timingFunction = timing
-        let animation = CAAnimationGroup()
-        animation.animations = [horizontal, vertical]
-        animation.duration = max(horizontal.duration, vertical.duration)
-        animation.timingFunction = CAMediaTimingFunction(name: .linear)
-        // Keep the source correction visible when the model seat commits
-        // before the first active compositor sample.
+
+        // Route release can lift the bar after its return trip has begun.
+        // Retarget only the changed axis so the 520ms column curve runs intact.
+        if immediate || previous?.offset != next.offset {
+            retarget("transform.translation.x", delta: immediate ? 0 : delta.x,
+                duration: columnChanged ? 0.52 : duration,
+                timing: columnChanged ? CAMediaTimingFunction(controlPoints: 0.30, 0.12, 0.44, 1) : timing)
+        }
+        if immediate || previous?.verticalOffset != next.verticalOffset {
+            retarget("transform.translation.y", delta: immediate ? 0 : delta.y, duration: duration, timing: timing)
+        }
+        if !travelling { deliverCompletion(generation: current) }
+    }
+
+    private func retarget(_ axis: String, delta: CGFloat, duration: TimeInterval, timing: CAMediaTimingFunction) {
+        let layer = surface.layer!
+        layer.removeAnimation(forKey: axis)
+        guard abs(delta) > 0.01 else { activeAxes[axis] = nil; return }
+        activeAxes[axis] = generation
+        let animation = CABasicAnimation(keyPath: axis)
+        animation.fromValue = delta; animation.toValue = 0
+        animation.duration = duration; animation.timingFunction = timing
         animation.beginTime = layer.convertTime(CACurrentMediaTime(), from: nil)
         animation.fillMode = .backwards
-        animation.delegate = self; animation.setValue(current, forKey: "generation")
-        layer.add(animation, forKey: "moku-travel")
+        animation.delegate = self; animation.setValue(generation, forKey: "generation")
+        layer.add(animation, forKey: axis)
     }
 
     nonisolated func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
-        guard flag, let generation = anim.value(forKey: "generation") as? Int else { return }
-        Task { @MainActor [weak self] in self?.deliverCompletion(generation: generation) }
+        guard flag, let axis = (anim as? CABasicAnimation)?.keyPath,
+              let token = anim.value(forKey: "generation") as? Int else { return }
+        Task { @MainActor [weak self] in
+            guard let self, activeAxes[axis] == token else { return }
+            activeAxes[axis] = nil
+            if !travelling { deliverCompletion(generation: generation) }
+        }
     }
 
     private func deliverCompletion(generation expected: Int) {
@@ -162,7 +165,6 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
         // Defer immediate receipts too: never publish scene state during updateNSView.
         Task { @MainActor [weak self] in
             guard let self, generation == expected, let destination else { return }
-            travelling = false
             onSettled?(destination)
         }
     }
@@ -188,6 +190,7 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
 
     func retire() {
         generation += 1; destination = nil; onSettled = nil; handle.view = nil
+        activeAxes.removeAll()
         surface.layer?.removeAllAnimations()
         hosting?.removeFromSuperview(); hosting = nil; contentState = nil
     }

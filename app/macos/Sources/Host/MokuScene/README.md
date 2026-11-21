@@ -170,8 +170,12 @@ and height before the editor mounts. In the wide layout, input ink appears to
 the right of the Harness logo after the logo clears the final text seat. Below
 260pt of capsule width, text and attachments occupy the row above the identity
 and actions. The editor fades in during the last tenth of shell expansion.
-Returning reading panels retain their last admitted Dock column through the
-return. Resize preserves the native editor and the shell fits the viewport.
+The retiring input keeps its column until the glass reaches its compact size,
+even when a Super Thread withdraws its execution marker or releases the route
+during the fold. The compact Dock then travels to the current destination.
+An already compact bar can travel immediately. Reduce Motion settles the return
+without a fold or travel delay. Resize preserves the native editor and the
+shell fits the viewport.
 The [Agent entrance replay](../../../../../demos/moku-panel-transition/README.md#agent-entrance-replay)
 checks the settled text origin, focus and return. The
 [Report replay](../../../../../demos/moku-panel-transition/README.md#collapse-replay)
@@ -557,7 +561,8 @@ Dock glides horizontally for 520ms with a cubic Bézier curve
 `(0.30, 0.12, 0.44, 1)`, including on its return to the workspace center.
 The curve starts moving immediately and eases to a stop. The compositor moves directly from the current
 presentation position to the target, without overshoot or a settling rebound. Vertical
-descent retains its independent, non-bouncing timing. Shell sizing retains the
+descent retains its independent, non-bouncing timing. A change to the vertical
+seat during return leaves the horizontal animation running. Shell sizing retains the
 Sidecard's 380ms curve; divider dragging and window/zoom resizing settle without
 travel. Stacked layouts share the
 panels' full column width and keep the same bottom reading baseline. Composer
