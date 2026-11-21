@@ -214,41 +214,10 @@ struct ThreadLoadingTextStyle: ViewModifier {
             .overlay {
                 if motionEnabled {
                     ThreadExecutionLoadingSweep()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                         .mask { content.foregroundStyle(.white) }
                 }
             }
-    }
-}
-
-/// Keep the clock in the decorative leaf: counts and accessibility remain static.
-private struct ThreadExecutionLoadingSweep: View {
-    @State private var visible = false
-    @State private var startedAt = Date()
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: NativeFrameRate.interval, paused: !visible)) { context in
-            GeometryReader { geometry in
-                // A fixed-width soft highlight keeps long summaries from becoming
-                // a whole-line pulse. The reset happens beyond both text edges.
-                let width: CGFloat = 64
-                let travel = geometry.size.width + width
-                let duration = max(0.8, Double(travel) / 180)
-                let phase = context.date.timeIntervalSince(startedAt)
-                    .truncatingRemainder(dividingBy: duration + 0.25) / duration
-                LinearGradient(stops: [
-                    .init(color: .clear, location: 0),
-                    .init(color: NativePalette.thread.inkStrong.swiftUI, location: 0.35),
-                    .init(color: NativePalette.thread.inkStrong.swiftUI, location: 0.65),
-                    .init(color: .clear, location: 1)
-                ], startPoint: .leading, endPoint: .trailing)
-                    .frame(width: width)
-                    .offset(x: -width + travel * min(phase, 1))
-            }
-        }
-        .opacity(visible ? 1 : 0)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-        .onAppear { startedAt = Date(); visible = true }
-        .onDisappear { visible = false }
     }
 }

@@ -69,6 +69,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.nativeReadingEntranceReady) private var parentEntranceReady
     @State private var progress = 0.0
+    @State private var historyTravel: HistoryPageTravel?
     @State private var panelTransition: NativeReadingPanelTransition?
     @State private var panelContentReady = false
     @State private var panelReaderPreloading = false
@@ -120,88 +121,21 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             // Observe replacement state even while motion is idle.
             let openingOrClosing = !replacing && motion.active
             let panelBounds = NativeReadingPanelGeometry.frame(in: bounds.size)
-            ZStack {
-                Group {
-                    if isolatesParent {
-                        // Keep the source host available through title handoff;
-                        // settled panels need only the existing window material.
-                        NativeReadingParentSurface(frozen: panel && open && panelContentReady && !motion.active
-                            && panelIdentity?.pending != true,
-                            content: parent)
-                    } else { parent }
-                }
-                    .overlay { Color.black.opacity(axis == .horizontal ? 0.14 * progress : 0).allowsHitTesting(false) }
-                    .blur(radius: panel ? 5 * progress : axis == .horizontal && focusBlur && motion.active ? 16 * progress : 0)
-                    .offset(x: stationaryParent || axis == .vertical ? 0 : -0.25 * bounds.size.width * progress * direction,
-                            y: stationaryParent || axis == .horizontal ? 0 : -bounds.size.height * progress * direction)
-                    .opacity(panel ? 1 - (isolatesParent ? 1 : 0.78) * progress : open && !openingOrClosing ? 0 : 1)
-                    .allowsHitTesting(!open && enabled)
-                    // Disabling removes the native scroller gutter. Defer that
-                    // input gate until the vertical parent is offscreen; restore
-                    // its layout during return preparation, before either page moves.
-                    // History replacement never involves this hidden parent and
-                    // must keep its keyboard input gate closed throughout.
-                    .disabled(open && (axis == .horizontal || progress == 1 && !openingOrClosing))
-                    .accessibilityHidden(open)
-                if panel && open {
-                    NativeReadingPanelBackdrop(panel: panelBounds,
-                        onDismiss: enabled && !motion.active ? onPanelOutsideClick : nil)
-                        .accessibilityHidden(true)
-                }
-                if open && panel {
-                    NativeReadingPanelViewport(target: panelBounds, source: panelSource,
-                        overlayHeight: workspaceOverlay ? bounds.size.height - panelBounds.minY : nil, usesGlass: panelUsesGlass,
-                        open: panelContentReady || panelTransition != nil,
-                        transition: panelTransition, contentReady: panelContentReady,
-                        readerPreloading: panelReaderPreloading,
-                        identity: panelIdentity,
-                        onOpeningStarted: preloadPanelReader,
-                        onCompletion: finishPanelTransition,
-                        // A host retaining routes supplies a stable container identity;
-                        // it still owns each document's route identity inside.
-                        content: front.id(panelFrontIdentity ?? identity)
-                            .environment(\.nativeReadingPanelHeight, workspaceOverlay ? panelBounds.height : nil)
-                            // Card flights gate secondary layout through their
-                            // identity handoff. An admitted overlay keeps its
-                            // editor and scroll layout through return and reversal.
-                            .environment(\.nativeReadingEntranceReady,
-                                parentEntranceReady && panelContentReady
-                                    && (workspaceOverlay || !motion.active && !closing && !preparingClose)
-                                    && (panelIdentity?.pending != true))
-                            .environment(\.nativeThreadIdentityVisit, panelIdentity)
-                            .environment(\.nativeReadingPanelClosing, closing && !workspaceOverlay)
-                            .environment(\.nativeReportPanelReturn, reportPanelMotion && panelContentReady && (closing || preparingClose)
-                                ? NativeReportPanelReturn(source: (panelSource ?? panelBounds.insetBy(dx: 24, dy: 24))
-                                    .offsetBy(dx: -panelBounds.minX, dy: -panelBounds.minY),
-                                    startedAt: closing ? reportReturnStartedAt : nil, duration: duration) : nil))
-                } else if open {
-                    ZStack {
-                        front.id(identity)
-                            // A nested history stack cannot admit ink while its
-                            // outer panel/identity handoff still owns entrance.
-                            .environment(\.nativeReadingEntranceReady, parentEntranceReady && !motion.active && !closing && !preparingClose)
-                            .transition(axis == .vertical ? .asymmetric(
-                                insertion: .modifier(
-                                    active: ReadingPageReplacementOffset(travel: bounds.size.height, motion: motion),
-                                    identity: ReadingPageReplacementOffset(travel: 0, motion: motion)),
-                                removal: .modifier(
-                                    active: ReadingPageReplacementOffset(travel: -bounds.size.height, motion: motion),
-                                    identity: ReadingPageReplacementOffset(travel: 0, motion: motion))) : .identity)
-                    }
-                        // Limit replacement animation to the history identities;
-                        // opening/return travel and timeline layout have their own owners.
-                        .animation(axis == .vertical && direction != 0 ? curve : nil, value: identity)
-                        .frame(width: panel ? panelBounds.width + 76 : bounds.size.width, height: panel ? panelBounds.height : bounds.size.height)
-                        .background {
-                            if axis == .horizontal {
-                                NativeReadingPageAnchor(geometry: geometry, role: .front, geometryContext: geometryContext)
-                                    .allowsHitTesting(false)
-                                    .accessibilityHidden(true)
-                            }
-                        }
-                        .modifier(ReadingPageSurface(progress: progress, active: !panel && motion.active && axis == .horizontal, axis: axis, clips: !panel))
-                        .offset(x: !panel && axis == .horizontal ? bounds.size.width * (1 - progress) * direction : 0,
-                                y: axis == .vertical ? bounds.size.height * (1 - progress) * direction : 0)
+            Group {
+                if axis == .vertical && !panel {
+                    // Disable the current document only once offscreen. An earlier
+                    // change would remove its scroller gutter mid-flight.
+                    NativeHistoryPageViewport(current: parent
+                        .opacity(open && !openingOrClosing ? 0 : 1)
+                        .allowsHitTesting(!open && enabled)
+                        .disabled(open && progress == 1 && !openingOrClosing)
+                        .accessibilityHidden(open),
+                        history: historyPage(height: bounds.size.height),
+                        progress: progress, direction: direction, stationaryParent: stationaryParent,
+                        open: open, travel: historyTravel, onCompletion: finishHistoryTravel)
+                } else {
+                    readingLayers(in: bounds.size, geometryContext: geometryContext,
+                                  openingOrClosing: openingOrClosing, panelBounds: panelBounds)
                 }
             }
             .background {
@@ -212,7 +146,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
                 }
             }
             .background {
-                if !panel {
+                if !panel && axis == .horizontal {
                     NativeReadingPageFrameSource(frames: frames)
                         .frame(width: bounds.size.width, height: bounds.size.height)
                         .allowsHitTesting(false)
@@ -255,6 +189,92 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         .onDisappear {
             settle()
             motion.closeAction = nil; motion.cancelAction = nil; motion.reopenAction = nil
+        }
+    }
+
+    private func readingLayers(in size: CGSize, geometryContext: NativeReadingPageGeometry.Context,
+                               openingOrClosing: Bool, panelBounds: CGRect) -> some View {
+        ZStack {
+            Group {
+                if isolatesParent {
+                    // Keep the source host available through title handoff;
+                    // settled panels need only the existing window material.
+                    NativeReadingParentSurface(frozen: panel && open && panelContentReady && !motion.active
+                        && panelIdentity?.pending != true,
+                        content: parent)
+                } else { parent }
+            }
+                .overlay { Color.black.opacity(axis == .horizontal ? 0.14 * progress : 0).allowsHitTesting(false) }
+                .blur(radius: panel ? 5 * progress : axis == .horizontal && focusBlur && motion.active ? 16 * progress : 0)
+                .offset(x: stationaryParent || axis == .vertical ? 0 : -0.25 * size.width * progress * direction,
+                        y: stationaryParent || axis == .horizontal ? 0 : -size.height * progress * direction)
+                .opacity(panel ? 1 - (isolatesParent ? 1 : 0.78) * progress : open && !openingOrClosing ? 0 : 1)
+                .allowsHitTesting(!open && enabled)
+                .disabled(open && (axis == .horizontal || progress == 1 && !openingOrClosing))
+                .accessibilityHidden(open)
+            if panel && open {
+                NativeReadingPanelBackdrop(panel: panelBounds,
+                    onDismiss: enabled && !motion.active ? onPanelOutsideClick : nil)
+                    .accessibilityHidden(true)
+            }
+            if open && panel {
+                NativeReadingPanelViewport(target: panelBounds, source: panelSource,
+                    overlayHeight: workspaceOverlay ? size.height - panelBounds.minY : nil, usesGlass: panelUsesGlass,
+                    open: panelContentReady || panelTransition != nil,
+                    transition: panelTransition, contentReady: panelContentReady,
+                    readerPreloading: panelReaderPreloading,
+                    identity: panelIdentity,
+                    onOpeningStarted: preloadPanelReader,
+                    onCompletion: finishPanelTransition,
+                    // A host retaining routes supplies a stable container identity;
+                    // it still owns each document's route identity inside.
+                    content: front.id(panelFrontIdentity ?? identity)
+                        .environment(\.nativeReadingPanelHeight, workspaceOverlay ? panelBounds.height : nil)
+                        // Card flights gate secondary layout through their
+                        // identity handoff. An admitted overlay keeps its
+                        // editor and scroll layout through return and reversal.
+                        .environment(\.nativeReadingEntranceReady,
+                            parentEntranceReady && panelContentReady
+                                && (workspaceOverlay || !motion.active && !closing && !preparingClose)
+                                && (panelIdentity?.pending != true))
+                        .environment(\.nativeThreadIdentityVisit, panelIdentity)
+                        .environment(\.nativeReadingPanelClosing, closing && !workspaceOverlay)
+                        .environment(\.nativeReportPanelReturn, reportPanelMotion && panelContentReady && (closing || preparingClose)
+                            ? NativeReportPanelReturn(source: (panelSource ?? panelBounds.insetBy(dx: 24, dy: 24))
+                                .offsetBy(dx: -panelBounds.minX, dy: -panelBounds.minY),
+                                startedAt: closing ? reportReturnStartedAt : nil, duration: duration) : nil))
+            } else if open {
+                front.id(identity)
+                    .environment(\.nativeReadingEntranceReady, parentEntranceReady && !motion.active && !closing && !preparingClose)
+                    .frame(width: size.width, height: size.height)
+                    .background {
+                        NativeReadingPageAnchor(geometry: geometry, role: .front, geometryContext: geometryContext)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                    .modifier(ReadingPageSurface(progress: progress, active: motion.active))
+                    .offset(x: size.width * (1 - progress) * direction)
+            }
+        }
+    }
+
+    @ViewBuilder private func historyPage(height: CGFloat) -> some View {
+        if open {
+            ZStack {
+                ForEach([identity], id: \.self) { _ in
+                    front
+                        .environment(\.nativeReadingEntranceReady, parentEntranceReady && !motion.active && !closing && !preparingClose)
+                        .transition(.asymmetric(
+                            insertion: .modifier(
+                                active: ReadingPageReplacementOffset(travel: height, motion: motion),
+                                identity: ReadingPageReplacementOffset(travel: 0, motion: motion)),
+                            removal: .modifier(
+                                active: ReadingPageReplacementOffset(travel: -height, motion: motion),
+                                identity: ReadingPageReplacementOffset(travel: 0, motion: motion))))
+                }
+            }
+            .animation(direction != 0 ? curve : nil, value: identity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -314,6 +334,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         withTransaction(transaction) {
             progress = open ? 1 : 0
             panelTransition = nil
+            historyTravel = nil
             panelContentReady = open
             panelReaderPreloading = false
             closing = false
@@ -345,6 +366,16 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         guard threadPanelMotion, generation == token,
               panelTransition?.generation == token, panelTransition?.closing == false else { return }
         panelReaderPreloading = true
+    }
+
+    private func finishHistoryTravel(_ command: HistoryPageTravel) {
+        guard generation == command.generation, historyTravel == command else { return }
+        progress = command.closing ? 0 : 1
+        historyTravel = nil
+        motion.active = false
+        closing = false
+        if command.closing { onClose() }
+        else { onParentPresentationChange?(false) }
     }
 
     private func finishPanelTransition(_ token: Int, _ wasClosing: Bool) {
@@ -390,13 +421,23 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             }
             return
         }
-        let returningDuringOpening = closing && axis == .horizontal && motion.active && !self.closing && !replacing
+        if axis == .vertical {
+            animationTask?.cancel(); animationTask = nil
+            generation += 1
+            self.closing = closing
+            replacing = false
+            motion.active = true
+            historyTravel = HistoryPageTravel(generation: generation, closing: closing,
+                duration: duration, emphasized: emphasizedOpening && !closing)
+            return
+        }
+        let returningDuringOpening = closing && motion.active && !self.closing && !replacing
         animationTask?.cancel(); animationTask = nil
         let frameGeneration = frames.begin()
         generation += 1
         let token = generation
         let initialProgress: Double
-        if !panel, returningDuringOpening, let displayed = geometry.progress(identity: identity, direction: direction) {
+        if returningDuringOpening, let displayed = geometry.progress(identity: identity, direction: direction) {
             // A queued SwiftUI update can be ahead of the native geometry at
             // the click. Retarget from that committed pose, without flushing
             // pending layout or advancing the opening before reversing it.
@@ -408,11 +449,8 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         replacing = false
         self.closing = closing
         motion.active = true
-        // Progress is stepped here rather than through `withAnimation`: an
-        // implicit animation keeps its own additive presentation after a later
-        // state change, so `settle()` could not stop a cancelled opening and a
-        // history replacement begun during one would start from a page that is
-        // not adjoined to its neighbour.
+        // Horizontal travel shares progress with the parent blur and page
+        // shadow. Explicit samples let cancellation settle all three together.
         let controlPoints: (x1: Double, x2: Double) = !closing && emphasizedOpening
             ? (0.76, 0.24) : (0.42, 0.58)
         let targetProgress = closing ? 0.0 : 1.0
@@ -466,23 +504,14 @@ private struct ReadingPageReplacementOffset: ViewModifier, @MainActor Animatable
 private struct ReadingPageSurface: ViewModifier, @MainActor Animatable {
     var progress: Double
     let active: Bool
-    let axis: Axis
-    let clips: Bool
     var animatableData: Double {
         get { progress }
         set { progress = newValue }
     }
     func body(content: Content) -> some View {
         let envelope = max(0, min(1, min(progress, 1 - progress) / 0.15))
-        if clips {
-            content.clipShape(RoundedRectangle(cornerRadius: active ? 24 : 0))
-                .shadow(color: .black.opacity(active ? 0.16 * envelope : 0), radius: 12,
-                        x: axis == .horizontal ? -8 : 0, y: axis == .vertical ? -8 : 0)
-        } else {
-            // Panel shells clip themselves; their launchers deliberately live
-            // outside the reader's frame, within the enclosing workspace.
-            content
-        }
+        content.clipShape(RoundedRectangle(cornerRadius: active ? 24 : 0))
+            .shadow(color: .black.opacity(active ? 0.16 * envelope : 0), radius: 12, x: -8, y: 0)
     }
 }
 

@@ -79,6 +79,14 @@ Record the revision, the times of the interruption and return, and the
 eye frames through the next idle blink.
 This visual check exercises the [onboarding handoff](../../app/macos/Sources/Host/Onboarding/README.md).
 
+For a blink renderer comparison, mount the baseline and candidate at the same
+scale, pose, color and wall-clock phase in one isolated window. Compare both
+eye silhouettes when open, closing, narrowest and reopening in the Dock and
+composer. Record the contours at native resolution, the time of minimum area
+and the open interval between blinks. To isolate compositor progress, hold the
+fixture's main thread during a second blink and read complete window frames
+on an independent capture queue.
+
 ### System appearance and language
 
 Use a private profile and a disposable macOS session for system-wide setting
@@ -311,6 +319,18 @@ Check the visible run in each direction, including when returning to the first
 historical selection. Use distinct drafts to check that input follows the
 selected run and that selection leaves focus with the reader. The mounted
 history controls use the same navigation callbacks as the rail.
+
+For the vertical transition, start with selected text in a scrolled current
+document and the system scrollbar always visible. Check the selection, scroll
+position and column width after Back. Reverse an opening, select another run
+during return, then resize or deactivate during an accepted Back. The old
+completion must leave the replacement run open. In an isolated component
+window, record the page boundary and a running summary's text sweep while
+briefly holding its main thread after the animation starts. Collect the
+window's ScreenCaptureKit frames on a separate queue. Use complete frames
+whose display and delivery timestamps both fall inside the hold. Check that
+the pages meet throughout, that the band moves within the glyphs, and that
+withdrawing reading admission restores static text.
 
 To check the [Agent reader's history marks](../../app/macos/Sources/Shared/PluginUI/README.md#reading-panel-presentation),
 also start with one completed run and send a second at a fixed window size.

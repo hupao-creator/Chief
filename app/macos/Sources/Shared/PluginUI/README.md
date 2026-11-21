@@ -181,9 +181,9 @@ its environment comes from the enclosing SwiftUI surface and its layout width
 stays at the destination width throughout return travel. Reversal samples native
 presentation layers, and generation-fenced completion cannot admit or close a
 replacement route. Resize, cancellation and inactive scenes
-settle through the reading stack's existing ownership. Vertical history keeps
-its identity animation and completion timer; non-panel navigation samples its
-shared progress on display callbacks. Returning refreshes the retained Overview
+settle through the reading stack's existing ownership. Conversation history opens and returns on native carriers. History-to-history
+replacement uses its SwiftUI identity transition and completion timer. Horizontal
+non-panel navigation samples its shared progress on display callbacks. Returning refreshes the retained Overview
 before starting a settled panel's close.
 
 The stack publishes `nativeReadingEntranceReady` from that actual completion
@@ -542,7 +542,7 @@ does not become width-dependent merely because its document enables capsules.
 See the [Note performance measurements](../../../../../tools/verification/moku-note-performance/README.md)
 for the isolated production-control comparison and its visual limitations.
 
-[Conversation/ThreadConversation.swift](Conversation/ThreadConversation.swift) and [ThreadTimeline.swift](Conversation/ThreadTimeline.swift) organize reading from the Harness's public turn index. [ThreadExecutionGroups.swift](Conversation/ThreadExecutionGroups.swift) presents adjacent execution rows under a summary with reasoning/tool counts and reported reasoning usage. Only the latest process summary in the latest running Agent execution carries a left-to-right text highlight, and only while it is also the final message-stream group. Harnesses classify the native tail before withholding streaming replies; a later assistant reply stops the sweep immediately, including before its text is mounted. OpenCode checks the last native part because replies, reasoning and tools can share a message. The 64pt band uses opaque strong reading ink with a broad center and soft edges. Only while motion is admitted, its text base uses 55% muted ink so both sides of the band visibly recede; the wrench keeps normal ink. Inactive scenes and pending entrance restore normal static ink. Colors follow the light/dark palette; earlier groups, history, completed/interrupted/failed executions and waiting-for-user states stay static. Harnesses supply execution-running state separately from reader activity. The decorative leaf uses the shared frame cadence, pauses outside the active scene or before reading admission; it adds no accessibility content or hit target. The highlight travels at roughly 180pt/s with a short gap between passes, without animating the wrench or changing text layout. In Agent Thread detail, the reading header's execution visibility control shows only this summary: nested Used tools group titles, Hooks, tool calls, commands, reasoning bodies and failed-tool diagnostics are details and never mount. Agent-only background terminal/task sections likewise show static counts/status rather than commands or descriptions, and hide with work; task failure is not a standalone Harness error. Summary-only historical groups do not acquire the scoped loader in [ThreadDeferredExecution.swift](Conversation/ThreadDeferredExecution.swift). Other conversation surfaces retain full member rows and scoped historical demand while visible. Execution membership takes precedence over attention styling, so a tool failure cannot escape the visibility group. Standalone errors and pending interactions keep their own timeline rows; a visible nonmember splitting a native run receives distinct summary identities. The summary itself has no disclosure arrow, hover treatment, keyboard focus or accessibility/reading action. Individual activity disclosures on other conversation surfaces retain their existing behavior.
+[Conversation/ThreadConversation.swift](Conversation/ThreadConversation.swift) and [ThreadTimeline.swift](Conversation/ThreadTimeline.swift) organize reading from the Harness's public turn index. [ThreadExecutionGroups.swift](Conversation/ThreadExecutionGroups.swift) presents adjacent execution rows under a summary with reasoning/tool counts and reported reasoning usage. Only the latest process summary in the latest running Agent execution carries a left-to-right text highlight, and only while it is also the final message-stream group. Harnesses classify the native tail before withholding streaming replies; a later assistant reply stops the sweep immediately, including before its text is mounted. OpenCode checks the last native part because replies, reasoning and tools can share a message. The 64pt band uses opaque strong reading ink with a broad center and soft edges. Only while motion is admitted, its text base uses 55% muted ink so both sides of the band visibly recede; the wrench keeps normal ink. Inactive scenes and pending entrance restore normal static ink. Colors follow the light/dark palette; earlier groups, history, completed/interrupted/failed executions and waiting-for-user states stay static. Harnesses supply execution-running state separately from reader activity. The text mask clips a [native gradient layer](Conversation/ThreadExecutionLoadingSweep.swift). Its position animation holds off the far edge for 250 ms per cycle. Removing the running or entrance gate, losing the active scene or detaching the view retires the sweep. The decoration adds no accessibility content or hit target. The highlight travels at roughly 180pt/s with a short gap between passes, without animating the wrench or changing text layout. In Agent Thread detail, the reading header's execution visibility control shows only this summary: nested Used tools group titles, Hooks, tool calls, commands, reasoning bodies and failed-tool diagnostics are details and never mount. Agent-only background terminal/task sections likewise show static counts/status rather than commands or descriptions, and hide with work; task failure is not a standalone Harness error. Summary-only historical groups do not acquire the scoped loader in [ThreadDeferredExecution.swift](Conversation/ThreadDeferredExecution.swift). Other conversation surfaces retain full member rows and scoped historical demand while visible. Execution membership takes precedence over attention styling, so a tool failure cannot escape the visibility group. Standalone errors and pending interactions keep their own timeline rows; a visible nonmember splitting a native run receives distinct summary identities. The summary itself has no disclosure arrow, hover treatment, keyboard focus or accessibility/reading action. Individual activity disclosures on other conversation surfaces retain their existing behavior.
 
 Pending connection/status text in an otherwise empty active execution reuses
 the summary's `ThreadLoadingTextStyle`, including its 64pt band, 180pt/s travel,
@@ -618,10 +618,12 @@ native scrollbar gutter cannot disappear and recenter the column. Only after it
 is offscreen does its keyboard input gate disable it; hit testing and accessibility
 remain gated throughout the history visit. History-to-history replacement never
 reenables the hidden current document: its input gate distinguishes opening/return
-from replacement even though both publish active motion. Opening and return progress
-advances frame by frame instead of through an implicit animation, so cancellation
-settles the pages immediately and a replacement begun afterwards starts from the
-settled pose rather than a displaced one. Departing history stays mounted only
+from replacement even though both publish active motion. For opening and return, [NativeHistoryPageViewport](Conversation/NativeHistoryPageViewport.swift)
+keeps each native document at viewport size and submits the two Y translations
+together. A reversal samples their common edge. Cancellation removes the layer
+animations and settles the pages before a replacement. The stack owns navigation
+completion, while the document hosts publish content readiness and the measured
+margin for the history rail. Departing history stays mounted only
 for its transition; cancellation fences obsolete completion. Other page
 stacks retain their default horizontal direction. New turns do not replace
 an open historical execution;
@@ -676,7 +678,7 @@ a model value being ahead of committed native geometry; it does not treat AppKit
 bounds as proof of WindowServer pixels or assert that such lag caused a specific
 historical failure. Agent, Report and Moku entry use panel presentation.
 
-Non-panel progress is written synchronously from a per-stack display callback in
+Horizontal non-panel progress is written synchronously from a per-stack display callback in
 [NativeReadingPageFrames](Conversation/NativeReadingPageFrames.swift).
 
 
