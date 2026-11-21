@@ -19,6 +19,8 @@ Chief checks for Codex, Claude, Pi Agent, and OpenCode on your Mac. To set up a 
 
 Return to Chief. Click **Check again** if it appears, or **Retry** next to an agent that couldn't load. You can click **Continue** once an agent that can serve as Chief is ready. Use **Back** if you want to return to the first page and check any other agents.
 
+For a new Codex setup, Chief checks whether Codex supports its default **approve-for-me** permission mode. If that mode is unavailable on your Mac, you can continue with another ready agent. On a managed Mac, check with your administrator about supported Codex settings.
+
 ## Choose who does what
 
 1. On the **Chief** page, choose the agent that will talk to you and coordinate your work. Below it, choose at least one agent it may assign tasks to. Complete any required model choices and click **Continue**.
