@@ -4,7 +4,7 @@
 
 Click the task card in [Overview](overview.md). The conversation keeps finished replies and failure messages. When a run ends, the reading area usually shows its final answer on its own. Click **Show work** when it appears for a summary, including the number of reasoning steps and tool calls when available. If you scroll up during a live run, use **Jump to latest** when it appears to return to the newest output.
 
-Click the blank margin outside the conversation to return to Overview. The input bar folds as the conversation closes.
+When a conversation opens with an **Execution** sidecard on the right, the input bar glides beneath it and opens there. Click the blank margin outside the conversation to return to Overview. The bar folds and glides back to the center.
 
 ## Respond to a request or stop a run
 

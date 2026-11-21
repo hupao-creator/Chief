@@ -122,16 +122,20 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
             return
         }
 
-        let duration: TimeInterval = previous?.frame != next.frame ? 0.38 : 0.42
-        let timing = previous?.frame != next.frame
+        let columnChanged = previous?.frame != next.frame
+        let duration: TimeInterval = columnChanged ? 0.38 : 0.42
+        let timing = columnChanged
             ? CAMediaTimingFunction(controlPoints: 0.22, 1, 0.36, 1)
             : abs(delta.y) > 0.01 ? CAMediaTimingFunction(name: .easeInEaseOut)
             : next.reading ? NativeReadingPageTiming.emphasizedOpening : CAMediaTimingFunction(name: .easeInEaseOut)
-        // Travel from the current presentation position directly to the target;
-        // the existing monotone curve also handles a mid-flight reversal.
+        // A column can be hundreds of points away. Give that translation a
+        // gentler start than the Sidecard fold, including on the trip back.
+        let movingBetweenColumns = columnChanged && abs(delta.x) > 0.01
         let horizontal = CABasicAnimation(keyPath: "transform.translation.x")
         horizontal.fromValue = delta.x; horizontal.toValue = 0
-        horizontal.duration = duration; horizontal.timingFunction = timing
+        horizontal.duration = movingBetweenColumns ? 0.52 : duration
+        horizontal.timingFunction = movingBetweenColumns
+            ? CAMediaTimingFunction(controlPoints: 0.30, 0.12, 0.44, 1) : timing
         // Keep the 12–16pt descent on its existing independent schedule.
         let vertical = CABasicAnimation(keyPath: "transform.translation.y")
         vertical.fromValue = delta.y; vertical.toValue = 0
