@@ -465,8 +465,8 @@ public struct NativeMokuDock: View {
                     .scaleEffect(placement.scale, anchor: .bottom)
                     .frame(width: geometry.size.width, height: geometry.size.height, alignment: .bottom)
                     .offset(y: placement.surface.maxY - geometry.size.height - readingOffset)
-                    // A column change must drive shell width on the same curve
-                    // as native travel, before it can reach the narrower seat.
+                    // Fit the shell to the column on the Sidecard's fold clock
+                    // while its native host travels to the new seat.
                     .animation(executionPlacement?.dragging == true ? nil
                         : NativeSidecardTiming.foldAnimation, value: executionFrame)
                     .animation(surfaceAnimation, value: placement)
