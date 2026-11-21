@@ -366,11 +366,6 @@ public final class NativeWorkspacePresentation {
         else { closeApplication() }
     }
 
-    fileprivate var showsNoteExecutionBesideReport: Bool {
-        scene.noteReadingOrigin != nil && reportSidecards.selectedExecution != nil
-            && (reportSidecards.active ?? reportSidecards.pending) == .relatedExecutions
-    }
-
     public func showOverview(focusFilter: Bool = false) {
         guard !onboarding.blocksWorkspace else { return }
         scene.cancelPendingNoteReading()
@@ -1110,8 +1105,7 @@ public struct NativeWorkspaceView: View {
                     onNavigationChange: { if presentation.navigationRouteID == routeID { presentation.navigation = $0 } }))
                 .modifier(NativeApplicationReadingPanel(enabled: presentation.usesReadingPanel,
                     suppressed: applicationSuppressed, returnsToCollection: presentation.readingCollectionMember,
-                    returnsToNote: presentation.scene.noteReadingOrigin != nil,
-                    dismissExecutionToOverview: presentation.showsNoteExecutionBesideReport ? {
+                    dismissToOverview: presentation.scene.noteReadingOrigin != nil ? {
                         if presentation.navigationRouteID == routeID { presentation.showOverview() }
                     } : nil,
                     identifier: selected.typeID == "report.document" ? "report-reading-panel" : "application-reading-panel",

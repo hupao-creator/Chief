@@ -15,8 +15,7 @@ struct NativeApplicationReadingPanel: ViewModifier {
     var suppressed = false
     var escapeEnabled = true
     var returnsToCollection = false
-    var returnsToNote = false
-    var dismissExecutionToOverview: (() -> Void)?
+    var dismissToOverview: (() -> Void)?
     var reservesAuxiliaryLane = true
     var minimumBottomInset: CGFloat = 0
     let identifier: String
@@ -27,15 +26,14 @@ struct NativeApplicationReadingPanel: ViewModifier {
         if enabled {
             if identifier == "report-reading-panel" {
                 let chinese = locale.language.languageCode?.identifier == "zh"
-                let isBack = dismissExecutionToOverview == nil && (returnsToNote || returnsToCollection)
-                let label = dismissExecutionToOverview != nil ? (chinese ? "返回俯瞰" : "Back to overview")
-                    : returnsToNote ? (chinese ? "返回 Chief 笔记" : "Back to Chief Note") : returnsToCollection
-                    ? (chinese ? "返回 Super Thread 合集" : "Back to Super Thread Collection")
+                let isBack = dismissToOverview == nil && returnsToCollection
+                let label = dismissToOverview != nil ? (chinese ? "返回俯瞰" : "Back to overview")
+                    : returnsToCollection ? (chinese ? "返回 Super Thread 合集" : "Back to Super Thread Collection")
                     : (chinese ? "关闭 Super Thread" : "Close Super Thread")
                 NativeReportLinkWorkspace(suppressed: suppressed, onClose: onClose) {
                     content
                         .nativeReadingPanelClose(label: label, identifier: isBack ? "reading-panel-back" : "reading-panel-close",
-                            overlaysContent: true, isBack: isBack, onClose: dismissExecutionToOverview ?? onClose)
+                            overlaysContent: true, isBack: isBack, onClose: dismissToOverview ?? onClose)
                         .background(NativeReadingPanelFrame(identifier: identifier))
                         .accessibilityIdentifier(identifier)
                 }

@@ -457,7 +457,8 @@ Closing either expanded reader, clicking its backdrop or using the Overview
 command returns to Overview with the Note closed. Only an explicit Back to the
 Note restores its retained viewport. Escape in the ordinary cited document
 performs that Back action. In the Report, the sidebar arrow restores the related
-list, where the Report arrow returns to the Note.
+list. The Report’s Close button returns to Overview with the Note closed from
+either the execution or the list.
 The closed Note remains ineligible for input, accessibility and exposure.
 
 ## Settings expansion

@@ -147,7 +147,8 @@ related-list entry opens the current execution. Both side-panel entries retain
 the conversation TOC. Back to Chief Note restores the expanded Note.
 The Overview command, the reader backdrop and the Close button on either
 expanded citation dismiss to the canvas with the Note closed. The sidebar
-arrow returns to the related list, where the Report arrow returns to the Note. Admission rules remain entry-specific; archived
+arrow returns to the related list. The Report keeps the same Close button there
+and dismisses to Overview with the Note closed. Admission rules remain entry-specific; archived
 ordinary threads are valid for both, while the Note additionally admits ordinary
 failed or Moku-tool-interrupted threads hidden from Overview.
 

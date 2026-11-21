@@ -179,15 +179,18 @@ carousel member, execution identities and link position alongside the recording.
    and verify Overview settles with the Note closed. Reopen the link. Use the conversation
    contents to visit current and historical rows. Type a draft on the historical
    run and switch away and back. **Back to related executions** should show
-   the Report’s list. The arrow on the Report returns to the Note.
+   the Report’s list. Click the Report’s upper-left **×**. Wait for Overview to
+   settle and check that the Note stays closed. Press **⌘⇧N** and verify the
+   same Note text and citation are available.
 3. In All, start with another Report showing in the target Collection. Open
    the associated link. The filter should stay on All. Check consecutive frames
    for the Note closing, the carousel moving to the cited Report and settling,
    then the reader expanding from that card. Compare the panel travel with a
    direct click on the same card at the same window size and camera position.
    Repeat the comparison for an ordinary Thread and an individual Report.
-   After a brief visit, return to the Note and check the carousel page and
-   the Note’s scroll position.
+   After a brief Report visit, close the reader and check the carousel page and
+   collapsed Note. Reopen the Note to check its contents. On the ordinary
+   Thread route, use Escape to check the restored Note’s scroll position.
 4. Repeat the three routes with system AXPress. Check English and Simplified
    Chinese. Record the capture rate. Track source revision, executable identity, scoped replies,
    input targets and returned state for each visit.
