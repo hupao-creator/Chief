@@ -479,8 +479,8 @@ Settings expands from the resident Dock's existing capsule, with a stable
 viewport-bounded centered surface with a 780-point preferred width and a
 900-point minimum preferred height that grows with its active form. Its full
 panel uses the opaque adaptive Settings fill and a subtle border, without Liquid
-Glass. Its header has no character or reserved eye slot. The other Dock surfaces
-retain their Harness tint and anchors.
+Glass. The resident eyes move into the header's reserved leading seat and track
+the Settings scroll offset.
 The scene blurs and disables Overview, while the capsule and retained input/Note
 visit stay mounted. Closing uses the Settings draft gate and restores the
 previous valid surface; pending interventions resume only after Settings exits.
@@ -641,8 +641,11 @@ The passive logo occupies a 34×25pt seat only in Agent input and ignores pointe
 and accessibility hit testing. A 420ms horizontal-axis flip retires the old mark
 in its first half and reveals the new mark in its second half. Changing Harness
 flips to the new mark; changing Threads within the same Harness keeps it steady.
-Overview and Report/Git restore Moku's theme without a logo; Settings has no header identity slot. Identity transitions use SwiftUI's retained views,
-without delayed callbacks that could restore a stale Harness or acquire focus.
+Overview and Report/Git restore Moku's theme. Settings uses the resident eyes.
+SwiftUI retains both marks through the flip. A fully transparent mark uses an
+identity transform so its local coordinate space stays invertible. A visible
+mark follows the original perspective and angle. The current visit alone can
+admit the editor when the flip has settled.
 The logo is separate from placeholder/draft text and never replaces the editor.
 The window owns persisted drafts (text, directory mentions and attachments) per
 Thread for ordinary current input and per exact Thread/execution for fixed

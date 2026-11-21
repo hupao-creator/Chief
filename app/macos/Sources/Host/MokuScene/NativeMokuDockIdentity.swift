@@ -121,8 +121,11 @@ private struct NativeMokuIdentityFlip: ViewModifier, @preconcurrency Animatable 
         // Retire the front in the first half, then reveal the back. Both rotate
         // downward about the same horizontal axis, with no mirrored back face.
         let visible = min(1, max(0, progress * 2 - 1))
+        // A fully hidden face has no projected pixels. Keep its coordinate
+        // space invertible for SwiftUI geometry and accessibility queries.
+        let degrees = visible > 0 ? (incoming ? 90 : -90) * (1 - visible) : 0
         content
-            .rotation3DEffect(.degrees(Double((incoming ? 90 : -90) * (1 - visible))),
+            .rotation3DEffect(.degrees(Double(degrees)),
                 axis: (x: 1, y: 0, z: 0), perspective: 0.5)
             .opacity(visible > 0 ? 1 : 0)
     }
