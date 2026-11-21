@@ -69,9 +69,15 @@ def validate_preparation(record, plan):
     if point!=record['point']:raise ValueError('input preparation point differs from retained AX evidence')
     if version==2:
         validate_hit(record)
-    down=next(e for e in plan['events'] if e['kind']=='down')
-    if any(abs(down[k]-plan['windowBounds'][k]-point[k])>1e-6 for k in ('x','y')):
-        raise ValueError('mouse-down does not use the prepared background point')
+    inputs = [e for e in plan['events'] if e['kind'] == 'down' or 'deltaX' in e]
+    if not inputs or any(abs(e[k] - plan['windowBounds'][k] - point[k]) > 1e-6
+                         for e in inputs for k in ('x', 'y')):
+        raise ValueError('input does not use the prepared background point')
+    if ('scrollRange' in record) != any('deltaX' in e for e in inputs):
+        raise ValueError('prepared scroll range and actual input differ')
+    if 'scrollRange' in record:
+        maximum = number(record['scrollRange']['maximum'], 'maximum scroll offset')
+        number(record['scrollRange']['offset'], 'initial scroll offset', 0, maximum)
     return context
 
 

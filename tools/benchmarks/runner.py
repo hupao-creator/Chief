@@ -43,6 +43,30 @@ def trajectory(bounds, seconds):
     return events
 
 
+def overview_probe(preparation, point, seconds):
+    """Aim new workspace inputs at a fixed gap. Older artifacts expose free pan."""
+    if 'scrollRange' not in preparation:
+        relative = trajectory({'x': 70, 'y': 110, 'width': 0, 'height': 0}, seconds)
+        return reanchor(relative, point, {'x': 0, 'y': 0})
+    scroll = preparation['scrollRange']
+    direction = -1 if scroll['maximum'] - scroll['offset'] >= scroll['offset'] else 1
+    room = max(scroll['offset'], scroll['maximum'] - scroll['offset'])
+    # Fitting cards still receive the same input; their observable result is stasis.
+    travel = min(120, int(room)) or 120
+    half = (seconds - 1) / 2
+    steps = min(travel, round(half * 60))
+    events = [{'kind': 'move', 'atSeconds': .15, **point}]
+    for leg in range(2):
+        start = .4 + leg * (half + .05)
+        for i in range(steps):
+            delta = round(travel * (i + 1) / steps) - round(travel * i / steps)
+            events.append({'kind': 'scroll', 'phase': 1 if i == 0 else 2,
+                           'deltaX': direction * delta, 'atSeconds': start + i * half / steps, **point})
+        events.append({'kind': 'scroll', 'phase': 4, 'deltaX': 0, 'atSeconds': start + half, **point})
+        direction = -direction
+    return events
+
+
 def prepare_input(application, directory, fixture, context):
     # AX preparation is outside all measured phases. Preserve the raw geometry
     # even if no usable gap is available; absence is not a product freeze.
@@ -54,6 +78,13 @@ def prepare_input(application, directory, fixture, context):
     point=record['point'];bounds=owner['bounds']
     record['hitTest']=native(application.helper,'hit-test',application.app.pid,
                             bounds['x']+point['x'],bounds['y']+point['y'])
+    state = application.ui.request(include_scroll_range=True)
+    if 'scrollRange' in state:
+        scroll = state['scrollRange']
+        ratio = bounds['width'] / scroll['viewportWidth']
+        record['scrollRange'] = {key: scroll[key] * ratio for key in ('offset', 'maximum')}
+    elif 'overview.pan' not in state['actions']:
+        raise ValueError('Overview navigation is unavailable during input preparation')
     record['afterNS']=time.monotonic_ns()
     save(directory/'input-preparation.json',record)
     validate_hit(record)
@@ -67,15 +98,15 @@ def reanchor(events, point, bounds):
             if e['kind'] in ('move','down','drag','up') else e for e in events]
 
 
-def make_plan(owner, roots, scenario, count, mode, seconds=8, anchors=None):
+def make_plan(owner, roots, scenario, count, mode, seconds=8, anchors=None, *, target_kind='application'):
     return {'version': 1, 'kind': 'plan', 'clock': CLOCK, 'scenario': scenario, 'count': count, 'mode': mode,
-            'targetKind':'application', 'pid': owner['process']['pid'], 'processIdentity': owner['process']['identity'],
+            'targetKind':target_kind, 'pid': owner['process']['pid'], 'processIdentity': owner['process']['identity'],
             'windowID': owner['windowID'], 'windowBounds': owner['bounds'], 'startNS': time.monotonic_ns() + 2_000_000_000,
             'warmupSeconds': 1.0, 'formalSeconds': float(seconds), 'tailSeconds': 2.0,
             'sampleHz': 10.0, 'captureHz': 5.0, 'maximumNoProgressSeconds': .65,
             'maximumCaptureGapSeconds': .65, 'motionTolerancePixels': 14.0,
             'anchors': anchors or [f'BENCH CARD {n:02d}' for n in range(1, count + 1)],
-            'processRoots': roots, 'events': trajectory(owner['bounds'], seconds) if 'pan' in scenario else []}
+            'processRoots': roots, 'events': trajectory(owner['bounds'], seconds) if target_kind == 'control' else []}
 
 
 def recognize_frames(helper, directory):
@@ -131,8 +162,11 @@ def control(tools, directory, mode, capability=None, observation_mode="observed"
         roots = [{**launched['process'], 'role': 'application'},
                  {**native(tools/'collector', 'process', os.getpid()), 'role': 'source'}]
         plan = make_plan(owner, roots, 'pan', 5, observation_mode, seconds,
-                         [f'BENCH CARD {n:02d}' for n in range(1, 5)])
-        plan['targetKind']='control'
+                         [f'BENCH CARD {n:02d}' for n in range(1, 5)], target_kind='control')
+        if mode in ('horizontal', 'wrong-axis'):
+            bounds = owner['bounds']
+            point = {'x': bounds['x'] + bounds['width'] / 2, 'y': bounds['y'] + bounds['height'] / 2}
+            plan['events'] = overview_probe({'scrollRange': {'offset': 0, 'maximum': 120}}, point, seconds)
         collect(tools, directory, plan, bundle, capability,
                 fault=(lambda: (directory/'stall').write_text('stall')) if mode == 'stall' else None)
         save(directory/'outcome.json', {'status': 'passed', 'oracle': 'control remains owned and running',
@@ -159,7 +193,7 @@ def calibrate(tools, directory):
     directory.mkdir(parents=True, exist_ok=False, mode=0o700)
     reports = {}
     desktop_preflight(tools, directory)
-    for mode in ('normal', 'swiftui', 'frozen', 'wrong', 'delay', 'stall', 'children'):
+    for mode in ('normal', 'swiftui', 'frozen', 'wrong', 'delay', 'stall', 'children', 'horizontal', 'wrong-axis'):
         print('Collector control: '+mode, flush=True)
         reports[mode] = control(tools, directory/mode, mode)
     print('Collector control: minimal overhead pair', flush=True)
@@ -171,8 +205,8 @@ def calibrate(tools, directory):
     try:
         owner=native(tools/'collector','prepare',launched['process']['pid'])
         wrong={**launched['process'],'identity':str(launched['process']['pid'])+':wrong-birth','role':'application'}
-        plan=make_plan({**owner,'process':wrong},[wrong],'pan',5,'observed',5)
-        plan['targetKind']='control';save(wrong_dir/'plan.json',plan)
+        plan=make_plan({**owner,'process':wrong},[wrong],'pan',5,'observed',5,target_kind='control')
+        save(wrong_dir/'plan.json',plan)
         rejected_process=subprocess.run([str(tools/'collector'),'collect',str(wrong_dir/'plan.json'),str(wrong_dir)],
                                         capture_output=True,text=True,timeout=15)
         save(wrong_dir/'collector-exit.json',{'exitStatus':rejected_process.returncode,
@@ -188,8 +222,11 @@ def calibrate(tools, directory):
     fault = [json.loads(line) for line in (directory/'stall/stall-events.jsonl').read_text().splitlines()]
     real_stall = len(fault) == 2 and fault[1]['atNS'] - fault[0]['atNS'] >= 1_000_000_000
     stalls_detected = reports['stall'].get('product') == 'overloaded' and real_stall
-    pixels_passed = process_owner_rejected and reports['swiftui'].get('product')=='passed' and reports['normal'].get('product') == 'passed' and all(
-        reports[name].get('product') == ('wrong-result' if name=='wrong' else 'overloaded') for name in ('frozen','wrong','delay','stall'))
+    expected_pixels = {'normal': 'passed', 'swiftui': 'passed', 'horizontal': 'passed',
+                       'frozen': 'overloaded', 'delay': 'overloaded', 'stall': 'overloaded',
+                       'wrong': 'wrong-result', 'wrong-axis': 'wrong-result'}
+    pixels_passed = process_owner_rejected and all(reports[name].get('product') == verdict
+                                                   for name, verdict in expected_pixels.items())
     children = [json.loads(line) for line in (directory/'children/stall-events.jsonl').read_text().splitlines()]
     child_observation=json.loads((directory/'children/observation.json').read_text())
     sampled_pids={p['pid'] for row in child_observation['resources'] for p in row['processes']}
@@ -283,13 +320,12 @@ def startup(application, tools, directory, count, mode, seconds):
         'anchors':[f'BENCH CARD {n:02d}' for n in range(1,count+1)], 'processRoots':[source],
         'runtimeConnection':str(application.profile/'runtime/connection.json'),
         'runtimePath':str(application.runtime_executable)}
-    relative = trajectory({'x':70,'y':110,'width':0,'height':0}, seconds-2)
     # The startup collector translates offsets from its default window-relative
     # point after discovering the new OS window. Keep its fixed timing intact.
     bounds=preparation['owner']['bounds']
     offset={axis:preparation['point'][axis]-(bounds[size]-margin)
             for axis,size,margin in (('x','width',70),('y','height',110))}
-    relative=reanchor(relative,offset,{'x':0,'y':0})
+    relative=overview_probe(preparation,offset,seconds-2)
     plan['events'] = [{**event,'atSeconds':event['atSeconds']+2} for event in relative]
     config = {'plan':plan, 'launch': {'app':str(application.bundle), 'arguments':application.launch_arguments(), 'environment':application.env}}
     before = clock_bracket(helper)
@@ -378,9 +414,6 @@ def run_suite(tools, bundle, directory, counts, scenarios, mode, seconds, capabi
                     plan=make_plan(owner,roots,scenario,count,mode,seconds)
                     plan['fixture']=fixture
                     plan['warmupSeconds']=warmup_seconds
-                    if scenario in ('idle.completed','idle.active','body'):
-                        # A tail interaction probe leaves the formal idle/source interval uncontaminated.
-                        plan['events']=[{**e,'atSeconds':e['atSeconds']+seconds-.15} for e in trajectory(owner['bounds'],2)]
                     token=None;executions={}
                     if scenario.startswith('body') or scenario=='idle.active':
                         workload=schedule(count,seconds,pacing,chunk_bytes,message_bytes)
@@ -397,7 +430,11 @@ def run_suite(tools, bundle, directory, counts, scenarios, mode, seconds, capabi
                             for t in state['threads'] if t['id'] in application.threads.values()]})
                     time.sleep(.5)
                     preparation=prepare_input(application,case,fixture,'same-window')
-                    plan['events']=reanchor(plan['events'],preparation['point'],plan['windowBounds'])
+                    point = {k: owner['bounds'][k] + preparation['point'][k] for k in ('x', 'y')}
+                    tail_probe = scenario in ('idle.completed', 'idle.active', 'body')
+                    events = overview_probe(preparation, point, 2 if tail_probe else seconds)
+                    delay = seconds - .15 if tail_probe else 0
+                    plan['events'] = [{**e, 'atSeconds': e['atSeconds'] + delay} for e in events]
                     collect(tools,case,plan,bundle,capability,
                             arm=(lambda start:application.provider.arm(token,start)) if token else None,
                             checkpoint=lambda:boundary_outcome(application))

@@ -22,9 +22,12 @@ an otherwise idle, unlocked Mac and an agreed exclusive desktop slot are require
 | ux-reading | reading.first-open, reading.reopen | 8 KiB settled Markdown reply; 10s formal; existing reading input schedule |
 | ux-zoom | zoom, body.zoom | Unsupported: no validated real system pinch injector |
 
-The Overview pan workloads inject a background mouse drag. The canvas keeps its
-position during that gesture. These optical workloads cannot certify horizontal
-wheel response or trackpad inertia.
+Overview scroll probes use two opposing horizontal pixel-wheel sequences.
+Their optical bounds require horizontal card travel and stable vertical
+positions. Preflight records the available range; fitting content provides
+no latency sample. Matching input is required on both sides of a pair.
+Control windows check horizontal motion and deliberately incorrect vertical
+travel. Physical trackpad inertia and device-specific timing need separate evidence.
 
 All tolerances are **provisional, not physically calibrated**. Each metric has
 lower-is-better direction and 15% relative tolerance; allowed degradation is the
@@ -56,7 +59,7 @@ against the prepared profile. It is **process-cold, with uncontrolled OS caches
 after fixture warmup**. It is neither a pristine-install launch nor a cache-cold
 disk/boot experiment. LaunchServices request/return, OS birth identity and capture
 attachment are retained. Ready means the first recognizable business title and
-body; a later scheduled real drag establishes an independent usability upper
+body; a later scheduled OS navigation probe establishes an independent usability upper
 bound. This does not certify every control, composer or every offscreen card.
 
 The first-content interval starts at the last absent capture; if capture attaches

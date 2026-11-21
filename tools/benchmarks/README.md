@@ -78,7 +78,7 @@ both its fixed title/body and its generated 📄 emoji before admitting a fixtur
 creates/deletes cards or deliberately reveals them one at a time. First rendering
 reopens the already-populated profile. Before/after public card IDs, titles and
 counts are retained and checked; a changed set cannot produce a passing outcome.
-Before timing, one public Accessibility observation locates a mouse-down gap
+Before timing, one public Accessibility observation locates an input point in a gap
 outside exposed card/control rectangles. A separate system-wide AX hit-test
 checks the selected point's complete ancestry, owner and unchanged window,
 rejecting cards and interactive controls. A semantic canvas hit is accepted;
@@ -90,28 +90,30 @@ Virtualized cards need not all appear in the AX tree; the fixed existing card
 set is checked separately through public fixture/UI identities. This is input preparation, not a
 layout score or visible-card quota. Missing geometry or a blocked point cannot
 be interpreted as a frozen canvas. First-render probes reuse geometry observed
-before the restart. AX bounds are not gesture-acceptance receipts: a completely inert
-product probe reports unknown input acceptance/responsiveness, never a pass.
-The raw observation and selected point are retained, and the full mouse trajectory
-remains fixed. No full accessibility/semantic snapshot is polled while measuring.
-The final trajectory endpoint is delivered as a drag before mouse-up: SwiftUI
-does not promise an `onChanged` event for mouse-up. The independent SwiftUI
-control checks this input path alongside the AppKit controls.
+before the restart. A public snapshot taken before collection supplies the
+horizontal offset and range in window points. The fixed-pointer scroll probe
+moves up to 120 points and returns. Matching title anchors must follow the
+horizontal displacement and retain their height throughout the gesture. A
+fully fitting layout must stay still and supplies no scroll latency sample.
+The collector records the actual input and original frames. The measured
+interval contains no semantic polling. The AppKit horizontal and wrong-axis
+controls check that measurement; the SwiftUI and AppKit drag controls exercise
+the separate free-pan gesture.
 
 ## Scenarios and metrics
 
 | Scenario | Work and evidence |
 | --- | --- |
 | `first-render` | Construct existing fixture outside measurement, join shutdown, launch a new App process; first recognizable title **and body**, then a scheduled interaction probe. Probe time is an upper bound on usability, not the exact earliest usable instant. |
-| `idle.completed` | Completed tasks, no formal text/input traffic; tail pan probes continued responsiveness. |
+| `idle.completed` | Completed tasks, no formal text/input traffic; tail navigation probes continued responsiveness. |
 | `idle.active` | All tasks running at a gated local provider, no formal body packets; terminal reply and tail probe follow. |
-| `pan` | Fixed absolute-clock OS down/drag/up trajectory; match business-title displacement throughout direction/reversal/settling. |
+| `pan` | Two phased OS horizontal pixel-scroll sequences at a fixed pointer position. Track title displacement through travel, reversal and settling. |
 | `body` | Fixed active count, scripted reasoning chunks and completed progress messages through the native Harness; tail pan probe. |
-| `body.pan` | Same source schedule during system mouse dragging. |
+| `body.pan` | Same source schedule during horizontal scrolling. |
 | `zoom`, `body.zoom` | Declared but **unsupported** until a public system magnification injector is validated. Command-wheel is not silently substituted for a macOS pinch. |
 
-The background drag in the pan workload leaves the Overview viewport stationary.
-Its displacement trace cannot measure horizontal scrolling performance.
+Workspaces advertising the free-pan action use the mouse-drag probe. A measured
+input change prevents pairing those results with horizontal-scroll results.
 
 The default run selects the six supported scenarios. Unsupported zoom cases
 are reported only when explicitly requested.
@@ -286,7 +288,7 @@ checkout. The raw archives stay with the collector.
 ## Verification boundary
 
 `calibrate` retains independent normal/frozen/wrong/delayed-motion, main-thread-stall,
-SwiftUI drag and short-lived-child controls to establish collector capability.
+SwiftUI drag, horizontal scroll, wrong-axis and short-lived-child controls to establish collector capability.
 CLI-level PBT/e2e exercises the current performance gate. Native hitches have no
 validated collector.
 Signed production GUI experiments remain local because CI has no production

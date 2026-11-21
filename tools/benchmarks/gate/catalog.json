@@ -123,7 +123,7 @@
       ]
     },
     "ux-startup": {
-      "version": 1,
+      "version": 2,
       "documentation": "gate/UX.md",
       "calibration": "provisional-not-physically-calibrated",
       "maxNormalizedMAD": 1.0,
@@ -166,7 +166,7 @@
       }
     },
     "ux-overview": {
-      "version": 1,
+      "version": 2,
       "documentation": "gate/UX.md",
       "calibration": "provisional-not-physically-calibrated",
       "maxNormalizedMAD": 1.0,

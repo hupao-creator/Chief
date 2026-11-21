@@ -114,6 +114,8 @@ def plan(value):
     if type(events) is not list or len(events) > 20_000:
         raise ValueError('bounded input schedule required')
     previous, down = -1, False
+    scroll_direction = 0
+    horizontal = False
     for event in events:
         at = number(event['atSeconds'], 'input deadline', 0, value['formalSeconds'] + value['tailSeconds'])
         if at <= previous:
@@ -129,17 +131,31 @@ def plan(value):
             if not down: raise ValueError('drag/up without down')
             if kind == 'up': down = False
         if kind == 'scroll':
-            if not reading or type(event.get('phase')) is not int or event['phase'] not in (1, 2, 4):
+            if type(event.get('phase')) is not int or event['phase'] not in (1, 2, 4):
                 raise ValueError('unsupported pixel scroll phase/scenario')
-            integer(event['deltaY'], 'pixel scroll delta', -20, 20)
+            axis = 'deltaY' if reading else 'deltaX'
+            if ('deltaX' in event) == ('deltaY' in event) or axis not in event:
+                raise ValueError('pixel scroll axis differs from scenario')
+            delta = integer(event[axis], 'pixel scroll delta', -20, 20)
+            direction = (delta > 0) - (delta < 0)
+            phase = event['phase']
+            if ((phase == 1 and (scroll_direction or not direction))
+                    or (phase == 2 and (not direction or direction != scroll_direction))
+                    or (phase == 4 and (not scroll_direction or direction))):
+                raise ValueError('invalid pixel scroll sequence')
+            scroll_direction = direction
+            horizontal = not reading
         if kind == 'zoom':
             integer(event['delta'], 'wheel delta', -100, 100)
         for axis in ('x', 'y'):
             number(event[axis], axis, -100_000, 100_000)
-    if down:
+    if down or scroll_direction:
         raise ValueError('input gesture lacks a release')
-    if 'pan' in value['scenario'] and not any(e['kind'] == 'drag' for e in events):
-        raise ValueError('pan scenario lacks real drag inputs')
+    drags = any(e['kind'] == 'drag' for e in events)
+    if horizontal and (drags or any(e['kind'] == 'down' for e in events)):
+        raise ValueError('Overview scroll and drag probes cannot be combined')
+    if 'pan' in value['scenario'] and not (drags or horizontal):
+        raise ValueError('pan scenario lacks navigation inputs')
     if 'zoom' in value['scenario'] and not any(e['kind'] == 'zoom' for e in events):
         raise ValueError('zoom scenario lacks real zoom inputs')
     if reading:

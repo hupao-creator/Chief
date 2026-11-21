@@ -131,6 +131,8 @@ def scoped_metrics(case, suite):
             if 'firstContentSeconds' in suite['metrics']:
                 values['firstContentSeconds'] = reading['presentation']['firstContentSeconds']
         else:
+            require(not metrics['pan'].get('stationaryLayout'),
+                    'fitting Overview has no scroll travel for latency comparison')
             values.update(responseSeconds=metrics['pan']['firstVisibleResponseSecondsBounds'],
                           noProgressSeconds=metrics['pan']['noProgressSecondsBounds'])
     return {name: values[name] for name in suite['metrics']}, report
@@ -232,6 +234,9 @@ def execute(output, campaign, suite, deadline, options):
                                   'windowBounds': plan['windowBounds'],
                                   'nativeCLI': read(case / 'native-cli.json')['sha256'],
                                   'timing': {k: plan[k] for k in ('sampleHz', 'captureHz', 'formalSeconds', 'warmupSeconds', 'tailSeconds')}}
+                    if suite['workload']['family'] in ('overview', 'startup'):
+                        comparison['navigationInput'] = ('horizontal-scroll' if any('deltaX' in e for e in plan['events'])
+                                                         else 'background-drag')
                     store_observation(output, campaign, suite, {
                         'id': run_id + '-' + entry['scenario'], 'scenario': entry['scenario'], 'pair': pair,
                         'order': order, 'side': side, 'validity': 'valid', 'product': 'passed', 'reasons': [],

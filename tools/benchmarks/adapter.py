@@ -61,7 +61,7 @@ class UI:
     def __init__(self, path, pid):
         self.path, self.pid = path, pid
 
-    def request(self, action=None):
+    def request(self, action=None, *, include_scroll_range=False):
         request = {"protocol": 1, "id": str(uuid.uuid4()), "op": "perform" if action else "snapshot"}
         if action:
             request["action"] = action
@@ -77,9 +77,18 @@ class UI:
             raise ValueError(f"UI rejected request: {reply.get('error')}")
         snapshot = reply["snapshot"]
         if snapshot is None: return None
-        # Deliberately discard diagnostics of internal camera/layout/render state.
-        return {key: snapshot[key] for key in ("page", "threads", "actions", "selectedThread", "settings",
+        result = {key: snapshot[key] for key in ("page", "threads", "actions", "selectedThread", "settings",
                 "onboarding", "errors", "runtimeAvailable", "transitioning", "reading", "mounted") if key in snapshot}
+        # Only preflight needs the available scroll travel. Measured response
+        # and progress come from the independently captured business pixels.
+        if include_scroll_range and "overview.scroll" in result.get("actions", []):
+            overview = snapshot["overview"]
+            camera = overview["camera"]
+            if not camera["initialized"] or overview["layingOut"]:
+                raise ValueError("Overview scroll range did not settle before measurement")
+            result["scrollRange"] = {"offset": camera["scrollOffset"], "maximum": camera["maximumOffset"],
+                                     "viewportWidth": camera["viewport"]["width"]}
+        return result
 
 
 def wait_for(read, predicate, seconds=90):

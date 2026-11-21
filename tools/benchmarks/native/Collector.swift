@@ -81,9 +81,11 @@ func validatePlan(_ plan: Record) throws {
             }
         }
         if kind == "scroll" {
-            try number(event["deltaY"], "scroll delta", -20...20)
+            let axis = (plan["scenario"] as? String)?.hasPrefix("reading.") == true ? "deltaY" : "deltaX"
+            guard (event["deltaX"] == nil) != (event["deltaY"] == nil) else { throw fail("expected one scroll axis") }
+            try number(event[axis], "scroll delta", -20...20)
             try number(event["phase"], "scroll phase", 1...4)
-            guard let delta = event["deltaY"] as? Int, let phase = event["phase"] as? Int else { throw fail("integral scroll input required") }
+            guard let delta = event[axis] as? Int, let phase = event["phase"] as? Int else { throw fail("integral scroll input required") }
             switch phase {
             case 1:
                 guard scrollDirection == nil, delta != 0 else { throw fail("invalid scroll begin") }
@@ -212,10 +214,11 @@ func post(_ event: Record) throws {
         mouse = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(key), keyDown: kind == "keyDown")
         mouse?.flags = key == 40 && kind == "keyDown" ? .maskCommand : []
     case "scroll":
-        guard let delta = event["deltaY"] as? Int, (-20...20).contains(delta),
+        let horizontal = event["deltaX"] != nil
+        guard let delta = event[horizontal ? "deltaX" : "deltaY"] as? Int, (-20...20).contains(delta),
               let phase = event["phase"] as? Int, [1, 2, 4].contains(phase) else { throw fail("invalid pixel scroll input") }
-        mouse = CGEvent(scrollWheelEvent2Source: source, units: .pixel, wheelCount: 1,
-                        wheel1: Int32(delta), wheel2: 0, wheel3: 0)
+        mouse = CGEvent(scrollWheelEvent2Source: source, units: .pixel, wheelCount: horizontal ? 2 : 1,
+                        wheel1: horizontal ? 0 : Int32(delta), wheel2: horizontal ? Int32(delta) : 0, wheel3: 0)
         mouse?.location = point
         mouse?.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
         mouse?.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase))
@@ -390,6 +393,7 @@ final class Sampler: @unchecked Sendable {
         case "inspect", "prepare":
             guard let pid = Int32(args[1]), let running = NSRunningApplication(processIdentifier: pid) else { throw fail("application missing") }
             var expectedBounds: CGRect?
+            var preparedWindow: AXUIElement?
             if command == "prepare" {
                 guard AXIsProcessTrusted(), CGPreflightPostEventAccess() else { throw fail("input/accessibility permission missing") }
                 var requested: CGRect?
@@ -406,21 +410,26 @@ final class Sampler: @unchecked Sendable {
                 running.activate(options: [.activateAllWindows])
                 let app = AXUIElementCreateApplication(pid)
                 if let first = (ax(app, kAXWindowsAttribute) as? [AXUIElement])?.first {
-                    var point = CGPoint(x: 50, y: 60)
                     let screen = await MainActor.run { NSScreen.screens.first?.visibleFrame ?? .zero }
-                    var size = CGSize(width: min(1280, screen.width - 100), height: min(820, screen.height - 100))
-                    if let requested { point = requested.origin; size = requested.size }
-                    expectedBounds = CGRect(origin: point, size: size)
-                    AXUIElementSetAttributeValue(first, kAXPositionAttribute as CFString, AXValueCreate(.cgPoint, &point)!)
-                    AXUIElementSetAttributeValue(first, kAXSizeAttribute as CFString, AXValueCreate(.cgSize, &size)!)
+                    expectedBounds = requested ?? CGRect(x: 50, y: 60, width: min(1280, screen.width - 100),
+                                                        height: min(820, screen.height - 100))
                     AXUIElementPerformAction(first, kAXRaiseAction as CFString)
+                    preparedWindow = first
                 }
             }
             var target = try await window(pid)
-            if let expected = expectedBounds {
+            if let expected = expectedBounds, let preparedWindow {
                 let deadline = now() + 2_000_000_000
                 while target.frame != expected, now() < deadline {
-                    try await Task.sleep(nanoseconds: 25_000_000)
+                    // WindowServer can reposition the window while applying an AX resize.
+                    if target.frame.size != expected.size {
+                        var size = expected.size
+                        AXUIElementSetAttributeValue(preparedWindow, kAXSizeAttribute as CFString, AXValueCreate(.cgSize, &size)!)
+                    } else {
+                        var point = expected.origin
+                        AXUIElementSetAttributeValue(preparedWindow, kAXPositionAttribute as CFString, AXValueCreate(.cgPoint, &point)!)
+                    }
+                    try await Task.sleep(nanoseconds: 50_000_000)
                     target = try await window(pid)
                 }
                 guard target.frame == expected else { throw fail("window did not reach requested OS bounds: requested \(expected), observed \(target.frame)") }

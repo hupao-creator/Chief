@@ -87,7 +87,12 @@ final class Canvas: NSView {
     }
     override func scrollWheel(with event: NSEvent) {
         guard mode != "frozen" else { return }
-        dx += event.scrollingDeltaY
+        if mode == "horizontal" || mode == "wrong-axis" {
+            dx = max(-120, min(0, dx + event.scrollingDeltaX))
+            dy = mode == "wrong-axis" ? dx / 2 : 0
+        } else {
+            dx += event.scrollingDeltaY
+        }
         needsDisplay = true
     }
     override func draw(_ dirtyRect: NSRect) {

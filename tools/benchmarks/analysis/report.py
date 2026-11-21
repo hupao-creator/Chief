@@ -118,12 +118,15 @@ def analyze(directory):
             mark('input deadline mapping mismatch','invalid')
         if posted < planned or posted-planned > 50_000_000 or event.get('error'):
             mark('input dispatch missed deadline or failed','invalid')
-    if plan['targetKind']=='application' and any(e['kind']=='drag' for e in plan['events']):
+    if plan['targetKind']=='application' and any(e['kind']=='drag' or 'deltaX' in e for e in plan['events']):
         if 'input-preparation.json' not in sealed:
-            mark('mouse-down background target was not externally prepared','incomplete')
+            mark('Overview input target was not externally prepared','incomplete')
         else:
-            context=validate_preparation(load(root/'input-preparation.json'),plan)
+            preparation = load(root/'input-preparation.json')
+            context=validate_preparation(preparation,plan)
             result['inputPreparation']={'context':context,'publicAccessibilityGeometry':True}
+            if 'scrollRange' in preparation:
+                result['inputPreparation']['scrollRange'] = preparation['scrollRange']
     if plan['targetKind']=='application':
         if 'tail-outcome.json' not in sealed:
             mark('immediate post-window business observation absent','incomplete')
@@ -229,7 +232,7 @@ def analyze(directory):
             from reading.analysis import calibration as reading_calibration
             calibrated=reading_calibration(root, mark)
         else:
-            calibrated=calibration(root, mark)
+            calibrated=calibration(root, mark, horizontal=any('deltaX' in e for e in plan['events']))
         result['collectorCalibration']=calibrated
         if 'hitches' in result['metrics']:
             result['metrics']['hitches']['capabilityValidated']=calibrated['hitchesPassed']
@@ -259,7 +262,7 @@ def completed_executions(plan, preparation, threads):
         row.get('status')=='completed' and row.get('summary')==terminal[int(card)] for card,execution in executions.items())
 
 
-def calibration(root, mark):
+def calibration(root, mark, *, horizontal=False):
     """Re-evaluate retained control evidence, not an asserted capability boolean."""
     directory=root.parent.parent/'calibration'
     unavailable={'pixelsPassed':False,'hitchesPassed':False}
@@ -277,6 +280,8 @@ def calibration(root, mark):
     if modern and capabilities.get('nativeHitchesRequested') is True:
         required.update(hitch_owner+'/'+name for name in ('launch.json','hitch.json','hitch-config.json','hitch-xcodebuild.log'))
     required.update(name+'/manifest.json' for name in ('normal','frozen','wrong','delay','stall'))
+    if horizontal:
+        required.update(name + '/manifest.json' for name in ('horizontal', 'wrong-axis'))
     if manifest.get('version')!=1 or not required<=manifest['files'].keys():
         mark('calibration manifest lacks required control evidence','incomplete');return unavailable
     for name,digest in manifest['files'].items():
@@ -294,6 +299,14 @@ def calibration(root, mark):
         reports[name]=analyze(directory/name)
     pixels=reports['normal']['product']=='passed' and all(
         reports[name]['product']==('wrong-result' if name=='wrong' else 'overloaded') for name in ('frozen','wrong','delay','stall'))
+    if horizontal:
+        for name, expected in [('horizontal', 'passed'), ('wrong-axis', 'wrong-result')]:
+            control = load(directory/name/'plan.json')
+            if control['targetKind'] != 'control' or not any('deltaX' in e for e in control['events']):
+                raise ValueError('horizontal calibration lacks the matching system input')
+            if analyze(directory/name)['product'] != expected:
+                pixels = False
+                mark('horizontal and wrong-axis controls did not establish scroll measurement capability', 'unsupported')
     owner_rejected=False
     if modern:
         launch=load(directory/'wrong-owner/launch.json');wrong_plan=load(directory/'wrong-owner/plan.json')
@@ -391,6 +404,21 @@ def resources(plan, observation, times, result, mark):
         result['metrics'][name]={'sampledSeconds':wall,'roles':roles,'completeTaskCost':complete}
 
 
+def overview_positions(inputs, scroll_range):
+    """Expected anchor displacement in window points for the posted inputs."""
+    if not any('deltaX' in event for event in inputs):
+        return [e for e in inputs if e['kind'] in ('down', 'drag', 'up')]
+    if scroll_range is None:
+        return []
+    initial = offset = scroll_range['offset']
+    positions = []
+    for event in inputs:
+        if event['kind'] == 'scroll':
+            offset = min(scroll_range['maximum'], max(0, offset - event['deltaX']))
+            positions.append({**event, 'x': initial - offset, 'y': 0})
+    return positions
+
+
 def pixels(root, plan, observation, frames, times, result, mark):
     raw=observation['frames']
     if not isinstance(raw,list) or len(raw)>25_000:raise ValueError('invalid capture stream size')
@@ -445,11 +473,16 @@ def pixels(root, plan, observation, frames, times, result, mark):
         from reading.analysis import pixels as reading_pixels
         reading_pixels(root, plan, observation, frames, times, result, mark)
         return
-    if any(e['kind'] == 'drag' for e in plan['events']):
+    horizontal = any('deltaX' in e for e in plan['events'])
+    if horizontal or any(e['kind'] == 'drag' for e in plan['events']):
         result['motionEvidence']=False
-        drag=[i for i in observation['inputs'] if i['kind'] in ('down','drag','up')]
-        if drag:
-            start=drag[0];baseline=next((r for r in reversed(rows) if r[0]<start['postedNS'] and r[1]),None)
+        scroll_range = result.get('inputPreparation', {}).get('scrollRange')
+        if horizontal and plan['targetKind'] == 'control':
+            scroll_range = {'offset': 0, 'maximum': 120}
+        motion = overview_positions(observation['inputs'], scroll_range)
+        if motion:
+            start=motion[0];baseline=next((r for r in reversed(rows) if r[0]<start['postedNS'] and r[1]),None)
+            origin_x, origin_y = (0, 0) if horizontal else (start['x'], start['y'])
             if baseline is None: mark('pre-input business anchor absent','incomplete');return
             last_progress=start['postedNS'];maximum_stall=0;last_positions={k:(0,0) for k in baseline[1]};errors=[];first_response=None
             earliest_progress=latest_progress=start['postedNS']
@@ -459,10 +492,9 @@ def pixels(root, plan, observation, frames, times, result, mark):
             correspondence=[start['postedNS']];last_anchor=baseline[0]
             for at,anchors,scale,_ in relevant:
                 if at<start['postedNS']:continue
-                occurred=[e for e in drag if e['postedNS']<=at]
+                occurred=[e for e in motion if e['postedNS']<=at]
                 if not occurred:continue
                 expected=occurred[-1]
-                dx=(expected['x']-start['x'])*scale;dy=(expected['y']-start['y'])*scale
                 common=anchors.keys()&baseline[1].keys()
                 if not common: continue
                 correspondence.append(at);last_anchor=at
@@ -471,38 +503,48 @@ def pixels(root, plan, observation, frames, times, result, mark):
                 # A changed frame brackets when progress resumed; its previous
                 # frame only bounds the end of a stall. Keep both ends instead
                 # of treating the next sample's arrival as a proven freeze.
-                if latest_progress<drag[-1]['postedNS']:
+                if latest_progress<motion[-1]['postedNS']:
                     same_until=previous_request if moving else requests[at]
-                    stall_lower=max(stall_lower,max(0,min(same_until,drag[-1]['postedNS'])-latest_progress)/1e9)
-                    stall_upper=max(stall_upper,max(0,min(at,drag[-1]['postedNS'])-earliest_progress)/1e9)
-                if last_progress<drag[-1]['postedNS']:
-                    maximum_stall=max(maximum_stall,max(0,min(at,drag[-1]['postedNS'])-last_progress)/1e9)
+                    stall_lower=max(stall_lower,max(0,min(same_until,motion[-1]['postedNS'])-latest_progress)/1e9)
+                    stall_upper=max(stall_upper,max(0,min(at,motion[-1]['postedNS'])-earliest_progress)/1e9)
+                if last_progress<motion[-1]['postedNS']:
+                    maximum_stall=max(maximum_stall,max(0,min(at,motion[-1]['postedNS'])-last_progress)/1e9)
                 if moving:
                     last_progress=at
                     # A mouse-down alone has no declared translation. OCR/body
                     # jitter before the first drag is not an input response.
-                    if first_response is None and any(e['kind']=='drag' for e in occurred) and any(math.hypot(*p)>3 for p in positions.values()):
+                    if first_response is None and any(e['kind'] in ('drag','scroll') for e in occurred) and any(
+                            (abs(p[0]) if horizontal else math.hypot(*p)) > 3 for p in positions.values()):
                         first_response=at
                         response_bounds={'lower':max(0,previous_request-start['postedNS'])/1e9,'upper':(at-start['postedNS'])/1e9}
                     earliest_progress=max(start['postedNS'],previous_request);latest_progress=at
-                if start['postedNS']<at<drag[-1]['postedNS']:
+                if start['postedNS']<at<motion[-1]['postedNS']:
                     maximum_stall=max(maximum_stall,(at-last_progress)/1e9)
                 # The whole trajectory, including direction and return, is checked.
                 # Input motion within the declared lag window can explain lagged positions.
-                candidates=[e for e in drag if at-plan['maximumNoProgressSeconds']*1e9<=e['postedNS']<=at] or [expected]
-                err=min(max(math.hypot(p[0]-(e['x']-start['x'])*scale,p[1]-(e['y']-start['y'])*scale) for p in positions.values()) for e in candidates)
+                candidates=[e for e in motion if at-plan['maximumNoProgressSeconds']*1e9<=e['postedNS']<=at] or [expected]
+                err=min(max(math.hypot(p[0]-(e['x']-origin_x)*scale,p[1]-(e['y']-origin_y)*scale) for p in positions.values()) for e in candidates)
                 errors.append(err);last_positions=positions;previous_request=requests[at]
             result['metrics']['pan']={'firstVisibleResponseSeconds':None if first_response is None else (first_response-start['postedNS'])/1e9,
                 'firstVisibleResponseSecondsBounds':response_bounds,'responseDisplacementThresholdPixels':3,
                 'maximumNoProgressSeconds':maximum_stall,'noProgressSecondsBounds':{'lower':stall_lower,'upper':stall_upper},
                 'maximumTrajectoryErrorPixels':max(errors,default=None)}
-            coverage_end=min(times[3],drag[-1]['postedNS']+round(plan['maximumNoProgressSeconds']*1e9))
+            coverage_end=min(times[3],motion[-1]['postedNS']+round(plan['maximumNoProgressSeconds']*1e9))
             stamps=[t for t in correspondence if t<=coverage_end]+[coverage_end]
             missing=any(b-a>plan['maximumCaptureGapSeconds']*1e9 for a,b in zip(stamps,stamps[1:]))
-            if not errors or missing or last_anchor<drag[-1]['postedNS']:
+            if not errors or missing or last_anchor<motion[-1]['postedNS']:
                 mark('motion anchor correspondence unavailable across the full gesture','incomplete')
             elif plan['targetKind']=='application' and 'inputPreparation' not in result:
                 mark('unverified mouse-down target cannot establish canvas responsiveness','incomplete')
+            elif horizontal and scroll_range['maximum'] == 0:
+                first_response = None
+                result['metrics']['pan']['stationaryLayout'] = True
+                result['metrics']['pan'].update(firstVisibleResponseSeconds=None, firstVisibleResponseSecondsBounds=None,
+                                                 maximumNoProgressSeconds=None, noProgressSecondsBounds=None)
+                if max(errors) > plan['motionTolerancePixels']:
+                    mark('fitting Overview moved during the scroll probe', product='wrong-result')
+                else:
+                    result['scenarioEvidence'] = True
             elif first_response is None and plan['targetKind']=='application':
                 # AX rectangles guide input; they are not a receipt that the
                 # product's gesture recognizer accepted mouse-down. A completely
@@ -528,7 +570,7 @@ def pixels(root, plan, observation, frames, times, result, mark):
                     'firstContentSecondsBounds': {'lower': max(0, (max(absent)-onset)/1e9) if absent else 0,
                                                  'upper': (first_content-onset)/1e9} if first_content else None,
                     'launchMode': 'new App and Runtime processes; prepared profile; OS caches uncontrolled after fixture warmup',
-                    'readyMilestone': 'recognizable business title and body; later independent scheduled drag probe',
+                    'readyMilestone': 'recognizable business title and body; later independent navigation probe',
                     'firstRecognizableBusinessContentSeconds': (min(content)-onset)/1e9 if content else None,
                     'firstSuccessfulInteractionProbeSeconds': (first_response-onset)/1e9
                         if first_response and result.get('scenarioEvidence') is True and result['product'] in ('unknown','passed') else None,
@@ -647,7 +689,7 @@ def body(root,plan,rows,times,requests,result,mark):
     elif held_bounds['lower']>budget:mark('supplied active body output stopped making visible progress',product='overloaded')
     elif held_bounds['upper']>budget:
         result['scenarioEvidence']=False;mark('body progress sampling uncertainty straddles the declared deadline','incomplete')
-    elif 'pan' not in plan['scenario']:result['scenarioEvidence']=result.get('motionEvidence',True)
+    elif 'pan' not in plan['scenario']:result['scenarioEvidence']=result.get('scenarioEvidence',result.get('motionEvidence',True))
 
 
 def hitch(root,plan,times,result,mark):
