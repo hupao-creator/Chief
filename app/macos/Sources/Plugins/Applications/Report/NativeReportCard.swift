@@ -79,7 +79,7 @@ import SwiftUI
                     .clipShape(RoundedRectangle(cornerRadius: 22))
                     .contentShape(Rectangle())
             }
-        }.buttonStyle(.plain).foregroundStyle(NativePalette.overview.ink.swiftUI)
+        }.buttonStyle(ReportCardButtonStyle()).foregroundStyle(NativePalette.overview.ink.swiftUI)
             .environment(\.threadCardUsesFlatMaterials, true)
             .contextMenu {
                 Button(archiveLabel) {
@@ -170,5 +170,13 @@ import SwiftUI
         let formatter = RelativeDateTimeFormatter(); formatter.locale = Locale(identifier: locale.string); formatter.unitsStyle = .full
         let amount = seconds < 3_600 ? DateComponents(minute: -(seconds / 60)) : seconds < 86_400 ? DateComponents(hour: -(seconds / 3_600)) : DateComponents(day: -(seconds / 86_400))
         return formatter.localizedString(from: amount)
+    }
+}
+
+// Settings disables the button while its label remains part of the visible
+// Overview. Only a press on the card itself should change its contrast.
+private struct ReportCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.opacity(configuration.isPressed ? 0.8 : 1)
     }
 }

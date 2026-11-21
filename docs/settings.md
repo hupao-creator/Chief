@@ -4,7 +4,7 @@
 
 From **Overview**, click the **Settings** gear in the upper-right corner, press **⌘,**, or choose **Settings…** from the Chief menu. If you're reading a conversation or a Super Thread, press **⌘K** to return to Overview first.
 
-Settings opens on **Chief Agent**. Agent changes save when you close Settings. If the panel stays open, check the message and complete any required choices. If a save error appears after the panel closes, reopen Settings and click **Retry saving**. If the saved settings changed elsewhere, choose **Keep my changes and retry** to apply your choices or **Discard draft and load latest settings** to use the saved ones.
+Settings opens on **Chief Agent**, with Overview blurred behind it. Close Settings to save your agent changes and return to the same place on the canvas. If the panel stays open, check the message and complete any required choices. If a save error appears after the panel closes, reopen Settings and click **Retry saving**. If the saved settings changed elsewhere, choose **Keep my changes and retry** to apply your choices or **Discard draft and load latest settings** to use the saved ones.
 
 ## Choose who coordinates and who can take tasks
 
