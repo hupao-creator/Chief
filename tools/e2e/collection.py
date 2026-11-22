@@ -1,8 +1,21 @@
-"""Exercise pressure, return selection, promotion and the two-cell release margin."""
+"""Exercise viewport grouping, return selection, promotion and release after archive."""
 import subprocess
 
 from adapter import wait_for
 from report import save
+
+
+def activate(session):
+    # App.init binds the control socket before LaunchServices can deliver the
+    # reopen event that presents this run's isolated window.
+    def ready():
+        info = subprocess.run(["/usr/bin/lsappinfo", "info", "-only", "isready", str(session.app.pid)],
+                              capture_output=True, text=True, timeout=5)
+        return info.stdout.strip().endswith("=true")
+
+    wait_for(ready, bool, 20)
+    bundle = session.app.args[0].rsplit("/Contents/", 1)[0]
+    subprocess.run(["/usr/bin/open", "-a", bundle], check=True, timeout=10)
 
 
 def enable_reports(session, enabled):
@@ -38,54 +51,62 @@ def journey(desktop, reports):
                               and not s["overview"]["layingOut"] and s["overview"]["cards"]
                               and set(s["overview"]["mountedCardIds"]) == {c["id"] for c in s["overview"]["cards"]})
 
-    def observe(name, expected_cells, expected_members, filter_id=None):
+    def observe(name, visible, expected_members, filter_id=None):
         state = overview(filter_id)
         save(output / f"collection-{name}.json", state)
         cards = state["overview"]["cards"]
-        assert sum(c["columns"] * c["rows"] for c in cards) == expected_cells
         groups = [c for c in cards if "members" in c]
         assert [c["members"] for c in groups] == ([expected_members] if expected_members else [])
+        singles = [c["ref"] for c in cards if "members" not in c and c["ref"]["typeId"] == "report.document"]
+        assert singles == [ref for ref in visible if ref not in expected_members]
         assert all(not item["eligibility"]["defaultsToCollection"] and item["eligibility"]["collected"]
                    for group in groups for item in group["memberEligibility"])
+        assert state["overview"]["camera"]["maximumOffset"] == 0
         return state
 
-    # Activate only the unique isolated application. The control socket checks
-    # its PID on every observation, and reading must actually own the key window.
-    bundle = desktop.session.app.args[0]
-    subprocess.run(["/usr/bin/open", "-a", bundle.rsplit("/Contents/", 1)[0]], check=True, timeout=10)
-    initial = observe("initial", 16, refs[:2])
+    # The benchmark window fits three columns and three rows. Each column
+    # holds one cover report, with a spare row for the two ordinary tasks.
+    initial = observe("initial", refs, refs[:6])
     directory = next(f for f in initial["overview"]["filters"] if f["scope"] == reports[0]["scope"]
                      and f["kind"] == "directory")
+    subset = [r["ref"] for r in reports if r["scope"] == directory["scope"]]
     desktop.request({"name": "filter.select", "filterId": directory["id"]})
-    observe("directory", 9, [], directory["id"])
+    observe("directory", subset, subset[:2], directory["id"])
     desktop.request({"name": "filter.select", "filterId": None})
-    observe("grouped", 16, refs[:2])
+    observe("grouped", refs, refs[:6])
 
     def visit(qualify):
         desktop.request({"name": "thread.open", **refs[1]})
-        desktop.stable(lambda s: s["page"] == "thread" and s["selectedThread"] == refs[1]
-                       and s["reading"]["foreground"])
+        reader = desktop.stable(lambda s: s["page"] == "thread" and s["selectedThread"] == refs[1]
+                                and s["reading"]["entranceAdmitted"])
+        # Reading accrues only while the isolated reader owns the key window.
+        if not reader["reading"]["foreground"]:
+            activate(desktop.session)
+            desktop.stable(lambda s: s["selectedThread"] == refs[1] and s["reading"]["foreground"])
         if qualify:
             wait_for(desktop.request, lambda s: s["reading"]["collectionEligibility"]["lastQualifiedAt"] is not None, 50)
         desktop.request({"name": "overview.show"})
 
     visit(False)
-    closed = observe("closed", 16, refs[:2])
+    closed = observe("closed", refs, refs[:6])
     group = next(c for c in closed["overview"]["cards"] if "members" in c)
     assert group["ref"] == refs[1]
     visit(True)
-    returned = observe("return", 16, [refs[0], refs[2]])
+    ranked = [ref for ref in refs if ref != refs[1]]
+    returned = observe("return", refs, ranked[:6])
     promoted = next(c for c in returned["overview"]["cards"] if c.get("id") == refs[1]["threadId"])
     assert promoted["collectionEligibility"]["lastQualifiedAt"]
 
     def archive(ref, archived):
         desktop.session.runtime.invoke("application:archive", [ref, archived])
-        desktop.stable(lambda s: any(c.get("ref") == ref for c in s["overview"]["cards"]) != archived)
+        desktop.stable(lambda s: any(ref in c.get("members", [c.get("ref")])
+                                     for c in s["overview"]["cards"]) != archived)
 
     archive(refs[-1], True)
-    observe("at-budget", 14, [refs[0], refs[2]])
-    archive(refs[-2], True)
-    observe("released", 14, [])
-    archive(refs[-2], False)
-    archive(refs[-1], False)
-    observe("restored", 16, [refs[0], refs[2]])
+    observe("one-removed", refs[:-1], ranked[:5])
+    for ref in reversed(refs[3:-1]):
+        archive(ref, True)
+    observe("released", refs[:3], [])
+    for ref in refs[3:]:
+        archive(ref, False)
+    observe("restored", refs, ranked[:6])

@@ -420,7 +420,7 @@ The [profile-local reading record](NativeOverviewCollectionReading.swift) determ
 default membership across views. At **24 hours** from the end of the last visit
 (or creation for an unvisited report), a report defaults to collection. Overview
 samples age on presentation and space changes. Idle time alone does not schedule a
-live canvas move. Two idle reports can share a collection even below budget. A
+live canvas move. Two idle reports can share a collection even in a spacious window. A
 lone idle report stays individual until there is another member to group with it.
 
 Opening a report and reading its uniquely associated Agent Threads share one
@@ -438,12 +438,22 @@ Qualification restores the default individual presentation. Under pressure the
 [budget](NativeOverviewCollectionBudget.swift) selects idle members first, then
 members without qualified visits, then qualified members. Within each class,
 creation or the latest qualified visit orders candidates, with stable ties.
-Take the shortest prefix meeting the 16-cell target, the idle-member minimum
-and, for an already grouped prefix in the same space, a two-cell release margin.
-A fresh qualification can use all 16 cells. Pressure grouping requires at least
-two members and positive savings. When the target is unreachable, take the
-largest saving available and allow horizontal scrolling. Display order follows the original
-creation order, with the collection at its oldest member's position.
+The first trial keeps all reports individual except default idle groups. It uses
+the same window size, creation order, footprints, packing and camera projection
+as the canvas. Zero horizontal travel, including an exact fit, keeps that layout.
+When it overflows, each eligible type in product order takes the shortest ranked
+prefix of at least two members that fits. When every prefix still needs scrolling,
+the least horizontal travel wins, with fewer members on ties. A collection occupies
+its oldest member’s seat and lists its members in their original creation order.
+The fully grouped trial bounds the search in dense views. A prefix can be
+skipped only when its occupied cells exceed even the space reachable at the
+best measured scroll distance and the smallest possible projection scale.
+
+Resizing, changing filters or changing the selected cards or their footprints
+repeats the trial from the individual cards. A pressure group releases as soon
+as space allows, including after returning from a reader. Until the window has
+a positive measured size, only default idle groups apply. Scrolling the canvas
+moves the camera and leaves group membership alone.
 
 Opening uses the real report identity and the current source card. Prepared
 return resolves the latest placement. A returned member that remains collected
@@ -588,12 +598,15 @@ and leave archive disabled. Closing, inactive and removed-member guards remain.
 
 ## Property boundaries
 
-**PBT-OVERVIEW-COLLECTION** compares the production budget with exhaustive legal
-prefix scores across mixed one- and two-cell reports, idle floors, retained
-prefixes and up to two types. Generated foreground spans straddle qualification
-and one-day boundaries and exercise pause/resume and distinct short visits.
-The [mounted journey](../../../../../tools/e2e/README.md#current-scenario-contract)
-checks return selection, promotion and the two-cell release margin.
+**PBT-OVERVIEW-COLLECTION** compares the chosen prefixes with the scroll range
+of every legal prefix for each type in order. Mixed ordinary cards, one- and
+two-cell reports, idle floors, up to two types, and fractional sizes around row
+and column boundaries exercise packing and ties. Generated foreground spans
+straddle qualification and one-day boundaries and exercise pause/resume and
+distinct short visits. The [mounted journey](../../../../../tools/e2e/README.md#current-scenario-contract)
+checks filtered membership, return selection, promotion and release after archive.
+The [window replay](../../../../../demos/moku-landing/README.md#nested-workspace-header-replay)
+checks wide, exact-fit and narrow sizes, including unavoidable scroll travel.
 
 **PBT-COLLECTION-REGROUP** exercises the production Report catalog, Overview
 projection and panel lifecycle in temporary profiles. Generated traces start
