@@ -18,67 +18,10 @@ import (
 	core "github.com/hupao-creator/Chief/internal/core/runtime"
 	"github.com/hupao-creator/Chief/internal/core/store"
 	"github.com/hupao-creator/Chief/internal/platform/sqlite"
-	"github.com/hupao-creator/Chief/internal/services/moku"
 	"github.com/hupao-creator/Chief/internal/services/workspaces"
 	"github.com/hupao-creator/Chief/tools/verification/pbt/rapidcheck"
 	"pgregory.net/rapid"
 )
-
-// The peer only supplies a model catalog and captures the tools actually
-// injected at Open. Tool selection, authorization, persistence and Git are real.
-type worktreePeer struct {
-	harness
-	tools *plugin.ToolInjection
-}
-
-func (h *worktreePeer) DiscoverMokuTarget(context.Context, plugin.SettingsRequest) (json.RawMessage, plugin.Availability, error) {
-	schema, err := plugin.ModelCatalogSchema(map[string]any{"type": "object"}, []plugin.ModelCatalogEntry{{ID: "fixture"}}, "fixture", plugin.CatalogSourceEvidence{})
-	return schema, plugin.Availability{Available: true}, err
-}
-func (h *worktreePeer) Open(ctx context.Context, o plugin.OpenContext) (plugin.Handle, error) {
-	if o.Injection != nil {
-		h.tools = o.Injection.Tools
-	}
-	return &handle{open: o, ctx: ctx}, nil
-}
-
-func openWorktreeChief(t *rapid.T, ctx context.Context, r *core.Runtime, chiefCwd string, harnesses map[string]plugin.Harness, peer *worktreePeer, input model.AgentInput) (*moku.Coordinator, plugin.ToolBinding) {
-	t.Helper()
-	coordinator, err := moku.New(moku.Configuration{
-		Workspace: chiefCwd, Harnesses: harnesses, Settings: r.Settings, Threads: r.Threads, Thread: r.Thread, UpdateThread: r.UpdateThread,
-		OpenSession: r.OpenMokuThread, CloseSession: r.CloseMokuThread, SendSession: r.SendMokuThread, SubscribeCommitted: r.OnThreadCommitted,
-		RemoveWorktree: r.RemoveWorktree, PendingDeliveries: r.ReadyMokuDeliveries, SendDelivery: r.SendMokuDelivery,
-		EnsureSession: func(ctx context.Context, c moku.SessionConfiguration) (model.ThreadRecord, error) {
-			return r.EnsureMokuThread(ctx, c.HarnessID, c.Settings, c.Cwd)
-		},
-		ReplaceSession: func(context.Context, string, moku.SessionConfiguration) (model.ThreadRecord, error) {
-			return model.ThreadRecord{}, errors.New("unexpected replacement")
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := coordinator.Start(ctx, plugin.RuntimeStartContext{}); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := coordinator.Submit(ctx, moku.SubmitRequest{Input: input}); err != nil {
-		t.Fatal(err)
-	}
-	var tool plugin.ToolBinding
-	if peer.tools == nil || peer.tools.Mode != "exclusive" {
-		t.Fatal("missing Chief injection")
-	}
-	for _, binding := range peer.tools.Bindings {
-		if binding.Name == "remove_worktree" {
-			tool = binding
-		}
-	}
-	if tool.Execute == nil {
-		t.Fatal("remove_worktree missing from Chief injection")
-	}
-	return coordinator, tool
-}
 
 func TestRemoveWorktreeProperties(t *testing.T) {
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
@@ -133,7 +76,7 @@ func TestRemoveWorktreeProperties(t *testing.T) {
 		check(err)
 		defer db.Close()
 		manager := workspaces.New(workspaces.Paths{MokuCwd: chiefCwd, RegistryPath: filepath.Join(tmp, "owners.json")})
-		peer := &worktreePeer{}
+		peer := &injectedToolPeer{}
 		harnesses := map[string]plugin.Harness{"fixture": peer}
 		r, err := core.New(ctx, core.Config{Store: db, Harnesses: harnesses, Workspaces: manager, DataDir: tmp, DefaultCwd: tmp})
 		check(err)
@@ -148,7 +91,7 @@ func TestRemoveWorktreeProperties(t *testing.T) {
 
 		chief, err := r.EnsureMokuThread(ctx, "fixture", raw(map[string]any{}), chiefCwd)
 		check(err)
-		coordinator, tool := openWorktreeChief(t, ctx, r, chiefCwd, harnesses, peer, input)
+		coordinator, tool := openChiefTool(t, ctx, r, chiefCwd, harnesses, peer, input, "remove_worktree")
 		defer coordinator.Stop(ctx)
 		args := map[string]any{"threadId": id}
 		call := func(a any) (json.RawMessage, error) { return tool.Execute(ctx, plugin.ToolCall{Arguments: raw(a)}) }
@@ -575,12 +518,12 @@ func TestRemoveWorktreeProperties(t *testing.T) {
 		check(err)
 		defer db.Close()
 		manager = workspaces.New(manager.Paths())
-		peer = &worktreePeer{}
+		peer = &injectedToolPeer{}
 		harnesses = map[string]plugin.Harness{"fixture": peer}
 		r, err = core.New(ctx, core.Config{Store: db, Harnesses: harnesses, Workspaces: manager, DataDir: tmp, DefaultCwd: tmp})
 		check(err)
 		defer r.Close(ctx)
-		coordinator, tool = openWorktreeChief(t, ctx, r, chiefCwd, harnesses, peer, input)
+		coordinator, tool = openChiefTool(t, ctx, r, chiefCwd, harnesses, peer, input, "remove_worktree")
 		defer coordinator.Stop(ctx)
 		_, err = call(nextArgs)
 		check(err)

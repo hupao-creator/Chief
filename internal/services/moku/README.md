@@ -165,6 +165,37 @@ distinguish routing intent from task content, and the target's own instructions
 or judgment can still cause subdelegation. Existing dispatched tasks and native
 histories are not rewritten; updated guidance is injected on session preparation.
 
+### Follow-ups to ordinary Threads
+
+`send_to_thread` accepts `{"target":["id1","id2"],"prompt":"..."}` or
+`{"threadId":"id1","prompt":"..."}`. Supply exactly one target field. The
+array takes 1–100 IDs, including repeated entries. The tool validates the
+whole request before admitting input, then sends the same trimmed prompt once
+per distinct ID in first-occurrence order. Each send uses the normal Thread
+Handle, existing Harness and model settings, and Runtime lifecycle. An idle
+Thread can start a new execution, a running Thread can receive a follow-up,
+and a Thread waiting for an interaction can reject it. The current Chief
+Thread and retained Chief history are ineligible.
+
+A batch returns `{ok, results}`. Each result has `threadId` and `ok`.
+Successful results include `executionId`, `startedNewExecution` and `hint`
+for automatic terminal notifications. Unsuccessful results include `error`.
+The batch `ok` is true only if every distinct target acknowledged input.
+A failed target leaves other results intact. Cancellation stops further
+admission attempts and preserves acknowledgements already received. The
+single-target form returns the acknowledgement directly and reports a send
+failure as a tool error. The complete ordered batch result is retained in the
+Chief tool transcript. Open sessions receive these tool definitions on
+configuration preparation.
+
+**PBT-MOKU-SEND** invokes the tool binding captured at native session open
+against Runtime and SQLite. Generated target permutations, repeated IDs and
+invalid payloads check ordered acknowledgements, deduplication, validation
+before side effects, ordinary-Thread eligibility and the legacy response.
+Durable input events verify which Threads received the prompt. See the
+[property inventory](../../../tools/verification/pbt/README.md) for the domain
+and evidence controls.
+
 ## System prompt budget and injection boundary
 
 [DefaultSystemPrompt](prompt.go) names the assistant Chief and covers
