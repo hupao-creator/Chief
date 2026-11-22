@@ -274,7 +274,10 @@ struct NativeSidecardWorkspaceLayout: View {
         .onChange(of: snapshot.handoff?.id, initial: true) { _, id in
             var transaction = Transaction(); transaction.disablesAnimations = true
             withTransaction(transaction) { handoffProgress = 0; handoffResized = false }
-            if id != nil || snapshot.input.thread.observation.isExecutionActive { foldedCardID = nil }
+            if id != nil || snapshot.input.thread.observation.isExecutionActive
+                || (foldedCardID != nil && foldedCardID == snapshot.selected) {
+                foldedCardID = nil
+            }
         }
         .task(id: snapshot.handoff?.id) {
             // Commit the expanded source pose before starting its fold, including
@@ -308,7 +311,7 @@ struct NativeSidecardWorkspaceLayout: View {
               let card = snapshot.cards.first(where: { $0.id == snapshot.selected && $0.view.available }) else { return nil }
         // Activity-specific input belongs to that card's column. Otherwise the
         // Thread input follows execution ownership, with other activities in main.
-        if card.view.composer != nil {
+        if card.view.composer != nil || card.view.pendingExecution {
             return CGRect(x: layout.surfaceX, y: layout.surfaceY, width: layout.surfaceWidth, height: layout.surfaceHeight)
         }
         let historicalInput = inputTarget.map { !$0.followsLatest && $0.executionID != snapshot.input.thread.observation.latestExecution?.executionID } ?? false

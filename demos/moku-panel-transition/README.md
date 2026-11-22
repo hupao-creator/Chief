@@ -256,6 +256,13 @@ reports pending. The Go Host fixture counts actual handler entries. A baseline
 bare UUID must fail admission, and a duplicate of an admitted ID must return
 the recorded result with no additional handler entry. The execution-change
 path checks both derived fork and follow-up IDs. Both the live and reconstructed Host check the captured ID.
+
+The ordinary Agent result scenario holds the Go response, submits a local draft,
+and checks the production workspace's selected card and execution ownership
+before delivering a receipt or index. It checks both receipt/catalog orders, a terminal run, rejection with a
+successor draft, folding, Browser selection and replacing the reading target. The scenario
+drives the native presentation and selection model without measuring screen timing.
+
 The Chief case begins with a saved send that carried a structured catalog
 mention and checks the receipt under its original command ID.
 Assertions cover a pending result, final acceptance and rejection, a different

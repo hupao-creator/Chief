@@ -21,13 +21,14 @@ public struct NativeConversationSidecard: SidecardPlugin {
     }
 
     public func sidecard(context: SidecardContext, presentation: ConversationSidecardPresentation) throws -> SidecardView<ConversationExecutionPane> {
-        let active = presentation.activeExecutionID
+        let executionID = presentation.sidecardExecutionID
+        let active = executionID == nil ? nil : presentation.activeExecutionID
         let waiting = presentation.waiting
         let label = context.translate("执行") + (active == nil ? "" : "，" + context.translate(waiting ? "需要回应" : "运行中"))
-        return try SidecardView(available: presentation.sidecardExecutionID != nil, label: JSONText(label),
+        return try SidecardView(available: presentation.pendingExecution || executionID != nil, label: JSONText(label),
                                indicator: active == nil ? nil : waiting ? .attention : .active,
                                acceptsInput: false, preferredWidth: 1.0 / 3, focusContentOnOpen: false,
-                               excludeExecutionID: presentation.sidecardExecutionID) {
+                               pendingExecution: presentation.pendingExecution, excludeExecutionID: executionID) {
             ConversationExecutionPane(presentation: presentation)
         }
     }

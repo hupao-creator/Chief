@@ -11,9 +11,12 @@ public final class ConversationSidecardPresentation {
     private let executionState = ConversationExecutionState()
     private let lifetime: PluginLifetime
     @ObservationIgnored private var revealID: UUID?
-    @ObservationIgnored private var pendingReveal = false
-    @ObservationIgnored private var revealSelection = 0
-    @ObservationIgnored private var revealTarget: HarnessReadingTarget?
+    private struct Pending {
+        let selection: Int
+        let target: HarnessReadingTarget?
+        let restore: (Int) -> Void
+    }
+    private var pending: Pending?
     @ObservationIgnored private var entered = false
     @ObservationIgnored private var entryTarget: HarnessReadingTarget?
     @ObservationIgnored private var entryExecution: JSONText?
@@ -26,34 +29,62 @@ public final class ConversationSidecardPresentation {
     }
 
     public var activeExecutionID: JSONText? { executionState.activeExecutionID(thread: context.thread) }
+    public var pendingExecution: Bool { pending != nil }
     public var sidecardExecutionID: JSONText? {
-        context.executionHandoff ?? executionState.sidecardExecutionID(thread: context.thread, index: context.conversationIndex)
+        if let handoff = context.executionHandoff { return handoff }
+        let active = executionState.sidecardExecutionID(thread: context.thread, index: context.conversationIndex)
+        if pending != nil, let request = context.executionReveal {
+            // Keep an already-running conversation readable. A new catalog row
+            // alone cannot identify which execution accepted this input.
+            let expected = request.receipt?.executionID ?? request.previousExecutionID
+            return active == expected ? active : nil
+        }
+        return active
     }
     public var waiting: Bool { context.thread.observation.latestExecution?.status == .waitingForUser }
 
     public func update(context: SidecardContext) {
         guard !lifetime.isCancelled else { return }
         self.context = context
-        let previousSelection = context.selectionRevision()
-        if context.executionHandoff == nil {
-            executionState.update(thread: context.thread, index: context.conversationIndex,
-                                  expanded: context.expanded,
-                                  close: context.close)
-        }
-        // Retiring our predecessor is not a user choosing another card while
-        // the next send waits for admission.
-        if pendingReveal, revealSelection == previousSelection {
-            revealSelection = context.selectionRevision()
-        }
         if !entered || entryTarget != context.readingTarget {
             entered = true; entryTarget = context.readingTarget
             entryExecution = context.readingTarget?.executionID ?? activeExecutionID
             entrySelection = context.selectionRevision()
         }
         if let request = context.executionReveal, request.id != revealID {
+            revealID = request.id
             entryExecution = nil
-            revealID = request.id; pendingReveal = true
-            revealSelection = context.selectionRevision(); revealTarget = context.readingTarget
+            // A second send can replace one whose receipt is still waiting for
+            // the catalog. Keep the original rollback while we own its opening.
+            let ownsOpening = pending?.selection == context.selectionRevision() && pending?.target == context.readingTarget
+            if !context.executionDisabled, !ownsOpening {
+                pending = Pending(selection: context.open(), target: context.readingTarget, restore: context.restoreSelection)
+            }
+        }
+        if let pending {
+            guard pending.selection == context.selectionRevision() else {
+                self.pending = nil
+                return
+            }
+            guard let request = context.executionReveal,
+                  pending.target == context.readingTarget, !context.executionDisabled else {
+                self.pending = nil
+                pending.restore(pending.selection)
+                return
+            }
+            guard let accepted = request.receipt?.executionID else { return }
+            if sidecardExecutionID == accepted, activeExecutionID == accepted {
+                self.pending = nil
+                return
+            }
+            guard belongsInMain(accepted) else { return }
+            self.pending = nil
+            pending.restore(pending.selection)
+            return
+        }
+        if context.executionHandoff == nil {
+            executionState.update(thread: context.thread, index: context.conversationIndex,
+                                  expanded: context.expanded, close: context.close)
         }
         if let execution = entryExecution {
             if context.selectionRevision() != entrySelection || context.executionDisabled {
@@ -65,23 +96,18 @@ public final class ConversationSidecardPresentation {
                 entryExecution = nil
             }
         }
-        guard pendingReveal else { return }
-        guard let request = context.executionReveal,
-              context.selectionRevision() == revealSelection, context.readingTarget == revealTarget,
-              !context.executionDisabled else {
-            pendingReveal = false; return
+    }
+
+    private func belongsInMain(_ accepted: JSONText) -> Bool {
+        guard let latest = context.thread.observation.latestExecution?.executionID else { return false }
+        let ids = context.conversationIndex?.executionIDs ?? []
+        if latest == accepted {
+            // An active first run stays in main once the index identifies it.
+            return activeExecutionID == nil || ids.contains(accepted)
         }
-        guard let receipt = request.receipt,
-              let execution = context.thread.observation.latestExecution,
-              execution.executionID == receipt.executionID else { return }
-        guard context.thread.observation.isExecutionActive else {
-            pendingReveal = false; return
-        }
-        // Receipt and catalog/index delivery can arrive in either order. Only
-        // the exact active execution may move into the sidecard.
-        if sidecardExecutionID == receipt.executionID {
-            pendingReveal = false
-            _ = context.open()
-        }
+        // Catalog delivery can skip a short accepted run. Only an ordered
+        // history containing its successor distinguishes that from catalog lag.
+        guard let index = ids.firstIndex(of: accepted) else { return false }
+        return ids[index...].contains(latest)
     }
 }
