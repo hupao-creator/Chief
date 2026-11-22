@@ -48,16 +48,17 @@ struct CollectionProjection {
     let members: [ReportSample]
     let individual: [ReportSample]
 
-    init(reports: [ReportSample], tag: String, closedAt: [String: Date], now: Date) {
+    init(reports: [ReportSample], tag: String, closedAt: [String: Date], now: Date, windowSize: CGSize) {
         let visible = reports.filter { tag == "全部" || $0.tags.contains(tag) }
         let ranked = visible.sorted { (closedAt[$0.id] ?? now) < (closedAt[$1.id] ?? now) }
         let idle = ranked.prefix { report in
             ApplicationCollectionReading(lastClosedAt: closedAt[report.id]?.timeIntervalSince1970).isIdle(
                 createdAt: now.timeIntervalSince1970, now: now.timeIntervalSince1970)
         }.count
-        var budget = NativeOverviewCollectionBudget(expandedCells: visible.reduce(0) { $0 + ($1.hasCover ? 2 : 1) })
-        let count = budget.memberCount(eligible: ranked.map { .init(columns: 1, rows: $0.hasCover ? 2 : 1) },
-                                       collection: .init(columns: 1, rows: 2), idle: idle)
+        let cards = visible.map { NativeOverviewMember(id: $0.id, columns: 1, rows: $0.hasCover ? 2 : 1) }
+        let group = NativeOverviewCollectionBudget(card: .init(id: "collection", columns: 1, rows: 2),
+            rankedIDs: ranked.map(\.id), idleCount: idle)
+        let count = try! NativeOverviewCollectionBudget.memberCounts(in: cards, groups: [group], windowSize: windowSize)[0]
         members = Array(ranked.prefix(count))
         let collected = Set(members.map(\.id))
         individual = visible.filter { !collected.contains($0.id) }
@@ -86,6 +87,7 @@ struct CarouselSelection {
         (ReportSample.samples + (manyMembers ? ReportSample.panelSamples : [])).filter { !archived.contains($0.id) }
     }
     var tag = "全部"
+    var windowSize = CGSize(width: 1192, height: 780)
     var closedAt: [String: Date] = [:]
     var now: Date
     var offset: TimeInterval = 0
@@ -93,7 +95,7 @@ struct CarouselSelection {
 
     init(now: Date = .now) { self.now = now; reset(at: now) }
     var projection: CollectionProjection {
-        .init(reports: reports, tag: tag, closedAt: closedAt, now: now)
+        .init(reports: reports, tag: tag, closedAt: closedAt, now: now, windowSize: windowSize)
     }
     func reset(at date: Date = .now) {
         offset = 0; now = date; reading = nil

@@ -5,45 +5,58 @@ import ChiefPluginAPI
 
 private struct CollectionCase: Codable {
     let seed: UInt64
-    var fixedCells: Int
+    var fixedCards: Int
     var groups: [[Int]]
+    let windowSize: CGSize
 
     init(seed: UInt64) {
         var random = SplitMix64(seed: seed)
         self.seed = seed
+        fixedCards = random.integer(0...12)
         groups = (0..<random.integer(1...2)).map { _ in
             (0..<random.integer(0...10)).map { _ in random.integer(1...2) }
         }
-        // Sample both sides of the cutoff as well as views far beyond it.
-        let boundaryCells = 15 + Int(seed % 3)
-        let eligibleCells = groups.joined().reduce(0, +)
-        if seed.isMultiple(of: 2) && eligibleCells <= boundaryCells {
-            fixedCells = boundaryCells - eligibleCells
-        } else {
-            fixedCells = random.integer(0...20)
-        }
+        // Include the exact horizontal centering and vertical row boundaries.
+        let delta = Double(Int(seed % 3) - 1) / 2
+        windowSize = CGSize(width: Double(random.integer(1...7) * 336 + 16) + delta,
+                            height: Double(random.integer(1...6) * 212 + 44) + delta)
     }
 
-    func violation() -> String? {
-        var displayed = fixedCells + groups.joined().reduce(0, +)
-        var budget = NativeOverviewCollectionBudget(expandedCells: displayed)
+    func violation() throws -> String? {
         var random = SplitMix64(seed: seed)
-        for areas in groups {
-            let idle = random.integer(0...areas.count)
-            let retained = random.integer(0...areas.count)
-            let count = budget.memberCount(eligible: areas.map { .init(columns: 1, rows: $0) },
-                                           collection: .init(columns: 1, rows: 2), idle: idle, retained: retained)
-            // Independently score every legal presentation, including all singles.
-            // Prefer least overflow, then the fewest reports behind the collection.
-            let options = (0...areas.count).filter { $0 != 1 && (idle < 2 || $0 >= idle) }.compactMap { size -> (overflow: Int, missingBuffer: Int, size: Int, cells: Int)? in
-                let cells = displayed - areas.prefix(size).reduce(0, +) + (size == 0 ? 0 : 2)
-                if size > 0 && idle < 2 && cells >= displayed { return nil }
-                return (max(0, cells - 16), retained >= 2 && areas.prefix(retained).reduce(0, +) > 2 && size < retained ? max(0, cells - 14) : 0, size, cells)
-            }
-            let best = options.min { ($0.overflow, $0.missingBuffer, $0.size) < ($1.overflow, $1.missingBuffer, $1.size) }!
-            guard count == best.size else { return "selected \(count) members, expected \(best.size) at \(displayed) cells" }
-            displayed = best.cells
+        var cards = (0..<fixedCards).map { NativeOverviewMember(id: "task-\($0)",
+            columns: random.integer(1...2), rows: random.integer(1...2)) }
+        let plans = groups.enumerated().map { type, heights in
+            let reports = heights.enumerated().map { NativeOverviewMember(id: "\(type)-\($0.offset)", columns: 1, rows: $0.element) }
+            cards.append(contentsOf: reports)
+            return NativeOverviewCollectionBudget(card: .init(id: "group-\(type)", columns: 1, rows: 2),
+                rankedIDs: reports.map(\.id), idleCount: random.integer(0...reports.count))
         }
+        cards.shuffle(using: &random)
+        let actual = try NativeOverviewCollectionBudget.memberCounts(in: cards, groups: plans, windowSize: windowSize)
+        var expected = plans.map { $0.idleCount >= 2 ? $0.idleCount : 0 }
+        guard try NativeOverviewCollectionBudget.memberCounts(in: cards, groups: plans, windowSize: nil) == expected else {
+            return "applied pressure before the window was measured"
+        }
+        for index in groups.indices {
+            // Score every legal prefix against the shipping camera, independently
+            // replacing the oldest product seat of each group in a copy of the grid.
+            let options = try (expected[index]...groups[index].count).filter { $0 != 1 }.map { count in
+                var counts = expected
+                counts[index] = count
+                var grid = cards
+                for (plan, size) in zip(plans, counts) where size > 0 {
+                    let ids = Set(plan.rankedIDs.prefix(size))
+                    let seat = grid.firstIndex { ids.contains($0.id) }!
+                    grid.removeAll { ids.contains($0.id) }
+                    grid.insert(plan.card, at: seat)
+                }
+                let layout = try NativeOverviewLayout.solve(members: grid, windowSize: windowSize)
+                return (travel: layout.maximumScrollOffset, count: count)
+            }
+            expected[index] = options.min { ($0.travel, $0.count) < ($1.travel, $1.count) }!.count
+        }
+        guard actual == expected else { return "selected \(actual) members, expected \(expected) at \(windowSize)" }
         // Split foreground reading across routes to the same owner, with paused
         // intervals between routes. The oracle only sums generated visible spans.
         let estimate = Double(random.integer(0...300))
@@ -75,7 +88,7 @@ private struct CollectionCase: Codable {
         return nil
     }
 
-    func reduced(within seconds: Int) -> Self {
+    func reduced(within seconds: Int) throws -> Self {
         var best = self
         let deadline = ContinuousClock.now + .seconds(seconds)
         for index in groups.indices {
@@ -83,14 +96,14 @@ private struct CollectionCase: Codable {
                 if ContinuousClock.now >= deadline { return best }
                 var next = best
                 next.groups[index].remove(at: offset)
-                if next.violation() != nil { best = next }
+                if try next.violation() != nil { best = next }
             }
         }
-        for cells in 0..<best.fixedCells {
+        for count in 0..<best.fixedCards {
             if ContinuousClock.now >= deadline { return best }
             var next = best
-            next.fixedCells = cells
-            if next.violation() != nil { return next }
+            next.fixedCards = count
+            if try next.violation() != nil { return next }
         }
         return best
     }
@@ -103,9 +116,9 @@ struct NativeOverviewCollectionProperties {
         let replay = try propertyReplay(CollectionCase.self)
         let inputs = replay.map { [$0] } ?? (0..<budget.cases).map { CollectionCase(seed: budget.seed &+ UInt64($0)) }
         for input in inputs {
-            if let error = input.violation() {
+            if let error = try input.violation() {
                 try propertyEvidence(input, name: "original.json")
-                let reduced = input.reduced(within: budget.shrinkSeconds)
+                let reduced = try input.reduced(within: budget.shrinkSeconds)
                 try propertyEvidence(reduced, name: "reduced.json")
                 Issue.record(Comment(rawValue: "PBT-OVERVIEW-COLLECTION seed=\(input.seed) \(error) reduced=\(reduced)"))
                 return
