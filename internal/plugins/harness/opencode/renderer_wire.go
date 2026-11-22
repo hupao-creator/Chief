@@ -39,66 +39,71 @@ type rendererSource struct {
 func newRendererSource(raw json.RawMessage) rendererSource {
 	source := rendererSource{fields: make(map[string]json.RawMessage), records: make(map[string]map[string]rendererRecord)}
 	_ = json.Unmarshal(raw, &source.fields)
-	for _, collection := range []string{"messages", "executions", "interactions", "auxiliaryUsage"} {
-		source.records[collection] = make(map[string]rendererRecord)
-		var items []json.RawMessage
-		_ = json.Unmarshal(source.fields[collection], &items)
-		for _, item := range items {
-			record := rendererRecord{fields: map[string]json.RawMessage{}}
-			if collection == "messages" {
-				var fields rendererMessageFields
-				_ = json.Unmarshal(item, &fields)
-				for name, value := range map[string]json.RawMessage{
-					"id": fields.ID, "toolName": fields.ToolName, "arguments": fields.Arguments, "result": fields.Result,
-					"annotations": fields.Annotations, "attachments": fields.Attachments, "todos": fields.Todos,
-				} {
-					if value != nil {
-						record.fields[name] = value
-					}
-				}
-			} else {
-				record.raw = item
-				_ = json.Unmarshal(item, &record.fields)
-			}
-			key := rendererText(record.fields["id"])
-			if collection == "executions" {
-				key = rendererText(record.fields["executionId"])
-			}
-			if collection == "interactions" || collection == "auxiliaryUsage" {
-				key = rendererText(record.fields["executionId"]) + "\x00" + key
-			}
-			source.records[collection][key] = record
-		}
-		// The indexed records own the projected fields. Drop the duplicate
-		// encoded collection so the source does not pin a second copy of every
-		// message/execution for the whole projection. auxiliaryUsage keeps its
-		// top-level sentinel because has() uses it for optionality.
-		if collection != "auxiliaryUsage" {
-			delete(source.fields, collection)
-		}
-	}
 	return source
 }
+
 func (source rendererSource) has(key string) bool { _, exists := source.fields[key]; return exists }
+
+// One renderer call owns its source. A manifest can use the validated message
+// previews without ever indexing raw tool payloads. Full displays still read
+// the original JSON to preserve field presence and native object-key order.
+func (source rendererSource) record(collection, id string) rendererRecord {
+	if records, ok := source.records[collection]; ok {
+		return records[id]
+	}
+	raw, present := source.fields[collection]
+	if !present {
+		return rendererRecord{}
+	}
+	records := make(map[string]rendererRecord)
+	var items []json.RawMessage
+	_ = json.Unmarshal(raw, &items)
+	for _, item := range items {
+		record := rendererRecord{fields: map[string]json.RawMessage{}}
+		if collection == "messages" {
+			var fields rendererMessageFields
+			_ = json.Unmarshal(item, &fields)
+			for name, value := range map[string]json.RawMessage{
+				"id": fields.ID, "toolName": fields.ToolName, "arguments": fields.Arguments, "result": fields.Result,
+				"annotations": fields.Annotations, "attachments": fields.Attachments, "todos": fields.Todos,
+			} {
+				if value != nil {
+					record.fields[name] = value
+				}
+			}
+		} else {
+			record.raw = item
+			_ = json.Unmarshal(item, &record.fields)
+		}
+		key := rendererText(record.fields["id"])
+		if collection == "executions" {
+			key = rendererText(record.fields["executionId"])
+		}
+		if collection == "interactions" || collection == "auxiliaryUsage" {
+			key = rendererText(record.fields["executionId"]) + "\x00" + key
+		}
+		records[key] = record
+	}
+	source.records[collection] = records
+	// Keep the top-level presence bit after releasing the duplicate bytes.
+	source.fields[collection] = nil
+	return records[id]
+}
+
 func (source rendererSource) field(collection, id, field string) json.RawMessage {
-	return source.records[collection][id].fields[field]
+	return source.record(collection, id).fields[field]
 }
 func (source rendererSource) object(collection, id string, fallback any) Object {
-	if record, exists := source.records[collection][id]; exists {
+	if raw := source.record(collection, id).raw; raw != nil {
 		var value Object
-		if json.Unmarshal(record.raw, &value) == nil {
+		if json.Unmarshal(raw, &value) == nil {
 			return value
 		}
 	}
 	return rendererObject(fallback)
 }
 func (source rendererSource) messageHasField(id, field string) bool {
-	record, exists := source.records["messages"][id]
-	if !exists {
-		return false
-	}
-	_, present := record.fields[field]
-	return present
+	return source.field("messages", id, field) != nil
 }
 func (source rendererSource) messageHas(message *Message, field string) bool {
 	if source.messageHasField(message.ID, field) {

@@ -2,6 +2,11 @@
 
 [HarnessPlugin.swift](HarnessPlugin.swift) and [HarnessRegistry.swift](HarnessRegistry.swift) define native Harness registration and presentation. [HarnessThread.swift](HarnessThread.swift) carries public thread state/actions; each plugin interprets its own serialized projection. Shared hosts do not parse another Harness's private timeline.
 
+Registration reads each Harness descriptor and theme. Native logo views use the
+plugin's SwiftUI renderer. The registry evaluates the encoded logo source and
+the translation catalog independently on first access and retains each value
+for that plugin's lifetime.
+
 Harness plugins can expose an adaptive native `themeColor`. The built-in
 plugins share that accent between their card presentation and the Settings
 dispatch paths drawn for their targets. An omitted color uses the host's
