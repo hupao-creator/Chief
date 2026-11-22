@@ -261,8 +261,8 @@ admission. See the [animation contract](../../design/overview.md), the
 [Report contract](../../internal/plugins/applications/report/README.md#cover-cards)
 and [production-component demo](../../demos/report-thread/README.md).
 
-Super Thread browsing combines profile-local reading activity with a 16-cell
-budget per space. Reading a report or a uniquely associated Thread can promote
+Super Thread browsing combines profile-local reading activity with the layout
+of the current filter in the available window. Reading a report or a uniquely associated Thread can promote
 the report. The Report renderer keeps a sliding cover, fading
 metadata and stationary Liquid Glass navigation. Collections also provide a
 continuous regular-glass backdrop and regular-glass emoji badges at the existing
