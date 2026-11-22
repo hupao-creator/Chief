@@ -169,6 +169,7 @@ public struct HarnessMessageTimeline: View {
     @Environment(\.locale) private var locale
     @Environment(\.nativeReadingNavigation) private var readingNavigation
     @Environment(\.nativeThreadBodyEntranceHidden) private var bodyEntranceHidden
+    @Environment(\.threadRelatedExecution) private var relatedExecution
     @State private var previousReadingNavigation: NativeReadingNavigationState?
     @State private var readingSource = UUID()
     @State private var visibleCount = 120
@@ -263,7 +264,9 @@ public struct HarnessMessageTimeline: View {
                     }
                     .nativeThreadDocumentMargins(standard: bounds.size.width <= 540 ? 18 : 32,
                                                 viewportWidth: bounds.size.width)
-                    .padding(.vertical, readingVerticalInset(bounds.size.width)).frame(maxWidth: .infinity)
+                    .padding(.vertical, readingVerticalInset(bounds.size.width))
+                    .padding(.top, relatedExecution ? 20 : 0)
+                    .frame(maxWidth: .infinity)
                     .coordinateSpace(name: "thread-timeline-content")
                     .environment(\.nativeReadingPageCapacity, readingPageCapacity(bounds.size))
                     .background(TimelineCursorAttachment(active: !suspended).allowsHitTesting(false))

@@ -3,11 +3,14 @@ package runtime_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
 	core "github.com/hupao-creator/Chief/internal/core/runtime"
+	"github.com/hupao-creator/Chief/internal/services/moku"
+	"pgregory.net/rapid"
 )
 
 // Extracted from the historical runtime-concurrency fixture. This peer only
@@ -151,4 +154,60 @@ func (*handle) Read(context.Context, string) (string, error)        { return "fi
 func (*handle) Close() error { return nil }
 func create(r *core.Runtime) (core.CreatedThread, error) {
 	return r.CreateThread(context.Background(), core.CreateThreadRequest{HarnessID: "fixture", Input: model.AgentInput{Parts: []model.AgentInputPart{{Kind: "text", Text: "hello"}}}})
+}
+
+// The peer only supplies a model catalog and captures the tools actually
+// injected at Open. Tool selection, authorization, and persistence run in production code.
+type injectedToolPeer struct {
+	harness
+	tools *plugin.ToolInjection
+}
+
+func (h *injectedToolPeer) DiscoverMokuTarget(context.Context, plugin.SettingsRequest) (json.RawMessage, plugin.Availability, error) {
+	schema, err := plugin.ModelCatalogSchema(map[string]any{"type": "object"}, []plugin.ModelCatalogEntry{{ID: "fixture"}}, "fixture", plugin.CatalogSourceEvidence{})
+	return schema, plugin.Availability{Available: true}, err
+}
+func (h *injectedToolPeer) Open(ctx context.Context, o plugin.OpenContext) (plugin.Handle, error) {
+	if o.Injection != nil {
+		h.tools = o.Injection.Tools
+	}
+	return &handle{open: o, ctx: ctx}, nil
+}
+
+func openChiefTool(t *rapid.T, ctx context.Context, r *core.Runtime, chiefCwd string, harnesses map[string]plugin.Harness, peer *injectedToolPeer, input model.AgentInput, toolName string) (*moku.Coordinator, plugin.ToolBinding) {
+	t.Helper()
+	coordinator, err := moku.New(moku.Configuration{
+		Workspace: chiefCwd, Harnesses: harnesses, Settings: r.Settings, Threads: r.Threads, Thread: r.Thread, UpdateThread: r.UpdateThread,
+		OpenSession: r.OpenMokuThread, CloseSession: r.CloseMokuThread, SendSession: r.SendMokuThread, SubscribeCommitted: r.OnThreadCommitted,
+		RemoveWorktree: r.RemoveWorktree, SendThread: r.SendThread, PendingDeliveries: r.ReadyMokuDeliveries, SendDelivery: r.SendMokuDelivery,
+		EnsureSession: func(ctx context.Context, c moku.SessionConfiguration) (model.ThreadRecord, error) {
+			return r.EnsureMokuThread(ctx, c.HarnessID, c.Settings, c.Cwd)
+		},
+		ReplaceSession: func(context.Context, string, moku.SessionConfiguration) (model.ThreadRecord, error) {
+			return model.ThreadRecord{}, errors.New("unexpected replacement")
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := coordinator.Start(ctx, plugin.RuntimeStartContext{}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := coordinator.Submit(ctx, moku.SubmitRequest{Input: input}); err != nil {
+		t.Fatal(err)
+	}
+	var tool plugin.ToolBinding
+	if peer.tools == nil || peer.tools.Mode != "exclusive" {
+		t.Fatal("missing Chief injection")
+	}
+	for _, binding := range peer.tools.Bindings {
+		if binding.Name == toolName {
+			tool = binding
+		}
+	}
+	if tool.Execute == nil {
+		t.Fatalf("%s missing from Chief injection", toolName)
+	}
+	return coordinator, tool
 }
