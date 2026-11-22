@@ -504,16 +504,8 @@ public struct NativeMokuDock: View {
                 capsule(width: width, room: max(58, frame.height - 18),
                         surface: surface, messageWidth: messageWidth, rowHeight: rowHeight, noteHeight: noteHeight,
                         noteAvailableHeight: noteAvailableHeight, decorationPadding: placement.decorationPadding,
-                        settingsSize: settingsSize, readingMotion: readingMotion)
-                    .modifier(CapsuleFoldObserver(size: readingGlass ? .zero : surface.size, observesFold: !readingGlass) { shellIsCompact = $0 })
-                    .nativeCanvasNavigationRegion()
-                    .geometryGroup()
-                    // Seat the native editor on the bottom edge. Animating a
-                    // centre position as well as the shell height applies the
-                    // destination row layout before its translation has moved,
-                    // making retiring AppKit text jump vertically for a frame.
-                    .scaleEffect(placement.scale, anchor: .bottom)
-                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .bottom)
+                        settingsSize: settingsSize, viewport: geometry.size, scale: placement.scale,
+                        readingMotion: readingMotion)
                     .background {
                         if readingGlass {
                             NativeMokuReadingGlass(size: surface.size, viewport: geometry.size,
@@ -869,7 +861,7 @@ public struct NativeMokuDock: View {
     }
     private func capsule(width: CGFloat, room: CGFloat, surface: CGRect, messageWidth: CGFloat, rowHeight: CGFloat,
                          noteHeight: CGFloat, noteAvailableHeight: CGFloat, decorationPadding: CGFloat, settingsSize: CGSize,
-                         readingMotion: NativeMokuReadingMorph?) -> some View {
+                         viewport: CGSize, scale: CGFloat, readingMotion: NativeMokuReadingMorph?) -> some View {
         let actionLayout = noteActions(width: surface.width)
         let historyBand = noteHistoryBand(width: surface.width)
         let composerStop = ordinaryOverviewDock && composerVisible
@@ -1082,20 +1074,6 @@ public struct NativeMokuDock: View {
             }
         }.clipShape(RoundedRectangle(cornerRadius: NativeMokuCapsuleLayout.cornerRadius))
         .overlay(alignment: .bottom) {
-            // Both coordinates are relative to the stable bottom center, so
-            // resizing the shell never supplies a second translation.
-            let generation = state.composerGeneration
-            let offset = CGPoint(x: faceCenter.x + faceShift.width - surface.width / 2,
-                y: faceCenter.y + faceShift.height - surface.height + NativeMokuFaceLayout.seat.height / 2)
-            NativeMokuDockIdentity(harness: threadHarness, showsHarness: threadID != nil && !state.settingsOpen,
-                entranceReady: state.inputAdmissionReady, generation: generation, motion: state.windowVisible,
-                offset: offset, readingPlane: readingGlass ? CGSize(width: width, height: max(capsuleHeight, surface.height)) : nil,
-                readingMotion: readingMotion,
-                onSettled: { state.completeInputIdentity(generation: generation) }) {
-                face(characterInput)
-            }
-        }
-        .overlay(alignment: .bottom) {
             // Orbit ink lives outside the glass; never include it in the capsule clip.
             NativeMokuCharacterSurface(controller: character, input: characterInput, seat: .decorations)
                 .frame(width: surface.width + decorationPadding * 2, height: rowHeight + decorationPadding * 2)
@@ -1118,6 +1096,29 @@ public struct NativeMokuDock: View {
         .accessibilityHint(state.settingsOpen || !state.inputInteractionReady ? "" : localize("点击打开输入框，鼠标悬停时在触控板上向上滑动打开笔记", "Click to type; while hovering, swipe up on the trackpad for notes"))
         .accessibilityValue(state.noteUnread(note) ? localize("笔记有尚未完整浏览的更新", "Note update not yet fully browsed") : "")
         .accessibilityIdentifier("moku-capsule")
+        .modifier(CapsuleFoldObserver(size: readingGlass ? .zero : surface.size, observesFold: !readingGlass) { shellIsCompact = $0 })
+        .nativeCanvasNavigationRegion()
+        .geometryGroup()
+        // Bottom alignment keeps the retiring editor on the same baseline.
+        .scaleEffect(scale, anchor: .bottom)
+        .frame(width: viewport.width, height: viewport.height, alignment: .bottom)
+        .overlay(alignment: .bottom) {
+            // The native mark and glass use the same fixed reading viewport.
+            // A resizing SwiftUI shell must not translate the mark's host too.
+            let generation = state.composerGeneration
+            let offset = CGPoint(x: faceCenter.x + faceShift.width - surface.width / 2,
+                y: faceCenter.y + faceShift.height - surface.height + NativeMokuFaceLayout.seat.height / 2)
+            let identitySize = readingGlass ? viewport : surface.size
+            NativeMokuDockIdentity(harness: threadHarness, showsHarness: threadID != nil && !state.settingsOpen,
+                entranceReady: state.inputAdmissionReady, generation: generation, motion: state.windowVisible,
+                offset: offset, readingPlane: readingGlass ? viewport : nil,
+                readingMotion: readingMotion,
+                onSettled: { state.completeInputIdentity(generation: generation) }) {
+                face(characterInput)
+            }
+            .frame(width: identitySize.width, height: identitySize.height)
+            .scaleEffect(scale, anchor: .bottom)
+        }
     }
 
     private func dispatchHarness(_ dispatch: NativeMokuDispatch) -> AnyHarnessPlugin? {
