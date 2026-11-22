@@ -18,15 +18,30 @@ Chief brings Codex, Claude, Pi Agent, and OpenCode into one workspace.
 Talk to the **Chief** assistant to coordinate work, then open each task's conversation
 to follow the work and give it more direction.
 
+![Chief Overview showing coordinated agent tasks](design/overview-readme.png)
+
+The Overview grid rearranges as task cards update. [Watch the Overview demo (MP4, 6.5 sec) →](design/overview-readme-demo.mp4)
+
 - **Ask once, coordinate across agents.** Give Chief a task, attach files, and include the full path of any project folder Chief should use. Chief can answer directly or assign work to the agents you've enabled. [Working with Chief →](docs/working-with-moku.md)
-- **See what needs you.** Overview puts task status, questions, and permission requests on cards. Filter by folder or tag, then open a conversation to step in. [Overview →](docs/overview.md)
+- **See what needs you.** Overview uses a bento box design to show task status, questions, and permission requests on cards of different sizes. The canvas grows with your work for the feel of infinite horizontal scrolling as you browse from the first column to the last. Filter by folder or tag, then open a conversation to step in. [Overview →](docs/overview.md)
 - **Read results and keep going.** Read completed replies, revisit earlier runs, send a follow-up, or branch from an earlier run when the agent supports it. [Agent conversations →](docs/task-conversations.md)
-- **Connect the work.** Optional Tag Agent groups conversations within each project folder. Super Thread Agent prepares Super Threads with links back to source conversations. Git task cards can show branch and change summaries. [Tags, Super Threads, and file changes →](docs/reports-tags-and-changes.md)
+- **Connect the work.** Super Thread Agent prepares Super Threads with links back to source conversations. Git task cards can show branch and change summaries. [Super Threads and file changes →](docs/reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 - **Give feedback beside the work.** Open a web page in a sidecard, annotate an element or area, and send the screenshot and comment to the current agent conversation. [Sidecards →](docs/sidecards.md)
 
 The interface uses SwiftUI and AppKit, backed by a Go service. Agents run through
 their externally installed tools and retain their own accounts, models, and
 credentials.
+
+## Auto-Categorization
+
+Turn on **Tag Agent** under **Settings → Auto-Categorization** to group unarchived
+agent conversations by topic using their titles. It maintains a separate set of
+up to five tags for each project folder and for Inbox. Select a tag in **Overview**
+to see matching tasks. [Group tasks with tags →](docs/reports-tags-and-changes.md#group-tasks-with-tags)
+
+![Illustration of agent conversations being grouped by topic tags](design/auto-categorization-illustration.webp)
+
+[![Chief Overview filter bar in Simplified Chinese with 产品调研 (Product research) selected](design/auto-categorization-readme.png)](design/auto-categorization-readme.png)
 
 ---
 
