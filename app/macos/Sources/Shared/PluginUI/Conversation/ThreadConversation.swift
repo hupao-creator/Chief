@@ -36,10 +36,19 @@ public struct ThreadConversationRow: Identifiable {
     public let createdAt: Double
     public let execution: ThreadConversationExecution?
     public let history: Bool
-    public let node: AnyView
+    // A scoped reader supplies its own body. The manifest and sidebar only
+    // need this row's metadata. Copies share the inline body if it is used.
+    private final class Content {
+        let build: @MainActor () -> AnyView
+        @MainActor lazy var value = build()
+        init(_ build: @escaping @MainActor () -> AnyView) { self.build = build }
+    }
+    private let content: Content
+    @MainActor public var node: AnyView { content.value }
     public init(id: JSONText, createdAt: Double, execution: ThreadConversationExecution? = nil,
-                history: Bool = false, node: AnyView) {
-        self.id = id; self.createdAt = createdAt; self.execution = execution; self.history = history; self.node = node
+                history: Bool = false, node: @autoclosure @escaping @MainActor () -> AnyView) {
+        self.id = id; self.createdAt = createdAt; self.execution = execution; self.history = history
+        content = Content(node)
     }
 }
 
@@ -145,6 +154,7 @@ public struct ThreadConversation: View {
     private var visibleRows: [ThreadConversationRow] {
         if case let .execution(id) = context?.presentation { return rows.filter { $0.execution?.id == id } }
         let excluded = excluded
+        if excluded.isEmpty { return rows }
         return rows.filter { row in row.execution.map { !excluded.contains($0.id) } ?? true }
     }
     private var lastExecutionIndex: Int? { visibleRows.lastIndex { $0.execution != nil } }
@@ -160,11 +170,12 @@ public struct ThreadConversation: View {
         if let inlineRow { return visibleRows.first { $0.id == inlineRow } }
         return currentRow
     }
-    private var selectedRowID: JSONText? {
-        if case .history = destination { return selectedPage?.id }
+    private var selectedRow: ThreadConversationRow? {
+        if case .history = destination { return selectedPage }
         if case .unavailable = destination { return nil }
-        return documentRow?.id
+        return documentRow
     }
+    private var selectedRowID: JSONText? { selectedRow?.id }
     private var effectiveRunningID: JSONText? {
         guard let runningTurnId, !excluded.contains(runningTurnId) else { return nil }
         if case let .execution(id) = context?.presentation, id != runningTurnId { return nil }
@@ -174,7 +185,7 @@ public struct ThreadConversation: View {
         running && effectiveRunningID != nil && documentRow?.execution?.id == effectiveRunningID
     }
     private var selectedIsActive: Bool {
-        guard let execution = visibleRows.first(where: { $0.id == selectedRowID })?.execution else { return false }
+        guard let execution = selectedRow?.execution else { return false }
         // Either stream may arrive first at startup or termination. Match IDs
         // before using catalog activity; a newer execution cannot hide history.
         return execution.isActive || execution.id == activeExecutionId
@@ -243,7 +254,7 @@ public struct ThreadConversation: View {
             inputEntryRequest == target.requestId && excluded.contains(target.executionId) ? target.executionId : nil
         }
         let followsLatest = !relatedExecution && destination == .document(inline: nil) && sidecardEntry == nil
-        let selectedExecution = visibleRows.first { $0.id == selectedRowID }?.execution
+        let selectedExecution = selectedRow?.execution
         let executionID = sidecardEntry ?? (relatedExecution && selectedExecution?.readable == false ? nil : selectedExecution?.id)
         return ThreadConversationInputTarget(threadID: threadId, requestID: readingTarget?.requestId, executionID: followsLatest ? nil : executionID,
             followsLatest: followsLatest, ready: initializedThread == threadId && !pageMotion.active)
@@ -420,7 +431,8 @@ public struct ThreadConversation: View {
         }
     }
     private var hasDisplayableWork: Bool {
-        let ids = visibleRows.filter { !$0.history && (!historicalIDs.contains($0.id) || $0.id == inlineRow) }
+        let historical = historicalIDs
+        let ids = visibleRows.filter { !$0.history && (!historical.contains($0.id) || $0.id == inlineRow) }
             .compactMap { $0.execution?.id }
         return ids.isEmpty || ids.contains { workAvailability[$0] != false } || workAvailability.values.contains(true)
     }

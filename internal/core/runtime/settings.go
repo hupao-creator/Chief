@@ -446,11 +446,18 @@ func (r *Runtime) DetectInstallations(ctx context.Context) (map[string]any, erro
 }
 func (r *Runtime) KnownDirectories(ctx context.Context) ([]model.KnownDirectory, error) {
 	paths := []string{r.config.DefaultCwd}
-	threads, err := r.Threads()
-	if err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	for _, t := range threads {
+	snapshot := r.config.Store.Snapshot()
+	for _, id := range threadCatalogOrder(snapshot) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		t, err := r.cachedThread(ctx, snapshot, id)
+		if err != nil {
+			return nil, err
+		}
 		paths = append(paths, t.Cwd)
 	}
 	policies := []plugin.DirectoryPolicy{}
@@ -469,6 +476,7 @@ func (r *Runtime) KnownDirectories(ctx context.Context) ([]model.KnownDirectory,
 			policies = append(policies, policy)
 		}
 	}
+	resolved := map[string]bool{}
 	seen := map[string]bool{}
 	result := []model.KnownDirectory{}
 	for _, path := range paths {
@@ -479,6 +487,10 @@ func (r *Runtime) KnownDirectories(ctx context.Context) ([]model.KnownDirectory,
 			continue
 		}
 		path = filepath.Clean(path)
+		if resolved[path] {
+			continue
+		}
+		resolved[path] = true
 		canonical, e := filepath.EvalSymlinks(path)
 		if e != nil {
 			canonical = path

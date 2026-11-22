@@ -83,6 +83,12 @@ Moku audit previews additionally retain the latest 256 successful completed
 catch up immediate communication. The Swift workspace owns their transient
 queue and acknowledgments; Runtime adds no scheduling or receipt state. Loading a reading page does not reopen a native execution process. A coordinating-Harness change retains the prior Moku record as an archived, read-only `mokuHistory` conversation, including its native state and attachment ownership. These histories cannot be unarchived, forked, reconfigured or executed; native history questions and automatic admission also reject them. The Moku history reader requests pure renderer projections without reopening a native process. An explicit Moku history reset removes them and releases their attachments. Settled execution details are fetched on disclosure; live turns retain the information needed for output and interactions.
 
+The composer's known-directory lookup takes one store snapshot and reads each
+cwd from the matching immutable Thread record in the catalog cache. A changed
+record is decoded on demand. Each lookup repeats Harness discovery and policy
+checks and resolves each distinct cleaned path once, preserving the first
+eligible spelling for a canonical directory.
+
 Thread enumeration preserves stored order and appends unlisted records with
 linear identity reconciliation. Committed-thread subscribers receive owned
 records: native state, settings, metadata and transcript bytes are copied without
