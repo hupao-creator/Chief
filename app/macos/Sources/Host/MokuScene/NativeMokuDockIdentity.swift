@@ -62,7 +62,6 @@ struct NativeMokuDockIdentity<Face: View>: View {
         Group {
             if let readingPlane {
                 NativeMokuIdentityPosition(plane: readingPlane, offset: offset, motion: readingMotion) { mark }
-                    .frame(width: readingPlane.width, height: readingPlane.height)
             } else {
                 mark.offset(x: offset.x, y: offset.y)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)

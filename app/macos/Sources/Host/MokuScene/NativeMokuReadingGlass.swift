@@ -192,6 +192,7 @@ final class ReadingIdentityView: NSView {
     private var previous: CGPoint?
     private var plane = CGSize.zero
     override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
     override init(frame: NSRect) {
         super.init(frame: frame)

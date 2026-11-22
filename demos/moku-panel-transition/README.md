@@ -209,6 +209,18 @@ draft through AppKit marked text. The fixture returns to Overview and rejects
 the earlier send. It checks the exact restored Agent draft and that Overview
 keeps its own draft and focus.
 
+### Production centered return
+
+To verify the centered return in the production workspace, use an
+[isolated desktop session](../../tools/native-interaction/README.md) with a
+completed Codex Thread. Open its Overview card, keep the Execution sidecard
+folded and wait for the centered editor to expand. Click the reader's
+upper-left Close button or activate it through AXPress. Record the entire
+window so a detached mark remains measurable far to either side of the Dock.
+Keep the executable digest, revision, displayed layout, input backend and movie.
+The mark must stay within the glass throughout the intermediate widths. The
+return must finish at the compact Overview capsule with the resident eyes.
+
 ## Chief input replay
 
 Run `--replay-chief-input` under the same shared desktop verification lease to
