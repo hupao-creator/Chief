@@ -508,12 +508,15 @@ readers. Overview and Dock fade out and reject input/accessibility while the pan
 is open; this is not a screen-sized popover or a zoomed canvas child. The panel
 uses a rounded regular Liquid Glass backdrop throughout opening, scrolling and
 return. Close floats in the upper-left corner and stays fixed as rows scroll.
-At logical panel widths of 320pt and above, the scroll viewport reaches the top
-edge. The centered grid reserves at least 54pt on each side for the 32pt Close
-button and its 14pt inset. The first row’s top margin is 8pt smaller than the
-centered grid’s left margin. Columns adapt up to 360pt per card with 20pt gaps.
-In narrower panels, the single column uses the space below Close, with 14pt
-side margins. The 320pt layout scales to fit the panel width, including its
+Resizing reflows the open grid even if its source card temporarily leaves the
+Overview viewport.
+The grid uses the panel width and member count to fit 280–360pt cards with
+20pt gaps. Short collections form a centered group near the top. When a card
+fits between two 54pt side margins, the first row starts 20pt below the top
+and the scroll viewport reaches the top edge. The leading margin clears the
+32pt Close button and its 14pt inset throughout scrolling. Below 388pt wide,
+the single-column viewport begins 54pt below the top and uses 14pt side
+margins. Below 320pt, the 320pt layout scales to fit the panel, including its
 scroll viewport and hit targets, so the cover, title and badge fit together. Cover
 height preserves 360:308, with a separate metadata region. No panel dimension can
 extend beyond the host viewport. Reduce Transparency gives the panel an opaque

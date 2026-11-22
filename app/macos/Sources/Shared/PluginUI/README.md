@@ -46,9 +46,11 @@ data lifetimes.
 The collection parent remains mounted for those updates while drawing, input and
 accessibility are suppressed. The shared compositor's auxiliary lane stays
 outside the collection's Liquid Glass panel. Close floats over the panel and
-stays fixed while the member grid scrolls. The collection hosts its SwiftUI
-content in window points and applies workspace zoom inside that host so input
-and accessibility frames follow the displayed controls.
+stays fixed while the member grid scrolls. The collection and a report opened
+from it host SwiftUI content in window points and apply workspace zoom inside
+that host so card and Back hit targets follow the displayed controls. At window
+zoom above 1×, the retained Overview host passes panel hits directly to the
+collection's native viewport for card clicks, scrolling and Close.
 Blank-margin dismissal ignores nonfocusable system child accessories such as the
 window-sharing indicator. Visible focusable child windows, sheets, modal windows
 and the press forwarded while closing an NSPopover still block dismissal.

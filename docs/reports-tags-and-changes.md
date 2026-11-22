@@ -20,9 +20,9 @@ When you close the report with a source conversation open, the input bar folds b
 
 A collection shows one Super Thread at a time and can turn pages automatically. To choose a Super Thread, move the pointer over the card and use the arrows or the page menu between them. Collections of up to seven Super Threads also show a clickable marker for each page. Click the card to read the displayed Super Thread. Use **Close Super Thread** in the reader to return to Overview.
 
-To browse all members, click the page count in the upper-right corner of the collection card. Scroll the grid and click a Super Thread. The reader expands from the card you chose, just as it does on Overview. It may show a loading indicator while the report loads.
+To browse all members, click the page count in the upper-right corner of the collection card. The cards start near the top of the panel. Widen the window to see more cards side by side, or scroll down to see the rest. Click a Super Thread to read it. The reader expands from the card you chose and may show a loading indicator while the report loads.
 
-Click the reader’s upper-left arrow, **Back to Super Thread Collection**, to return to your place in the grid. You can read another member from there. The grid’s **Close** button stays in the upper-left corner as you scroll. At high window zoom, the cards fit in one column below it. Click **Close** or press **Esc** in the grid to return to Overview. Any regrouping caused by reading those members takes effect when you close the grid.
+Click the reader’s upper-left arrow, **Back to Super Thread Collection**, to return to your place in the grid. You can read another member from there. The grid’s **Close** button stays in the upper-left corner as you scroll. In a narrow panel, the cards form one column below it. Click **Close** or press **Esc** in the grid to return to Overview. Any regrouping caused by reading those members takes effect when you close the grid.
 
 After a quick look at a Super Thread, its cover stays selected if it is still in the collection. Spending time reading a Super Thread or its source conversations, or returning to it within a day, gives it a better chance of appearing as an individual card. The available space also affects which Super Threads stay grouped.
 

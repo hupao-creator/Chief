@@ -32,7 +32,12 @@ struct NativeReadingPanelViewport<Content: View>: NSViewRepresentable {
     let onCompletion: (Int, Bool) -> Void
     let content: Content
 
-    func makeNSView(context: Context) -> ReadingPanelView { ReadingPanelView(usesGlass: usesGlass) }
+    func makeNSView(context: Context) -> ReadingPanelView {
+        let collection = context.environment.nativeCollectionPanel
+        let view = ReadingPanelView(usesGlass: usesGlass, readingMember: collection?.readingMember != nil)
+        if usesGlass { collection?.gridViewport = view }
+        return view
+    }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: ReadingPanelView, context: Context) -> CGSize? {
         // The workspace owns this viewport; fitting its hosted document would
@@ -66,7 +71,7 @@ final class ReadingPanelView: NSView, CAAnimationDelegate {
     private let aperture = CAShapeLayer()
     private let paper = CALayer()
     private let glass: NSGlassEffectView?
-    private let collectionContentSpace: NSView?
+    private let windowContentSpace: NSView?
     fileprivate lazy var overlayInputRegions = NativeCanvasInputRegions()
     private var hosting: NSHostingView<AnyView>?
     private var target = CGRect.zero
@@ -87,9 +92,9 @@ final class ReadingPanelView: NSView, CAAnimationDelegate {
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { false }
 
-    init(usesGlass: Bool) {
+    init(usesGlass: Bool, readingMember: Bool) {
         glass = usesGlass ? NSGlassEffectView() : nil
-        collectionContentSpace = usesGlass ? ReadingPanelSurfaceView() : nil
+        windowContentSpace = usesGlass || readingMember ? ReadingPanelSurfaceView() : nil
         super.init(frame: .zero)
         wantsLayer = true
         surface.wantsLayer = true
@@ -100,15 +105,15 @@ final class ReadingPanelView: NSView, CAAnimationDelegate {
         surface.layer!.addSublayer(paper)
         // Keep the collection material on the moving surface, including the
         // opening frames before the member grid is mounted.
-        if let glass, let collectionContentSpace {
+        if let glass {
             glass.style = .regular
             glass.cornerRadius = 22
             glass.setAccessibilityHidden(true)
             paper.cornerRadius = glass.cornerRadius
             paper.cornerCurve = .continuous
             surface.addSubview(glass)
-            surface.addSubview(collectionContentSpace)
         }
+        if let windowContentSpace { surface.addSubview(windowContentSpace) }
         surface.layer!.mask = aperture
     }
 
@@ -158,13 +163,13 @@ final class ReadingPanelView: NSView, CAAnimationDelegate {
         paper.backgroundColor = glass?.isHidden == false ? nil : paperColor
         if contentReady || (overlayHeight != nil && open) || identity?.pending == true {
             let root: AnyView
-            if let collectionContentSpace {
+            if let windowContentSpace {
                 // Keep the nested host in window points. Applying zoom inside
                 // its SwiftUI root keeps pointer and AX frames on the artwork.
                 let logical = surface.bounds.size
                 let scale = environment.nativeWindowContentScale
-                collectionContentSpace.frame = surface.bounds
-                collectionContentSpace.setBoundsSize(CGSize(width: logical.width * scale, height: logical.height * scale))
+                windowContentSpace.frame = surface.bounds
+                windowContentSpace.setBoundsSize(CGSize(width: logical.width * scale, height: logical.height * scale))
                 root = AnyView(content.frame(width: logical.width, height: logical.height)
                     .scaleEffect(scale, anchor: .topLeading)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading))
@@ -179,10 +184,10 @@ final class ReadingPanelView: NSView, CAAnimationDelegate {
                 hosting = view
                 // The lightweight identity ink remains above the newly admitted
                 // opaque reader until its measured heading takes ownership.
-                if let collectionContentSpace { collectionContentSpace.addSubview(view) }
+                if let windowContentSpace { windowContentSpace.addSubview(view) }
                 else { surface.addSubview(view, positioned: .below, relativeTo: nil) }
             }
-            hosting?.frame = collectionContentSpace?.bounds ?? surface.bounds
+            hosting?.frame = windowContentSpace?.bounds ?? surface.bounds
         }
         if overlayHeight == nil && transition?.closing != true {
             hosting?.layer?.opacity = contentReady ? 1 : 0
@@ -391,16 +396,23 @@ final class ReadingPanelView: NSView, CAAnimationDelegate {
         CGPath(roundedRect: CGRect(origin: .zero, size: size), cornerWidth: 22, cornerHeight: 22, transform: nil)
     }
 
+    func zoomedHit(at point: NSPoint, from view: NSView?) -> NSView? {
+        guard let superview, let window, view?.window === window,
+              environment.nativeWindowContentScale > 1, environment.isEnabled,
+              !isHiddenOrHasHiddenAncestor else { return nil }
+        return hitTest(superview.convert(point, from: view))
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard acceptsInput else { return nil }
         // Beyond the card, only registered overlay controls claim clicks.
         // The backdrop owns the rest of the extended host and the glass lane.
-        if (collectionContentSpace != nil || overlayHeight != nil), !target.contains(convert(point, from: superview)) {
+        if (glass != nil || overlayHeight != nil), !target.contains(convert(point, from: superview)) {
             let windowPoint = superview?.convert(point, to: nil) ?? point
             guard overlayHeight != nil, let window,
                   overlayInputRegions.contains(windowPoint, in: window) else { return nil }
         }
-        guard let hit = super.hitTest(point), hit !== self, hit !== surface, hit !== collectionContentSpace else { return nil }
+        guard let hit = super.hitTest(point), hit !== self, hit !== surface, hit !== windowContentSpace else { return nil }
         if let glass, hit.isDescendant(of: glass) { return nil }
         return hit
     }
