@@ -126,7 +126,7 @@ public final class NativeHarnessThreadSurface {
                 }
             }, resolveMedia: host.callbacks.resolveMedia)
         let result = try plugin.threadView(input: materialized, actions: actions, context: context)
-        return AnyView(result.environment(\.threadAuthorHarness,
+        return AnyView(result.environment(\.steerThreadID, threadID).environment(\.threadAuthorHarness,
             ThreadAuthorHarness(name: plugin.descriptor.displayName.string, logo: plugin.logo(size: 12))))
 
 

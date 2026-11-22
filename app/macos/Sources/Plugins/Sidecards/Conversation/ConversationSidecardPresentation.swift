@@ -57,7 +57,13 @@ public final class ConversationSidecardPresentation {
             // A second send can replace one whose receipt is still waiting for
             // the catalog. Keep the original rollback while we own its opening.
             let ownsOpening = pending?.selection == context.selectionRevision() && pending?.target == context.readingTarget
-            if !context.executionDisabled, !ownsOpening {
+            // The first active execution already has its reader in main. Keep
+            // it visible instead of opening an empty column for the same run.
+            let staysInMain = activeExecutionID != nil && activeExecutionID == request.previousExecutionID &&
+                executionState.sidecardExecutionID(thread: context.thread, index: context.conversationIndex) == nil
+            if staysInMain {
+                self.pending = nil
+            } else if !context.executionDisabled, !ownsOpening {
                 pending = Pending(selection: context.open(), target: context.readingTarget, restore: context.restoreSelection)
             }
         }

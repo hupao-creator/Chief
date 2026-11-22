@@ -657,7 +657,8 @@ readers share `NativeExecutionContinuation`: latest input follows up on its
 original Thread, while historical input forks at the native checkpoint before
 following up on the admitted branch. The source identity is captured before
 the first suspension. Runtime chooses steer or a successor execution for a
-latest follow-up. Stop uses the viewed current execution's cancellation identity.
+latest follow-up. When Chief is already running, the shared Chief draft also
+projects its captured message into the live Chief history reader. Stop uses the viewed current execution's cancellation identity.
 Unavailable Threads and read-only Moku histories cannot send. Ordinary Thread
 archive only changes list visibility and does not disable sends. Failed sends keep their draft and error;
 late receipts consume only their original draft and cannot reopen another visit.
@@ -666,7 +667,10 @@ and attachment ink only while they still own its selected draft. A Thread title
 or execution change keeps that Thread's unsent draft. See the
 [draft and attachment contract](../../../../../design/composer.md)
 for the distinction between restored input and cross-Thread routing defects.
-Sending from the ordinary latest-Thread input opens Conversation on local capture,
+A direct send to the current running execution publishes its captured user input
+to that reader on the same main-actor turn. Agent and Report readers share the
+[send identity contract](../../../../../design/composer.md#send-identity-and-ownership).
+Sending from the latest finished result opens Conversation on local capture,
 before the command or catalog returns. Its pending column places the pinned
 composer beneath the card. The receipt identifies the accepted execution and
 the catalog and index determine where its live reader belongs. Failure retires

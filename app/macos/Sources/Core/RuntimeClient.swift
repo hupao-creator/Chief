@@ -13,6 +13,7 @@ public actor RuntimeClient {
     var generation = 0
     var streamID: UUID?
     var clientID: String?
+    public internal(set) var supportsFollowUpRowIdentity = false
     var streamTask: Task<Void, Never>?
     var reconnectTask: Task<Void, Never>?
     var handshakeTask: Task<Void, Never>?
@@ -184,6 +185,7 @@ public actor RuntimeClient {
         handshakeTask?.cancel(); handshakeTask = nil
         streamTask?.cancel(); streamTask = nil
         streamID = nil; clientID = nil; overviewRequest = nil
+        supportsFollowUpRowIdentity = false
         for request in sessionRequests.values { request.cancel() }
         sessionRequests.removeAll(); sessionRequestBytes = 0; sessionWrites = nil
         let wasHydrating = hydration != nil
@@ -215,6 +217,7 @@ public actor RuntimeClient {
         if type == "hello" {
             guard clientID == nil, event["protocolVersion"]?.intValue == RuntimeProtocol.version,
                   let client = event["clientId"]?.stringValue, !client.isEmpty else { throw RuntimeError("PROTOCOL_MISMATCH", "Invalid runtime subscription handshake") }
+            supportsFollowUpRowIdentity = event["followUpRowIdentity"] == .bool(true)
             clientID = client
             _ = try await loadState()
             try assertCurrent(id, generation: expected)

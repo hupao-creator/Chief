@@ -18,6 +18,7 @@ public final class NativeWorkspaceModel {
     public var hasInitialContent: Bool { hasSnapshot && catalog.hasMoku }
     private var hasSnapshot = false
     public private(set) var connection: RuntimeConnectionStatus = .connecting
+    private(set) var supportsFollowUpRowIdentity = false
     public private(set) var connectionRevision = 0
     public private(set) var recoveryRevision = 0
     public private(set) var snapshotAuthority: UUID?
@@ -141,6 +142,7 @@ public final class NativeWorkspaceModel {
                         self.harnessHost.receive(event)
                         if status == .connected, self.connection != .connected { self.connectionRevision += 1 }
                         if status != .connected, self.connection == .connected { self.recoveryRevision += 1 }
+                        self.supportsFollowUpRowIdentity = status == .connected ? await client.supportsFollowUpRowIdentity : false
                         self.connection = status
                         if status == .connected { self.connectionError = self.catalogError }
                         self.settingsModel.receive(snapshot: self.state, runtimeAvailable: self.runtimeAvailable)

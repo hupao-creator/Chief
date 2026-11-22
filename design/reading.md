@@ -23,6 +23,10 @@ read-only archives consume their owning Harness's manifest and scoped turn
 resources. The coordinator's audit identifies the child Thread admitted by a delegation.
 Note links carry the Harness execution and message identities into the reader.
 The current Chief session owns the history composer.
+The window shows a manual steer in the running execution as soon as the composer
+captures it. Its stable row identity and presentation survive both receipt and
+transcript updates. [Send identity and ownership](composer.md#send-identity-and-ownership)
+
 Empty no-output bookkeeping does not create a visible execution summary.
 
 Codex, Claude Code, Pi Agent and OpenCode each decode their own native protocol

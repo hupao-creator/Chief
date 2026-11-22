@@ -1110,7 +1110,7 @@ func (t *Thread) Send(ctx context.Context, request plugin.SendRequest) error {
 				}
 				// Persist the identity association before native I/O, separately
 				// from Messages. This records intent, not successful delivery.
-				t.state.SteerInputs[promptID] = SteerInput{ExecutionID: request.ExecutionID, NativeSessionID: id,
+				t.state.SteerInputs[promptID] = SteerInput{RowID: request.FollowUpRowID, ExecutionID: request.ExecutionID, NativeSessionID: id,
 					Presentation: presentation, Text: message.Text, CreatedAt: message.CreatedAt,
 					Annotations: append(json.RawMessage(nil), message.Annotations...)}
 				err = t.commitLocked(ctx)

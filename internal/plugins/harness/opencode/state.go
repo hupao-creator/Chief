@@ -171,6 +171,7 @@ type ForkSource struct {
 // receipt. It survives uncertain HTTP outcomes until native evidence matches
 // both the submitted message ID (the map key) and its exact native session.
 type SteerInput struct {
+	RowID           string          `json:"rowId,omitempty"`
 	ExecutionID     string          `json:"executionId"`
 	NativeSessionID string          `json:"nativeSessionId"`
 	Presentation    string          `json:"presentation"`
@@ -406,6 +407,9 @@ func (s *State) observeUserMessage(incoming *Message) *Message {
 			ExecutionID: input.ExecutionID, Role: "user", FollowUp: true, Presentation: input.Presentation,
 			Text: input.Text, CreatedAt: input.CreatedAt, Annotations: append(json.RawMessage(nil), input.Annotations...),
 			Status: "complete", Inherited: incoming.Inherited}
+		if input.RowID != "" {
+			retained.ID = input.RowID
+		}
 		if known != nil {
 			retained.ID = known.ID
 			*known = *retained

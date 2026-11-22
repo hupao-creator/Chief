@@ -155,6 +155,7 @@ private struct OpenCodeTurn: View {
     let input: HarnessThreadInput
     let actions: HarnessThreadActions
     let context: HarnessRenderContext
+    var steerReader = ThreadSteerReader()
     @Environment(\.locale) private var locale
     var body: some View {
         let messages = (state.messagesByExecution[execution.executionID] ?? []).filter { !$0.inherited }
@@ -170,7 +171,8 @@ private struct OpenCodeTurn: View {
             let id = ocPublicID("interaction", [execution.executionID, record.ocID("id")])
             items.append(.init(id, .resolution(title: record["title"]?.stringValue ?? "", status: threadRequestResolution(record["status"]?.stringValue ?? ""))))
         }
-        let layout = ThreadTranscriptLayout(items, agentDetail: agentDetail, active: executionActive,
+        let transcript = steerReader.transcript(items, execution: execution.executionID)
+        let layout = ThreadTranscriptLayout(transcript, agentDetail: agentDetail, active: executionActive,
                                             waiting: waiting, completed: execution.status == .completed, target: visibility.messageAnchorID)
         let workVisible = visibility.work && (visibility.workTurnID == nil || visibility.workTurnID == execution.executionID)
         var rows = layout.detailRows(executionID: execution.executionID, workVisible: workVisible, active: current && execution.status == .running,

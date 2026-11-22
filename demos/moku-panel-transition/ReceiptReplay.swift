@@ -21,7 +21,8 @@ private struct NoLaunch: RuntimeConnectionSource {
 private extension RuntimeClient {
     // Only bootstrap is replaced. All command HTTP, journal transactions and
     // explicit receipt lookups use the production client and a private peer.
-    func attach(to peer: RuntimeConnection) {
+    func attach(to peer: RuntimeConnection, followUpRows: Bool) {
+        supportsFollowUpRowIdentity = followUpRows
         connection = peer
         setStatus(.connected)
     }
@@ -63,7 +64,7 @@ private extension RuntimeClient {
         let client = RuntimeClient(storageDirectory: rootProfile, connectionSource: NoLaunch())
         let connection = RuntimeConnection(port: peer["port"]!.intValue!, token: peer["token"]!.stringValue!,
             epoch: peer["epoch"]!.stringValue!, protocolVersion: RuntimeProtocol.version, pid: 0, dataDir: rootProfile.path)
-        await client.attach(to: connection)
+        await client.attach(to: connection, followUpRows: peer["followUpRowIdentity"] == .bool(true))
         let workspace = NativeWorkspaceModel(client: client, preferences: DesktopPreferences(directory: rootProfile),
             plugins: try .init(harnesses: [], sidecards: [], applications: []))
         let thread = try HarnessThread(id: "T", harnessID: "codex", revision: 1, sessionState: .object([:]),
@@ -293,6 +294,7 @@ private extension RuntimeClient {
             "EXECUTION_CHANGED fork handoff failed: " + (changed.error ?? ""))
         try await checkOwners(root: rootProfile, moku: moku)
         try await checkSendReveal(workspace: workspace, mode: mode)
+        try await checkSteerReader(workspace: workspace, mode: mode)
     }
 
     /// Exercise the same captured draft, visit and reconciled Sidecard snapshot as

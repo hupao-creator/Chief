@@ -133,6 +133,8 @@ type SendRequest struct {
 	// FollowUpOnly forbids reserving a new execution if the target has ended.
 	// The Harness checks this under its execution lock before retaining input.
 	FollowUpOnly bool
+	// Optional reader occurrence ID for a direct user's active-execution input.
+	FollowUpRowID string
 	// Admitted is called exactly once after this input is durably retained.
 	// New executions admit before native dispatch; follow-ups may wait for native
 	// acceptance so a rejected steer does not acknowledge delivery. Stream updates

@@ -125,8 +125,9 @@ to that Thread's Moku-bar draft and open its editor, preserving existing text an
 attachments. Generic compose/send intents do not open it; the detail composer's
 explicit, visit-scoped reveal opens the card as soon as the local draft is
 captured. Its column hosts the Dock during the wait. The card shows opening
-progress until it can display the exact accepted execution. An already eligible
-execution on the same Thread stays readable while its follow-up is pending.
+progress until it can display the exact accepted execution. A steer to a running execution appears immediately in its owning reader.
+An eligible execution sidecard opens with the live conversation. A first
+active execution keeps the message in main.
 Failure or an unresolved receipt restores the previous selection while the send
 still owns it. Folding, switching cards or leaving the visit takes precedence.
 

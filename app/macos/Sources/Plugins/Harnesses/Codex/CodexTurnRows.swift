@@ -14,12 +14,14 @@ struct CodexTurnRows: View {
     let actions: HarnessThreadActions
     let context: HarnessRenderContext
     @Environment(\.locale) private var locale
+    var steerReader = ThreadSteerReader()
     @Environment(\.threadExecutionPresence) private var executionPresence
     @State private var busyInteractionID: JSONText?
     @State private var actionError: (id: JSONText, message: String)?
 
     var body: some View {
-        let layout = ThreadTranscriptLayout(turn.transcript(presence: executionPresence), agentDetail: agentDetail,
+        let transcript = steerReader.transcript(turn.transcript(presence: executionPresence), execution: turn.executionId)
+        let layout = ThreadTranscriptLayout(transcript, agentDetail: agentDetail,
             active: turn.active, waiting: turn.status == "waiting-input", completed: turn.status == "completed", target: visibility.messageAnchorID)
         let workVisible = visibility.work && (visibility.workTurnID == nil || visibility.workTurnID == turn.executionId)
         let interactions = firstByID(turn.interactions)

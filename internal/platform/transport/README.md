@@ -25,6 +25,12 @@ retained receipt is checked before new-ID admission. The [Composer receipt
 replay](../../../demos/moku-panel-transition/README.md#host-receipt-replay)
 exercises native IDs through the HTTP executor and receipt store.
 
+The event stream's hello advertises `followUpRowIdentity` when the Host carries
+the admitted `thread:follow-up` or `moku:submit` command ID through to the
+Harness's active follow-up row.
+A client reusing a service without this capability reads the Harness transcript
+directly. Persisted transcripts keep their existing opaque identities.
+
 Service revocation cancels every admitted Host call before drain, including reads
 whose HTTP clients remain connected. Reads also follow their request cancellation;
 writes follow only the service lifetime. Drain waits for those calls and their

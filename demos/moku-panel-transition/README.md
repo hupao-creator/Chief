@@ -249,7 +249,7 @@ covers system input and persisted Runtime results.
 
 With the debug production build available, run
 `python3 demos/moku-panel-transition/receipt_replay.py` under the shared
-verification lease. The windowless replay attaches the production RuntimeClient
+verification lease. The replay attaches the production RuntimeClient
 through a loopback fault proxy to the production Go transport in a temporary,
 exclusively owned profile. The proxy disconnects after the Go ReceiptStore
 reports pending. The Go Host fixture counts actual handler entries. A baseline
@@ -262,6 +262,14 @@ and checks the production workspace's selected card and execution ownership
 before delivering a receipt or index. It checks both receipt/catalog orders, a terminal run, rejection with a
 successor draft, folding, Browser selection and replacing the reading target. The scenario
 drives the native presentation and selection model without measuring screen timing.
+
+The live steer scenario holds the HTTP handler and reads pixels from a mounted
+Codex turn. It checks the ordinary message before release, both receipt/content
+orders, identical consecutive inputs, first-run and sidecard ownership, direct
+rejection, explicit retry, switching Threads with the same execution ID and
+receipt recovery after disconnect. It also holds a send to the running Chief
+and compares its user row through receipt and content delivery. The peer supplies the Codex transcript and
+controls event timing. The run measures neither model processing nor latency.
 
 The Chief case begins with a saved send that carried a structured catalog
 mention and checks the receipt under its original command ID.

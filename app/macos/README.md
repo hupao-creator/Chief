@@ -43,7 +43,7 @@ tools/activities, approvals/questions, review, context compaction, background wo
 execution status, author and usage. Errors are exempt from the content allowlist:
 explicit error records, error-level notices, failed assistant messages and
 execution failures remain readable, including after completion and with work collapsed.
-Ordinary follow-ups appear in their native chronological position while the execution is running.
+A manual follow-up appears immediately in the running execution’s reader. Its command ID joins the submitted message to its native chronological position.
 They use a compact two-line surface with literal
 text and the recorded message time, without an author/sequence heading or delivery
 status. Long text and attachment/annotation details expand on demand; absent
