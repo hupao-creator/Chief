@@ -10,6 +10,7 @@ struct NativeReadingParentSurface<Content: View>: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NativeReadingParentView { NativeReadingParentView() }
     func updateNSView(_ view: NativeReadingParentView, context: Context) {
+        view.collection = context.environment.nativeCollectionPanel
         view.update(content: AnyView(content.environment(\.self, context.environment)), frozen: frozen)
     }
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: NativeReadingParentView, context: Context) -> CGSize? {
@@ -21,6 +22,7 @@ struct NativeReadingParentSurface<Content: View>: NSViewRepresentable {
 
 @MainActor final class NativeReadingParentView: NSView {
     private let hosting = NSHostingView(rootView: AnyView(EmptyView()))
+    weak var collection: NativeCollectionPanelPresentation?
     private var freezeRequested = false
     private var hideScheduled = false
     private var retired = false
@@ -66,7 +68,12 @@ struct NativeReadingParentSurface<Content: View>: NSViewRepresentable {
         }
     }
     override func hitTest(_ point: NSPoint) -> NSView? {
-        freezeRequested ? nil : super.hitTest(point)
+        guard !freezeRequested else { return nil }
+        // The intermediate SwiftUI host hit-tests in unzoomed points. Let the
+        // mounted collection resolve the event in its own window-point host.
+        if let collection, collection.readingMember == nil, !collection.closing,
+           let hit = collection.gridViewport?.zoomedHit(at: point, from: superview) { return hit }
+        return super.hitTest(point)
     }
     override func accessibilityChildren() -> [Any]? {
         freezeRequested ? [] : super.accessibilityChildren()

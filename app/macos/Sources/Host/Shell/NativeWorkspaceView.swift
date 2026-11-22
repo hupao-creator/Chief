@@ -1107,6 +1107,7 @@ public struct NativeWorkspaceView: View {
                       let thread = model.catalog.thread(selected.threadID) else { return }
                 await model.harnessHost.prefetchReading(input: HarnessThreadInput(thread: thread, readingTarget: presentation.readingTarget))
             }
+            .environment(\.nativeCollectionPanel, presentation.collectionPanel)
             .environment(\.nativeThreadIdentityRegistry, presentation.threadIdentityRegistry)
             .environment(\.nativeReadingInteractions, presentation.readingInteractions)
             .environment(\.nativeReadingInteractionVisit, routeID)

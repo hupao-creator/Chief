@@ -463,6 +463,24 @@ does not certify first-run onboarding.
 
 ### Collection member opening
 
+Open the page count with two reports, then with enough covered reports to fill
+several rows. At 2352×1400pt and 1× zoom, capture the member panel at the top
+of the grid. Measure the first row from the panel's top edge, both side
+margins, card width, and the counts of fully and partially visible cards.
+The first row starts 20pt from the top in both cases. Two cards sit together
+in the center. A populated row uses as many 280pt cards and 20pt gaps as fit
+between the side margins, with individual cards capped at 360pt. The
+[before](../../demos/super-thread-carousel/evidence/member-grid-before.png)
+and [after](../../demos/super-thread-carousel/evidence/member-grid-after.png)
+frames use the same 17 covered reports and one report without a cover.
+
+Resize the open window to 1192×780pt, then to 860×600pt at 2× zoom. Scroll
+with the pointer over the single column and check that it clears Close.
+Click a scrolled member, confirm its report title and body, and use Back.
+Compare the visible cards and scroll offset on return. Widen the window again
+and check the column count. At 500×400pt and 2× zoom, reach the final card
+and click Close with the grid scrolled.
+
 Use a report with a cover and an introduction long enough to wrap past three
 lines. On its individual Overview card, carousel page and member grid card,
 check that the first three lines are readable and the ellipsis ends line three.
