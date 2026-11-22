@@ -143,6 +143,7 @@ private struct PiTurn: View {
     let execution: PublicExecution
     let actions: HarnessThreadActions
     let context: HarnessRenderContext
+    var steerReader = ThreadSteerReader()
     @Environment(\.locale) private var locale
     @State private var busy = false
     @State private var failure: String?
@@ -155,7 +156,8 @@ private struct PiTurn: View {
         let pending = waiting ? input.thread.observation.latestExecution?.interactions ?? [] : []
         var items = piTranscript(messages, execution: execution, presence: executionPresence)
         for interaction in pending { items.append(.init(interaction.id, .request(interaction.id))) }
-        let layout = ThreadTranscriptLayout(items, agentDetail: agentDetail, active: execution.status == .running || execution.status == .waitingForUser,
+        let transcript = steerReader.transcript(items, execution: execution.executionID)
+        let layout = ThreadTranscriptLayout(transcript, agentDetail: agentDetail, active: execution.status == .running || execution.status == .waitingForUser,
                                             waiting: waiting, completed: execution.status == .completed, target: visibility.messageAnchorID)
         let rows = layout.detailRows(executionID: execution.executionID,
             workVisible: visibility.work && (visibility.workTurnID == nil || visibility.workTurnID == execution.executionID),

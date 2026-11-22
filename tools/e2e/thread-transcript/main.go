@@ -37,8 +37,14 @@ func openCodeFeed() feed {
 		switch {
 		case frame == nil:
 		case frame["steer"] != nil:
-			state.Messages = append(state.Messages, &opencode.Message{ID: "follow", NativeMessageID: "follow", ExecutionID: "run", NativeSessionID: "primary",
-				Role: "user", Presentation: "ordinary", FollowUp: true, Text: frame["steer"].(string), CreatedAt: 2})
+			state.SteerInputs = map[string]opencode.SteerInput{"follow": {
+				RowID: "steer:fixture", ExecutionID: "run", NativeSessionID: "primary",
+				Presentation: "ordinary", Text: frame["steer"].(string), CreatedAt: 2,
+			}}
+			event := opencode.Event{Type: "session.inbox.enqueued", Data: opencode.Object{
+				"sessionID": "primary", "inboxID": "follow", "item": opencode.Object{"type": "user"},
+			}}
+			check(state.Reduce(event, "run"))
 		case frame["history"] != nil:
 			state.MergeMessages(frame["history"].([]any), "primary", "run", false)
 		case frame["settle"] != nil:

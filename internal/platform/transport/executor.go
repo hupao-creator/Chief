@@ -81,6 +81,9 @@ func (e *commandExecutor) execute(ctx context.Context, channel string, raw []byt
 			defer stop()
 			defer cancel()
 		}
+		if channel == "thread:follow-up" || channel == "moku:submit" {
+			callContext = model.WithFollowUpCommand(callContext, request.CommandID)
+		}
 		return e.host.Invoke(callContext, channel, request.Args)
 	}
 	if model.IsReadOnlyChannel(channel) {

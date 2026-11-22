@@ -105,13 +105,13 @@ func StageExecutionChecked(state Map, id string, input Map, at int64, settings M
 	return next, nil
 }
 
-func AppendFollowUp(state Map, id string, input Map, at int64, messageID string) Map {
+func AppendFollowUp(state Map, id string, input Map, at int64, messageID, rowID string) Map {
 	next, turn, timestamp := stEditActive(state, id, at)
 	if turn == nil {
 		return state
 	}
 	turn["messages"] = append(stArray(turn["messages"]), stMessage(input, messageID, "follow-up", timestamp))
-	turn["timeline"] = stReference(stArray(turn["timeline"]), "user-message", messageID, timestamp)
+	turn["timeline"] = stReference(stArray(turn["timeline"]), "user-message", messageID, timestamp, rowID)
 	turn["statusLabel"] = "已追加指令"
 	return next
 }
@@ -124,7 +124,7 @@ func RejectFollowUp(state Map, id, message string, at int64, noticeID string) Ma
 		return state
 	}
 	turn["notices"] = append(stArray(turn["notices"]), Map{"id": noticeID, "level": "error", "message": stTail(message, stMaxNotice)})
-	turn["timeline"] = stReference(stArray(turn["timeline"]), "notice", noticeID, timestamp)
+	turn["timeline"] = stReference(stArray(turn["timeline"]), "notice", noticeID, timestamp, "")
 	return next
 }
 
@@ -314,7 +314,7 @@ func ReduceEvent(state Map, executionID string, event Map) Map {
 			turn["status"], turn["statusLabel"] = "waiting-input", "等待你的输入"
 		}
 		if stIndex(interactions, "id", id) < 0 {
-			turn["timeline"] = stReference(timeline, "interaction", id, timestamp)
+			turn["timeline"] = stReference(timeline, "interaction", id, timestamp, "")
 		}
 		turn["interactions"] = stUpsert(interactions, stClone(interaction))
 	case "interaction-closed":
@@ -356,7 +356,7 @@ func ReduceEvent(state Map, executionID string, event Map) Map {
 		}
 		text := stTail(stString(event["message"]), stMaxNotice)
 		turn["notices"] = append(stArray(turn["notices"]), Map{"id": id, "level": kind, "message": text})
-		turn["timeline"] = stReference(timeline, "notice", id, timestamp)
+		turn["timeline"] = stReference(timeline, "notice", id, timestamp, "")
 		if kind == "error" {
 			turn["error"], turn["timeline"] = text, stMarker(stArray(turn["timeline"]), "error", timestamp, false)
 		}
@@ -644,10 +644,10 @@ func stStartActivity(turn, incoming Map, at int64) {
 		}
 	}
 	turn["activities"] = append(activities, activity)
-	turn["timeline"] = stReference(stArray(turn["timeline"]), "activity", id, at)
+	turn["timeline"] = stReference(stArray(turn["timeline"]), "activity", id, at, "")
 }
 
-func stReference(timeline []any, kind, id string, at int64) []any {
+func stReference(timeline []any, kind, id string, at int64, rowID string) []any {
 	key := map[string]string{"user-message": "messageId", "activity": "activityId", "interaction": "interactionId", "notice": "noticeId"}[kind]
 	for _, value := range timeline {
 		item := stMap(value)
@@ -655,7 +655,10 @@ func stReference(timeline []any, kind, id string, at int64) []any {
 			return timeline
 		}
 	}
-	return append(timeline, Map{"id": stTimelineID(timeline, kind, at), "kind": kind, "createdAt": at, key: id})
+	if rowID == "" {
+		rowID = stTimelineID(timeline, kind, at)
+	}
+	return append(timeline, Map{"id": rowID, "kind": kind, "createdAt": at, key: id})
 }
 func stMarker(timeline []any, kind string, at int64, repeat bool) []any {
 	if !repeat {

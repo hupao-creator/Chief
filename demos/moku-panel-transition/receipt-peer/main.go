@@ -10,17 +10,22 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/platform/profile"
 	"github.com/hupao-creator/Chief/internal/platform/transport"
+	"github.com/hupao-creator/Chief/internal/plugins/harness/codex"
 )
 
 type host struct {
-	calls *os.File
-	forks atomic.Uint64
+	calls   *os.File
+	forks   atomic.Uint64
+	steerMu sync.Mutex
+	initial codex.Map
+	state   codex.Map
 }
 
 func (*host) HasChannel(channel string) bool {
@@ -41,6 +46,43 @@ func (h *host) Invoke(ctx context.Context, channel string, args []json.RawMessag
 	if channel == "harness:detect-installations" {
 		return []any{}, nil
 	}
+	var next codex.Map
+	var target string
+	if channel == "thread:follow-up" || channel == "moku:submit" {
+		var request struct {
+			ThreadID string    `json:"threadId"`
+			Input    codex.Map `json:"input"`
+		}
+		if err := json.Unmarshal(args[0], &request); err != nil {
+			return nil, err
+		}
+		target = request.ThreadID
+		if channel == "moku:submit" {
+			mode, err := os.ReadFile("mode")
+			if err != nil {
+				return nil, err
+			}
+			if string(mode) == "hold-chief" {
+				target = "chief"
+			}
+		}
+		if target == "steer-reader" || target == "chief" {
+			h.steerMu.Lock()
+			defer h.steerMu.Unlock()
+			state := h.state
+			if target == "chief" {
+				state = h.initial
+			}
+			rowID := model.FollowUpRowID(ctx)
+			if rowID == "" {
+				return nil, fmt.Errorf("missing transport row identity")
+			}
+			next = codex.AppendFollowUp(state, "E", request.Input, time.Now().UnixMilli(), "msg-"+rowID, rowID)
+			if err := writeSteerState(target+"-next", next); err != nil {
+				return nil, err
+			}
+		}
+	}
 	if err := json.NewEncoder(h.calls).Encode(map[string]any{"channel": channel, "args": args}); err != nil {
 		return nil, err
 	}
@@ -50,7 +92,7 @@ func (h *host) Invoke(ctx context.Context, channel string, args []json.RawMessag
 			return nil, err
 		}
 		switch string(mode) {
-		case "lose", "hold":
+		case "lose", "hold", "hold-chief":
 		case "lose-fork":
 			if channel != "thread:fork" {
 				return nil, fmt.Errorf("unexpected %s before fork", channel)
@@ -76,6 +118,12 @@ func (h *host) Invoke(ctx context.Context, channel string, args []json.RawMessag
 			if channel == "thread:fork" {
 				return h.branch(), nil
 			}
+			if target == "steer-reader" && next != nil {
+				h.state = next
+			}
+			if channel == "moku:submit" {
+				return nil, nil
+			}
 			return map[string]string{"executionId": "E"}, nil
 		default:
 			return nil, fmt.Errorf("unexpected fixture mode %q", mode)
@@ -86,6 +134,14 @@ func (h *host) Invoke(ctx context.Context, channel string, args []json.RawMessag
 		case <-time.After(5 * time.Millisecond):
 		}
 	}
+}
+
+func writeSteerState(name string, state codex.Map) error {
+	raw, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile("steer-"+name+".json", raw, 0600)
 }
 
 func (h *host) branch() map[string]string {
@@ -111,7 +167,11 @@ func run() error {
 		return err
 	}
 	defer calls.Close()
-	server, err := transport.Start(transport.Options{Profile: p, Epoch: owner.Epoch, Host: &host{calls: calls}})
+	state := codex.StageExecution(codex.EmptyState(1), "E", codex.Map{"parts": []any{codex.Map{"kind": "text", "text": "Initial instruction"}}}, 2, nil)
+	if err := writeSteerState("initial", state); err != nil {
+		return err
+	}
+	server, err := transport.Start(transport.Options{Profile: p, Epoch: owner.Epoch, Host: &host{calls: calls, state: state, initial: state}})
 	if err != nil {
 		return err
 	}

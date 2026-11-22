@@ -28,8 +28,8 @@ func NewTranscriptReplay() func(map[string]any) (json.RawMessage, error) {
 		h.mu.Lock()
 		defer h.mu.Unlock()
 		if text, ok := frame["steer"].(string); ok {
-			h.state.Messages = append(h.state.Messages, MessageState{ID: "follow", ExecutionID: id, Role: "user", Presentation: "ordinary", FollowUp: true, CreatedAt: 2, Text: text})
-			h.echoes = append(h.echoes, &userEcho{ID: "follow", ExecutionID: id, Text: text})
+			h.state.Messages = append(h.state.Messages, MessageState{ID: "steer:fixture", ExecutionID: id, Role: "user", Presentation: "ordinary", FollowUp: true, CreatedAt: 2, Text: text})
+			h.echoes = append(h.echoes, &userEcho{ID: "steer:fixture", ExecutionID: id, Text: text})
 		} else if frame != nil {
 			event, err := decoder.decode(frame)
 			if err != nil {

@@ -19,7 +19,7 @@ func NewTranscriptReplay() func(map[string]any) (json.RawMessage, error) {
 	turn := state.NewTurn("run", input("Initial instruction"), Settings{})
 	return func(frame map[string]any) (json.RawMessage, error) {
 		if text, ok := frame["steer"].(string); ok {
-			turn.addPrompt(input(text), "")
+			turn.addPrompt(input(text), "steer:fixture")
 		} else if frame != nil {
 			parser.apply(state, turn, frame, nil)
 			if frame["type"] == "result" {

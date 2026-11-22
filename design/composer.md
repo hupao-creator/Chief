@@ -109,6 +109,19 @@ fork with unsent input requires an explicit decision to restore or keep the draf
 With no retained receipt, local review can restore the original above the next
 draft or keep just the next draft.
 
+For a manual send targeting the current running execution, the sending window
+captures a normal user row before its first suspension. This applies to the
+Agent composer, a Super Thread’s selected Agent run and a message to a running Chief. The HTTP executor carries
+the draft's command identity to the Harness as a reader occurrence ID. The
+window keys captured rows by Thread, execution and occurrence. Until the
+execution ends it keeps the submitted text, attachment names and capture time
+in that row. The Harness transcript determines its recorded position. Repeated
+text with distinct command IDs keeps separate rows. A receipt for a successor,
+a rejection or an uncertain outcome withdraws the local copy. The composer owns
+recovery, and any retained Harness occurrence remains readable under the
+normal live-execution policy. Native admission, execution status and model
+output continue to come from Runtime.
+
 Latest sends follow up on their original Thread. Exact historical continuation
 forks at a verified native execution checkpoint before following up on the
 accepted branch. Runtime's `expectedExecutionId` rejects a changed target before
