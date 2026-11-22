@@ -20,7 +20,9 @@ The pure solver returns placements and bounds from one input.
 Mixed spans can fill gaps within horizontal or vertical bands. The four-card
 mix of a wide card, a tall card and two single cells fills a 3×2 or 2×3
 rectangle according to the usable viewport and available rows. Fitting layouts
-remain centered. Overflow uses additional columns to the right with bounded
+remain centered with zero scroll range when their projected width leaves at least
+16pt on each side. The preferred packing margins do not create travel.
+Overflow uses additional columns to the right with bounded
 horizontal scrolling. Only a tallest card that exceeds the available height
 requires uniform scaling. Readers, Settings and content updates retain the scroll
 position, clamped when the legal range shrinks. Layout and card motion use the

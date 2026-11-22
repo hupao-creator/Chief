@@ -170,13 +170,16 @@ up to 65 strip sizes per orientation and retain up to 64 disjoint openings.
 Returned placements follow product order. Empty input has no projection.
 Invalid identities, spans, metrics or viewport sizes produce a layout error.
 
-Fitting arrangements remain centered. Wider arrangements start at the leading
-inset. The trailing limit is the projected card width minus the usable width.
+A projected arrangement that fits in the window with a 16pt clearance on
+each side stays centered with zero horizontal travel. Packing uses its preferred
+side margins even when centering uses some of that space. A wider arrangement
+starts at the preferred leading inset and scrolls until its last card reaches
+the matching trailing inset.
 Cards retain their natural size unless a single card is taller than the usable
 height, in which case the projection scales all cards uniformly to fit that
 height. Packing and camera framing leave 30pt above and below the grid area.
-Side margins are 64pt, or 32pt at window widths up to 620pt. A dimension that
-cannot fit both margins with room for cards uses its full extent.
+Preferred side margins are 64pt, or 32pt at window widths up to 620pt. A dimension that
+cannot fit both preferred margins with room for cards uses its full extent, including for the fit check.
 The tag filters and Chief Bar overlay the cards.
 Changing either bar's height alone preserves placements, scale and scroll range.
 
@@ -609,6 +612,10 @@ unique product-ordered cards (1–3 columns, 1–2 rows), usable viewport widths
 shipping height-limited projection. The [generated property](../../../Tests/Properties/NativeOverviewGeometryProperties.swift)
 checks exact membership/order/spans and uses the specified 320×196pt cell and
 16pt gap to check the frame union against the solver's production metrics.
+Each nonempty input also supplies column spans for a single row in a window,
+at natural or half scale. Window widths include the row and two 16pt clearances,
+plus −0.5, 0, 0.5 or 16pt. The property checks centering and exactly zero
+travel for a fitting row, and both endpoint insets for overflow.
 It checks both vertical margins, including the 60pt height at which they yield.
 At each generated window size it compares the solver's framing rectangle with
 both bars absent, each bar raised independently, and both raised together.
@@ -659,7 +666,10 @@ checks the leading alignment and both scroll limits, opens Settings, checks
 input exclusion and returns to the retained position. Snapshots and a socket
 transcript record semantic action results. The nested-window replay adds mouse
 presses and clicks, trackpad phase samples, wheel input and resizing in the
-mounted workspace. Its optional keyboard check focuses a card through system
+mounted workspace. It also filters a scrolled grid down to four columns,
+checks their exact fit, narrows the window by 1pt and then widens it from
+the trailing edge. Wheel, trackpad and momentum samples leave fitting cards centered.
+Its optional keyboard check focuses a card through system
 accessibility, scrolls one column per arrow key and opens the focused card with
 Return. Physical device performance needs separate evidence.
 [Desktop scenarios](../../../../../tools/e2e/README.md) · [Window replay](../../../../../demos/moku-landing/README.md#nested-workspace-header-replay)

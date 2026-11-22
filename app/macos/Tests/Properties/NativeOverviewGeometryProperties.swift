@@ -46,6 +46,33 @@ private func generate(seed: UInt64) -> LayoutCase {
     return LayoutCase(seed: seed, members: members, usable: usable)
 }
 
+// At one row high the footprint widths determine the envelope independently
+// of packing order. Exercise the window entry point on both sides of exact fit.
+private func windowFitViolations(_ input: LayoutCase) throws -> [String] {
+    let row = input.members.map { NativeOverviewMember(id: $0.id, columns: $0.columns, rows: 1) }
+    guard !row.isEmpty else { return [] }
+    let scale = input.seed.isMultiple(of: 2) ? 1.0 : 0.5
+    let width = Double(row.reduce(0) { $0 + $1.columns } * 336 - 16) * scale
+    for extra in [-0.5, 0, 0.5, 16] {
+        let window = CGSize(width: width + 32 + extra, height: 196 * scale + 60)
+        let result = try NativeOverviewLayout.solve(members: row, windowSize: window)
+        guard let camera = result.leadingTransform, camera.scale == scale,
+              result.placements.allSatisfy({ $0.row == 0 }) else { return ["single row changed scale or packing"] }
+        if extra >= 0 {
+            if result.maximumScrollOffset != 0 || camera.x != (window.width - width) / 2 {
+                return ["fitting row has travel or is off center"]
+            }
+        } else {
+            let inset = window.width <= 620 ? 32.0 : 64.0
+            if result.maximumScrollOffset <= 0 || camera.x != inset
+                || camera.x + width - result.maximumScrollOffset != window.width - inset {
+                return ["overflow row misses a scroll boundary"]
+            }
+        }
+    }
+    return []
+}
+
 private func violations(_ input: LayoutCase) -> [String] {
     // Exercise the window-to-solver boundary as well as arbitrary solver rectangles.
     let window = NativeOverviewViewport(width: input.usable.width, height: input.usable.height)
@@ -68,6 +95,8 @@ private func violations(_ input: LayoutCase) -> [String] {
     }
     let result: NativeOverviewGeometry
     do {
+        let fitIssues = try windowFitViolations(input)
+        if !fitIssues.isEmpty { return fitIssues }
         result = try NativeOverviewLayout.solve(
             members: input.members,
             usableViewport: input.usable)
