@@ -20,6 +20,8 @@ Type your follow-up in **Type a message…** and click **Send** or press Return.
 
 Click **+** to attach files or point the agent to a folder on your Mac. Command-click to select several items together. Their names or image previews appear above your draft. Supported attachments vary by agent. If the agent rejects an attachment, remove it and try a supported type or describe it in text. You can return to finish an unsent draft after opening a different conversation.
 
+When you send from the latest result, the **Execution** sidecard opens immediately. You can fold it or switch to another sidecard while the run starts.
+
 You can start writing the next message while Chief confirms the previous send. Once the send succeeds, the next draft stays in the box. If the send is rejected, Chief puts the earlier message above your new text so you can review both before sending.
 
 ## Revisit or branch from an earlier run

@@ -120,17 +120,19 @@ final class NativeSidecardWorkspaceModel {
         let canHandoff = sameReading && self.configuration.entranceReady && configuration.entranceReady
             && !configuration.suppressed && !configuration.executionDisabled
             && !configuration.mainReadingHistory
-        if let handoff, !canHandoff || nextExecution?.executionID != handoff.executionID
+        let newSend = configuration.executionReveal.map { $0.id != self.configuration.executionReveal?.id } ?? false
+        if let handoff, newSend || !canHandoff || nextExecution?.executionID != handoff.executionID
             || configuration.input.thread.observation.isExecutionActive
             || configuration.enabledIDs?.contains(handoff.cardID) == false {
             self.handoff = nil
         }
-        if handoff == nil, canHandoff, !dragging,
+        if handoff == nil, canHandoff, !newSend, !dragging,
            self.configuration.input.thread.observation.isExecutionActive,
            !configuration.input.thread.observation.isExecutionActive,
            let executionID = nextExecution?.executionID,
            self.configuration.input.thread.observation.latestExecution?.executionID == executionID,
-           let card = snapshot?.cards.first(where: { $0.id == selected && $0.view.excludeExecutionID == executionID }),
+           let card = snapshot?.cards.first(where: { $0.id == selected }),
+           !card.view.pendingExecution, card.view.excludeExecutionID == executionID,
            configuration.enabledIDs?.contains(card.id) != false,
            configuration.input.readingTarget.map({ $0.executionID == executionID }) ?? true {
             handoff = NativeSidecardExecutionHandoff(cardID: card.id, executionID: executionID)
@@ -344,7 +346,11 @@ final class NativeSidecardWorkspaceModel {
             translate: { [weak self] in self?.translate($0) ?? $0 },
             draftStorageDirectory: harnessHost.client.storageDirectory, attachmentImport: services.attachmentImport,
             executionReveal: configuration.suppressed || !configuration.entranceReady ? nil : configuration.executionReveal,
-            executionHandoff: handoff?.cardID == id ? handoff?.executionID : nil)
+            executionHandoff: handoff?.cardID == id ? handoff?.executionID : nil,
+            restoreSelection: { [weak self, previous = selected] revision in
+                guard let self, selected == id, selectionRevision == revision, previous != selected else { return }
+                _ = choose(previous, focusLauncherOnClose: false)
+            })
     }
 
     private func retry(_ id: JSONText) {

@@ -149,11 +149,12 @@ try:
                     expected += ["mixed picker"]
                 if channel == "thread:follow-up":
                     expected += ["after-fork", "historical", "after-followup", "historical", "same-checkpoint", "changed", "changed"]
+                    expected += ["sidecard " + step for step in ("catalog first", "receipt first", "finished", "reject", "fold", "switch card", "leave")]
                 if channel == "thread:fork":
                     expected = ["historical"] * 4 + ["current"]
                 assert [text for _, text in writes[channel]] == actual[channel] == expected, (writes[channel], actual[channel])
                 print(channel, "admitted IDs / handler inputs", writes[channel], flush=True)
-            initial, final = writes["thread:follow-up"][-2:]
+            initial, final = [write for write in writes["thread:follow-up"] if write[1] == "changed"]
             assert writes["thread:fork"][-1][0] == initial[0] + "-fork"
             assert final[0] == initial[0] + "-fork-followup"
         finally:

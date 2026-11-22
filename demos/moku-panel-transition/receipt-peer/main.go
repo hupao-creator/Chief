@@ -50,7 +50,7 @@ func (h *host) Invoke(ctx context.Context, channel string, args []json.RawMessag
 			return nil, err
 		}
 		switch string(mode) {
-		case "lose":
+		case "lose", "hold":
 		case "lose-fork":
 			if channel != "thread:fork" {
 				return nil, fmt.Errorf("unexpected %s before fork", channel)

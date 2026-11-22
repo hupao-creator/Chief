@@ -36,6 +36,10 @@ public struct ConversationExecutionPane: View {
             let readingTarget = presentation.context.readingTarget
             presentation.context.conversation(executionID, readingTarget?.executionID == executionID ? readingTarget : nil)
                 .disabled(presentation.context.executionDisabled)
+        } else if presentation.pendingExecution {
+            ProgressView(locale.language.languageCode?.identifier == "zh" ? "正在打开对话…" : "Opening conversation…")
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             Color.clear
         }
