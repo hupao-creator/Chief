@@ -1,8 +1,7 @@
 import ChiefCore
 import ChiefPluginAPI
 
-/// Only observed active executions qualify. A send receipt acknowledges input,
-/// not a still-running execution, and cannot make this display available.
+/// Determines live reader ownership independently of the pending send presentation.
 struct ConversationExecutionState {
     func activeExecutionID(thread: HarnessThread) -> JSONText? {
         thread.observation.isExecutionActive ? thread.observation.latestExecution?.executionID : nil

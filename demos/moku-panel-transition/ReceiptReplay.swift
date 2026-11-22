@@ -1,7 +1,9 @@
 import Foundation
 @testable import ChiefCore
 import ChiefPluginAPI
-import ChiefPluginUI
+@testable import ChiefPluginUI
+import ChiefSidecardConversation
+import ChiefSidecardBrowser
 @testable import ChiefUI
 
 private struct Failure: Error, CustomStringConvertible { let description: String }
@@ -290,6 +292,110 @@ private extension RuntimeClient {
         try require(changed.text.isEmpty && changed.error == nil && changed.cleanupReceipt == nil,
             "EXECUTION_CHANGED fork handoff failed: " + (changed.error ?? ""))
         try await checkOwners(root: rootProfile, moku: moku)
+        try await checkSendReveal(workspace: workspace, mode: mode)
+    }
+
+    /// Exercise the same captured draft, visit and reconciled Sidecard snapshot as
+    /// the ordinary result reader. Catalog delivery is independent of the HTTP peer.
+    @MainActor private static func checkSendReveal(workspace: NativeWorkspaceModel, mode: (String) throws -> Void) async throws {
+        func thread(_ id: JSONText, _ status: PublicExecution.Status) throws -> HarnessThread {
+            let execution = try PublicExecution(executionID: id, status: status, startedAt: 1,
+                finishedAt: status == .completed ? 2 : nil)
+            return try HarnessThread(id: "T", harnessID: "codex", revision: 1, sessionState: .object([:]),
+                observation: .init(latestExecution: execution), cwd: "/fixture", settings: .object([:]),
+                createdAt: 1, updatedAt: 2, title: "Finished result", tags: [])
+        }
+        let finished = try thread("current", .completed)
+        let running = try thread("E", .running)
+        try workspace.catalog.install(.object(["revision": .integer(2), "settingsRevision": .integer(0),
+            "defaultCwd": .text("/fixture"), "executions": .array([]), "settings": .object([:]),
+            "threads": .array([finished.json]), "applicationThreads": .array([])]))
+        try workspace.preferences.setOnboardingCompleted(true)
+        let presentation = NativeWorkspacePresentation(workspace: workspace)
+        let source = ApplicationThreadRef(threadID: finished.id, typeID: "agent")
+        let page = workspace.client.storageDirectory.appendingPathComponent("fixture.html")
+        try Data("<p>Fixture</p>".utf8).write(to: page)
+        let registry = try SidecardPluginRegistry([AnySidecardPlugin(NativeConversationSidecard()), AnySidecardPlugin(NativeBrowserSidecard())])
+        for scenario in ["catalog first", "receipt first", "finished", "reject", "fold", "switch card", "leave"] {
+            presentation.open(source)
+            let route = presentation.navigationRouteID
+            presentation.updateAgentInput(owner: UUID(), target: .init(threadID: source.threadID, requestID: nil,
+                executionID: "current", followsLatest: true, ready: true), route: route)
+            let services = presentation.sidecardServices()
+            var config = NativeSidecardWorkspaceConfiguration(input: .init(thread: finished),
+                executionDisabled: false, suppressed: false, locale: Locale(identifier: "en"))
+            let model = NativeSidecardWorkspaceModel(harnessHost: workspace.harnessHost, registry: registry,
+                configuration: config, services: services, onBack: {}, onVisibilityChange: { _ in })
+            defer { model.release() }
+            func reconcile(_ thread: HarnessThread) {
+                config.input = .init(thread: thread)
+                config.executionReveal = presentation.threadExecutionReveal
+                model.update(configuration: config, services: services, onBack: {}, onVisibilityChange: { _ in })
+            }
+            reconcile(finished)
+            if scenario == "reject" || scenario == "switch card" {
+                try await model.routes.openExternal?(JSONText(page.absoluteString))
+                try require(model.snapshot?.selected == "iab", "Missing Browser selection before send")
+            }
+            let draft = presentation.dockDraft
+            let text = "sidecard " + scenario
+            draft.inputText = text
+            try mode("hold")
+            let send = Task.immediate {
+                await draft.submit({ submission in
+                    try await presentation.sendThread(submission, to: source.threadID, route: route)
+                }, optimisticallyClear: true)
+            }
+            reconcile(finished)
+            try require(draft.submitting && draft.text.isEmpty && presentation.threadExecutionReveal?.receipt == nil &&
+                model.snapshot?.selected == "conversation" && model.snapshot?.cards.first?.view.pendingExecution == true &&
+                model.snapshot?.excludedExecutionIDs == [], "Missing immediate pending Sidecard: " + scenario)
+            let calls = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("handler-calls.jsonl")
+            let admissionDeadline = ContinuousClock.now + .seconds(3)
+            while !(try String(contentsOf: calls, encoding: .utf8)).contains("\"" + text + "\"") {
+                try require(ContinuousClock.now < admissionDeadline, "Held send never reached the Go handler: " + scenario)
+                try await Task.sleep(for: .milliseconds(5))
+            }
+            draft.inputText = "next"
+            if scenario == "fold" { model.activate("conversation") }
+            if scenario == "switch card" { model.activate("iab") }
+            if scenario == "leave" { presentation.open(source, target: .init(executionID: "current", requestID: "revisit", mode: .history)) }
+            if scenario == "catalog first" {
+                reconcile(running)
+                try require(model.snapshot?.excludedExecutionIDs == [], "Unconfirmed catalog row entered the pending card")
+            }
+            try mode(scenario == "reject" ? "direct-reject" : "accepted")
+            await send.value
+            reconcile(scenario == "catalog first" ? running : finished)
+            if scenario == "reject" {
+                try require(draft.error != nil && draft.text == text + "\n\nnext" && model.snapshot?.selected == "iab",
+                    "Rejection lost the draft or left a pending card")
+            } else if scenario == "finished" {
+                reconcile(try thread("E", .completed))
+                try require(model.snapshot?.selected == nil && model.snapshot?.excludedExecutionIDs == []
+                    && draft.text == "next" && draft.error == nil, "Terminal receipt stranded the pending card")
+            } else {
+                try require(draft.error == nil && draft.text == "next", "Acceptance changed the next draft")
+                if scenario == "receipt first" {
+                    try require(model.snapshot?.selected == "conversation" && model.snapshot?.excludedExecutionIDs == [],
+                        "Receipt without catalog lost the pending card or displayed an unconfirmed execution")
+                }
+                model.receiveIndex(.init(executionIDs: ["current", "E"], hasInheritedHistory: false))
+                reconcile(running)
+                let deadline = ContinuousClock.now + .seconds(2)
+                while model.snapshot?.excludedExecutionIDs != ["E"], ContinuousClock.now < deadline {
+                    try await Task.sleep(for: .milliseconds(5))
+                }
+                let expected: JSONText? = switch scenario {
+                case "catalog first", "receipt first": "conversation"
+                case "switch card": "iab"
+                default: nil
+                }
+                try require(model.snapshot?.selected == expected && model.snapshot?.excludedExecutionIDs == ["E"],
+                    "Late index/receipt changed the selection or displayed a different execution: " + scenario)
+            }
+            print("Verified local send Sidecard:", scenario)
+        }
     }
 
     @MainActor private static func checkOwners(root: URL, moku: NativeMokuSubmission) async throws {

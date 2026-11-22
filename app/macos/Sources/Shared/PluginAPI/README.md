@@ -99,8 +99,11 @@ identifiers).
 [SidecardAttachmentImport.swift](SidecardAttachmentImport.swift) provides lifetime-bound device-local file/byte staging plus the runtime attachment policy. Browser annotations retain the existing URL-only staging capability. Agent detail input uses the Host-owned Moku composer and its attachment service; Conversation is an execution display.
 
 `SidecardContext.executionReveal` is a visit-scoped detail-send request: its UUID
-is stable across admission, and its optional receipt supplies the exact accepted
-execution. It does not itself authorize execution or establish running state.
+is stable across admission. The previous execution identifies content the card
+may retain while opening. Its optional receipt supplies the exact accepted
+execution. A pending card can claim the Dock column without excluding an
+execution from main. Its opening context can restore the previous selection
+while it still owns the selection revision.
 `executionHandoff` retains only the selected terminal execution during the Host's
 move into main. Generic Browser sends and compose notifications do not acquire
 these presentation requests.

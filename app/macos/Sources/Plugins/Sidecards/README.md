@@ -123,9 +123,14 @@ draft, attachments, Send or Stop control; Agent input belongs to the Thread deta
 Moku bar. Follow-up suggestions from Harness/Application reading routes append
 to that Thread's Moku-bar draft and open its editor, preserving existing text and
 attachments. Generic compose/send intents do not open it; the detail composer's
-explicit, visit-scoped reveal request correlates its receipt with observed execution.
+explicit, visit-scoped reveal opens the card as soon as the local draft is
+captured. Its column hosts the Dock during the wait. The card shows opening
+progress until it can display the exact accepted execution. An already eligible
+execution on the same Thread stays readable while its follow-up is pending.
+Failure or an unresolved receipt restores the previous selection while the send
+still owns it. Folding, switching cards or leaving the visit takes precedence.
 
-Availability requires an observed running/waiting execution and earlier/inherited
+Outside that pending presentation, availability requires an observed running/waiting execution and earlier/inherited
 history in the Harness's full turn index. A first active execution stays in the
 main reader. The Sidecard launcher only exists while the display qualifies; it can
 show/hide the current execution without focusing the Moku editor or a new input.
