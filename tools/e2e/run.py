@@ -196,6 +196,8 @@ def run(args):
             # LaunchServices/AX activation belongs to the external operator.
             # A new unique bundle can have a socket before its window mounts.
             wait_for(desktop.request, lambda s: s["mounted"] and s["runtimeAvailable"], 300)
+        elif "E2E-COLLECTION-001" in requested:
+            collection.activate(session)
 
         def followup():
             receipt = send(session, thread, initial, "BENCH ITEM 01: E2E FOLLOWUP " + session.peer.nonce)

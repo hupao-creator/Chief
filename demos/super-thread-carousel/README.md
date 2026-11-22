@@ -14,7 +14,7 @@ profile preferences in a temporary profile. Data export is not an assertion suit
 
 The visible app reuses production collection, card, cover and member panel views.
 Its close records, time advancement, read sheets, tags and document bodies are
-fixtures. The local fixture uses the Host's 16-cell budget and simulated close dates.
+fixtures. The local fixture tries the Host’s layouts at the current logical window size and uses simulated close dates.
 The production export exercises a qualified visit, profile reopen and observations
 around the 24-hour boundary. The [Overview guide](../../app/macos/Sources/Host/Overview/README.md#viewed-application-collections)
 owns the reading and grouping policy.
@@ -32,14 +32,13 @@ system foreground lifecycle. It neither starts Runtime nor reads real sessions.
 
 ## Member archive replay
 
-Use the visible preview with **9 篇成员** enabled. Open the page count and click
+Use the visible preview with **更多报告** enabled. Open the page count and click
 the archive icon on a visible member. The production card calls the fixture's
 archive capability, and the new ordered members arrive through the production
 panel update. Capture before, during and after removal. The outgoing card fades
 and shrinks in place, then the grid closes the gap. Other members and **Close**
-stay usable. Repeat with two different cards in quick succession. With the
-expanded fixture off and only two grouped reports visible, archiving a member
-closes the panel. **重置** restores the archived fixtures after closing.
+stay usable. Repeat with two different cards in quick succession. When space allows the last grouped reports to appear individually after an
+archive, the panel closes. **重置** restores the archived fixtures after closing.
 The archive capability changes only in-memory fixtures. Live Runtime persistence,
 associated Threads and system Accessibility input require product verification.
 

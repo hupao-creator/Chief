@@ -139,6 +139,7 @@ public struct NativeOverviewWorkspaceView: View {
                     .allowsHitTesting(chromeVisible).accessibilityHidden(!chromeVisible)
                     .animation(NativeReadingPageTiming.openingAnimation, value: chromeVisible)
             }
+            .onChange(of: geometry.size, initial: true) { _, size in model.setCollectionWindowSize(size) }
         }
         .environment(\.nativeCanvasInputRegions, inputRegions)
         .environment(\.locale, Locale(identifier: locale.rawValue))

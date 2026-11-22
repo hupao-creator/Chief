@@ -16,7 +16,7 @@ When the cards extend beyond the right edge, swipe left or right with two finger
 
 Overview keeps your place when you close a conversation or Settings. If you widen the window or choose a filter so all the cards fit, Overview centers them. They stay in place when you swipe or use the scroll wheel. If some columns are still offscreen, you can scroll to the last one.
 
-Overview may group Super Threads into a collection when the view is crowded or when several haven’t been opened recently. Choose a narrower folder or tag to see more Super Threads as individual cards, or click a collection's page count to browse its members. [Browse Super Threads in a collection](reports-tags-and-changes.md#browse-super-threads-in-a-collection)
+If the cards in your current view would extend past the window, Overview can group Super Threads into a collection. Widen the window or choose a folder or tag with fewer cards. Super Threads reappear as individual cards as space opens up. Reports you haven’t visited for a day can stay grouped. Click a collection’s page count to browse its members. [Browse Super Threads in a collection](reports-tags-and-changes.md#browse-super-threads-in-a-collection)
 
 ## Check progress or respond
 
