@@ -33,7 +33,11 @@ phases, mouse wheel bounds and Settings input ownership. An 18-task fixture
 also exercises blank-space drags and clicks, a mouse click on a newly reached
 card, reader return, insertion and deletion. The drags start in the blank area
 beyond the trailing and bottom card edges. The receipt `overview-scroll.json`
-records the input point and the card frames.
+records the input point and the card frames. A directory selection reduces a
+scrolled grid to four columns totaling 1328pt. At 1360pt the grid stays
+centered through wheel, trackpad and momentum input. At 1359pt the trailing
+edge is reachable. Widening to 1376pt clears the offset again. The replay
+writes the window widths and offsets to `overview-fit.json`.
 With `--keyboard`, the replay scrolls a column with each arrow key and opens the
 focused card with Return. It records both distances and the card identity in
 `overview-keyboard.json`. Optional captures show the isolated workspace.

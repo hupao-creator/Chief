@@ -78,13 +78,15 @@ private final class WheelSample: NSEvent {
         .restorationBehavior(.disabled)
     }
 
-    private func installTasks(_ count: Int, revision: Int, authority: UUID) async throws {
+    private func installTasks(_ count: Int, revision: Int, authority: UUID, firstDirectoryCount: Int? = nil) async throws {
         let ids = (0..<count).map { "task-\($0)" } + ["moku"]
-        let threads = try ids.map { id in
-            try HarnessThread(id: JSONText(id), harnessID: "codex", revision: 0, sessionState: .null,
-                observation: .init(), cwd: "/fixture", settings: .object([:]), createdAt: 1, updatedAt: 2,
+        let threads = try ids.enumerated().map { index, id in
+            let other = firstDirectoryCount.map { index >= $0 && id != "moku" } ?? false
+            let scope: JSONText = other ? "/other" : "/fixture"
+            return try HarnessThread(id: JSONText(id), harnessID: "codex", revision: 0, sessionState: .null,
+                observation: .init(), cwd: scope, settings: .object([:]), createdAt: 1, updatedAt: 2,
                 title: JSONText(id), tags: [], moku: id == "moku" ? true : nil, transcript: id == "moku" ? .array([]) : nil,
-                directoryTag: "Fixture", directoryScope: "/fixture").json
+                directoryTag: other ? "Other" : "Fixture", directoryScope: scope).json
         }
         let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
             "defaultCwd": .text("/fixture"), "settings": .object([:]), "threads": .array(threads),
@@ -145,6 +147,7 @@ private final class WheelSample: NSEvent {
         window.setContentSize(CGSize(width: 900, height: 680))
         try await Task.sleep(for: .seconds(1))
         try await cardInteraction(window, directory: directory, authority: authority)
+        try await fittingCards(window, directory: directory, authority: authority)
     }
 
     private func capture(_ window: NSWindow, to url: URL) async throws {
@@ -298,6 +301,76 @@ private final class WheelSample: NSEvent {
             "removedOffset": camera.scrollOffset, "window": [size.width, size.height]]
         try JSONSerialization.data(withJSONObject: record, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "overview-scroll.json"))
+    }
+
+    private func fittingCards(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+        let canvas = presentation.canvas
+        let camera = canvas.camera
+        var previousSolve = canvas.layoutSolveCount
+        func settle(width: CGFloat, count: Int) async throws {
+            let deadline = ContinuousClock.now + .seconds(4)
+            while camera.viewport?.width != width || canvas.presentedPlacements.count != count
+                    || canvas.isLayingOut || canvas.layoutSolveCount == previousSolve {
+                guard ContinuousClock.now < deadline else { throw ReplayError("Fit fixture did not settle at \(width)pt") }
+                try await Task.sleep(for: .milliseconds(25))
+            }
+            previousSolve = canvas.layoutSolveCount
+        }
+        func wheel(_ x: CGFloat, _ y: CGFloat, precise: Bool = true,
+                   phase: NSEvent.Phase = .began, momentum: NSEvent.Phase = []) throws {
+            guard let content = window.contentView,
+                  let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else {
+                throw ReplayError("Missing mounted scroll input")
+            }
+            let point = CGPoint(x: monitor.configuration.size.width - 8, y: 220)
+            guard monitor.handle(WheelSample(window: window, point: monitor.windowPoint(point), x: x, y: y,
+                    precise: precise, phase: phase, momentum: momentum)) == nil else {
+                throw ReplayError("Fit fixture wheel missed the canvas")
+            }
+        }
+        func checkFit(width: CGFloat) throws {
+            let before = camera.transform
+            let frames = canvas.presentedPlacements.compactMap { canvas.displayedFrame(for: $0.id) }
+            let union = frames.reduce(CGRect.null) { $0.union($1) }
+            guard frames.count == 12, union.width == 1328, union.midX == width / 2,
+                  camera.maximumOffset == 0, camera.scrollOffset == 0 else {
+                throw ReplayError("Four columns did not fit at \(width)pt: \(union), range=\(camera.maximumOffset)")
+            }
+            try wheel(-80, 14)
+            try wheel(0, 0, phase: .ended)
+            try wheel(-50, 0, phase: [], momentum: .began)
+            try wheel(0, 0, phase: [], momentum: .ended)
+            try wheel(0, 80, precise: false, phase: [])
+            guard camera.transform == before, camera.scrollOffset == 0 else {
+                throw ReplayError("Input moved a fitting grid")
+            }
+        }
+
+        window.setContentSize(CGSize(width: 1360, height: 704))
+        try await installTasks(13, revision: 4, authority: authority, firstDirectoryCount: 12)
+        try await settle(width: 1360, count: 13)
+        try wheel(-10000, 0)
+        let beforeFilter = camera.scrollOffset
+        guard beforeFilter > 0, let filter = presentation.overview.filters.first(where: { $0.scope == "/fixture" }) else {
+            throw ReplayError("Missing overflow or directory filter")
+        }
+        presentation.overview.selectTag(filter)
+        try await settle(width: 1360, count: 12)
+        try checkFit(width: 1360)
+
+        window.setContentSize(CGSize(width: 1359, height: 704))
+        try await settle(width: 1359, count: 12)
+        try wheel(-10000, 0)
+        let beforeResize = camera.scrollOffset
+        guard beforeResize > 0, beforeResize == camera.maximumOffset else { throw ReplayError("Cannot reach trailing edge") }
+        window.setContentSize(CGSize(width: 1376, height: 704))
+        try await settle(width: 1376, count: 12)
+        try checkFit(width: 1376)
+        if CommandLine.arguments.contains("--capture") { try await capture(window, to: directory.appending(path: "four-columns.png")) }
+        let record: [String: Any] = ["gridWidth": 1328, "exactFitWidth": 1360, "windowWidth": 1376,
+            "offsetBeforeFilter": beforeFilter, "offsetBeforeResize": beforeResize, "finalOffset": camera.scrollOffset]
+        try JSONSerialization.data(withJSONObject: record, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "overview-fit.json"))
     }
 
     private func keyboardInteraction(_ window: NSWindow, directory: URL, id: String, atEnd: Double) async throws {

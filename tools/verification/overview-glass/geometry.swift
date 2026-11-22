@@ -10,16 +10,14 @@ import ChiefPluginUI
             .init(step: "Keep semantic controls visible", status: .inProgress),
             .init(step: "Review light and dark appearance", status: .pending),
         ])]), layoutContext: .init(availableCols: 3))
-        let viewport = NativeOverviewViewport(width: 1800, height: 1000,
-            toolbarBottom: NativeOverviewViewportDefaults.toolbarBottom)
-        let usable = NativeOverviewCameraGeometry.framingRegion(viewport)
+        let windowSize = CGSize(width: 1800, height: 1000)
         var rows: [[String: Any]] = []
         for count in [1, 5, 12, 30] {
             let members = (0..<count).map { index in
                 NativeOverviewMember(id: "card-\(index)", columns: index.isMultiple(of: 5) ? plan.size.cols : 1,
                     rows: index.isMultiple(of: 5) ? plan.size.rows : 1)
             }
-            let result = try NativeOverviewLayout.solve(members: members, usableViewport: usable)
+            let result = try NativeOverviewLayout.solve(members: members, windowSize: windowSize)
             guard let camera = result.leadingTransform else { throw CocoaError(.featureUnsupported) }
             let frames = result.placements.map { placement in
                 let frame = placement.cardFrame
@@ -28,7 +26,7 @@ import ChiefPluginUI
                               width: frame.width * camera.scale,
                               height: frame.height * camera.scale)
             }
-            let window = CGRect(x: 0, y: 0, width: 1800, height: 1000)
+            let window = CGRect(origin: .zero, size: windowSize)
             rows.append(["count": count, "placed": result.placements.count,
                 "totalNaturalCells": members.reduce(0) { $0 + $1.columns * $1.rows },
                 "cameraScale": camera.scale,
@@ -38,7 +36,7 @@ import ChiefPluginUI
                 "boundsColumnsRows": [result.bounds.columns, result.bounds.rows]])
         }
         let result: [String: Any] = ["kind": "production pure geometry, no GUI and no glass timing",
-            "viewportPoints": [1800, 1000], "toolbarBottom": viewport.toolbarBottom,
+            "viewportPoints": [windowSize.width, windowSize.height], "toolbarBottom": NativeOverviewViewportDefaults.toolbarBottom,
             "planColumnsRows": [plan.size.cols, plan.size.rows], "records": rows]
         print(String(data: try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8)!)
     }

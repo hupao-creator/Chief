@@ -73,8 +73,12 @@ class Desktop:
         height = max(p["row"] + p["rows"] for p in placements) * 212 - 16
         inset = 32 if viewport["width"] <= 620 else 64
         usable_width = viewport["width"] - 2 * inset
-        maximum = max(0, width * initial["scale"] - usable_width)
-        left = inset + max(0, usable_width - width * initial["scale"]) / 2
+        if usable_width <= 0:
+            inset, usable_width = 0, viewport["width"]
+        projected_width = width * initial["scale"]
+        fits = projected_width + 2 * min(16, inset) <= viewport["width"]
+        maximum = 0 if fits else projected_width - usable_width
+        left = (viewport["width"] - projected_width) / 2 if fits else inset
         assert math.isclose(initial["maximumOffset"], maximum, abs_tol=.01)
         assert math.isclose(initial["x"], left, abs_tol=.01) and initial["scrollOffset"] == 0
         assert initial["y"] >= 0 and initial["y"] + height * initial["scale"] <= viewport["height"] + .01

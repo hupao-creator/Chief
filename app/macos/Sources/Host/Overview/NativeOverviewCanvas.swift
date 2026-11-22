@@ -185,7 +185,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
     @State private var worker: Task<Void, Never>?
     @State private var mountedScene: String?
     @State private var mountedSelection: String?
-    @State private var plannedViewport: NativeOverviewContentRect?
+    @State private var plannedViewport: CGSize?
     @State private var retry = 0
     @State private var ownership = UUID()
     @State private var layoutToken = UUID()
@@ -231,7 +231,6 @@ public struct NativeOverviewCanvas<Content: View>: View {
         return GeometryReader { geometry in
             let viewport = NativeOverviewViewport(width: geometry.size.width, height: geometry.size.height,
                                                   toolbarBottom: toolbarBottom, bottomReservedHeight: bottomReservedHeight)
-            let layoutRegion = NativeOverviewCameraGeometry.framingRegion(viewport)
             ZStack(alignment: .topLeading) {
                 Color.clear.contentShape(Rectangle())
                     .frame(width: geometry.size.width, height: max(0, headerInputBottom))
@@ -290,8 +289,8 @@ public struct NativeOverviewCanvas<Content: View>: View {
             // labels while gesture-based cards keep their ordinary appearance.
             .allowsHitTesting(!interactionPaused)
             .accessibilityHidden(interactionPaused)
-            .onChange(of: requestKey(layoutRegion)) { _, _ in attach(viewport); enqueue(layoutRegion) }
-            .onAppear { attach(viewport); enqueue(layoutRegion) }
+            .onChange(of: requestKey(geometry.size)) { _, _ in attach(viewport); enqueue(geometry.size) }
+            .onAppear { attach(viewport); enqueue(geometry.size) }
             // Simple array hosts feed the same store as the production model.
             // Production supplies a stable source and never observes the array.
             .onChange(of: suppliedItems) { _, updated in
@@ -328,10 +327,10 @@ public struct NativeOverviewCanvas<Content: View>: View {
     private func livePose(_ placement: NativeOverviewPlacement, at now: TimeInterval) -> OverviewCardPose {
         cardMotions[placement.id]?.sample(at: now) ?? pose(placement)
     }
-    private func requestKey(_ viewport: NativeOverviewContentRect) -> String {
+    private func requestKey(_ viewport: CGSize) -> String {
         "\(ObjectIdentifier(contentStore))|\(sceneKey)|\(selectionID ?? "")|\(contentStore.structureRevision)|\(viewport)|\(resetEpoch)|\(retry)|\(revisions.last?.revision ?? 0)|\(layoutPaused)|\(state.preparationRequest)"
     }
-    private func enqueue(_ viewport: NativeOverviewContentRect) {
+    private func enqueue(_ viewport: CGSize) {
         guard viewport.width > 0, viewport.height > 0 else {
             // A collapsed window cannot present geometry, but it must not leave
             // an old owner's isLayingOut latch to block the next valid viewport.
@@ -375,7 +374,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         }
     }
 
-    private func canReuseGeometry(_ items: [NativeOverviewItem], viewport: NativeOverviewContentRect) -> Bool {
+    private func canReuseGeometry(_ items: [NativeOverviewItem], viewport: CGSize) -> Bool {
         guard mountedScene == sceneKey, mountedSelection == selectionID,
               plannedViewport == viewport, state.layoutError == nil,
               cardMotions.isEmpty, outgoingPlacements.isEmpty, retiringPresentationIDs.isEmpty,
@@ -485,7 +484,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         onRetainedPresentationIDsChanged?(Set(rendered.map { $0.item.presentationID }).union(retiringPresentationIDs))
     }
 
-    private func reconcile(_ viewport: NativeOverviewContentRect, items: [NativeOverviewItem],
+    private func reconcile(_ viewport: CGSize, items: [NativeOverviewItem],
                            revisions: [NativeOverviewLayoutRevision], token: UUID) async {
         guard viewport.width > 0, viewport.height > 0, state.hostOwner == ownership else { return }
         state.isLayingOut = true
@@ -505,7 +504,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
     }
 
     private func present(_ next: [NativeOverviewItem], revisions: [NativeOverviewLayoutRevision],
-                         viewport: NativeOverviewContentRect, token: UUID) async throws {
+                         viewport: CGSize, token: UUID) async throws {
         try Task.checkCancellation()
         guard layoutToken == token, state.hostOwner == ownership else { throw CancellationError() }
         let replaceScene = mountedSelection != selectionID || mountedScene != sceneKey
@@ -517,7 +516,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         try Task.checkCancellation()
         guard layoutToken == token, state.hostOwner == ownership else { throw CancellationError() }
         state.layoutSolveCount += 1
-        let geometry = try NativeOverviewLayout.solve(members: members, usableViewport: viewport)
+        let geometry = try NativeOverviewLayout.solve(members: members, windowSize: viewport)
         try Task.checkCancellation()
         guard layoutToken == token, state.hostOwner == ownership else { throw CancellationError() }
         let initial = mountedScene == nil || (!replaceScene && displayed.isEmpty && outgoingPlacements.isEmpty)
