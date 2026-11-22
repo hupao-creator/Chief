@@ -31,7 +31,9 @@ Settings button opens Settings in both actual-size windows. It also records
 header exclusion, precise diagonal input, vertical-only input, native momentum
 phases, mouse wheel bounds and Settings input ownership. An 18-task fixture
 also exercises blank-space drags and clicks, a mouse click on a newly reached
-card, reader return, insertion and deletion. Its receipt is `overview-scroll.json`.
+card, reader return, insertion and deletion. The drags start in the blank area
+beyond the trailing and bottom card edges. The receipt `overview-scroll.json`
+records the input point and the card frames.
 With `--keyboard`, the replay scrolls a column with each arrow key and opens the
 focused card with Return. It records both distances and the card identity in
 `overview-keyboard.json`. Optional captures show the isolated workspace.

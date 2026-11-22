@@ -217,8 +217,7 @@ private final class WheelSample: NSEvent {
         let camera = canvas.camera
         let size = monitor.configuration.size
         let viewport = CGRect(origin: .zero, size: size)
-        let blank = CGPoint(x: 8, y: monitor.configuration.toolbarBottom + 3)
-        let point = monitor.windowPoint(blank)
+        let point = monitor.windowPoint(CGPoint(x: 8, y: monitor.configuration.toolbarBottom + 3))
         func mouse(_ type: NSEvent.EventType, _ position: CGPoint) async throws {
             guard let event = NSEvent.mouseEvent(with: type, location: monitor.windowPoint(position), modifierFlags: [],
                 timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil,
@@ -236,8 +235,14 @@ private final class WheelSample: NSEvent {
         guard atEnd == camera.maximumOffset, atEnd > 0, !initiallyOffscreen.isEmpty else {
             throw ReplayError("Dense fixture did not reach its trailing boundary")
         }
+        let envelope = canvas.presentedPlacements.compactMap { canvas.displayedFrame(for: $0.id) }
+            .reduce(CGRect.null) { $0.union($1) }
+        guard !envelope.isNull, envelope.maxX < size.width, envelope.maxY < size.height else {
+            throw ReplayError("Missing trailing or bottom canvas margin for background input")
+        }
+        let blank = CGPoint(x: (envelope.maxX + size.width) / 2, y: (envelope.maxY + size.height) / 2)
         let windowOrigin = window.frame.origin
-        for end in [CGPoint(x: blank.x + 90, y: blank.y), CGPoint(x: blank.x, y: blank.y + 80)] {
+        for end in [CGPoint(x: blank.x - 90, y: blank.y), CGPoint(x: blank.x, y: blank.y - 80)] {
             try await mouse(.leftMouseDown, blank)
             try await mouse(.leftMouseDragged, end)
             try await mouse(.leftMouseUp, end)
@@ -287,7 +292,9 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Removing cards did not clamp the offset to the new range")
         }
         let record: [String: Any] = ["denseCount": frames.count, "trailingOffset": atEnd, "clickedCard": target.id,
-            "backgroundDragAndClickStable": true, "readerReturnOffset": atEnd, "insertOffset": atEnd,
+            "cardFrames": frames.map { [$0.minX, $0.minY, $0.width, $0.height] },
+            "backgroundPoint": [blank.x, blank.y], "backgroundDragAndClickStable": true,
+            "readerReturnOffset": atEnd, "insertOffset": atEnd,
             "removedOffset": camera.scrollOffset, "window": [size.width, size.height]]
         try JSONSerialization.data(withJSONObject: record, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "overview-scroll.json"))
