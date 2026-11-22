@@ -9,7 +9,7 @@ owns documents, exact execution references, binding and cover admission.
 The logical 1×1 grid cell is 320×196pt with 16pt gaps; 1×2 is 320×408pt and
 2×1 is 656pt wide. All window sizes share these metrics at the default 1× camera.
 In a 1512×900pt client area with filters and the idle Moku Dock, the framing
-region is 1384×772pt. Twelve 1×1 cards occupy four columns and three rows
+region is 1384×840pt. Twelve 1×1 cards occupy four columns and three rows
 (1328×620pt). Card text keeps its declared point sizes.
 
 At the default 1× camera, the card origins in this layout are x = 92, 428,

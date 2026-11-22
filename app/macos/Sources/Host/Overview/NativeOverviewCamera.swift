@@ -63,9 +63,10 @@ public enum NativeOverviewCameraGeometry {
 
     /// Packing and projection use the window beneath the floating controls.
     public static func framingRegion(_ viewport: NativeOverviewViewport) -> NativeOverviewContentRect {
-        let margin = viewport.width <= compactViewportWidth ? 32.0 : 64.0
-        let horizontalInset = viewport.width > 2 * margin ? margin : 0
-        let verticalInset = viewport.height > 2 * margin ? margin : 0
+        let horizontalMargin = viewport.width <= compactViewportWidth ? 32.0 : 64.0
+        let verticalMargin = 30.0
+        let horizontalInset = viewport.width > 2 * horizontalMargin ? horizontalMargin : 0
+        let verticalInset = viewport.height > 2 * verticalMargin ? verticalMargin : 0
         return .init(left: horizontalInset, top: verticalInset,
                      width: max(0, viewport.width - 2 * horizontalInset),
                      height: max(0, viewport.height - 2 * verticalInset))

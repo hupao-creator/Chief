@@ -174,9 +174,10 @@ Fitting arrangements remain centered. Wider arrangements start at the leading
 inset. The trailing limit is the projected card width minus the usable width.
 Cards retain their natural size unless a single card is taller than the usable
 height, in which case the projection scales all cards uniformly to fit that
-height. Packing and camera framing use the logical window with symmetric
-64pt margins (32pt at widths up to 620pt). A dimension that cannot fit both
-margins uses its full extent. The tag filters and Chief Bar overlay the cards.
+height. Packing and camera framing leave 30pt above and below the grid area.
+Side margins are 64pt, or 32pt at window widths up to 620pt. A dimension that
+cannot fit both margins with room for cards uses its full extent.
+The tag filters and Chief Bar overlay the cards.
 Changing either bar's height alone preserves placements, scale and scroll range.
 
 The workspace retains one horizontal offset in memory while a reader or Settings
@@ -604,10 +605,11 @@ scroll position, controls and animation frames require the native replay.
 
 **PBT-OVERVIEW-GEOMETRY** calls the production pure layout solver with 0–18
 unique product-ordered cards (1–3 columns, 1–2 rows), usable viewport widths
-240–2,600pt, heights 240–1,600pt and origins −400…400/−200…200pt. It uses the
+240–2,600pt, heights 1–1,600pt and origins −400…400/−200…200pt. It uses the
 shipping height-limited projection. The [generated property](../../../Tests/Properties/NativeOverviewGeometryProperties.swift)
 checks exact membership/order/spans and uses the specified 320×196pt cell and
 16pt gap to check the frame union against the solver's production metrics.
+It checks both vertical margins, including the 60pt height at which they yield.
 At each generated window size it compares the solver's framing rectangle with
 both bars absent, each bar raised independently, and both raised together.
 Each generated height ranges from 1pt to the window height.

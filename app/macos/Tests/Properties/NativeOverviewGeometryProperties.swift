@@ -39,7 +39,7 @@ private func generate(seed: UInt64) -> LayoutCase {
         }
     }
     let width = random.double(240...2600)
-    let height = random.double(240...1600)
+    let height = seed.isMultiple(of: 16) ? 60 : random.double(1...1600)
     let usable = NativeOverviewContentRect(left: random.double(-400...400),
                                            top: random.double(-200...200),
                                            width: width, height: height)
@@ -50,6 +50,11 @@ private func violations(_ input: LayoutCase) -> [String] {
     // Exercise the window-to-solver boundary as well as arbitrary solver rectangles.
     let window = NativeOverviewViewport(width: input.usable.width, height: input.usable.height)
     let region = NativeOverviewCameraGeometry.framingRegion(window)
+    let expectedInset = window.height > 60 ? 30.0 : 0.0
+    let bottomInset = window.height - (region.top + region.height)
+    if region.top != expectedInset || abs(bottomInset - expectedInset) > tolerance {
+        return ["incorrect top or bottom window margin"]
+    }
     var random = SplitMix64(seed: input.seed)
     let toolbar = random.double(1...max(1, window.height))
     let dock = random.double(1...max(1, window.height))
