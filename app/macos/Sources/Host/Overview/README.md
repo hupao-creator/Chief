@@ -174,9 +174,10 @@ Fitting arrangements remain centered. Wider arrangements start at the leading
 inset. The trailing limit is the projected card width minus the usable width.
 Cards retain their natural size unless a single card is taller than the usable
 height, in which case the projection scales all cards uniformly to fit that
-height. The usual header, idle Dock and margins reserve space. Vertical margins
-yield in a short window. At extreme window zoom where the header and Dock
-reserve the whole height, the canvas uses the logical window height.
+height. Packing and camera framing use the logical window with symmetric
+64pt margins (32pt at widths up to 620pt). A dimension that cannot fit both
+margins uses its full extent. The tag filters and Chief Bar overlay the cards.
+Changing either bar's height alone preserves placements, scale and scroll range.
 
 The workspace retains one horizontal offset in memory while a reader or Settings
 covers the canvas. A resize, filter change or membership update clamps that
@@ -225,8 +226,6 @@ mounted identity, and child state, Observation and environment updates remain
 live.
 
 [NativeOverviewStageCoordinator](NativeOverviewStageCoordinator.swift) serializes card spatial motion with Moku.
-The idle Dock reservation comes from the 44pt capsule and its bottom clearance.
-Composer and Note expansion keep the same packing area.
 
 [NativeOverviewScrollInput](NativeOverviewScrollInput.swift) routes AppKit wheel events.
 A trackpad contributes its horizontal delta, including native momentum. A line
@@ -282,7 +281,7 @@ and independent opening/closing progress keep their existing ownership.
 
 Tag widths have no fixed point cap. Each top-level chip may use the scroll viewport left after All and bar insets; sibling chips remain horizontally scrollable. The centered bar leaves room on both sides for the window controls and actions, plus 16pt clearance. At viewport widths of 620 logical points or less, filters occupy a second row. Child chips may use the full available bar width, and overflowing child rows scroll within that width. Their glass container stays inside the scroll viewport so captured labels cannot bypass clipping. Chips use shadowless `.clear` glass over a view-layer material fill rather than `.regular` glass: the regular variant's system-drawn shadow is composited outside the SwiftUI layer, so neither a per-chip `clipShape` nor the bar's capsule clip can trim it, and the 4pt gaps let neighboring shadows overlap into a visible band. The material fill supplies the frosted face and follows the pill shape, while selection tint and interactive feedback remain on the glass. Selected All, directory and semantic chips use the overview accent with 22% tint alpha, or 34% with Increased Contrast; unselected chips have no tint. Selected directory chips replace their folder or child emoji prefix with a check icon. Selected semantic chips replace their emoji prefix with the same check, including in child menus; All remains prefix-free. Accessibility labels retain the original tag names and emoji. Label font weights remain unchanged; the shared selected check uses a 2-unit Lucide stroke instead of the default 1.5-unit stroke. Names only truncate when their individual viewport cannot hold them. Presentation does not change tag identity or membership.
 
-All, directory and semantic capsules (including child menus) retain the 1.1× enlarged label and prefix metrics. Their height shares `NativeWindowNavigationGeometry.height` (42pt) with the traffic-light capsule and right-side circular actions. In the single-row layout, the centered filters and right-side actions sit 16 logical points from the top. In the two-row layout, the right-side actions sit 10pt from the top. In the two-row layout it sits 76pt from the top when space permits. The filter bar moves up in short viewports to leave at least 8 logical points for starting canvas scrolling at supported window sizes and zoom levels. The traffic lights have their own fixed window-relative position. Header dragging and scroll exclusion end at 60 logical points in the single-row layout and 2pt below the filter bar in the two-row layout. Card packing and camera framing retain their independent 60pt header allowance (120pt at widths up to 620pt with filters). Semantic labels always lay out the emoji separately from the plain title, in both selection states. The shared prefix retains both its unselected glyph and centered check as opacity-switched layout participants, reserving the same natural width and height across selection changes. This stability applies to a fixed title/child; choosing a different directory child can still change the title width. The shared prefix keeps its native ideal size: an emoji's advance and line bounds can exceed its point size, so an icon-sized square can cut its glyph even inside a roomy chip. The Lucide folder and selected check use the same icon size; emoji do not use per-glyph offsets.
+All, directory and semantic capsules (including child menus) retain the 1.1× enlarged label and prefix metrics. Their height shares `NativeWindowNavigationGeometry.height` (42pt) with the traffic-light capsule and right-side circular actions. In the single-row layout, the centered filters and right-side actions sit 16 logical points from the top. In the two-row layout, the right-side actions sit 10pt from the top. In the two-row layout it sits 76pt from the top when space permits. The filter bar moves up in short viewports to leave at least 8 logical points for starting canvas scrolling at supported window sizes and zoom levels. The traffic lights have their own fixed window-relative position. Header dragging and scroll exclusion end at 60 logical points in the single-row layout and 2pt below the filter bar in the two-row layout. Semantic labels always lay out the emoji separately from the plain title, in both selection states. The shared prefix retains both its unselected glyph and centered check as opacity-switched layout participants, reserving the same natural width and height across selection changes. This stability applies to a fixed title/child; choosing a different directory child can still change the title width. The shared prefix keeps its native ideal size: an emoji's advance and line bounds can exceed its point size, so an icon-sized square can cut its glyph even inside a roomy chip. The Lucide folder and selected check use the same icon size; emoji do not use per-glyph offsets.
 
 ## Tag activity
 
@@ -334,8 +333,8 @@ Mounted geometry properties do not exercise this handoff.
 ## Agent reading panels
 
 Reading entry shares the 420ms emphasized panel curve with tag-chrome withdrawal
-and the resident Dock. Tag clearance remains fixed while the retained controls
-move upward. See the [reading choreography](../../../../../design/reading.md)
+and the resident Dock. The tag controls slide upward over the canvas.
+See the [reading choreography](../../../../../design/reading.md)
 for secondary Sidecard admission and cancellation.
 
 The presentation gate and prepared return apply to Agent and Report panels.
@@ -369,7 +368,7 @@ and live camera transform. The shared reading stack expands that shell into an
 opaque panel with equal horizontal margins, while retaining the Overview camera
 and cards beneath it. The retained Filters and Settings chrome slides upward by
 its full height and fades out over 200ms without scaling its labels or changing
-canvas clearance, including in the narrow two-row layout. Closing reverses the
+card positions, including in the narrow two-row layout. Closing reverses the
 same transition; interrupted openings retarget the mounted chrome. Hidden chrome
 remains excluded from hit testing and accessibility.
 The production conversation content fades in unchanged; title, emoji and author
@@ -609,6 +608,9 @@ unique product-ordered cards (1–3 columns, 1–2 rows), usable viewport widths
 shipping height-limited projection. The [generated property](../../../Tests/Properties/NativeOverviewGeometryProperties.swift)
 checks exact membership/order/spans and uses the specified 320×196pt cell and
 16pt gap to check the frame union against the solver's production metrics.
+At each generated window size it compares the solver's framing rectangle with
+both bars absent, each bar raised independently, and both raised together.
+Each generated height ranges from 1pt to the window height.
 It checks finite positive nonoverlapping frames, the row limit, vertical containment, leading alignment and reachability of the trailing edge.
 It independently enumerates largest-card regular grids to check the documented
 quality floor within the row limit. Every fourth seed shuffles the six-cell tiling with base spans of
@@ -630,7 +632,9 @@ its actual display backing scale for pixel comparisons.
 ID selection sorts the live set before seeded sampling. After releasing pause
 and restoring visibility, the latest snapshot must settle within 3s. Mounted
 membership and projection agree within one physical pixel. The envelope stays
-within the vertical bounds at the retained, clamped horizontal offset. Events are submitted 4ms apart; this samples interleavings
+within the vertical bounds at the retained, clamped horizontal offset. For a
+nonempty result, clearing the bar heights must preserve placements, transform,
+scroll offset and limits without another solve. Events are submitted 4ms apart; this samples interleavings
 rather than enumerating all scheduler orders. A reduced trace is
 retained as property corpus. Failures print original/reduced event traces and
 only shrink to the same failure category. This checks mounted convergence, not

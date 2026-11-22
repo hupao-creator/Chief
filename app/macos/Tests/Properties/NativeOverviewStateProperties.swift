@@ -208,6 +208,23 @@ struct NativeOverviewStateProperties {
                 || envelope.minY < usable.top - pixel || envelope.maxY > usable.top + usable.height + pixel {
                 return "mounted scroll range or envelope differs: " + summary(fixture)
             }
+            let placements = fixture.state.presentedPlacements
+            let transform = camera.transform
+            let offset = camera.scrollOffset
+            let limit = camera.maximumOffset
+            let solves = fixture.state.layoutSolveCount
+            fixture.toolbarBottom = 0
+            fixture.bottomReservedHeight = 0
+            do {
+                try await OverviewReplay.settle(fixture, in: window)
+            } catch {
+                return "bar height change did not settle: " + summary(fixture)
+            }
+            if fixture.state.presentedPlacements != placements || camera.transform != transform
+                || camera.scrollOffset != offset || camera.maximumOffset != limit
+                || fixture.state.layoutSolveCount != solves {
+                return "bar height change repacked or moved cards: " + summary(fixture)
+            }
         }
         return nil
     }

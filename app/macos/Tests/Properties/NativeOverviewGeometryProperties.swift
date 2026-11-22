@@ -47,6 +47,20 @@ private func generate(seed: UInt64) -> LayoutCase {
 }
 
 private func violations(_ input: LayoutCase) -> [String] {
+    // Exercise the window-to-solver boundary as well as arbitrary solver rectangles.
+    let window = NativeOverviewViewport(width: input.usable.width, height: input.usable.height)
+    let region = NativeOverviewCameraGeometry.framingRegion(window)
+    var random = SplitMix64(seed: input.seed)
+    let toolbar = random.double(1...max(1, window.height))
+    let dock = random.double(1...max(1, window.height))
+    for (top, bottom) in [(toolbar, 0), (0, dock), (toolbar, dock)] {
+        var viewport = window
+        viewport.toolbarBottom = top
+        viewport.bottomReservedHeight = bottom
+        if NativeOverviewCameraGeometry.framingRegion(viewport) != region {
+            return ["bar heights changed the layout region"]
+        }
+    }
     let result: NativeOverviewGeometry
     do {
         result = try NativeOverviewLayout.solve(

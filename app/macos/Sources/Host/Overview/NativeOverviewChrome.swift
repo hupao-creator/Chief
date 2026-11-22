@@ -657,7 +657,7 @@ enum OverviewTagMetrics {
         guard hasFilters, stacksFilters(in: size.width) else { return singleRowTop + chipHeight + headerClearance }
         return stackedFilterTop(viewportHeight: size.height) + chipHeight + headerClearance
     }
-    /// Packing and camera framing are independent of the floating input regions.
+    /// Persistent header extents reported by the workspace visibility probe.
     static let wideToolbarClearance = 18 + chipHeight
     static let narrowToolbarClearance: CGFloat = 120
 }

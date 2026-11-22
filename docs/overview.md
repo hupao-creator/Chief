@@ -10,6 +10,8 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 ## Move around the canvas
 
+The filter bar and Chief Bar float above the cards. Opening the Chief input box keeps the cards in place.
+
 When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or turn the mouse wheel. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. Click a task card, or press Return on a focused task, to open it.
 
 Overview keeps your place when you close a conversation or Settings. If you remove cards or widen the window, scrolling stops at the new last column.

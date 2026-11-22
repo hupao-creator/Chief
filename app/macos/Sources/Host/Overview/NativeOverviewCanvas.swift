@@ -141,8 +141,7 @@ public final class NativeOverviewCanvasState {
     }
 }
 
-/// Cards share one SwiftUI tree and inherit the workspace environment directly.
-/// Shared header allowance for card packing and camera framing.
+/// Default header extent for input routing and visibility probes.
 public enum NativeOverviewViewportDefaults {
     public static var toolbarBottom: Double { OverviewTagMetrics.wideToolbarClearance }
 }
@@ -186,7 +185,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
     @State private var worker: Task<Void, Never>?
     @State private var mountedScene: String?
     @State private var mountedSelection: String?
-    @State private var plannedViewport: NativeOverviewViewport?
+    @State private var plannedViewport: NativeOverviewContentRect?
     @State private var retry = 0
     @State private var ownership = UUID()
     @State private var layoutToken = UUID()
@@ -232,6 +231,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         return GeometryReader { geometry in
             let viewport = NativeOverviewViewport(width: geometry.size.width, height: geometry.size.height,
                                                   toolbarBottom: toolbarBottom, bottomReservedHeight: bottomReservedHeight)
+            let layoutRegion = NativeOverviewCameraGeometry.framingRegion(viewport)
             ZStack(alignment: .topLeading) {
                 Color.clear.contentShape(Rectangle())
                     .frame(width: geometry.size.width, height: max(0, headerInputBottom))
@@ -290,8 +290,8 @@ public struct NativeOverviewCanvas<Content: View>: View {
             // labels while gesture-based cards keep their ordinary appearance.
             .allowsHitTesting(!interactionPaused)
             .accessibilityHidden(interactionPaused)
-            .onChange(of: requestKey(viewport)) { _, _ in attach(viewport); enqueue(viewport) }
-            .onAppear { attach(viewport); enqueue(viewport) }
+            .onChange(of: requestKey(layoutRegion)) { _, _ in attach(viewport); enqueue(layoutRegion) }
+            .onAppear { attach(viewport); enqueue(layoutRegion) }
             // Simple array hosts feed the same store as the production model.
             // Production supplies a stable source and never observes the array.
             .onChange(of: suppliedItems) { _, updated in
@@ -328,10 +328,10 @@ public struct NativeOverviewCanvas<Content: View>: View {
     private func livePose(_ placement: NativeOverviewPlacement, at now: TimeInterval) -> OverviewCardPose {
         cardMotions[placement.id]?.sample(at: now) ?? pose(placement)
     }
-    private func requestKey(_ viewport: NativeOverviewViewport) -> String {
+    private func requestKey(_ viewport: NativeOverviewContentRect) -> String {
         "\(ObjectIdentifier(contentStore))|\(sceneKey)|\(selectionID ?? "")|\(contentStore.structureRevision)|\(viewport)|\(resetEpoch)|\(retry)|\(revisions.last?.revision ?? 0)|\(layoutPaused)|\(state.preparationRequest)"
     }
-    private func enqueue(_ viewport: NativeOverviewViewport) {
+    private func enqueue(_ viewport: NativeOverviewContentRect) {
         guard viewport.width > 0, viewport.height > 0 else {
             // A collapsed window cannot present geometry, but it must not leave
             // an old owner's isLayingOut latch to block the next valid viewport.
@@ -375,7 +375,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         }
     }
 
-    private func canReuseGeometry(_ items: [NativeOverviewItem], viewport: NativeOverviewViewport) -> Bool {
+    private func canReuseGeometry(_ items: [NativeOverviewItem], viewport: NativeOverviewContentRect) -> Bool {
         guard mountedScene == sceneKey, mountedSelection == selectionID,
               plannedViewport == viewport, state.layoutError == nil,
               cardMotions.isEmpty, outgoingPlacements.isEmpty, retiringPresentationIDs.isEmpty,
@@ -436,6 +436,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
             state.camera.onChange?()
         }
         state.hostOwner = ownership
+        state.camera.viewport = viewport
         state.visible = visible
         state.externalInteractionPaused = interactionPaused
         state.activeIDs = source.activeIDs
@@ -484,7 +485,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         onRetainedPresentationIDsChanged?(Set(rendered.map { $0.item.presentationID }).union(retiringPresentationIDs))
     }
 
-    private func reconcile(_ viewport: NativeOverviewViewport, items: [NativeOverviewItem],
+    private func reconcile(_ viewport: NativeOverviewContentRect, items: [NativeOverviewItem],
                            revisions: [NativeOverviewLayoutRevision], token: UUID) async {
         guard viewport.width > 0, viewport.height > 0, state.hostOwner == ownership else { return }
         state.isLayingOut = true
@@ -504,7 +505,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
     }
 
     private func present(_ next: [NativeOverviewItem], revisions: [NativeOverviewLayoutRevision],
-                         viewport: NativeOverviewViewport, token: UUID) async throws {
+                         viewport: NativeOverviewContentRect, token: UUID) async throws {
         try Task.checkCancellation()
         guard layoutToken == token, state.hostOwner == ownership else { throw CancellationError() }
         let replaceScene = mountedSelection != selectionID || mountedScene != sceneKey
@@ -515,9 +516,8 @@ public struct NativeOverviewCanvas<Content: View>: View {
         defer { stage.release() }
         try Task.checkCancellation()
         guard layoutToken == token, state.hostOwner == ownership else { throw CancellationError() }
-        let usable = NativeOverviewCameraGeometry.framingRegion(viewport)
         state.layoutSolveCount += 1
-        let geometry = try NativeOverviewLayout.solve(members: members, usableViewport: usable)
+        let geometry = try NativeOverviewLayout.solve(members: members, usableViewport: viewport)
         try Task.checkCancellation()
         guard layoutToken == token, state.hostOwner == ownership else { throw CancellationError() }
         let initial = mountedScene == nil || (!replaceScene && displayed.isEmpty && outgoingPlacements.isEmpty)
@@ -544,7 +544,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         // Empty targets keep the old camera until the last outgoing card has
         // retired; disposing it here would jump those cards before their exit.
         if !animated || !next.isEmpty {
-            state.camera.install(geometry, viewport: viewport)
+            state.camera.install(geometry)
         }
         retain()
         guard animated else {
@@ -638,7 +638,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         outgoingPlacements.removeAll()
         retiringPresentationIDs.removeAll()
         if next.isEmpty {
-            state.camera.install(geometry, viewport: viewport)
+            state.camera.install(geometry)
         }
         installRendered(next.map(currentContentItem))
         finishPresentation(revisions: revisions)

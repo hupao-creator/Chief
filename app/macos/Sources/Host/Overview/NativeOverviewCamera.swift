@@ -54,29 +54,21 @@ public struct NativeOverviewViewport: Equatable, Sendable {
 public enum NativeOverviewCameraGeometry {
     public static let compactViewportWidth: Double = 620
 
+    /// Unobstructed band reported by visibility probes.
     public static func contentRegion(_ viewport: NativeOverviewViewport) -> NativeOverviewContentRect {
         let top = min(max(0, viewport.toolbarBottom), viewport.height)
         let bottom = max(top, viewport.height - max(0, viewport.bottomReservedHeight))
         return .init(left: 0, top: top, width: max(0, viewport.width), height: bottom - top)
     }
 
+    /// Packing and projection use the window beneath the floating controls.
     public static func framingRegion(_ viewport: NativeOverviewViewport) -> NativeOverviewContentRect {
         let margin = viewport.width <= compactViewportWidth ? 32.0 : 64.0
-        var content = contentRegion(viewport)
-        // At maximum window zoom the floating header and Dock can use the
-        // whole logical height. Keep the cards within the window in that case.
-        if content.height == 0 {
-            content.top = 0
-            content.height = max(0, viewport.height)
-        }
         let horizontalInset = viewport.width > 2 * margin ? margin : 0
-        let preferredInset = max(0, margin - viewport.bottomReservedHeight / 2)
-        let inset = content.height > 2 * preferredInset ? preferredInset : 0
-        let height = content.height - 2 * inset
-        let top = min(content.top + content.height - height,
-                      max(content.top + inset, (viewport.height - height) / 2))
-        return .init(left: horizontalInset, top: top, width: max(0, viewport.width - 2 * horizontalInset),
-                     height: height)
+        let verticalInset = viewport.height > 2 * margin ? margin : 0
+        return .init(left: horizontalInset, top: verticalInset,
+                     width: max(0, viewport.width - 2 * horizontalInset),
+                     height: max(0, viewport.height - 2 * verticalInset))
     }
 }
 
@@ -84,7 +76,7 @@ public enum NativeOverviewCameraGeometry {
 /// Only changes to the available scroll range can shorten the retained offset.
 @MainActor @Observable
 public final class NativeOverviewCamera {
-    public private(set) var viewport: NativeOverviewViewport?
+    public internal(set) var viewport: NativeOverviewViewport?
     public private(set) var scrollOffset = 0.0
     public private(set) var maximumOffset = 0.0
     private var leading: NativeOverviewTransform?
@@ -99,8 +91,7 @@ public final class NativeOverviewCamera {
         return value
     }
 
-    func install(_ geometry: NativeOverviewGeometry, viewport: NativeOverviewViewport) {
-        self.viewport = viewport
+    func install(_ geometry: NativeOverviewGeometry) {
         leading = geometry.leadingTransform
         maximumOffset = geometry.maximumScrollOffset
         scrollOffset = min(scrollOffset, maximumOffset)
