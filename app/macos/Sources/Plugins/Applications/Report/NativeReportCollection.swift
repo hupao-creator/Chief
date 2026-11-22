@@ -253,8 +253,9 @@ struct NativeReportCollection: View {
         }
         .onChange(of: visibility?.isVisible) { _, visible in
             if visible == false {
+                // Resizing can move the source card outside the canvas while
+                // its workspace panel is open. Only pause the carousel here.
                 hovered = false; settle()
-                if memberPresentation?.readingMember == nil { showingMembers = false }
             }
         }
         .task(id: motionEpoch) {
