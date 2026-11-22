@@ -33,16 +33,18 @@ struct NativeReportCollectionMembers: View {
         GeometryReader { geometry in
             // At high window zoom the panel can be narrower than a single
             // Overview card. Fit the card layout and its hit targets together.
-            let compact = geometry.size.width < NativeGeometry.overviewCard.width
             let layoutWidth = max(geometry.size.width, NativeGeometry.overviewCard.width)
             let scale = max(1, geometry.size.width) / layoutWidth
-            let inset: CGFloat = compact ? 14 : 54
-            let available = min(1160, layoutWidth - 2 * inset)
+            let minimumCardWidth: CGFloat = 280
+            let closeClearance: CGFloat = 54
+            let closeAboveGrid = layoutWidth < minimumCardWidth + 2 * closeClearance
+            let inset: CGFloat = closeAboveGrid ? 14 : closeClearance
+            let available = layoutWidth - 2 * inset
             let spacing: CGFloat = 20
-            let columns = max(1, Int((available + spacing) / 300))
+            let capacity = Int((available + spacing) / (minimumCardWidth + spacing))
+            let columns = max(1, min(members.count, capacity))
             let gapsWidth = CGFloat(columns - 1) * spacing
             let width = min(360, (available - gapsWidth) / CGFloat(columns))
-            let leadingMargin = (layoutWidth - CGFloat(columns) * width - gapsWidth) / 2
             NativeScrollView {
                 LazyVGrid(columns: Array(repeating: GridItem(.fixed(width), spacing: spacing, alignment: .top), count: columns),
                           alignment: .center, spacing: spacing) {
@@ -67,11 +69,13 @@ struct NativeReportCollectionMembers: View {
                             .accessibilityHidden(exiting)
                     }
                 }.frame(maxWidth: .infinity)
-                    .padding(.horizontal, inset).padding(.top, compact ? 0 : leadingMargin - 8).padding(.bottom, 28)
+                    .padding(.horizontal, inset)
+                    .padding(.top, closeAboveGrid ? 0 : spacing)
+                    .padding(.bottom, 28)
             }
             // In a single compact column, clear Close vertically for every
             // scroll position. The overlay still owns only the button.
-            .padding(.top, compact ? 54 : 0)
+            .padding(.top, closeAboveGrid ? closeClearance : 0)
             .overlay(alignment: .topLeading) {
                 NativeReadingPanelCloseButton(label: applicationText(locale, "关闭", "Close"), onClose: close)
                     .keyboardShortcut(.cancelAction)
