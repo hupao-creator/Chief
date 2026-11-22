@@ -25,8 +25,6 @@ final class NativeOverviewMembershipIndex {
     private var dependentScopes: [String: Set<String>] = [:]
     private(set) var members: [String: NativeOverviewMembership] = [:]
     private(set) var redundant = Set<String>()
-    private(set) var selectionCount = 0
-    private(set) var applicationCandidateVisits = 0
 
     var filters: [NativeOverviewFilter] {
         NativeOverviewSelection.orderedFilters(scopeFilters.values.flatMap { $0 }).map { raw in
@@ -155,7 +153,6 @@ final class NativeOverviewMembershipIndex {
                 else if scope == NativeOverviewSelection.inboxScope { ids.formUnion(semanticApplications[key] ?? []) }
             }
             let applications = orderedApplications(ids)
-            selectionCount += 1; applicationCandidateVisits += applications.count
             return NativeOverviewMembership(NativeOverviewSelection.select(threads: browsing.threads, applications: applications,
                 tags: [filter.tag] + filter.aliases, kind: filter.isDirectory ? .directory : .semantic,
                 scope: scope, directoryTags: directoryTags, key: normalized))

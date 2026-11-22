@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"encoding/json"
-	"errors"
 	"math"
 	"regexp"
 	"strings"
@@ -227,8 +226,4 @@ func normalizeSettingsShell(settings model.Settings) (model.Settings, error) {
 		return settings, err
 	}
 	return parseSettingsShell(object)
-}
-func settingsSchemaFailure(err error) bool {
-	var failure *settingsSchemaError
-	return errors.As(err, &failure)
 }

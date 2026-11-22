@@ -39,10 +39,6 @@ func FreshDevelopmentDataWithObserver(beforeRotation func() error) (string, erro
 	return rotateDevelopmentDataWithObserver(profile.DefaultDataDirectory(filepath.Join(home, "Library/Application Support"), product.DataDirectoryName), beforeRotation)
 }
 
-func rotateDevelopmentData(directory string) (string, error) {
-	return rotateDevelopmentDataWithObserver(directory, nil)
-}
-
 func rotateDevelopmentDataWithObserver(directory string, beforeRotation func() error) (string, error) {
 	previous := directory + ".previous"
 	rotated := false

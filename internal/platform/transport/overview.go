@@ -91,25 +91,6 @@ type OverviewSelection struct {
 	Tag       *string `json:"tag"`
 }
 
-func ParseOverviewSelection(raw json.RawMessage) (OverviewSelection, error) {
-	value, ok := overviewObject(raw, []string{"clientId", "contextId", "revision", "tag"}, []string{"scope"})
-	if !ok || !overviewString(value["clientId"], 1, 256) || !overviewString(value["contextId"], 1, 256) ||
-		!overviewNumber(value["revision"], true, 9007199254740991) ||
-		(!overviewNull(value["scope"]) && value["scope"] != nil && !overviewString(value["scope"], 1, 4096)) ||
-		(!overviewNull(value["tag"]) && !overviewString(value["tag"], 1, 4096)) {
-		return OverviewSelection{}, model.NewError("INVALID_REQUEST", "Invalid overview selection")
-	}
-	var selection OverviewSelection
-	var revision float64
-	_ = json.Unmarshal(value["clientId"], &selection.ClientID)
-	_ = json.Unmarshal(value["contextId"], &selection.ContextID)
-	_ = json.Unmarshal(value["revision"], &revision)
-	_ = json.Unmarshal(value["scope"], &selection.Scope)
-	_ = json.Unmarshal(value["tag"], &selection.Tag)
-	selection.Revision = int64(revision)
-	return selection, nil
-}
-
 type OverviewRequest struct {
 	OverviewSelection
 	RequestID string `json:"requestId"`

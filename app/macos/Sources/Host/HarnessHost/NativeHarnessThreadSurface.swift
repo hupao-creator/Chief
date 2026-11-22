@@ -199,11 +199,9 @@ private struct NativeHarnessContentView: View {
     private var envelope: HarnessThread?
     private var content: JSONValue?
     private var result: Result<HarnessThread, Error>?
-    private(set) var materializationCount = 0
     func thread(_ envelope: HarnessThread, content: JSONValue) throws -> HarnessThread {
         if self.envelope == envelope, self.content == content, let result { return try result.get() }
         let next = Result { try envelope.replacingSessionState(content) }
-        materializationCount += 1
         self.envelope = envelope; self.content = content; result = next
         return try next.get()
     }

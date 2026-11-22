@@ -48,7 +48,6 @@ struct NativeOverviewApplicationEntry: Sendable {
 struct NativeOverviewCollection {
     let threads: [HarnessThread]
     let applications: [NativeOverviewApplicationEntry]
-    var count: Int { threads.count + applications.count }
 }
 
 /// Directory labels depend only on cwd. Keep exact wire identities as keys,

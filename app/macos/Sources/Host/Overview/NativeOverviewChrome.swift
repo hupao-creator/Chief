@@ -620,7 +620,6 @@ enum OverviewTagMetrics {
         contrast == .increased ? 0.34 : 0.22
     }
     static let iconButtonSize: CGFloat = 30
-    static let actionInset: CGFloat = 5
     static let barInset: CGFloat = 6
     static let labelInset: CGFloat = 12
     static let spacing: CGFloat = 4

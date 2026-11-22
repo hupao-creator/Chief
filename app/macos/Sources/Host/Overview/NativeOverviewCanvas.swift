@@ -114,7 +114,6 @@ public final class NativeOverviewCanvasState {
         } else { interactionCounts.removeAll() }
     }
 
-    var interactionCardIDs: Set<String> { Set(interactionCounts.keys) }
     var interactionPauseReasons: [String] {
         (externalInteractionPaused ? ["presentation"] : []) + (inputFocused ? ["text-editing"] : [])
             + (!interactionCounts.isEmpty ? ["responding"] : [])
