@@ -18,9 +18,9 @@ Chief brings Codex, Claude, Pi Agent, and OpenCode into one workspace.
 Talk to the **Chief** assistant to coordinate work, then open each task's conversation
 to follow the work and give it more direction.
 
-![Chief Overview showing coordinated agent tasks](design/overview-readme.png)
+[![Chief Overview showing coordinated agent tasks](design/overview-readme-preview.webp)](design/overview-readme.png)
 
-The Overview grid rearranges as task cards update. [Watch the Overview demo (MP4, 6.5 sec) →](design/overview-readme-demo.mp4)
+Select the screenshot to open its original file. The Overview grid rearranges as task cards update. [Watch the Overview demo (MP4, 6.5 sec) →](design/overview-readme-demo.mp4)
 
 - **Ask once, coordinate across agents.** Give Chief a task, attach files, and include the full path of any project folder Chief should use. Chief can answer directly or assign work to the agents you've enabled. [Working with Chief →](docs/working-with-moku.md)
 - **See what needs you.** Overview uses a bento box design to show task status, questions, and permission requests on cards of different sizes. The canvas grows with your work for the feel of infinite horizontal scrolling as you browse from the first column to the last. Filter by folder or tag, then open a conversation to step in. [Overview →](docs/overview.md)
@@ -32,16 +32,31 @@ The interface uses SwiftUI and AppKit, backed by a Go service. Agents run throug
 their externally installed tools and retain their own accounts, models, and
 credentials.
 
-## Auto-Categorization
+<a name="auto-categorization"></a>
 
-Turn on **Tag Agent** under **Settings → Auto-Categorization** to group unarchived
-agent conversations by topic using their titles. It maintains a separate set of
-up to five tags for each project folder and for Inbox. Select a tag in **Overview**
-to see matching tasks. [Group tasks with tags →](docs/reports-tags-and-changes.md#group-tasks-with-tags)
+## Agent roles
 
-![Illustration of agent conversations being grouped by topic tags](design/auto-categorization-illustration.webp)
-
-[![Chief Overview filter bar in Simplified Chinese with 产品调研 (Product research) selected](design/auto-categorization-readme.png)](design/auto-categorization-readme.png)
+<table width="100%">
+  <thead>
+    <tr>
+      <th width="33%" align="center"><a href="docs/working-with-moku.md">Chief Agent</a></th>
+      <th width="33%" align="center"><a href="docs/reports-tags-and-changes.md#group-tasks-with-tags">Tag Agent</a></th>
+      <th width="33%" align="center"><a href="docs/reports-tags-and-changes.md#see-the-work-behind-a-super-thread">Super Thread Agent</a></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><img src="design/chief-agent-readme.webp" alt="One request branches into several agent tasks"></td>
+      <td align="center"><img src="design/tag-agent-readme.webp" alt="Conversation cards form three groups with colored tags"></td>
+      <td align="center"><img src="design/super-thread-agent-readme.webp" alt="Source conversations connect to a single report"></td>
+    </tr>
+    <tr>
+      <td align="center">Assign work to agents.</td>
+      <td align="center">Group tasks by topic.</td>
+      <td align="center">Sum up work with source links.</td>
+    </tr>
+  </tbody>
+</table>
 
 ---
 
