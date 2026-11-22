@@ -5,6 +5,8 @@ same collectors on the two revisions. Record source and binary hashes, macOS
 and toolchain versions, and retain every sample. Directional timings have no
 calibrated threshold.
 
+[Measured costs, first-use tradeoffs and verification scope](results.md)
+
 - The [native workload](Native.swift) links the SwiftPM debug products. Each of
   five fresh processes registers fonts, times plugin composition, constructs
   four native logo views, and requests each encoded logo and translation table
@@ -21,8 +23,10 @@ calibrated threshold.
   with 256 Codex Threads of 16 completed executions each. Default cwd and all
   Thread cwds identify one directory. It calls the public Runtime after normal
   catalog initialization, five more times, then immediately after insertion and
-  deletion of an unlisted Thread. It checks the full sorted response and
-  cancellation. The Harness supplies its real projections and exposes no
+  deletion of an unlisted Thread. It moves an existing Thread, replaces it
+  with a malformed record, repairs it and checks cancellation. The oracle
+  checks the full sorted response and the lookup errors. The Harness supplies
+  its real projections and exposes no
   external discovery interface. Wall time and Go process allocations cover
   the call, including any concurrent publication. [Runtime](../../../internal/core/runtime/README.md)
 - The [OpenCode workload](renderer/main.go) projects one saved history with 128
