@@ -1,6 +1,7 @@
 import AppKit
 import ScreenCaptureKit
 import SwiftUI
+import ChiefApplications
 import ChiefCore
 import ChiefHarnessCodex
 import ChiefPluginAPI
@@ -55,7 +56,7 @@ private final class WheelSample: NSEvent {
             let preferences = DesktopPreferences(directory: directory)
             try preferences.setOnboardingCompleted(true)
             workspace = NativeWorkspaceModel(client: RuntimeClient(profile: try RuntimeProfile(dataDirectory: directory)),
-                preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())], sidecards: [], applications: []))
+                preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())], sidecards: [], applications: NativeApplicationModules.make()))
             presentation = NativeWorkspacePresentation(workspace: workspace)
         } catch { fatalError(String(describing: error)) }
     }
@@ -78,7 +79,8 @@ private final class WheelSample: NSEvent {
         .restorationBehavior(.disabled)
     }
 
-    private func installTasks(_ count: Int, revision: Int, authority: UUID, firstDirectoryCount: Int? = nil) async throws {
+    private func installTasks(_ count: Int, revision: Int, authority: UUID, firstDirectoryCount: Int? = nil,
+                              reports: [JSONValue] = []) async throws {
         let ids = (0..<count).map { "task-\($0)" } + ["moku"]
         let threads = try ids.enumerated().map { index, id in
             let other = firstDirectoryCount.map { index >= $0 && id != "moku" } ?? false
@@ -90,7 +92,7 @@ private final class WheelSample: NSEvent {
         }
         let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
             "defaultCwd": .text("/fixture"), "settings": .object([:]), "threads": .array(threads),
-            "executions": .array([]), "applicationThreads": .array([])])
+            "executions": .array([]), "applicationThreads": .array(reports)])
         await workspace.installPrepared(snapshot, event: .snapshot(snapshot, authority: authority))
     }
 
@@ -122,6 +124,11 @@ private final class WheelSample: NSEvent {
             window.setContentSize(size)
             window.setFrameTopLeftPoint(CGPoint(x: screen.visibleFrame.midX - size.width / 2, y: screen.visibleFrame.midY + size.height / 2))
             try await Task.sleep(for: .seconds(2))
+            let deadline = ContinuousClock.now + .seconds(4)
+            while !presentation.canvas.canScroll || NSEvent.pressedMouseButtons != 0 {
+                guard ContinuousClock.now < deadline else { throw ReplayError("Canvas did not admit wheel input at \(size)") }
+                try await Task.sleep(for: .milliseconds(25))
+            }
             let camera = presentation.canvas.camera
             let retained = camera.scrollOffset == min(previousOffset, camera.maximumOffset)
             var result = try inspect(window, scale: scale, filterTop: filterTop)
@@ -148,6 +155,7 @@ private final class WheelSample: NSEvent {
         try await Task.sleep(for: .seconds(1))
         try await cardInteraction(window, directory: directory, authority: authority)
         try await fittingCards(window, directory: directory, authority: authority)
+        try await fittingCollection(window, directory: directory, authority: authority)
     }
 
     private func capture(_ window: NSWindow, to url: URL) async throws {
@@ -371,6 +379,71 @@ private final class WheelSample: NSEvent {
             "offsetBeforeFilter": beforeFilter, "offsetBeforeResize": beforeResize, "finalOffset": camera.scrollOffset]
         try JSONSerialization.data(withJSONObject: record, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "overview-fit.json"))
+    }
+
+    private func fittingCollection(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+        let model = presentation.overview, canvas = presentation.canvas
+        let ids = (0..<8).map { JSONText("report-\($0)") }
+        let now = Date().timeIntervalSince1970 * 1000
+        let reports = ids.enumerated().map { index, id -> JSONValue in
+            let ref = ApplicationThreadRef(threadID: id, typeID: "report.document")
+            let created = now - Double(ids.count - index)
+            return .object(["id": .string(id), "ref": ref.json, "revision": .integer(1),
+                "createdAt": .number(created), "updatedAt": .number(created),
+                "title": .string(id), "archived": .bool(false), "scope": .text("/fixture"), "presentations": .array([]),
+                "tags": .object(["tags": .array([]), "semanticTags": .array([]), "directoryTags": .array([]), "tagEmojis": .object([:])]),
+                "view": .object(["coverRevision": .text("cover"), "contentRevision": .text("body"), "emoji": .text("📕"),
+                    "readingSeconds": .integer(20), "shortDescription": .text("Report"), "previewText": .text("Report"),
+                    "relatedExecutions": .array([])])])
+        }
+        model.selectTag(nil)
+        var samples = [[String: Any]]()
+        func check(_ width: Int, _ height: Int, tasks: Int, grouped: Int, scrolls: Bool = false) async throws {
+            // Fit the recording-sized logical viewport on a smaller desktop.
+            zoom = 0.5
+            window.setContentSize(CGSize(width: Double(width) * zoom, height: Double(height) * zoom))
+            let expected = ids.prefix(grouped).map(\.string)
+            let deadline = ContinuousClock.now + .seconds(5)
+            while true {
+                if let error = model.error ?? canvas.layoutError { throw ReplayError(error) }
+                let members = model.items.flatMap { item -> [String] in
+                    guard case .collection(_, let members) = model.snapshot(for: item) else { return [] }
+                    return members.map(\.entry.ref.threadID.string)
+                }
+                let placements = canvas.presentedPlacements
+                let camera = canvas.camera
+                if camera.viewport?.width == Double(width), camera.viewport?.height == Double(height),
+                   members == expected, placements.count == tasks + ids.count - grouped + (grouped == 0 ? 0 : 1),
+                   placements.map(\.id) == model.items.map(\.id), canvas.mountedCardIDs == Set(placements.map(\.id)),
+                   !canvas.isLayingOut, (camera.maximumOffset > 0) == scrolls {
+                    camera.scroll(by: 10_000)
+                    guard camera.scrollOffset == camera.maximumOffset else { throw ReplayError("Unreachable collection scroll boundary") }
+                    samples.append(["viewport": [width, height], "tasks": tasks, "grouped": members, "travel": camera.maximumOffset])
+                    return
+                }
+                guard ContinuousClock.now < deadline else {
+                    throw ReplayError("Collection at \(width)×\(height) did not settle: \(members), viewport=\(String(describing: camera.viewport)), travel=\(camera.maximumOffset), cards=\(placements.count), error=\(model.error ?? workspace.operationError ?? "none")")
+                }
+                try await Task.sleep(for: .milliseconds(25))
+            }
+        }
+        try await installTasks(2, revision: 5, authority: authority, reports: reports)
+        try await check(2064, 1212, tasks: 2, grouped: 0)
+        try await installTasks(3, revision: 6, authority: authority, reports: reports)
+        try await check(2064, 1212, tasks: 3, grouped: 0)
+        try await installTasks(2, revision: 7, authority: authority, reports: reports)
+        try await check(2064, 1212, tasks: 2, grouped: 0)
+        try await check(1024, 704, tasks: 2, grouped: 6)
+        let atBoundary = model.items.map(\.id)
+        try await Task.sleep(for: .milliseconds(500))
+        guard model.items.map(\.id) == atBoundary, canvas.presentedPlacements.map(\.id) == atBoundary,
+              atBoundary.allSatisfy(canvas.allowsActivation) else { throw ReplayError("Unstable collection at exact fit") }
+        try await check(1022, 704, tasks: 2, grouped: 7)
+        try await check(600, 704, tasks: 2, grouped: 7, scrolls: true)
+        try await check(1024, 704, tasks: 2, grouped: 6)
+        try await check(2064, 1212, tasks: 2, grouped: 0)
+        try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "collection-fit.json"))
     }
 
     private func keyboardInteraction(_ window: NSWindow, directory: URL, id: String, atEnd: Double) async throws {

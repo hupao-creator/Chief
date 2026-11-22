@@ -99,6 +99,8 @@ public final class NativeOverviewWorkspaceModel {
     // visit writes reading evidence, so Back can restore the same grid seat.
     @ObservationIgnored private var heldCollectionRanks: [ApplicationThreadRef: (idle: Bool, qualifiedAt: Double?)] = [:]
     @ObservationIgnored private var projectedCollectionScene: String?
+    @ObservationIgnored private var collectionWindowSize: CGSize?
+    @ObservationIgnored private var hasCollectionCandidates = false
     @ObservationIgnored private var collectionAgeSample = Date().timeIntervalSince1970
     @ObservationIgnored private var snapshots: [String: NativeOverviewCardSnapshot] = [:]
     @ObservationIgnored private var harnessCache: [JSONText: HarnessOverviewSnapshot] = [:]
@@ -186,6 +188,12 @@ public final class NativeOverviewWorkspaceModel {
 
     /// Host observations can change card geometry without changing catalog membership.
     public func refreshCardExtensions() { reconcile(captureMutation: true) }
+
+    func setCollectionWindowSize(_ size: CGSize) {
+        guard size.width > 0, size.height > 0, collectionWindowSize != size else { return }
+        collectionWindowSize = size
+        if hasCollectionCandidates, presentationActive { reconcile(captureMutation: false, refreshSelection: false) }
+    }
 
     /// The reading stack owns this gate: its parent still participates in opening
     /// and return motion even though the logical route already points at detail.
@@ -322,8 +330,6 @@ public final class NativeOverviewWorkspaceModel {
             var evidence = reading(visit.reference) ?? .init()
             visit.promote(&evidence)
             saveReading(visit.reference, evidence)
-            // The deliberate promotion can use the full budget on prepared return.
-            if heldCollectionRanks[visit.reference] == nil { projectedCollectionScene = nil }
             readingChanged()
         } else if visible {
             let delay = max(0.01, visit.threshold - visit.elapsed)
@@ -345,9 +351,6 @@ public final class NativeOverviewWorkspaceModel {
 
     func releaseCollectionRanks() {
         guard !heldCollectionRanks.isEmpty else { return }
-        if heldCollectionRanks.contains(where: { reading($0.key)?.lastQualifiedAt != $0.value.qualifiedAt }) {
-            projectedCollectionScene = nil
-        }
         heldCollectionRanks.removeAll()
         readingChanged()
     }
@@ -747,30 +750,28 @@ public final class NativeOverviewWorkspaceModel {
                 columns: projection.envelope.footprint.columns, rows: projection.envelope.footprint.rows,
                 structureKey: projection.envelope.structureKey.string, presentationID: token)))
         }
+        entries.sort { a, b in
+            return a.created == b.created ? a.index < b.index : a.created < b.created
+        }
         if groupCollections {
             try groupApplications(collection.applications, in: &entries)
         }
-        let ordered = entries.sorted { a, b in
-            return a.created == b.created ? a.index < b.index : a.created < b.created
-        }.map(\.item)
-        return ordered
+        return entries.map(\.item)
     }
 
     private func groupApplications(_ applications: [NativeOverviewApplicationEntry], in entries: inout [CardEntry]) throws {
         if projectedCollectionScene != browseSceneKey { collectionAgeSample = Date().timeIntervalSince1970 }
-        let previous = projectedCollectionScene == browseSceneKey ? collectionSources : [:]
         projectedCollectionScene = browseSceneKey
-        collectionSources.removeAll()
-        guard applications.count >= 2 else { return }
-        let expanded = entries.reduce(0) { $0 + $1.item.columns * $1.item.rows }
-        var budget = NativeOverviewCollectionBudget(expandedCells: expanded)
         let now = collectionAgeSample
+        var plans: [(group: NativeOverviewCollectionBudget, plugin: AnyApplicationThreadPlugin,
+                     providesCardSurface: Bool, snapshots: [ApplicationOverviewSnapshot])] = []
         var visitedTypes = Set<JSONText>()
         for application in applications where visitedTypes.insert(application.entry.ref.typeID).inserted {
             let typeID = application.entry.ref.typeID
             let plugin = try workspace.plugins.applications.requireThread(typeID)
             guard let policy = plugin.overviewCollection else { continue }
             let snapshotsForType = applications.filter { $0.entry.ref.typeID == typeID }.map { applicationCache[$0.entry.ref.threadID]!.1 }
+            guard snapshotsForType.count >= 2 else { continue }
             let ranked = snapshotsForType.map { snapshot in
                 let entry = snapshot.entry
                 let rank = heldCollectionRanks[entry.ref] ?? (isIdle(entry, now: now), reading(entry.ref)?.lastQualifiedAt)
@@ -782,24 +783,27 @@ public final class NativeOverviewWorkspaceModel {
                 if a.qualified != b.qualified { return !a.qualified }
                 return a.priority < b.priority
             }
-            let count = budget.memberCount(eligible: ranked.map { $0.snapshot.envelope.footprint }, collection: policy.footprint,
-                idle: ranked.prefix(while: { $0.idle }).count,
-                retained: ranked.prefix(while: { previous[$0.snapshot.entry.ref] != nil }).count)
-            guard count > 0 else { continue }
-            let chosen = Set(ranked.prefix(count).map { $0.snapshot.entry.ref })
-            let members = snapshotsForType.filter { chosen.contains($0.entry.ref) }
             let id = "\u{0}application-collection:\(plugin.id.string):\(browseSceneKey)"
-            let ids = Set(members.map { $0.entry.ref.threadID.string })
-            let origin = entries.filter { ids.contains($0.item.id) }.min {
-                $0.created == $1.created ? $0.index < $1.index : $0.created < $1.created
-            }!
-            let token = id + ":" + members.map { String(describing: ObjectIdentifier($0)) }.joined(separator: ",")
-            snapshots[token] = .collection(plugin, members)
-            for member in members { collectionSources[member.entry.ref] = id }
+            let card = NativeOverviewMember(id: id, columns: policy.footprint.columns, rows: policy.footprint.rows)
+            plans.append((.init(card: card, rankedIDs: ranked.map { $0.snapshot.entry.ref.threadID.string },
+                                idleCount: ranked.prefix(while: { $0.idle }).count), plugin, policy.providesCardSurface, snapshotsForType))
+        }
+        let counts = plans.isEmpty ? [] : try NativeOverviewCollectionBudget.memberCounts(in: entries.map { $0.item.member },
+            groups: plans.map(\.group), windowSize: collectionWindowSize)
+        hasCollectionCandidates = !plans.isEmpty
+        collectionSources.removeAll()
+        for (plan, count) in zip(plans, counts) where count > 0 {
+            let card = plan.group.card
+            let ids = Set(plan.group.rankedIDs.prefix(count))
+            let members = plan.snapshots.filter { ids.contains($0.entry.ref.threadID.string) }
+            let token = card.id + ":" + members.map { String(describing: ObjectIdentifier($0)) }.joined(separator: ",")
+            snapshots[token] = .collection(plan.plugin, members)
+            for member in members { collectionSources[member.entry.ref] = card.id }
+            let origin = entries.firstIndex { ids.contains($0.item.id) }!
+            entries[origin].item = .init(id: card.id, columns: card.columns, rows: card.rows,
+                structureKey: "application-collection", presentationID: token,
+                providesCardSurface: plan.providesCardSurface)
             entries.removeAll { ids.contains($0.item.id) }
-            entries.append((origin.created, origin.index, .init(id: id, columns: policy.footprint.columns,
-                rows: policy.footprint.rows, structureKey: "application-collection", presentationID: token,
-                providesCardSurface: policy.providesCardSurface)))
         }
     }
 
