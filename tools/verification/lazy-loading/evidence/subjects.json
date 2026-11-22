@@ -1,0 +1,142 @@
+{
+  "baseline": "3c704bca318ed9a9ab8435f70e1beaa2987b6d9d",
+  "candidate": "dac48e309cf248957564b1f10810a5081161a590",
+  "go": "go version go1.27.3 darwin/arm64",
+  "hardware": "Apple M1 Pro",
+  "goOverlayBaseline": {
+    "internal/core/runtime/settings.go": "f1e125e50c3580192157c1accce265eb2d602c541346fd2641e6021f57ca58f6",
+    "internal/plugins/harness/opencode/renderer.go": "a9bebc9e9cd82d607f693e995719adee8d607e83e35d8c2d8a17019fbd4cfcc5",
+    "internal/plugins/harness/opencode/renderer_wire.go": "38bfea78d875f4470905526511f661a6f3370f57fe161ec5a76653ff1c8ba01d"
+  },
+  "production": {
+    "internal/core/runtime/settings.go": "6e9f5d80f2c82668031a542b6843729bba281a2e808b32cc65a686ca34dee09d",
+    "internal/plugins/harness/opencode/renderer.go": "6d1895183124645be8acf3c2e48d6b3425562a06f7ffec1cdfc65fad2e9fef9f",
+    "internal/plugins/harness/opencode/renderer_wire.go": "efd86a0db8344c930f04416d29432c816d958876bcb8af927655edbd3a2a1499"
+  },
+  "native": {
+    "baseline": {
+      "revision": "3c704bca318ed9a9ab8435f70e1beaa2987b6d9d",
+      "collectorSHA256": "7b4b12fe9bb2486596c5f4e4334d3ee9b83e871e9948ccfc4a7950012bc53325",
+      "executableSHA256": "b36fd7d318de089d8ca456c9ca53ba72ee60b9644567f42c37101dda1e199e18",
+      "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+      "swift": "Apple Swift version 6.3.2 (swiftlang-6.3.2.1.108 clang-2100.1.1.101)\nTarget: arm64-apple-macosx26.0",
+      "swiftProductionDiffSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "linkedProductSourceRevision": "3c704bca318ed9a9ab8435f70e1beaa2987b6d9d"
+    },
+    "candidate": {
+      "revision": "3c704bca318ed9a9ab8435f70e1beaa2987b6d9d",
+      "collectorSHA256": "7b4b12fe9bb2486596c5f4e4334d3ee9b83e871e9948ccfc4a7950012bc53325",
+      "executableSHA256": "db4a9788df16aef04073863b89359d0be31fb46be2b396f5f569c70d52af41e9",
+      "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+      "swift": "Apple Swift version 6.3.2 (swiftlang-6.3.2.1.108 clang-2100.1.1.101)\nTarget: arm64-apple-macosx26.0",
+      "swiftProductionDiffSHA256": "b274712d65548b069f3d768d05d8165aeb437f1d3881b452a39255767d2bea2d",
+      "linkedProductSourceRevision": "dac48e309cf248957564b1f10810a5081161a590"
+    }
+  },
+  "goCollectors": {
+    "baseline-directories": {
+      "executableSHA256": "23d63740a81814a3b10c01e1147c215fa532d7cbf0fe042835e2d6a46e6420d2",
+      "collectorSHA256": "72dbedc8b344cc40745d9c2708774e6d2fb6c04fc1b5517153ad06966e511d90",
+      "collectorRevision": "dac48e309cf248957564b1f10810a5081161a590"
+    },
+    "candidate-directories": {
+      "executableSHA256": "79bb2cb7c6c444c51b7e2bf34cccef47f57edcc5bec74d7c81df936e2fc0da6d",
+      "collectorSHA256": "72dbedc8b344cc40745d9c2708774e6d2fb6c04fc1b5517153ad06966e511d90",
+      "collectorRevision": "dac48e309cf248957564b1f10810a5081161a590"
+    },
+    "baseline-renderer": {
+      "executableSHA256": "5394210810de8b8ea60683b154e73bd9a46f33958326524dd3a3efdc76d955b9",
+      "collectorSHA256": "d825073215e4bb318890799e0746d053e1495d1905a0c33c536eb71a5edc71a0"
+    },
+    "candidate-renderer": {
+      "executableSHA256": "27cbf1ebd5b764b35500c6be93181513610dfb9ff875997f8ec1dfa9a2e8cf15",
+      "collectorSHA256": "d825073215e4bb318890799e0746d053e1495d1905a0c33c536eb71a5edc71a0"
+    },
+    "baseline-refresh": {
+      "executableSHA256": "a418e4973a008767e7f9323b5120f2d14c91adb201883b383f8f5ce529bf4ad5",
+      "collectorSHA256": "e26131a891d3491e88c3b9991fd53a01c6beab50720146e4bd7afe6e9b891508"
+    },
+    "candidate-refresh": {
+      "executableSHA256": "aafdfd5059c22679743adcd88add92bc07ce088fd18d6d51401e5e1af6b95b90",
+      "collectorSHA256": "e26131a891d3491e88c3b9991fd53a01c6beab50720146e4bd7afe6e9b891508"
+    }
+  },
+  "independentSQLAudit": {
+    "source": "supplied store.samples, subset for 256 Threads",
+    "fileSHA256": "1b734a49d71465da6d1cf34907fa507202c8771ceb43cc35c36226ffe68cfced",
+    "samples": [
+      {
+        "operation": "storeOpen",
+        "run": 0,
+        "ms": 244.348,
+        "allocatedBytes": 309589888
+      },
+      {
+        "operation": "storeOpen",
+        "run": 1,
+        "ms": 232.211,
+        "allocatedBytes": 309589888
+      },
+      {
+        "operation": "storeOpen",
+        "run": 2,
+        "ms": 231.423,
+        "allocatedBytes": 309590704
+      },
+      {
+        "operation": "storeOpen",
+        "run": 3,
+        "ms": 232.269,
+        "allocatedBytes": 309589552
+      },
+      {
+        "operation": "storeOpen",
+        "run": 4,
+        "ms": 232.773,
+        "allocatedBytes": 309589552
+      },
+      {
+        "operation": "storeOpen",
+        "run": 5,
+        "ms": 235.486,
+        "allocatedBytes": 309590560
+      },
+      {
+        "operation": "knownDirectories",
+        "run": 0,
+        "ms": 218.783,
+        "allocatedBytes": 297155496
+      },
+      {
+        "operation": "knownDirectories",
+        "run": 1,
+        "ms": 211.574,
+        "allocatedBytes": 297160456
+      },
+      {
+        "operation": "knownDirectories",
+        "run": 2,
+        "ms": 203.86,
+        "allocatedBytes": 297160456
+      },
+      {
+        "operation": "knownDirectories",
+        "run": 3,
+        "ms": 204.143,
+        "allocatedBytes": 297160456
+      },
+      {
+        "operation": "knownDirectories",
+        "run": 4,
+        "ms": 204.685,
+        "allocatedBytes": 297155112
+      },
+      {
+        "operation": "knownDirectories",
+        "run": 5,
+        "ms": 210.104,
+        "allocatedBytes": 297155096
+      }
+    ]
+  }
+}

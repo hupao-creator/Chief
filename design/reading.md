@@ -76,6 +76,11 @@ redirect the flying title and emoji once from their presented positions to
 the measured main-column anchors. Live window resizing admits the handoff
 when panel travel finishes.
 
+The history index uses row metadata. A scoped reader constructs the selected
+body through its Harness renderer. For inline content, copies of a row share
+its first materialized view within that projection. A new projection owns a
+fresh body even when the execution ID stays the same.
+
 Direct historical/result requests select their destination before the page stack
 mounts. A never-visited current page need not acquire and construct its body
 behind the historical page. Once visited, current/history scroll ownership stays
