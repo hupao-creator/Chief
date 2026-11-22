@@ -83,11 +83,7 @@ func (c *Coordinator) tools(owner string, description ThreadCreationDescription)
 				invokeErr = errors.New("Chief tool result exceeds the JSON boundary")
 			}
 			if invokeErr != nil {
-				message := invokeErr.Error()
-				if len(message) > 8192 {
-					message = message[:8192]
-				}
-				result, _ = json.Marshal(map[string]any{"error": message})
+				result, _ = json.Marshal(map[string]any{"error": toolErrorMessage(invokeErr)})
 			}
 			recordErr := c.completeTool(context.WithoutCancel(linked), owner, execution.ExecutionID, callID, result, invokeErr != nil)
 			if failure := toolInvocationFailure(invokeErr, recordErr); failure != nil {
@@ -97,6 +93,20 @@ func (c *Coordinator) tools(owner string, description ThreadCreationDescription)
 		}
 	}
 	return bindings
+}
+
+func toolErrorMessage(err error) string {
+	message := err.Error()
+	return message[:min(len(message), 8192)]
+}
+
+func toolText(raw any, key string, max int) (string, error) {
+	value, ok := raw.(string)
+	value = strings.TrimSpace(value)
+	if !ok || value == "" || model.UTF16Length(value) > max || strings.ContainsRune(value, 0) {
+		return "", fmt.Errorf("%s 无效", key)
+	}
+	return value, nil
 }
 
 // toolInvocationFailure keeps an internal failure internal: when recording the
@@ -127,12 +137,7 @@ func (c *Coordinator) executeTool(ctx context.Context, owner, name string, raw j
 		return nil, err
 	}
 	getText := func(key string, max int) (string, error) {
-		value, ok := object[key].(string)
-		value = strings.TrimSpace(value)
-		if !ok || value == "" || model.UTF16Length(value) > max || strings.ContainsRune(value, 0) {
-			return "", fmt.Errorf("%s 无效", key)
-		}
-		return value, nil
+		return toolText(object[key], key, max)
 	}
 	encode := func(value any) (json.RawMessage, error) { return json.Marshal(value) }
 	switch name {
@@ -268,34 +273,20 @@ func (c *Coordinator) executeTool(ctx context.Context, owner, name string, raw j
 			results = append(results, item)
 		}
 		return encode(map[string]any{"ok": ok, "results": results})
-	case "get_thread_status", "send_to_thread", "ask_thread":
+	case "send_to_thread":
+		return c.sendToThread(ctx, object)
+	case "get_thread_status", "ask_thread":
 		id, err := getText("threadId", 128)
 		if err != nil {
 			return nil, err
 		}
-		record, err := c.config.Thread(id)
+		record, err := c.ordinaryThread(id)
 		if err != nil {
 			return nil, err
-		}
-		if record.Moku || record.MokuHistory {
-			return nil, errors.New("Chief tools may only target ordinary Agent Threads")
 		}
 		switch name {
 		case "get_thread_status":
 			return encode(map[string]any{"ok": true, "thread": publicThread(record)})
-		case "send_to_thread":
-			prompt, err := getText("prompt", 1_000_000)
-			if err != nil {
-				return nil, err
-			}
-			if c.config.SendThread == nil {
-				return nil, errors.New("Thread send unavailable")
-			}
-			sent, err := c.config.SendThread(ctx, id, textInput(prompt))
-			if err != nil {
-				return nil, err
-			}
-			return encode(map[string]any{"ok": true, "threadId": id, "executionId": sent.ExecutionID, "startedNewExecution": sent.StartedNewExecution, "hint": ThreadNotificationHint})
 		case "ask_thread":
 			question, err := getText("question", 1_000_000)
 			if err != nil {
@@ -340,6 +331,82 @@ func (c *Coordinator) executeTool(ctx context.Context, owner, name string, raw j
 		return encode(map[string]any{"ok": true})
 	}
 	return nil, errors.New("Unknown Chief tool")
+}
+
+func (c *Coordinator) ordinaryThread(id string) (model.ThreadRecord, error) {
+	record, err := c.config.Thread(id)
+	if err != nil {
+		return model.ThreadRecord{}, err
+	}
+	if record.Moku || record.MokuHistory {
+		return model.ThreadRecord{}, errors.New("Chief tools may only target ordinary Agent Threads")
+	}
+	return record, nil
+}
+
+func (c *Coordinator) sendToThread(ctx context.Context, arguments map[string]any) (json.RawMessage, error) {
+	prompt, err := toolText(arguments["prompt"], "prompt", ToolInputMaxCharacters)
+	targets, batch := arguments["target"].([]any) // closed schema selects exactly one form
+	if err != nil {
+		if batch {
+			err = plugin.CallerError(err)
+		}
+		return nil, err
+	}
+	send := func(id string) (map[string]any, error) {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if _, err := c.ordinaryThread(id); err != nil {
+			return nil, err
+		}
+		if c.config.SendThread == nil {
+			return nil, errors.New("Thread send unavailable")
+		}
+		sent, err := c.config.SendThread(ctx, id, textInput(prompt))
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"ok": true, "threadId": id, "executionId": sent.ExecutionID,
+			"startedNewExecution": sent.StartedNewExecution, "hint": ThreadNotificationHint}, nil
+	}
+	if !batch {
+		id, err := toolText(arguments["threadId"], "threadId", 128)
+		if err != nil {
+			return nil, err
+		}
+		result, err := send(id)
+		if err != nil {
+			return nil, err
+		}
+		return json.Marshal(result)
+	}
+
+	// Validate the complete request before admitting any input. Repeated IDs
+	// share one attempt even when that attempt fails or the caller cancels.
+	ids := make([]string, 0, len(targets))
+	seen := make(map[string]bool, len(targets))
+	for _, target := range targets {
+		id, err := toolText(target, "target", 128)
+		if err != nil {
+			return nil, plugin.CallerError(err)
+		}
+		if !seen[id] {
+			ids = append(ids, id)
+			seen[id] = true
+		}
+	}
+	ok := true
+	results := make([]map[string]any, 0, len(ids))
+	for _, id := range ids {
+		result, err := send(id)
+		if err != nil {
+			ok = false
+			result = map[string]any{"ok": false, "threadId": id, "error": toolErrorMessage(err)}
+		}
+		results = append(results, result)
+	}
+	return json.Marshal(map[string]any{"ok": ok, "results": results})
 }
 
 // parseNoteUpdate is the protocol boundary for update_note. The whole note is
