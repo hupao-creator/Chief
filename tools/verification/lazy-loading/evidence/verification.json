@@ -1,0 +1,83 @@
+{
+  "testedProductionRevision": "dac48e309cf248957564b1f10810a5081161a590",
+  "transcript": {
+    "commit": "dac48e309cf248957564b1f10810a5081161a590",
+    "dirty": false,
+    "os": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+    "status": "passed",
+    "samples": 77
+  },
+  "desktop": {
+    "validity": "valid",
+    "exitCode": 0,
+    "scenarios": [
+      {
+        "id": "E2E-OVERVIEW-002",
+        "status": "passed",
+        "functionality": "passed",
+        "reason": "all declared assertions and evidence present"
+      },
+      {
+        "id": "E2E-READ-001",
+        "status": "passed",
+        "functionality": "passed",
+        "reason": "all declared assertions and evidence present"
+      },
+      {
+        "id": "E2E-SETTINGS-001",
+        "status": "passed",
+        "functionality": "passed",
+        "reason": "all declared assertions and evidence present"
+      }
+    ],
+    "inputEvidence": {
+      "mode": "mounted-semantic-controls",
+      "operatorStages": {}
+    },
+    "cliVersion": "codex-cli 0.171.0",
+    "productionSourceSHA256": "5fc967eee5d73523b60acdae506ca71b075e4e5d29eebaee79dc9a2067a1ad6a",
+    "appSHA256": "27f744f4d9ceeef84f7d0fec7e9b62731304f8b0d1f0964f53a07ddb39b23758",
+    "runtimeSHA256": "c2a93276cb8d7c8282134d4929ef253759c745b00f19e3a3ca89c1f0194e00ea",
+    "reportSHA256": "7f08f98693c437f357d44ba8b7a9d53091c20d7c194eb8445e2ddef66644bed0"
+  },
+  "storeSnapshot": {
+    "id": "PBT-STORE-SNAPSHOT",
+    "seed": 20261122,
+    "generatedCases": 100,
+    "exitCode": 0,
+    "summarySHA256": "9c91ccd64c71aed75280b0cf65dddd002878113cc3c054ab814547109447839f"
+  },
+  "sidebarAccessibility": {
+    "actions": [
+      {
+        "action": "AXPress",
+        "receipt": "AXButton 第 255 轮对话: Question 254  历史对话 0\n",
+        "selectedAfter": "turn-254"
+      },
+      {
+        "action": "AXPress",
+        "receipt": "AXButton 第 256 轮对话: Question 255  当前轮次 0\n",
+        "selectedAfter": "turn-255"
+      },
+      {
+        "action": "AXPress",
+        "receipt": "AXButton 第 255 轮对话: Question 254  历史对话 0\n",
+        "selectedAfter": "turn-254"
+      }
+    ],
+    "fallbacks": 0,
+    "mounted": [
+      "turn-254",
+      "turn-255"
+    ],
+    "fixtureSHA256": "11926d67b559b2a835232b84aa9bac715dc4d80a72198d7e4a3bb6cfa9f3b25b",
+    "externalClientSHA256": "e660dee8a40d62b51a06914812b8e110b0df9d8239a55673822c7e8bdeaf701c"
+  },
+  "opticalPreflight": {
+    "accessibility": true,
+    "input": true,
+    "capture": true,
+    "collectorSHA256": "f77f3c69e0d591e6f60a8e6578090eb6d8e49d17e8e46705a463b8946d8f57d7",
+    "os": "Version 26.5.1 (Build 25F80)"
+  }
+}

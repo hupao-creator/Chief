@@ -107,6 +107,28 @@ func main() {
 	must(err)
 	expected = expected[:1]
 	sample("delete")
+	// Refresh the same identity, including a broken record followed by repair.
+	// Reusing its previous cwd would hide both the move and the decode error.
+	key := "thread:" + ids[0]
+	var original model.ThreadRecord
+	_, err = db.Snapshot().Get(key, &original)
+	must(err)
+	replace := func(record any) {
+		_, err := db.Update(ctx, func(tx *store.Tx) error { return tx.Put(key, record) })
+		must(err)
+	}
+	moved := original
+	moved.Cwd = newPath
+	replace(moved)
+	expected = append(expected, model.KnownDirectory{Name: "unlisted", Path: newPath})
+	sample("move")
+	replace("invalid Thread record")
+	if _, err := rt.KnownDirectories(ctx); err == nil {
+		panic("directory lookup accepted a malformed replacement")
+	}
+	replace(original)
+	expected = expected[:1]
+	sample("repair")
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
 	if _, err := rt.KnownDirectories(cancelled); err != context.Canceled {
