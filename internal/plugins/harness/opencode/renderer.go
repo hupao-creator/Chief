@@ -311,10 +311,22 @@ func rendererDirectory(state *State, base Object, scope model.RendererScope, sou
 			break
 		}
 	}
-	card, reply := rendererCardMessage(state, latest, cardStatus), rendererReplyMessage(state)
-	for _, message := range []*Message{card, reply} {
-		if scope.Kind == "overview" && message != nil {
-			selected[message], previews[message] = true, true
+	var card *Message
+	var todo *Message
+	if scope.Kind == "overview" {
+		card = rendererCardMessage(state, latest, cardStatus)
+		for _, message := range []*Message{card, rendererReplyMessage(state)} {
+			if message != nil {
+				selected[message], previews[message] = true, true
+			}
+		}
+		for i := len(state.Messages) - 1; i >= 0; i-- {
+			message := state.Messages[i]
+			if message.ExecutionID == latest && !message.Inherited && message.Role == "tool" && source.messageHas(message, "todos") {
+				todo = message
+				selected[todo] = true
+				break
+			}
 		}
 	}
 	usages := make(map[*Message]Object)
@@ -358,15 +370,6 @@ func rendererDirectory(state *State, base Object, scope model.RendererScope, sou
 				}
 			}
 		}
-	}
-	var todo *Message
-	for _, message := range state.Messages {
-		if message.ExecutionID == latest && !message.Inherited && message.Role == "tool" && source.messageHas(message, "todos") {
-			todo = message
-		}
-	}
-	if scope.Kind == "overview" && todo != nil {
-		selected[todo] = true
 	}
 	if scope.Kind == "thread" {
 		for _, message := range state.Messages {

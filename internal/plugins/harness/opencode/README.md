@@ -84,10 +84,11 @@ execution outcome. Authors are capped at Swift's 4,096-byte field limit;
 reasoning foregrounds are capped at Swift's 32,768-code-point head guard. A final
 whole-envelope check falls back to a minimal legal projection, preserving
 execution outcomes, if a non-interaction field still escapes the budget. The adapter may encode the envelope at most six times:
-one initial check, four degraded stages, and one fixed-size minimal fallback. The renderer source indexes only the message fields used by the one-body
-projection (identity, tool display inputs and presence flags) and releases the
-duplicate encoded collections before projecting, so peak memory stays close to
-canonical state instead of retaining a second full conversation. The projection carries `contentTruncated` so the native reader can explain the
+one initial check, four degraded stages, and one fixed-size minimal fallback. Each projection builds a raw collection index on its first field lookup
+and releases the encoded collection bytes after indexing. The thread manifest
+uses the decoded message previews. Overview looks up raw presence for the
+latest eligible todo, and execution resources use the raw tool fields for
+ordered display. The projection carries `contentTruncated` so the native reader can explain the
 omission/truncation; the authoritative session state is never rewritten. The transport enforces the 32 MiB response/event boundary. An HTTP prompt receipt admits input; terminal native execution facts settle it. New executions retain their input before dispatch. Follow-up message retention
 requires a native prompt receipt or matching native inbox/history evidence;
 the command's `Admitted` callback still requires its successful HTTP prompt
