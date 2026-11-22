@@ -20,6 +20,12 @@ When you send from Overview, Chief takes the current Overview folder into accoun
 
 Click an image thumbnail to preview it, or click **×** on a file or folder to remove it. Wait for the files to finish preparing, then click **Send**. You can attach up to 20 files per message. Size limits apply, and the agent running Chief determines which attachment types it can use. If you want Chief to delegate work on a file, say which file the agent should use in your request.
 
+## Send the same follow-up to several tasks
+
+In Chief's input box, name the existing tasks and give the instruction each agent should receive. For example, “Tell both the settings review and the onboarding review to check keyboard navigation.”
+
+Open each task’s card in Overview to see the follow-up in its conversation. A finished task can start a new run. If a task is waiting for an answer or approval, respond in that conversation, then ask Chief to retry that task. The other tasks can receive the follow-up even if one is blocked.
+
 ## Remove a finished task’s worktree
 
 From Overview, tell Chief which task’s worktree to remove. For example, “Remove the worktree for the finished settings review in my Calendar project.” Chief uses the task to identify the checkout it created.
