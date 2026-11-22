@@ -120,9 +120,23 @@ public enum NativeOverviewLayout {
     public static var columnPitch: Double { metrics.columnPitch }
     public static var rowPitch: Double { metrics.rowPitch }
 
+    /// Packing keeps the preferred side margins. A grid that fits in the window
+    /// with one card gap on either side can stay centered without scrolling.
+    public static func solve(members: [NativeOverviewMember], windowSize: CGSize) throws -> NativeOverviewGeometry {
+        let region = NativeOverviewCameraGeometry.framingRegion(.init(width: windowSize.width, height: windowSize.height))
+        let sideClearance = min(region.left, gap)
+        return try solve(members: members, usableViewport: region, metrics: .standard,
+                         fittingWidth: windowSize.width - 2 * sideClearance)
+    }
+
     public static func solve(members: [NativeOverviewMember],
                              usableViewport: NativeOverviewContentRect,
                              metrics: NativeOverviewGridMetrics = .standard) throws -> NativeOverviewGeometry {
+        try solve(members: members, usableViewport: usableViewport, metrics: metrics, fittingWidth: usableViewport.width)
+    }
+
+    private static func solve(members: [NativeOverviewMember], usableViewport: NativeOverviewContentRect,
+                              metrics: NativeOverviewGridMetrics, fittingWidth: Double) throws -> NativeOverviewGeometry {
         try validate(members: members, viewport: usableViewport, metrics: metrics)
         guard !members.isEmpty else {
             return NativeOverviewGeometry(placements: [], bounds: .empty, leadingTransform: nil, maximumScrollOffset: 0)
@@ -142,11 +156,13 @@ public enum NativeOverviewLayout {
         // Only a card taller than the available height needs scaling. A wide
         // collection keeps its natural size and starts at the leading inset.
         let scale = min(1, usableViewport.height / bounds.height)
-        let spareWidth = usableViewport.width - bounds.width * scale
+        let projectedWidth = bounds.width * scale
+        let fits = projectedWidth <= fittingWidth
+        let spareWidth = usableViewport.width - projectedWidth
         let leading = NativeOverviewTransform(scale: scale,
-            x: usableViewport.left + max(0, spareWidth) / 2 - bounds.left * scale,
+            x: usableViewport.left + (fits ? spareWidth / 2 : 0) - bounds.left * scale,
             y: usableViewport.top + (usableViewport.height - bounds.height * scale) / 2 - bounds.top * scale)
-        return .init(placements: placements, bounds: bounds, leadingTransform: leading, maximumScrollOffset: max(0, -spareWidth))
+        return .init(placements: placements, bounds: bounds, leadingTransform: leading, maximumScrollOffset: fits ? 0 : -spareWidth)
     }
 
     // MARK: - Candidate selection
