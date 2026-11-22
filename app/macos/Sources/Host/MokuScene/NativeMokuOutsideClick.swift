@@ -9,14 +9,6 @@ import AppKit
 
     public init() {}
     public func add(_ view: NativePlatformView) { views.add(view) }
-    var registeredCount: Int { views.allObjects.count }
-    func windowFrames(in window: NativePlatformWindow) -> [CGRect] {
-        views.allObjects.compactMap { view in
-            guard view.window === window else { return nil }
-            return view.convert(view.bounds, to: nil)
-        }
-    }
-
     public func contains(_ point: CGPoint, in window: NativePlatformWindow) -> Bool {
         views.allObjects.contains { view in
             guard view.window === window, !view.isHiddenOrHasHiddenAncestor else { return false }

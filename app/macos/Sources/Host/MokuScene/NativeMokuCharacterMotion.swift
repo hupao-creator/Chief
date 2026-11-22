@@ -63,9 +63,7 @@ struct NativeMokuCharacterPose {
     private var firstIdleBlink: Date?
     var onReasoningRetired: (() -> Void)?
 
-    var currentReasoning: MokuReasoningContent? { input?.presentsReasoning == true ? reasoningAnimation.content : nil }
     var paintedReasoningGlyphs: [MokuReasoningGlyph] { reasoningAnimation.glyphs + retiredGlyphs + replacementGlyphs }
-    var runningMilliseconds: Double { runningElapsed }
     var isTransitioning: Bool { clock < transitionAt + duration }
     var hasScheduledFrame: Bool { link?.isPaused == false && visible }
     private var visible: Bool {

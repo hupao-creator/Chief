@@ -104,8 +104,6 @@ public final class NativeOverviewWorkspaceModel {
     @ObservationIgnored private var harnessCache: [JSONText: HarnessOverviewSnapshot] = [:]
     @ObservationIgnored private var applicationCache: [JSONText: (JSONValue, ApplicationOverviewSnapshot)] = [:]
     @ObservationIgnored private(set) var membershipBuildCount = 0
-    @ObservationIgnored private(set) var projectionVisitCount = 0
-    @ObservationIgnored private(set) var catalogChangeVisitCount = 0
     @ObservationIgnored private var queuedPresentationIDs = Set<String>()
     @ObservationIgnored private var catalogIDs = Set<String>()
     @ObservationIgnored private var catalogGeneration: UInt64?
@@ -114,8 +112,6 @@ public final class NativeOverviewWorkspaceModel {
     @ObservationIgnored private var membershipIndex = NativeOverviewMembershipIndex()
     private var filterMembers: [String: NativeOverviewMembership] { membershipIndex.members }
     private var redundantSemanticFilterKeys: Set<String> { membershipIndex.redundant }
-    var membershipSelectionCount: Int { membershipIndex.selectionCount }
-    var membershipApplicationCandidateVisits: Int { membershipIndex.applicationCandidateVisits }
     @ObservationIgnored private var allMembers = NativeOverviewMembership()
     @ObservationIgnored private var allMembersDirty = false
     @ObservationIgnored private var activeThreadIDs = Set<JSONText>()
@@ -532,7 +528,6 @@ public final class NativeOverviewWorkspaceModel {
         var membershipThreads = Set<JSONText>(), membershipApplications = Set<JSONText>()
         var changedActivity = false
         for id in change.threadIDs {
-            catalogChangeVisitCount += 1
             let thread = workspace.catalog.thread(id)
             let ordinary = thread.flatMap { $0.moku == true ? nil : $0 }
             if !membershipFacts.matches(thread, id: id)
@@ -542,7 +537,6 @@ public final class NativeOverviewWorkspaceModel {
             if let ordinary { changedThreads.append(ordinary) }
         }
         for id in change.applicationIDs {
-            catalogChangeVisitCount += 1
             let raw = workspace.catalog.applicationJSON(id), previous = applicationRecords[id]
             let next = try raw.map { try NativeOverviewApplicationEntry(entry: workspace.catalog.applicationEntry(json: $0)) }
             let ref = next?.entry.ref ?? previous?.entry.ref
@@ -721,7 +715,6 @@ public final class NativeOverviewWorkspaceModel {
     private typealias CardEntry = (created: Double, index: Int, item: NativeOverviewItem)
 
     private func project(_ collection: NativeOverviewCollection, groupCollections: Bool = true) throws -> [NativeOverviewItem] {
-        projectionVisitCount += collection.count
         var entries: [CardEntry] = []
         for thread in collection.threads {
             let input = HarnessThreadInput(thread: thread, git: applicationFactories.gitStatus(thread))

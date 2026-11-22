@@ -361,14 +361,6 @@ final class ReadingPanelView: NSView, CAAnimationDelegate {
         CATransaction.commit()
     }
 
-    /// Native presentation geometry for the existing transition replay.
-    var returnPresentation: (frame: CGRect, opacity: Float, source: CGRect)? {
-        guard command?.closing == true, command?.report != true,
-              let layer = surface.layer?.presentation(),
-              let bounds = aperture.presentation()?.path?.boundingBoxOfPath else { return nil }
-        return (CGRect(origin: layer.position, size: bounds.size), layer.opacity, source)
-    }
-
     // Start delivery follows native animation submission. Preparing a hidden
     // reader here overlaps travel without doing heavy work in the submission
     // update or advancing text entrance/secondary surfaces before arrival.

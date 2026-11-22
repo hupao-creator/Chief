@@ -138,17 +138,6 @@ func copyFile(src, dst string, mode os.FileMode) error {
 	}
 	return os.Chmod(dst, mode)
 }
-func ProductionEnvironment() []string {
-	env := []string{"PATH=/usr/bin:/bin:/usr/sbin:/sbin"}
-	for _, entry := range os.Environ() {
-		key, _, _ := strings.Cut(entry, "=")
-		if key == "PATH" || key == "NODE_ENV" || key == "NODE_OPTIONS" || key == "NODE_PATH" || key == "ELECTRON_RUN_AS_NODE" || strings.HasPrefix(key, "DYLD_") {
-			continue
-		}
-		env = append(env, entry)
-	}
-	return env
-}
 func goExecutable() string {
 	if value := os.Getenv("CHIEF_GO"); value != "" {
 		return value

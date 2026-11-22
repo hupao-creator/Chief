@@ -34,7 +34,6 @@ public final class NativeWorkspaceCatalog {
     public private(set) var agentRuns: [JSONValue] = []
     public private(set) var revision = -1
     @ObservationIgnored private(set) var installGeneration: UInt64 = 0
-    @ObservationIgnored private(set) var applicationAdmissionCount = 0
     @ObservationIgnored private(set) var changes = NativeCatalogChanges(reset: true)
     @ObservationIgnored private var applicationEntries: [ApplicationThreadRef: (JSONValue, Result<ApplicationThreadCatalogEntry<JSONValue>, Error>)] = [:]
     @ObservationIgnored private var observers: [UUID: (NativeCatalogChanges) -> Void] = [:]
@@ -60,7 +59,6 @@ public final class NativeWorkspaceCatalog {
         }
         let ref = ApplicationThreadRef(threadID: id, typeID: type)
         if let cached = applicationEntries[ref], cached.0 == raw { return try cached.1.get() }
-        applicationAdmissionCount += 1
         let result = Result { try ApplicationThreadCatalogEntry<JSONValue>(json: raw) }
         applicationEntries[ref] = (raw, result)
         return try result.get()

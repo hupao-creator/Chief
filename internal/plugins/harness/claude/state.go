@@ -628,7 +628,6 @@ func (t *Turn) lastAssistantMessageText(limit int) (string, string) {
 }
 
 func (t *Turn) assistantText() string { return timelineText(t.Timeline, "assistant", 4000000) }
-func (t *Turn) reasoningText() string { return timelineText(t.Timeline, "reasoning", 4000000) }
 func (t *Turn) lastAssistantText() string {
 	_, text := t.lastAssistantMessageText(20000)
 	return text
