@@ -301,6 +301,13 @@ the next UI request after each gesture. A five-second request timeout fails
 this replay. For a short, settled text fixture, the extent at a fixed width
 must stay constant and the offset must travel in both directions.
 
+For the [execution timeline's top padding](../../design/reading.md#report-and-execution-sidecards),
+use a reply tall enough to scroll. Compare the initial content position with the
+same timeline fixture using its standard document padding. The heading starts
+20pt lower in the same viewport. Scroll beyond the added padding and back to
+the start. The padding travels with the document, and the Back button and
+left-hand Report stay in place throughout.
+
 To check the [Dock return](../../design/composer.md#geometry-and-surfaces), type a
 draft beneath the selected execution. Record the window while clicking the
 upper-left **Close Super Thread** on the report. Measure the center and width
