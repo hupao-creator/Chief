@@ -451,6 +451,7 @@ public struct NativeMokuDock: View {
                 && executionPlacement?.threadID == threadID
                 ? executionPlacement?.frame : nil
             let immediate = scenePhase != .active || settlingNoteDock || reduceMotion
+            let readingMotion = immediate || executionPlacement?.dragging == true ? nil : readingMorph
             let holdingColumn = !expanded && !shellIsCompact && !immediate
                 && inputColumn?.viewport == geometry.size && executionPlacement?.dragging != true
             let openColumn = expanded && (state.inputOpen || continuationPresenting)
@@ -502,7 +503,8 @@ public struct NativeMokuDock: View {
             ZStack(alignment: .topLeading) {
                 capsule(width: width, room: max(58, frame.height - 18),
                         surface: surface, messageWidth: messageWidth, rowHeight: rowHeight, noteHeight: noteHeight,
-                        noteAvailableHeight: noteAvailableHeight, decorationPadding: placement.decorationPadding, settingsSize: settingsSize)
+                        noteAvailableHeight: noteAvailableHeight, decorationPadding: placement.decorationPadding,
+                        settingsSize: settingsSize, readingMotion: readingMotion)
                     .modifier(CapsuleFoldObserver(size: readingGlass ? .zero : surface.size, observesFold: !readingGlass) { shellIsCompact = $0 })
                     .nativeCanvasNavigationRegion()
                     .geometryGroup()
@@ -515,7 +517,7 @@ public struct NativeMokuDock: View {
                     .background {
                         if readingGlass {
                             NativeMokuReadingGlass(size: surface.size, viewport: geometry.size,
-                                immediate: immediate || executionPlacement?.dragging == true, motion: readingMorph, hovered: hovered,
+                                motion: readingMotion, hovered: hovered,
                                 compactChanged: { shellIsCompact = $0 })
                                 .allowsHitTesting(false).accessibilityHidden(true)
                         }
@@ -866,7 +868,8 @@ public struct NativeMokuDock: View {
         }
     }
     private func capsule(width: CGFloat, room: CGFloat, surface: CGRect, messageWidth: CGFloat, rowHeight: CGFloat,
-                         noteHeight: CGFloat, noteAvailableHeight: CGFloat, decorationPadding: CGFloat, settingsSize: CGSize) -> some View {
+                         noteHeight: CGFloat, noteAvailableHeight: CGFloat, decorationPadding: CGFloat, settingsSize: CGSize,
+                         readingMotion: NativeMokuReadingMorph?) -> some View {
         let actionLayout = noteActions(width: surface.width)
         let historyBand = noteHistoryBand(width: surface.width)
         let composerStop = ordinaryOverviewDock && composerVisible
@@ -1087,7 +1090,7 @@ public struct NativeMokuDock: View {
             NativeMokuDockIdentity(harness: threadHarness, showsHarness: threadID != nil && !state.settingsOpen,
                 entranceReady: state.inputAdmissionReady, generation: generation, motion: state.windowVisible,
                 offset: offset, readingPlane: readingGlass ? CGSize(width: width, height: max(capsuleHeight, surface.height)) : nil,
-                readingMotion: scenePhase == .active && !reduceMotion && executionPlacement?.dragging != true ? readingMorph : nil,
+                readingMotion: readingMotion,
                 onSettled: { state.completeInputIdentity(generation: generation) }) {
                 face(characterInput)
             }

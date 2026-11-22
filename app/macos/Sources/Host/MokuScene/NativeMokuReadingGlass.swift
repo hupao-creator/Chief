@@ -13,6 +13,12 @@ struct NativeMokuReadingMorph {
     let opening: NativeMokuReadingOpening?
     let folding: Bool
 
+    func animates(in transaction: Transaction) -> Bool {
+        // The glass and mark receive independent SwiftUI transactions. An
+        // implicit animation can be absent on either side of the same fold.
+        !transaction.disablesAnimations && (folding || transaction.animation != nil)
+    }
+
     func track(_ key: String, from: CGFloat, to: CGFloat, columnChanged: Bool) -> CAPropertyAnimation {
         let track: CAPropertyAnimation
         if !folding, !columnChanged, let opening {
@@ -34,8 +40,7 @@ struct NativeMokuReadingMorph {
 struct NativeMokuReadingGlass: NSViewRepresentable {
     let size: CGSize
     let viewport: CGSize
-    let immediate: Bool
-    let motion: NativeMokuReadingMorph
+    let motion: NativeMokuReadingMorph?
     let hovered: Bool
     let compactChanged: (Bool) -> Void
 
@@ -44,7 +49,7 @@ struct NativeMokuReadingGlass: NSViewRepresentable {
 
     func updateNSView(_ view: ReadingGlassView, context: Context) {
         view.configure(size: size, viewport: viewport, opaque: context.environment.accessibilityReduceTransparency,
-                       immediate: immediate, transaction: context.transaction, motion: motion,
+                       transaction: context.transaction, motion: motion,
                        hovered: hovered, compactChanged: compactChanged)
     }
 }
@@ -81,8 +86,8 @@ final class ReadingGlassView: NSView {
     }
     required init?(coder: NSCoder) { nil }
 
-    func configure(size: CGSize, viewport: CGSize, opaque: Bool, immediate: Bool,
-                   transaction: Transaction, motion: NativeMokuReadingMorph, hovered: Bool, compactChanged: @escaping (Bool) -> Void) {
+    func configure(size: CGSize, viewport: CGSize, opaque: Bool,
+                   transaction: Transaction, motion: NativeMokuReadingMorph?, hovered: Bool, compactChanged: @escaping (Bool) -> Void) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
@@ -103,14 +108,13 @@ final class ReadingGlassView: NSView {
             stamp = (size.height, scale, opaque)
         }
         let resized = self.viewport != viewport
-        guard size != target || resized || immediate && finish.animationKeys() != nil else { return }
+        guard size != target || resized || motion == nil && finish.animationKeys() != nil else { return }
         let previous = target
         let presented = finish.animationKeys() == nil ? nil : finish.presentation()?.bounds.size
         let source = presented ?? previous ?? size
         target = size
         self.viewport = viewport
-        let animated = previous != nil && !resized && !immediate
-            && !transaction.disablesAnimations && transaction.animation != nil
+        let animated = previous != nil && !resized && motion?.animates(in: transaction) == true
         // The mask and finish travel on the render server. A backing material
         // large enough for both endpoints stays live throughout the fold.
         let backing = CGSize(width: max(size.width, animated ? source.width : 0),
@@ -145,7 +149,7 @@ final class ReadingGlassView: NSView {
             layer.removeAllAnimations()
             layer.bounds = CGRect(origin: .zero, size: size)
         }
-        guard animated else { return }
+        guard animated, let motion else { return }
         for (axis, from, to) in [("bounds.size.width", source.width, size.width),
                                  ("bounds.size.height", source.height, size.height)] where from != to {
             let track = motion.track(axis, from: from, to: to,
@@ -209,7 +213,7 @@ final class ReadingIdentityView: NSView {
                            y: plane.height - size.height + offset.y, width: size.width, height: size.height)
         layer.removeAnimation(forKey: "transform.translation.x")
         layer.removeAnimation(forKey: "transform.translation.y")
-        if let motion, let previous, !transaction.disablesAnimations, transaction.animation != nil {
+        if let motion, let previous, motion.animates(in: transaction) {
             for (key, delta) in [("transform.translation.x", previous.x + visible.m41 - offset.x),
                                  ("transform.translation.y", previous.y + visible.m42 - offset.y)] where abs(delta) > 0.01 {
                 let track = motion.track(key, from: delta, to: 0,

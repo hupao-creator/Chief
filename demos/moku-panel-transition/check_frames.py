@@ -37,7 +37,8 @@ def dock_frame(movie, phase_count):
     panel_left = int(np.argmax(contrast)) + 58 if contrast.max() > 8 else None
     blue, green, red = cv2.split(frame[-151:-31].astype(np.int16))
     mark_x = np.nonzero((blue - red > 25) & (blue - green > 15))[1]
-    return dock, focused, int(marked[0]), panel_left, float(np.median(mark_x)) if mark_x.size else None
+    mark = (int(mark_x.min()), float(np.median(mark_x)), int(mark_x.max())) if mark_x.size else None
+    return dock, focused, int(marked[0]), panel_left, mark
 
 
 def capture_phases(events, codes, times):
@@ -61,7 +62,10 @@ def glass_edges(frame):
     dark = np.flatnonzero((band < backdrop * 0.67).any(axis=0))
     if not dark.size:
         raise ValueError("Capsule silhouette is missing")
-    return int(dark[0]) + 20, int(dark[-1]) + 20
+    # A detached dark logo can also cross the threshold. Measure the largest
+    # continuous span so the logo cannot enlarge its own containment boundary.
+    silhouette = max(np.split(dark, np.flatnonzero(np.diff(dark) > 1) + 1), key=len)
+    return int(silhouette[0]) + 20, int(silhouette[-1]) + 20
 
 
 def check_visit(frames, times, phases, index, next_visit, reference_index):
@@ -185,23 +189,34 @@ def check_return(frames, codes, times, close, open_width, idle_width, name):
 
 
 
-def check_centered_visit(frames, times, phases, index, next_phase, idle_width):
+def check_centered_visit(frames, times, marks, phases, index, next_phase, idle_width):
     center = frames[0].shape[1] / 2
     opening = phases[f"center-expanding-{index}"]
     settled = phases[f"center-open-{index}"]
     close = phases[f"center-close-{index}"]
     end = phases[next_phase]
     samples = []
+    return_marks = []
     for i in range(opening, end):
         left, right = glass_edges(frames[i])
         samples.append((times[i], right - left + 1, (left + right) / 2))
+        if i >= close and marks[i] is not None:
+            mark_left, _, mark_right = marks[i]
+            return_marks.append(dict(pts=times[i], glass=[left, right], mark=[mark_left, mark_right],
+                                     widthPx=right - left + 1,
+                                     outsidePx=max(0, left - mark_left, mark_right - right)))
     widths = np.array([row[1] for row in samples])
     open_width = widths[close - opening - 1]
     closing = widths[close - opening:]
     intermediate = lambda values: values[(values > idle_width + 4) & (values < open_width - 4)]
     drift = max(abs(row[2] - center) for row in samples)
+    visible_during_fold = any(idle_width + 4 < row['widthPx'] < open_width - 4 for row in return_marks)
+    overflow = max((row['outsidePx'] for row in return_marks), default=0)
     return dict(visit=index, maxCenterDriftPx=drift, openWidthPx=int(open_width), idleWidthPx=int(closing[-1]),
+                maxMarkOverflowPx=overflow, returnMarkSamples=return_marks,
                 passed=bool(drift <= 4 and abs(open_width - 1120) <= 4 and abs(closing[-1] - idle_width) <= 4
+                            and marks[close - 1] is not None and marks[end - 1] is None
+                            and visible_during_fold and overflow <= 4
                             and len(set(intermediate(widths[:settled - opening]))) >= 3
                             and len(set(intermediate(closing))) >= 3))
 
@@ -212,7 +227,8 @@ def check_center(frames, times, panels, marks, phases, name, opening):
     samples = []
     for i in range(start, end):
         left, right = glass_edges(frames[i])
-        samples.append([float(times[i]), right - left + 1, (left + right) / 2, marks[i], panels[i]])
+        samples.append([float(times[i]), right - left + 1, (left + right) / 2,
+                        marks[i][1] if marks[i] is not None else None, panels[i]])
     widths = [sample[1] for sample in samples]
     gaps = np.diff(times[start:end + 1])
     steps = np.diff(widths) * (1 if opening else -1)
@@ -333,7 +349,7 @@ def main():
                           explicit=True)
     centered = [check_center(frames, times, panels, marks, phases, "center-busy-opening", True),
                 check_center(frames, times, panels, marks, phases, "center-busy-folding", False)]
-    centered_visits = [check_centered_visit(frames, times, phases, index, next_phase, idle_width)
+    centered_visits = [check_centered_visit(frames, times, marks, phases, index, next_phase, idle_width)
                        for index, next_phase in enumerate(["center-enter-1", "interrupt-horizontal-visit"])]
     print(json.dumps(dict(phases=mapping, geometry=visits, returns=returns, centered=centered,
                           centeredVisits=centered_visits, autofocus=acquisitions, realtimeAutofocus=realtime,

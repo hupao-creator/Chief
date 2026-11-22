@@ -165,7 +165,10 @@ finish at the initial height and width. The checker retains movie PTS, center
 x, top y and width for compact frames. At 2× the two-point edge tolerance is four pixels.
 
 Two additional real-time visits use a centered Agent editor without an
-Execution column. On the second visit the fixture occupies the main thread for
+Execution column. The checker measures the visible Codex mark against the glass
+edges throughout each return, with a two-point tolerance. It requires the mark
+in the expanded editor and during intermediate widths, and verifies the compact
+Overview endpoint after the mark retires. On the second visit the fixture occupies the main thread for
 120ms during expansion and again during folding. The marker changes before and
 after each hold. During each marked hold the checker requires at least three
 distinct width steps and a moving Harness mark within the glass. During the

@@ -596,7 +596,9 @@ once, inside its own geometry group, while the shell retains its existing size
 and vertical animation. The reader's clear glass, warm gradient and Harness mark resize or move on
 Core Animation tracks anchored at the bottom center. The gradient and rim use a
 stretchable image of the capsule finish. The glass samples the live backdrop and
-the identity remains a live hosted view during its flip. Reader work on the main
+the identity remains a live hosted view during its flip. The Dock supplies their
+motion together so the visible Harness mark stays within the folding shell,
+including for centered Agent readers. Reader work on the main
 thread can delay submission or input feedback. Once submitted, the shell and
 mark continue through a missed SwiftUI layout pass. The complete Dock owns its
 state and geometry within one hosting tree, including Settings height
