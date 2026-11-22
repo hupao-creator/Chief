@@ -17,13 +17,14 @@ public struct SidecardSendReceipt: Hashable, Sendable {
     public init(executionID: JSONText) { self.executionID = executionID }
 }
 
-/// A detail-composer send requests one reveal, after its exact receipt is active.
+/// A locally captured detail send opens a pending card before its receipt arrives.
 /// Identity survives admission so a user's intervening card choice wins.
 public struct SidecardExecutionReveal: Equatable, Sendable {
     public let id: UUID
     public let receipt: SidecardSendReceipt?
-    public init(id: UUID, receipt: SidecardSendReceipt? = nil) {
-        self.id = id; self.receipt = receipt
+    public let previousExecutionID: JSONText?
+    public init(id: UUID, previousExecutionID: JSONText? = nil, receipt: SidecardSendReceipt? = nil) {
+        self.id = id; self.previousExecutionID = previousExecutionID; self.receipt = receipt
     }
 }
 
@@ -79,6 +80,8 @@ public struct SidecardContext {
     public let conversation: (JSONText, HarnessReadingTarget?) -> AnyView
     public let open: () -> Int
     public let close: () -> Void
+    /// Restores the selection captured by this context if the opening still owns it.
+    public let restoreSelection: (Int) -> Void
     public let selectionRevision: () -> Int
     private let observeIntent: (@escaping (SidecardIntent) -> Bool) -> () -> Void
     /// The host validates this lossless value against the runtime PublicAgentInput
@@ -101,7 +104,8 @@ public struct SidecardContext {
                 discardAttachments: @escaping ([JSONText]) async throws -> Void,
                 backToOverview: @escaping () -> Void, translate: @escaping (String) -> String = { $0 },
                 draftStorageDirectory: URL? = nil, attachmentImport: SidecardAttachmentImport? = nil,
-                executionReveal: SidecardExecutionReveal? = nil, executionHandoff: JSONText? = nil) {
+                executionReveal: SidecardExecutionReveal? = nil, executionHandoff: JSONText? = nil,
+                restoreSelection: @escaping (Int) -> Void = { _ in }) {
         self.thread = thread; self.conversationIndex = conversationIndex; self.actions = actions
         self.attachmentImport = attachmentImport
         self.draftStorageDirectory = draftStorageDirectory
@@ -111,7 +115,7 @@ public struct SidecardContext {
         self.executionHandoff = executionHandoff
         self.expanded = expanded; self.transitioning = transitioning; self.suppressed = suppressed
         self.conversation = conversation
-        self.open = open; self.close = close
+        self.open = open; self.close = close; self.restoreSelection = restoreSelection
         self.selectionRevision = selectionRevision; observeIntent = onIntent; self.send = send
         stage = stageAttachments; self.discardAttachments = discardAttachments; self.backToOverview = backToOverview
     }
@@ -183,19 +187,22 @@ public struct SidecardView<Content: View> {
     public let preferredWidth: Double
     /// Some activities preserve reading focus until the user enters a control.
     public let focusContentOnOpen: Bool
+    /// Reserves the execution column while a locally captured send awaits its reader.
+    public let pendingExecution: Bool
     public let excludeExecutionID: JSONText?
     public let composer: SidecardComposerRequest?
     public let content: Content
 
     public init(available: Bool, label: JSONText, indicator: SidecardIndicator? = nil,
                 acceptsInput: Bool? = nil, preferredWidth: Double, focusContentOnOpen: Bool = true,
-                excludeExecutionID: JSONText? = nil, composer: SidecardComposerRequest? = nil,
+                pendingExecution: Bool = false, excludeExecutionID: JSONText? = nil, composer: SidecardComposerRequest? = nil,
                 @ViewBuilder content: () -> Content) throws {
         guard preferredWidth.isFinite else { throw PluginContractError("Sidecard preferred width must be finite") }
         self.available = available; self.label = label; self.indicator = indicator
         self.acceptsInput = acceptsInput; self.preferredWidth = preferredWidth
         self.focusContentOnOpen = focusContentOnOpen
-        self.excludeExecutionID = excludeExecutionID; self.composer = composer; self.content = content()
+        self.pendingExecution = pendingExecution; self.excludeExecutionID = excludeExecutionID
+        self.composer = composer; self.content = content()
     }
 }
 
@@ -282,7 +289,7 @@ public final class AnySidecardPlugin {
                     return try SidecardView(available: output.available, label: output.label,
                         indicator: output.indicator, acceptsInput: output.acceptsInput,
                         preferredWidth: output.preferredWidth, focusContentOnOpen: output.focusContentOnOpen,
-                        excludeExecutionID: output.excludeExecutionID, composer: output.composer) {
+                        pendingExecution: output.pendingExecution, excludeExecutionID: output.excludeExecutionID, composer: output.composer) {
                         AnyView(output.content)
                     }
                 }

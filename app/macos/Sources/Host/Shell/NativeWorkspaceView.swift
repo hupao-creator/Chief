@@ -694,11 +694,13 @@ public final class NativeWorkspacePresentation {
         // A Report lends input only to its selected Thread. Keep the default
         // document/list closed at the shared admission boundary so capsule,
         // keyboard and scripted open requests obey the same route policy.
+        let previousGeneration = state.composerGeneration
         state.setComposerContext(dockDraft, opensInput: thread != nil, keepsInputOpen: thread != nil,
             inputAdmissionReady: (selected == nil || readingEntranceAdmitted)
                 && (selected?.typeID != "report.document" || (thread != nil && reportInputReady)),
             waitsForHarnessIdentity: thread != nil,
             autofocus: autofocus && selected != nil, retainingOpenInput: retainingOpenInput)
+        if previousGeneration != state.composerGeneration || state.dockCovered { threadExecutionReveal = nil }
     }
 
     fileprivate func admitReadingEntrance(routeID: UUID, reference: ApplicationThreadRef) -> Bool {
@@ -726,8 +728,9 @@ public final class NativeWorkspacePresentation {
         workspace.dismissOperationError()
         let route = route ?? navigationRouteID, generation = scene.composerGeneration, request = UUID()
         let reportSelection = selected?.typeID == "report.document" ? reportSidecards.selectionID : nil
+        let previousExecutionID = dockThread?.observation.latestExecution?.executionID
         if executionID == nil, selected == ApplicationThreadRef(threadID: id, typeID: "agent"), !scene.dockCovered {
-            threadExecutionReveal = SidecardExecutionReveal(id: request)
+            threadExecutionReveal = SidecardExecutionReveal(id: request, previousExecutionID: previousExecutionID)
         }
         await overview.recordUserAction(kind: "thread-input",
             thread: ApplicationThreadRef(threadID: id, typeID: "agent"), text: JSONText(submission.text))
@@ -737,7 +740,8 @@ public final class NativeWorkspacePresentation {
             // authority belongs only to the still-current reading visit.
             if navigationRouteID == route, scene.composerGeneration == generation,
                threadExecutionReveal?.id == request, !scene.dockCovered {
-                threadExecutionReveal = SidecardExecutionReveal(id: request, receipt: .init(executionID: accepted.executionID))
+                threadExecutionReveal = SidecardExecutionReveal(id: request, previousExecutionID: previousExecutionID,
+                    receipt: .init(executionID: accepted.executionID))
             }
             if let executionID, navigationRouteID == route, scene.composerGeneration == generation {
                 let reference = ApplicationExecutionRef(thread: .init(threadID: id, typeID: "agent"), executionID: executionID)

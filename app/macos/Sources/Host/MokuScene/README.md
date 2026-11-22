@@ -666,11 +666,11 @@ and attachment ink only while they still own its selected draft. A Thread title
 or execution change keeps that Thread's unsent draft. See the
 [draft and attachment contract](../../../../../design/composer.md)
 for the distinction between restored input and cross-Thread routing defects.
-The local send publishes a visit-scoped reveal request before admission, then
-attaches the exact execution receipt. Conversation opens once that same execution
-is observed running/waiting and qualifies for its Sidecard. A receipt alone cannot
-open it. Card choices, navigation, suppression and failed admission retire the
-request; a fresh send may reveal again even when steering the same execution.
+Sending from the ordinary latest-Thread input opens Conversation on local capture,
+before the command or catalog returns. Its pending column places the pinned
+composer beneath the card. The receipt identifies the accepted execution and
+the catalog and index determine where its live reader belongs. Failure retires
+the provisional opening. A later card choice or reading visit owns its selection.
 Navigation resets retained editor ink, selection and completion ownership before
 admitting the replacement draft. Returning to Overview, Git or Moku history restores the existing Moku send route.
 An unselected Super Thread keeps the resident Moku capsule compact and denies
