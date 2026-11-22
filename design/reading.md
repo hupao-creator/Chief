@@ -148,6 +148,8 @@ and its viewport follows shell width continuously. A selected execution waits fo
 scoped content and Markdown readiness, then fades one retained host over 200ms.
 Hidden controls/accessibility cannot act. Streaming/retry does not replay the
 entrance; unavailable/error content admits as readable content.
+The referenced execution timeline adds 20pt of top padding inside its scrolling
+document. The floating Back control stays anchored to the sidecard viewport.
 
 The Report visit owns the related list's prepared excerpts. An open related
 sidecard prepares them even while showing an execution. List reveal waits for
