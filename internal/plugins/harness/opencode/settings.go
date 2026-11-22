@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hupao-creator/Chief/internal/platform/discovery"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/discovery"
 )
 
 type Settings struct {
@@ -281,9 +281,12 @@ func (s *SettingsAPI) resolveCatalogSource(ctx context.Context, settings Setting
 	files := []string{env["OPENCODE_CONFIG"],
 		filepath.Join(configDirectory, "opencode.json"), filepath.Join(configDirectory, "opencode.jsonc"),
 		filepath.Join(data, "opencode", "auth.json"), filepath.Join(source, "opencode.json"), filepath.Join(source, "opencode.jsonc")}
+	if hasCatalogConfigDirectory(configDirectory) {
+		files = append(files, configDirectory)
+	}
 	// Every cache layer uses this same dependency identity. A routing read must
 	// never wrap a shallow-key editor snapshot in a newer configuration's key.
-	identity, err := discovery.ObservedIdentity(ctx, env, executable, source, ".opencode", append(files, configDirectory)...)
+	identity, err := discovery.ObservedIdentity(ctx, env, executable, source, ".opencode", files...)
 	if err != nil {
 		return catalogSource{}, err
 	}

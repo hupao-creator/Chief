@@ -136,6 +136,12 @@ Credential material is excluded from durable session/UI state.
 Moku target discovery reuses complete same-configuration catalogs and exposes
 exact options in its initial creation tool schema. An installation-only deferred target is not an admitted discovery result. A cold configuration waits for account
 filtering; complete cached directories return immediately regardless of age.
+Catalog identity treats a missing global OpenCode configuration directory and an
+empty one as equivalent. Native startup can create that directory on the first
+read. Populated directories, symlink targets, explicit configuration files, and
+account revisions still participate in discovery invalidation.
+[Cold discovery replay](../../../../tools/e2e/README.md#opencode-cold-discovery)
+covers the first catalog read with the installed CLI.
 Expired entries trigger an owned background refresh with a 30-second failure
 cooldown. Concurrent refreshes do not block routing through the last complete
 snapshot. The native phase has

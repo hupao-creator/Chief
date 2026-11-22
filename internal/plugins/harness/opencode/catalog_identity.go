@@ -6,10 +6,31 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/hupao-creator/Chief/internal/platform/sqlite"
 )
+
+// OpenCode creates its global configuration directory on the first launch.
+// A missing directory and an empty one supply the same configuration inputs.
+// Preserve observation of symlinks and paths that could not be inspected.
+func hasCatalogConfigDirectory(path string) bool {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return !errors.Is(err, os.ErrNotExist)
+	}
+	if !info.IsDir() {
+		return true
+	}
+	dir, err := os.Open(path)
+	if err != nil {
+		return true
+	}
+	defer dir.Close()
+	_, err = dir.ReadDir(1)
+	return !errors.Is(err, io.EOF)
+}
 
 // OpenCode 2 stores credential selection in its native database, not auth.json.
 // Read only non-secret identity/revision columns: unrelated session writes must
