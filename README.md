@@ -1,6 +1,10 @@
 # Chief
 
 <p align="center">
+  <img src="design/chief-logo.webp" width="144" height="144" alt="Chief logo: a skillet tossing three coding agents">
+</p>
+
+<p align="center">
   <strong>A native Mac workspace for coordinating AI agents.</strong>
 </p>
 
