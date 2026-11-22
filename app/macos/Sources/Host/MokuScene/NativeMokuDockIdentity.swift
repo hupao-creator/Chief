@@ -11,6 +11,9 @@ struct NativeMokuDockIdentity<Face: View>: View {
     let entranceReady: Bool
     let generation: UUID
     let motion: Bool
+    let offset: CGPoint
+    let readingPlane: CGSize?
+    let readingMotion: NativeMokuReadingMorph?
     let onSettled: () -> Void
     @ViewBuilder var face: Face
     @Environment(\.scenePhase) private var scenePhase
@@ -36,10 +39,10 @@ struct NativeMokuDockIdentity<Face: View>: View {
                 identity: NativeMokuIdentityFlip(progress: 1, incoming: false)))
     }
 
-    var body: some View {
+    private var mark: some View {
         let displayed = displayedIdentity ?? (showsHarness && !entranceReady ? .moku : identity)
         let logo = displayedIdentity == nil ? harness : displayedHarness
-        ZStack {
+        return ZStack {
             if case .harness = displayed {
                 Group {
                     if let logo { logo.logo(size: 24) }
@@ -53,6 +56,19 @@ struct NativeMokuDockIdentity<Face: View>: View {
             }
         }
         .frame(width: NativeMokuFaceLayout.seat.width, height: NativeMokuFaceLayout.seat.height)
+    }
+
+    var body: some View {
+        Group {
+            if let readingPlane {
+                NativeMokuIdentityPosition(plane: readingPlane, offset: offset, motion: readingMotion) { mark }
+                    .frame(width: readingPlane.width, height: readingPlane.height)
+            } else {
+                mark.offset(x: offset.x, y: offset.y)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .clipShape(RoundedRectangle(cornerRadius: NativeMokuCapsuleLayout.cornerRadius))
+            }
+        }
         .onChange(of: Request(identity: identity, entranceReady: entranceReady, generation: generation,
             immediate: !motion || scenePhase != .active), initial: true) { _, request in
             update(request)

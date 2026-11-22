@@ -225,8 +225,8 @@ carousel member, execution identities and link position alongside the recording.
    Repeat the comparison for an ordinary Thread and an individual Report.
    After a brief Report visit, type an unsent draft in its source conversation
    and close the report. From the same window recording, check that the input
-   folds in its source column, travels while compact and settles at the canvas
-   center. Check the carousel page, collapsed Note and retired editor focus.
+   folds in its source column, travels at reading height to the canvas center,
+   then rises at that center. Check the carousel page, collapsed Note and retired editor focus.
    Reopen the Note and follow the same citation to recover the focused draft.
    Check the separate Overview draft through its Compose shortcut. On the ordinary
    Thread route, use Escape to check the restored Note’s scroll position.

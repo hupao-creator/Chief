@@ -62,6 +62,11 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
     private var activeAxes: [String: Int] = [:]
     private var travelling: Bool { !activeAxes.isEmpty }
 
+    var presentationCorrection: CGPoint {
+        let transform = surface.layer?.presentation()?.transform ?? CATransform3DIdentity
+        return CGPoint(x: transform.m41, y: transform.m42)
+    }
+
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { false }
 
@@ -100,7 +105,6 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
         let previous = destination
         self.hitRects = hitRects; self.onSettled = onSettled; destination = next
         let layer = surface.layer!
-        let visible = layer.presentation()?.transform ?? CATransform3DIdentity
         guard previous != next else { return }
 
         let immediate = previous == nil || next.inactive || next.dragging || previous?.viewport != next.viewport
@@ -108,8 +112,9 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
            previous?.verticalOffset == next.verticalOffset, travelling { return }
         generation += 1
         let current = generation
-        let delta = CGPoint(x: visible.m41 + (previous?.offset ?? next.offset) - next.offset,
-            y: visible.m42 + (previous?.verticalOffset ?? next.verticalOffset) - next.verticalOffset)
+        let visible = presentationCorrection
+        let delta = CGPoint(x: visible.x + (previous?.offset ?? next.offset) - next.offset,
+            y: visible.y + (previous?.verticalOffset ?? next.verticalOffset) - next.verticalOffset)
         // Commit the horizontal model seat with its presentation correction.
         // A separate SwiftUI offset can show the destination a frame early.
         CATransaction.begin(); CATransaction.setDisableActions(true)
@@ -117,26 +122,31 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
         let origin = CGPoint(x: bounds.minX + next.offset, y: bounds.minY)
         if surface.frame.origin != origin { surface.setFrameOrigin(origin) }
         let columnChanged = previous?.frame != next.frame
-        let duration: TimeInterval = columnChanged ? 0.38 : 0.42
-        let timing = columnChanged
-            ? CAMediaTimingFunction(controlPoints: 0.22, 1, 0.36, 1)
-            : abs(delta.y) > 0.01 ? CAMediaTimingFunction(name: .easeInEaseOut)
-            : next.reading ? NativeReadingPageTiming.emphasizedOpening : CAMediaTimingFunction(name: .easeInEaseOut)
-
-        // Route release can lift the bar after its return trip has begun.
-        // Retarget only the changed axis so the 520ms column curve runs intact.
+        // Route release can arrive before, during or after column travel. Use
+        // the submitted X animation’s layer-local end time so the compositor
+        // holds the current height through its last frame, even on a busy return.
+        let xAxis = "transform.translation.x"
+        let yAxis = "transform.translation.y"
+        let now = layer.convertTime(CACurrentMediaTime(), from: nil)
         if immediate || previous?.offset != next.offset {
-            retarget("transform.translation.x", delta: immediate ? 0 : delta.x,
-                duration: columnChanged ? 0.52 : duration,
-                timing: columnChanged ? CAMediaTimingFunction(controlPoints: 0.30, 0.12, 0.44, 1) : timing)
+            let timing = columnChanged ? CAMediaTimingFunction(controlPoints: 0.30, 0.12, 0.44, 1)
+                : next.reading && abs(delta.y) <= 0.01 ? NativeReadingPageTiming.emphasizedOpening
+                : CAMediaTimingFunction(name: .easeInEaseOut)
+            retarget(xAxis, delta: immediate ? 0 : delta.x, begin: now,
+                     duration: columnChanged ? 0.52 : 0.42, timing: timing)
         }
-        if immediate || previous?.verticalOffset != next.verticalOffset {
-            retarget("transform.translation.y", delta: immediate ? 0 : delta.y, duration: duration, timing: timing)
+        let returning = !next.reading && next.frame == nil
+        if immediate || previous?.verticalOffset != next.verticalOffset
+            || (returning && previous?.offset != next.offset && activeAxes[yAxis] != nil) {
+            let xTravel = returning ? layer.animation(forKey: xAxis) : nil
+            let begin = xTravel.map { max(now, $0.beginTime + $0.duration) } ?? now
+            retarget(yAxis, delta: immediate ? 0 : delta.y, begin: begin, duration: 0.42,
+                     timing: CAMediaTimingFunction(name: .easeInEaseOut))
         }
         if !travelling { deliverCompletion(generation: current) }
     }
 
-    private func retarget(_ axis: String, delta: CGFloat, duration: TimeInterval, timing: CAMediaTimingFunction) {
+    private func retarget(_ axis: String, delta: CGFloat, begin: CFTimeInterval, duration: TimeInterval, timing: CAMediaTimingFunction) {
         let layer = surface.layer!
         layer.removeAnimation(forKey: axis)
         guard abs(delta) > 0.01 else { activeAxes[axis] = nil; return }
@@ -144,7 +154,7 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
         let animation = CABasicAnimation(keyPath: axis)
         animation.fromValue = delta; animation.toValue = 0
         animation.duration = duration; animation.timingFunction = timing
-        animation.beginTime = layer.convertTime(CACurrentMediaTime(), from: nil)
+        animation.beginTime = begin
         animation.fillMode = .backwards
         animation.delegate = self; animation.setValue(generation, forKey: "generation")
         layer.add(animation, forKey: axis)
@@ -174,9 +184,9 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
         if travelling {
             // The controls already have destination coordinates. Absorb presses
             // on both seats so a moving bar cannot click the reading backdrop.
-            let visible = surface.layer?.presentation()?.transform ?? CATransform3DIdentity
+            let visible = presentationCorrection
             return hitRects.contains(where: {
-                $0.contains(local) || $0.offsetBy(dx: visible.m41, dy: visible.m42).contains(local)
+                $0.contains(local) || $0.offsetBy(dx: visible.x, dy: visible.y).contains(local)
             }) ? self : nil
         }
         guard hitRects.contains(where: { $0.contains(local) }),

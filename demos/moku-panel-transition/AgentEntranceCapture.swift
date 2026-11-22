@@ -8,6 +8,18 @@ import SwiftUI
 struct HeldOpeningFrames: CustomAnimation {
     static let sourceFPS = 60.0
     static let secondsPerStep = 0.1
+    @MainActor static let opening = NativeMokuReadingOpening(animation: Animation(Self())) { from, to in
+        let steps = Int(ceil(NativeReadingPageTiming.duration * sourceFPS))
+        let animation = CAKeyframeAnimation()
+        animation.calculationMode = .discrete
+        animation.values = (0...steps).map { i in
+            let t = Double(i) / sourceFPS / NativeReadingPageTiming.duration
+            return from + (to - from) * NativeReadingPageTiming.sample(x1: 0.76, x2: 0.24, at: t)
+        }
+        animation.duration = Double(steps) * secondsPerStep
+        animation.keyTimes = (0...steps).map { NSNumber(value: Double($0) / Double(steps)) }
+        return animation
+    }
     let base = NativeReadingPageTiming.openingAnimation
 
     func animate<V: VectorArithmetic>(value: V, time: TimeInterval, context: inout AnimationContext<V>) -> V? {
@@ -74,11 +86,12 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
 }
 
 @MainActor func captureAgentEntrance(window: CollapseCapturePanel, scene: NativeMokuSceneState, overviewDraft: NativeComposerDraft,
-                                enterAgent: (String, NativeComposerDraft, CaptureOpeningClock) -> Void, closeAgent: () -> Void) async throws {
+                                enterAgent: (String, NativeComposerDraft, CaptureOpeningClock) -> Void, closeAgent: () -> Void,
+                                setCentered: (Bool) -> Void, publishTalk: (String) -> Void) async throws {
     let agentDraft = NativeComposerDraft(services: .init(stageFiles: { _, _ in [] }, discardAttachments: { _ in }))
     let text = "草稿 🦉 stays in Overview.\nThe second line stays too."
     let selection = NSRange(location: 3, length: 2)
-    let talk = NativeMokuTalkMessage(id: "collapse-fixture-talk", text: "Moku reply stays readable after closing input.")
+    let talk = NativeMokuTalkMessage(id: "Moku reply stays readable after closing input.", text: "Moku reply stays readable after closing input.")
     let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
     func pause(_ milliseconds: Int) async throws { try await Task.sleep(for: .milliseconds(milliseconds)) }
     func editors(in view: NSView) -> [NSTextView] {
@@ -111,6 +124,15 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
         events.append(row)
     }
 
+    // Exercise frames already submitted to WindowServer while the reader's
+    // main thread cannot perform another layout. The movie has its own clock.
+    func holdMainThread(_ phase: String) {
+        event(phase, beginsPhase: true)
+        CATransaction.flush()
+        Thread.sleep(forTimeInterval: 0.12)
+        event(phase + "-released", beginsPhase: true)
+    }
+
     func waitForAgentInput() async throws {
         let deadline = ContinuousClock.now + .seconds(3)
         while !scene.inputOpen && .now < deadline { try await pause(10) }
@@ -136,7 +158,7 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
             event("\(phase)-close-\(index)", beginsPhase: true)
             // Capture both the retained reading panel's return and the Dock's
             // subsequent trip to idle before driving another visit.
-            try await pause(1050)
+            try await pause(1570)
             try require(scene.overviewVisible && !scene.inputOpen && !scene.inputLeaving, "Agent return did not settle")
             try require(scene.capsuleFrame.size == NativeMokuCapsuleLayout.idleSize, "Incorrect idle shell size")
             event(clock == .heldFrames ? "overview-closed-\(index)" : "realtime-idle-\(index)")
@@ -221,9 +243,9 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
                     && window.firstResponder === editor && editor.isEditable && editor.string == text && editor.selectedRange() == selection,
                     "Rapid reopening lost the editor, draft or UTF-16 selection")
 
-        scene.receiveTalk(talk)
+        publishTalk(talk.text)
         try await pause(120)
-        try require(!scene.talkPresentation.presented, "Talk covered the open draft")
+        try require(scene.talkPresentation.message == talk && !scene.talkPresentation.presented, "Talk did not queue behind the open draft")
         try require(scene.dismissInputForOutsideClick(), "Second outside dismissal was rejected")
         event("close-to-talk", beginsPhase: true)
         try await pause(650)
@@ -233,6 +255,61 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
                     "Closing lost the draft or failed to present queued Talk")
         // Check automatic acquisition for both titles on the unscaled clock too.
         try await captureAgentVisits(.realtime)
+        setCentered(true)
+        for i in 0..<2 {
+            event("center-enter-\(i)", beginsPhase: true)
+            enterAgent("中央输入框", agentDraft, .realtime)
+            try await waitForAgentInput()
+            event("center-expanding-\(i)", beginsPhase: true)
+            if i == 1 {
+                try await pause(125)
+                holdMainThread("center-busy-opening")
+            }
+            try await pause(630)
+            try require(scene.inputOpen && editors(in: content).count == 1, "Centered editor did not mount")
+            event("center-open-\(i)", beginsPhase: true)
+            try await pause(100)
+            closeAgent()
+            event("center-close-\(i)", beginsPhase: true)
+            if i == 1 {
+                try await pause(125)
+                holdMainThread("center-busy-folding")
+            }
+            try await pause(1100)
+            try require(scene.overviewVisible && !scene.inputOpen && !scene.inputLeaving, "Centered return did not settle")
+        }
+        setCentered(false)
+        func travelView(_ view: NSView) -> MokuHorizontalTravelView? {
+            if let travel = view as? MokuHorizontalTravelView { return travel }
+            return view.subviews.lazy.compactMap(travelView).first
+        }
+        guard let travel = travelView(content) else { throw CollapseCaptureError(description: "Missing Dock carrier") }
+        for axis in ["horizontal", "vertical"] {
+            event("interrupt-\(axis)-visit", beginsPhase: true)
+            enterAgent("重新展开", agentDraft, .realtime)
+            try await waitForAgentInput()
+            try await pause(550)
+            closeAgent()
+            event("interrupt-\(axis)-close", beginsPhase: true)
+            let deadline = ContinuousClock.now + .seconds(2)
+            func midReturn() -> Bool {
+                let point = travel.presentationCorrection
+                return scene.overviewVisible && (axis == "horizontal"
+                    ? point.x > 30 && point.x < 180 : abs(point.x) < 0.5 && point.y > 3 && point.y < 12)
+            }
+            while !midReturn(), .now < deadline { try await pause(5) }
+            try require(midReturn(), "Missing in-flight \(axis) return")
+            event("interrupt-\(axis)-reopen", beginsPhase: true)
+            enterAgent("重新展开", agentDraft, .realtime)
+            try await waitForAgentInput()
+            try await pause(650)
+            let mounted = editors(in: content)
+            try require(mounted.count == 1 && mounted[0].isEditable && window.firstResponder === mounted[0]
+                        && mounted[0].convert(mounted[0].bounds, to: content).midX > content.bounds.midX
+                        && travel.presentationCorrection == .zero, "Interrupted return displaced the reopened input")
+            closeAgent()
+            try await pause(1570)
+        }
         // A pinned Compose command is an explicit request even during entrance.
         event("explicit-enter", beginsPhase: true)
         enterAgent("显式聚焦", agentDraft, .realtime)

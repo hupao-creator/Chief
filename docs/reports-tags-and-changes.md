@@ -14,7 +14,7 @@ Click the related card to open the source conversation's latest run beside the S
 
 Use the input below the source conversation to write a follow-up for the run you’re viewing. If you switch runs before sending, select the same run again to pick up your draft. Click **Back to related executions** to see the cards and their available excerpts together. If the excerpts are still loading, the list shows a progress indicator.
 
-When you close the report with a source conversation open, the input bar folds beneath that conversation, then glides back to the center. If you came from Chief Note, click the report’s **×** from either the source conversation or the related list to return to Overview. The note stays closed until you reopen it with **⌘⇧N** or a two-finger swipe up over Chief.
+When you close the report with a source conversation open, the input bar folds beneath that conversation, glides horizontally to the center, then rises to its resting position in Overview. If you came from Chief Note, click the report’s **×** from either the source conversation or the related list to return to Overview. The note stays closed until you reopen it with **⌘⇧N** or a two-finger swipe up over Chief.
 
 ## Browse Super Threads in a collection
 

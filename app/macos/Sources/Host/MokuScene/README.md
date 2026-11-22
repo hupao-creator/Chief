@@ -571,11 +571,12 @@ no expanded activity does not move it. When the target column changes, the
 Dock glides horizontally for 520ms with a cubic Bézier curve
 `(0.30, 0.12, 0.44, 1)`, including on its return to the workspace center.
 The curve starts moving immediately and eases to a stop. The compositor moves directly from the current
-presentation position to the target, without overshoot or a settling rebound. Vertical
-descent retains its independent, non-bouncing timing. A change to the vertical
-seat during return leaves the horizontal animation running. Shell sizing retains the
-Sidecard's 380ms curve; divider dragging and window/zoom resizing settle without
-travel. Stacked layouts share the
+presentation position to the target, without overshoot or a settling rebound. On return the compact capsule stays at reading height until the horizontal
+track reaches the center. Its 420ms ease-in/ease-out lift starts at the later of
+route release and horizontal arrival. A centered reader lifts directly. A new
+visit retargets from the displayed seat, including during the hold before the
+lift. Shell sizing follows the Sidecard’s 380ms curve on column changes.
+Divider dragging and window/zoom resizing settle without travel. Stacked layouts share the
 panels' full column width and keep the same bottom reading baseline. Composer
 expansion retains its separate entrance timing.
 
@@ -592,8 +593,14 @@ control at its invisible destination.
 
 Switching columns can also change input width. The editor adopts that width
 once, inside its own geometry group, while the shell retains its existing size
-and vertical animation. The complete Dock owns its state and geometry within
-one hosting tree, including Settings height preferences and input hit regions.
+and vertical animation. The reader's clear glass, warm gradient and Harness mark resize or move on
+Core Animation tracks anchored at the bottom center. The gradient and rim use a
+stretchable image of the capsule finish. The glass samples the live backdrop and
+the identity remains a live hosted view during its flip. Reader work on the main
+thread can delay submission or input feedback. Once submitted, the shell and
+mark continue through a missed SwiftUI layout pass. The complete Dock owns its
+state and geometry within one hosting tree, including Settings height
+preferences and input hit regions.
 The hosting root stays fixed while observable content carries outer updates;
 replacing the root can settle the shell before its content finishes moving.
 

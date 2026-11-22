@@ -6,7 +6,7 @@ Click a task card in Overview to read its conversation. Each reply appears when 
 
 Click **Show work** when it appears for a summary, including the number of reasoning steps and tool calls when available. If you scroll up during a live run, use **Jump to latest** when it appears to return to new replies.
 
-When a conversation opens with an **Execution** sidecard on the right, the input bar glides beneath it and opens there. Click the blank margin outside the conversation to return to Overview. The bar folds in place before it glides back to the center.
+When a conversation opens with an **Execution** sidecard on the right, the input bar glides beneath it and opens there. Click the blank margin outside the conversation to return to Overview. The bar folds beneath the sidecard, glides horizontally to the center, then rises to its resting position in Overview.
 
 ## Respond to a request or stop a run
 

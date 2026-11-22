@@ -160,9 +160,24 @@ On all four returns the checker measures from the Close marker to the first
 frame showing 10% of the width change from expanded to idle. That frame must
 fall within the first half of the 420ms panel return. Until the shell reaches
 idle width, its center must stay at the source column within two points. The compact shell must then
-appear between columns and finish at the initial idle center and width.
-The silhouette includes both vertical seats so its rounded corners remain
-measurable during travel.
+appear between columns at reading height, then rise at the idle center and
+finish at the initial height and width. The checker retains movie PTS, center
+x, top y and width for compact frames. At 2× the two-point edge tolerance is four pixels.
+
+Two additional real-time visits use a centered Agent editor without an
+Execution column. On the second visit the fixture occupies the main thread for
+120ms during expansion and again during folding. The marker changes before and
+after each hold. During each marked hold the checker requires at least three
+distinct width steps and a moving Harness mark within the glass. During the
+fold it also requires at least three positions of the reading panel’s visible
+left edge. The result includes per-frame width, mark and panel position, and
+the largest interval between recorded frames. This controlled workload measures
+already-submitted motion. Attributing a stall to a particular reader operation
+requires a trace of that session.
+
+Two further visits reopen the reader from an observed intermediate presentation
+position, once on each return axis. Each must restore one editable, focused
+editor in the right column beyond the previous return's completion.
 
 For each geometry visit the check matches the first placeholder glyphs against their
 settled pixels and measures each returning glass silhouette against both the

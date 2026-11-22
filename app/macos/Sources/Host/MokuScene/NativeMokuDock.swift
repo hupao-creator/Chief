@@ -68,6 +68,7 @@ private struct ComposerInk: ViewModifier, @preconcurrency Animatable {
 /// proposal while the glass is still interpolating from the editor's width.
 private struct CapsuleFoldObserver: ViewModifier, @preconcurrency Animatable {
     var size: CGSize
+    let observesFold: Bool
     let compactChanged: (Bool) -> Void
 
     var animatableData: CGSize.AnimatableData {
@@ -77,8 +78,9 @@ private struct CapsuleFoldObserver: ViewModifier, @preconcurrency Animatable {
 
     func body(content: Content) -> some View {
         let idle = NativeMokuCapsuleLayout.idleSize
-        content.onChange(of: size.width <= idle.width && size.height <= idle.height, initial: true) { _, compact in
-            compactChanged(compact)
+        let compact = observesFold ? size.width <= idle.width && size.height <= idle.height : nil
+        content.onChange(of: compact, initial: true) { _, compact in
+            if let compact { compactChanged(compact) }
         }
     }
 }
@@ -243,7 +245,7 @@ public struct NativeMokuDock: View {
     private var expanded: Bool { state.settingsExpanded || noteExpanded || rowExpanded }
     private var capsuleFraction: CGFloat { expanded ? 1 : 0 }
     // The native replay supplies a sampling clock only for admitted reading input.
-    var readingInputAnimation: Animation?
+    var readingOpening: NativeMokuReadingOpening?
     private var settlingNoteDock: Bool {
         guard linkedNoteLayout != nil else { return false }
         if state.notePanelOpen { return true }
@@ -251,11 +253,18 @@ public struct NativeMokuDock: View {
         // With the Note closed, a reader returning to Overview owns its fold and travel.
         return !state.inputInteractionReady && (origin.phase != .reading || origin.returnsToNote)
     }
+    private var readingGlass: Bool {
+        ((threadID != nil && state.readingPanelVisible) || (inputColumn != nil && !shellIsCompact && !expanded))
+            && !landing && !state.settingsOpen && !noteMounted && !noteExpanded
+    }
+    private var readingMorph: NativeMokuReadingMorph {
+        NativeMokuReadingMorph(opening: readingOpening, folding: !rowExpanded)
+    }
     private var surfaceAnimation: Animation? {
         if settlingNoteDock { return nil }
         guard state.readingPanelVisible else { return .smooth(duration: 0.42, extraBounce: 0) }
         if state.inputOpen && !rowExpanded { return .easeOut(duration: NativeReadingPageTiming.duration) }
-        if let readingInputAnimation, state.inputOpen, state.inputInteractionReady { return readingInputAnimation }
+        if let readingOpening, state.inputOpen, state.inputInteractionReady { return readingOpening.animation }
         return NativeReadingPageTiming.openingAnimation
     }
     /// Centre of the resident face seat in shell-local points. The composer row
@@ -452,7 +461,7 @@ public struct NativeMokuDock: View {
             }
             let dockViewport = column.flatMap { $0.isNull || $0.isEmpty ? nil : $0 } ?? viewport
             let baseFrame = NativeMokuCapsuleLayout.frame(in: dockViewport, landing: landing,
-                reading: state.readingPanelVisible && !state.settingsOpen)
+                reading: (state.readingPanelVisible || holdingColumn) && !state.settingsOpen)
             let restingFrame = NativeMokuCapsuleLayout.frame(in: dockViewport, landing: landing)
             let readingOffset = baseFrame.maxY - restingFrame.maxY
             let messageWidth = displayedMessage?.dispatch != nil ? min(400, baseFrame.width) : baseFrame.width
@@ -494,7 +503,7 @@ public struct NativeMokuDock: View {
                 capsule(width: width, room: max(58, frame.height - 18),
                         surface: surface, messageWidth: messageWidth, rowHeight: rowHeight, noteHeight: noteHeight,
                         noteAvailableHeight: noteAvailableHeight, decorationPadding: placement.decorationPadding, settingsSize: settingsSize)
-                    .modifier(CapsuleFoldObserver(size: surface.size) { shellIsCompact = $0 })
+                    .modifier(CapsuleFoldObserver(size: readingGlass ? .zero : surface.size, observesFold: !readingGlass) { shellIsCompact = $0 })
                     .nativeCanvasNavigationRegion()
                     .geometryGroup()
                     // Seat the native editor on the bottom edge. Animating a
@@ -503,6 +512,14 @@ public struct NativeMokuDock: View {
                     // making retiring AppKit text jump vertically for a frame.
                     .scaleEffect(placement.scale, anchor: .bottom)
                     .frame(width: geometry.size.width, height: geometry.size.height, alignment: .bottom)
+                    .background {
+                        if readingGlass {
+                            NativeMokuReadingGlass(size: surface.size, viewport: geometry.size,
+                                immediate: immediate || executionPlacement?.dragging == true, motion: readingMorph, hovered: hovered,
+                                compactChanged: { shellIsCompact = $0 })
+                                .allowsHitTesting(false).accessibilityHidden(true)
+                        }
+                    }
                     .offset(y: placement.surface.maxY - geometry.size.height - readingOffset)
                     // Fit the shell to the column on the Sidecard's fold clock
                     // while its native host travels to the new seat.
@@ -1009,21 +1026,6 @@ public struct NativeMokuDock: View {
                     .padding(.bottom, historyBand)
             }
         }
-        .overlay(alignment: .topLeading) {
-            // One numeric seat travels with the same transaction as the shell.
-            // Switching between an intrinsic-height row and a fixed-height row
-            // cannot interpolate, and a delayed expansion fraction starts the
-            // eyes a layout pass after the glass has already changed size.
-            let generation = state.composerGeneration
-            NativeMokuDockIdentity(harness: threadHarness,
-                showsHarness: threadID != nil && !state.settingsOpen,
-                entranceReady: state.inputAdmissionReady,
-                generation: generation, motion: state.windowVisible,
-                onSettled: { state.completeInputIdentity(generation: generation) }) {
-                face(characterInput)
-            }
-                .position(x: faceCenter.x + faceShift.width, y: faceCenter.y + faceShift.height)
-        }
         .overlay(alignment: .bottomTrailing) {
             NativeMokuNoteActionStack(stacked: noteExpanded && actionLayout.stacked,
                 trailing: composerStop ? composerStopInset.x - 16 : actionTrailing,
@@ -1066,7 +1068,9 @@ public struct NativeMokuDock: View {
         }
         .background {
             ZStack {
-                NativeMokuCapsuleGlass(regular: noteExpanded).opacity(state.settingsExpanded ? 0 : 1)
+                if !readingGlass {
+                    NativeMokuCapsuleGlass(regular: noteExpanded).opacity(state.settingsExpanded ? 0 : 1)
+                }
                 if state.settingsOpen {
                     NativeSettingsPanelBackground()
                         .environment(\.colorScheme, workspaceColorScheme)
@@ -1074,6 +1078,20 @@ public struct NativeMokuDock: View {
                 }
             }
         }.clipShape(RoundedRectangle(cornerRadius: NativeMokuCapsuleLayout.cornerRadius))
+        .overlay(alignment: .bottom) {
+            // Both coordinates are relative to the stable bottom center, so
+            // resizing the shell never supplies a second translation.
+            let generation = state.composerGeneration
+            let offset = CGPoint(x: faceCenter.x + faceShift.width - surface.width / 2,
+                y: faceCenter.y + faceShift.height - surface.height + NativeMokuFaceLayout.seat.height / 2)
+            NativeMokuDockIdentity(harness: threadHarness, showsHarness: threadID != nil && !state.settingsOpen,
+                entranceReady: state.inputAdmissionReady, generation: generation, motion: state.windowVisible,
+                offset: offset, readingPlane: readingGlass ? CGSize(width: width, height: max(capsuleHeight, surface.height)) : nil,
+                readingMotion: scenePhase == .active && !reduceMotion && executionPlacement?.dragging != true ? readingMorph : nil,
+                onSettled: { state.completeInputIdentity(generation: generation) }) {
+                face(characterInput)
+            }
+        }
         .overlay(alignment: .bottom) {
             // Orbit ink lives outside the glass; never include it in the capsule clip.
             NativeMokuCharacterSurface(controller: character, input: characterInput, seat: .decorations)
