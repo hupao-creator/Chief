@@ -51,7 +51,7 @@ with native_lease():
             replay.close()
 # LaunchServices owns the foreground launch. The app writes each receipt
 # after its corresponding input and geometry assertions have passed.
-receipts = ["overview-scroll.json"]
+receipts = ["overview-scroll.json", "overview-fit.json"]
 if args.keyboard:
     receipts.append("overview-keyboard.json")
 sys.exit(status or int(not all((args.output / name).is_file() for name in receipts)))

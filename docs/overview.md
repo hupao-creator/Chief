@@ -14,7 +14,7 @@ Overview centers the cards vertically. In windows taller than 60 points, the car
 
 When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or turn the mouse wheel. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. Click a task card, or press Return on a focused task, to open it.
 
-Overview keeps your place when you close a conversation or Settings. If you remove cards or widen the window, scrolling stops at the new last column.
+Overview keeps your place when you close a conversation or Settings. If you widen the window or choose a filter so all the cards fit, Overview centers them. They stay in place when you swipe or use the scroll wheel. If some columns are still offscreen, you can scroll to the last one.
 
 Overview may group Super Threads into a collection when the view is crowded or when several haven’t been opened recently. Choose a narrower folder or tag to see more Super Threads as individual cards, or click a collection's page count to browse its members. [Browse Super Threads in a collection](reports-tags-and-changes.md#browse-super-threads-in-a-collection)
 

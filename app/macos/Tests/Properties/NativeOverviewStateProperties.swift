@@ -198,10 +198,11 @@ struct NativeOverviewStateProperties {
             let scale = min(1, usable.height / tallest)
             let camera = fixture.state.camera
             let width = world.width * scale
-            let maxOffset = max(0, width - usable.width)
+            let fits = width + 32 <= fixture.size.width
+            let maxOffset = fits ? 0 : width - usable.width
             let envelope = fixture.renderedEnvelope
             let pixel = 1 / window.backingScaleFactor
-            let left = usable.left + max(0, usable.width - width) / 2 - camera.scrollOffset
+            let left = (fits ? (fixture.size.width - width) / 2 : usable.left) - camera.scrollOffset
             if abs(camera.transform.scale - scale) > 1e-6 || abs(maxOffset - camera.maximumOffset) > pixel
                 || !(0...maxOffset).contains(camera.scrollOffset)
                 || abs(envelope.minX - left) > pixel || abs(envelope.midY - usable.top - usable.height / 2) > pixel
