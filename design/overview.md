@@ -9,13 +9,12 @@ owns documents, exact execution references, binding and cover admission.
 The logical 1×1 grid cell is 320×196pt with 16pt gaps; 1×2 is 320×408pt and
 2×1 is 656pt wide. All window sizes share these metrics at the default 1× camera.
 In a 1512×900pt client area with filters and the idle Moku Dock, the framing
-region is 1384×712pt. Twelve 1×1 cards occupy four columns and three rows
+region is 1384×772pt. Twelve 1×1 cards occupy four columns and three rows
 (1328×620pt). Card text keeps its declared point sizes.
 
 At the default 1× camera, the card origins in this layout are x = 92, 428,
-764, 1100 and y = 140, 352, 564. The vertical alignment moves down by the
-distance from the usable center to the window center when the Dock leaves
-more clearance below, within the reserved space.
+764, 1100 and y = 140, 352, 564. The grid is centered on the logical window.
+The tag filters and Chief Bar overlay the canvas.
 
 The pure solver returns placements and bounds from one input.
 Mixed spans can fill gaps within horizontal or vertical bands. The four-card

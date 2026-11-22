@@ -132,7 +132,7 @@ public struct NativeOverviewWorkspaceView: View {
                     interactions: model.chromeInteractions)
                     .opacity(chromeVisible ? 1 : 0)
                     // Translate the retained chrome without compressing its labels or
-                    // changing the canvas clearance, including the narrow two-row layout.
+                    // moving the cards below, including the narrow two-row layout.
                     .visualEffect { [chromeVisible] chrome, geometry in
                         chrome.offset(y: chromeVisible ? 0 : -geometry.size.height)
                     }
@@ -146,8 +146,7 @@ public struct NativeOverviewWorkspaceView: View {
         .accessibilityLabel(locale.text("会话俯瞰", "Conversation overview"))
     }
     static func viewport(in size: CGSize, hasFilters: Bool, hasDock: Bool) -> NativeOverviewViewport {
-        // Reserve the persistent seat, not transient composer/note growth:
-        // opening an overlay must not repack the scene underneath the user.
+        // Visibility probes measure the persistent header and idle Dock extents.
         let dock = NativeMokuCapsuleLayout.idleSurface(in: CGRect(origin: .zero, size: size))
         return .init(width: size.width, height: size.height,
                      toolbarBottom: size.width <= CGFloat(NativeOverviewCameraGeometry.compactViewportWidth) && hasFilters
