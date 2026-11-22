@@ -299,7 +299,7 @@ func main() {
 			}
 		}
 		const followUp = "Keep the intermediate answer."
-		state = codex.AppendFollowUp(state, id, input(followUp), epoch+200, "follow-up")
+		state = codex.AppendFollowUp(state, id, input(followUp), epoch+200, "follow-up", "")
 		measure(session+"-follow-up", len(followUp), func() error { return o.SessionState.Commit(ctx, encode(state)) })
 		if !bytes.Contains(o.SessionState.Read(), []byte(followUp)) {
 			panic("acknowledged follow-up missing from session history")

@@ -567,7 +567,10 @@ indices after zero within an exact turn. Pi/OpenCode use persisted ordinary-inpu
 `followUp` identity, owned by their send boundary. Unknown native/imported input
 identity and OpenCode child-session input stay hidden; Claude's unscoped inherited
 transcript has no per-execution prompt index and is not guessed into follow-ups.
-The normal composer retains ownership of pending/error/unknown command receipts.
+The window supplies locally captured input to the same transcript layout in
+ordinary Agent and Report execution readers. The command-derived occurrence
+ID keeps the same SwiftUI row through receipt and content updates. The normal
+composer retains ownership of pending/error/unknown command receipts.
 
 [ThreadDetailFrame.swift](Conversation/ThreadDetailFrame.swift) and shared typography retain reading insets and the centered column. [NativeReadingPageStack.swift](Conversation/NativeReadingPageStack.swift) owns retained page transitions, with host navigation described [here](../../Host/WindowNavigation/README.md).
 

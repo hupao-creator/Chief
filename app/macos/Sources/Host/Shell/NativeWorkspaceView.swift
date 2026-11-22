@@ -17,6 +17,7 @@ public final class NativeWorkspacePresentation {
     var browsingCollection: Bool { collectionPanel.owner != nil && selected == nil }
     var openingCollectionMember: Bool { readingCollectionMember && !readingEntranceAdmitted }
     public let messageMotion = NativeReadingPageMotion()
+    let localSteers = ThreadLocalSteers()
     public let threadIdentityRegistry = NativeThreadIdentityRegistry()
     public private(set) var threadIdentityVisit: NativeThreadIdentityVisit?
     public let readingNavigation = NativeReadingNavigationState()
@@ -140,6 +141,10 @@ public final class NativeWorkspacePresentation {
         applicationHost.git.start { [weak self] in self?.overview.refreshCardExtensions() }
         workspace.onCatalogChange = { [weak self] event in
             guard let self else { return }
+            self.localSteers.retainRunning { reference in
+                guard let observation = self.workspace.catalog.thread(reference.thread.threadID)?.observation else { return false }
+                return observation.isExecutionActive && observation.latestExecution?.id == reference.executionID
+            }
             self.overview.receive(event)
             self.moku.receive(event)
             if case .snapshot(_, let authority) = event, self.snapshotAuthority != authority {
@@ -510,10 +515,25 @@ public final class NativeWorkspacePresentation {
         let input = submission.input(knownDirectoryReferencesAsText: true)
         request["input"] = input
         workspace.dismissOperationError()
-        try await mokuSubmission.send(input: input, source: source, commandID: submission.commandID) {
-            await overview.recordUserAction(kind: "moku-input", text: JSONText(submission.text))
-            return .object(request)
+        let steer = captureSteer(submission, thread: workspace.catalog.moku)
+        do {
+            try await mokuSubmission.send(input: input, source: source, commandID: submission.commandID) {
+                await overview.recordUserAction(kind: "moku-input", text: JSONText(submission.text))
+                return .object(request)
+            }
+        } catch {
+            if let steer { localSteers.remove(submission.commandID, from: steer) }
+            throw error
         }
+    }
+
+    private func captureSteer(_ submission: NativeComposerSubmission, thread: HarnessThread?,
+                              from executionID: JSONText? = nil) -> ApplicationExecutionRef? {
+        guard workspace.supportsFollowUpRowIdentity, let thread, let run = thread.observation.latestExecution,
+              run.status == .running, executionID == nil || executionID == run.executionID else { return nil }
+        let target = ApplicationExecutionRef(thread: .init(threadID: thread.id, typeID: "agent"), executionID: run.executionID)
+        localSteers.capture(submission, in: target, knownDirectoryReferencesAsText: thread.moku == true)
+        return target
     }
 
     /// A selected execution keeps the existing direct Agent route. The report
@@ -728,14 +748,17 @@ public final class NativeWorkspacePresentation {
         workspace.dismissOperationError()
         let route = route ?? navigationRouteID, generation = scene.composerGeneration, request = UUID()
         let reportSelection = selected?.typeID == "report.document" ? reportSidecards.selectionID : nil
-        let previousExecutionID = dockThread?.observation.latestExecution?.executionID
-        if executionID == nil, selected == ApplicationThreadRef(threadID: id, typeID: "agent"), !scene.dockCovered {
+        let thread = workspace.catalog.thread(id)
+        let previousExecutionID = thread?.observation.latestExecution?.executionID
+        let source = ApplicationThreadRef(threadID: id, typeID: "agent")
+        let steer = captureSteer(submission, thread: thread, from: executionID)
+        if executionID == nil, selected == source, !scene.dockCovered {
             threadExecutionReveal = SidecardExecutionReveal(id: request, previousExecutionID: previousExecutionID)
         }
-        await overview.recordUserAction(kind: "thread-input",
-            thread: ApplicationThreadRef(threadID: id, typeID: "agent"), text: JSONText(submission.text))
+        await overview.recordUserAction(kind: "thread-input", thread: source, text: JSONText(submission.text))
         do {
             let accepted = try await executionContinuation.send(threadID: id, executionID: executionID, input: submission.input, commandID: submission.commandID)
+            if let steer, steer != accepted { localSteers.remove(submission.commandID, from: steer) }
             // Runtime admission belongs to the submitted draft. Presentation
             // authority belongs only to the still-current reading visit.
             if navigationRouteID == route, scene.composerGeneration == generation,
@@ -743,7 +766,7 @@ public final class NativeWorkspacePresentation {
                 threadExecutionReveal = SidecardExecutionReveal(id: request, previousExecutionID: previousExecutionID,
                     receipt: .init(executionID: accepted.executionID))
             }
-            if let executionID, navigationRouteID == route, scene.composerGeneration == generation {
+            if let executionID, (reportSelection != nil || accepted != steer), navigationRouteID == route, scene.composerGeneration == generation {
                 let reference = ApplicationExecutionRef(thread: .init(threadID: id, typeID: "agent"), executionID: executionID)
                 if dockExecution == reference {
                     executionSendNavigation = (route, generation, reference, accepted, reportSelection, submission.text)
@@ -751,6 +774,7 @@ public final class NativeWorkspacePresentation {
                 }
             }
         } catch {
+            if let steer { localSteers.remove(submission.commandID, from: steer) }
             if threadExecutionReveal?.id == request { threadExecutionReveal = nil }
             throw error
         }
@@ -883,6 +907,7 @@ public struct NativeWorkspaceView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             NativeMokuTimerBar(timer: model.timer, exclusions: presentation.scene.outsideClickExclusions)
         }
+        .environment(\.threadLocalSteers, presentation.localSteers)
         .environment(\.locale, Locale(identifier: model.locale.rawValue))
         .environment(\.nativeOfflineDraftEditing, model.hasInitialContent && !model.runtimeAvailable && !model.stopping)
         .environment(\.nativeCanvasInputRegions, canvasInputRegions)

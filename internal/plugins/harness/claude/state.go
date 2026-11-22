@@ -151,7 +151,7 @@ func (t *Turn) review(text string) {
 	t.append("review", map[string]any{"content": clip(text, 500000)})
 }
 
-func (t *Turn) addPrompt(input model.AgentInput, checkpoint string) {
+func (t *Turn) addPrompt(input model.AgentInput, rowID string) {
 	index := len(t.Prompts)
 	parts := []string{}
 	attachments := []map[string]any{}
@@ -217,8 +217,8 @@ func (t *Turn) addPrompt(input model.AgentInput, checkpoint string) {
 		t.InternalPromptIndexes = append(t.InternalPromptIndexes, index)
 	}
 	item := map[string]any{"promptIndex": index}
-	if checkpoint != "" {
-		item["checkpointId"] = checkpoint
+	if rowID != "" {
+		item["id"] = rowID
 	}
 	t.append("user-message", item)
 }

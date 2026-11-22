@@ -13,7 +13,7 @@ resource use and visual-performance measurements belong to benchmarks.
 
 ## Harness Thread Markdown
 
-Run `python3 tools/e2e/thread-transcript/run.py --output /tmp/chief-thread-transcript-evidence` on macOS with a graphical session and the pinned dependencies cached. Specify a fresh output directory. The driver feeds Codex app-server, Claude stream-json, Pi RPC and OpenCode SSE frames to their production parsers and reducers. OpenCode also replays the authoritative message list twice.
+Run `python3 tools/e2e/thread-transcript/run.py --output /tmp/chief-thread-transcript-evidence` on macOS with a graphical session and the pinned dependencies cached. Specify a fresh output directory. The driver feeds Codex app-server, Claude stream-json, Pi RPC and OpenCode SSE frames to their production parsers and reducers. The replay checks the same manual input identity in all four readers. OpenCode consumes its native inbox event and also replays the authoritative message list twice.
 
 The replay first checks the manifest preview, the turn projection with deferred presence, full execution rows and the text in the native Markdown views. Retained-state fixtures exercise independent equal-text Codex notices, Claude fork history, a Pi extension notification and terminal partial reply, and a targeted OpenCode child reply. Additional frames exercise interleaved Unicode text, reasoning and a tool in Pi, and corrected Claude blocks around a moving review.
 

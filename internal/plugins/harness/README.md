@@ -2,6 +2,10 @@
 
 接入一个新的 coding agent，需要为同一个 Harness ID 提供两份实现。Go 适配器驱动用户安装的原生 CLI，Swift 插件把该适配器的投影呈现在 macOS 上。两者都随 Chief 编译，通过源码静态注册。设置里的“发现”检查外部引擎及其配置。仓库没有扫描工作区 `plugins/` 或读取第三方 Harness manifest 的加载器。[Go 组装入口](../../core/composition/bootstrap.go) · [macOS 组装入口](../../../app/macos/Sources/Composition/NativePlugins.swift)
 
+直接用户追加输入时，`SendRequest.FollowUpRowID` 由已准入的 HTTP 命令提供。
+四个 Harness 把它用作当前执行的用户消息行或时间线条目标识，原生请求与 checkpoint 仍使用各自的 ID。
+没有该标识的输入沿用 Harness 自己的标识。[输入归属](../../../design/composer.md#send-identity-and-ownership)
+
 ## 1. 选定 ID 和参照实现
 
 选一个唯一、稳定的 ID。沿用同一个值作为 Go 注册键、Go descriptor 的 `ID`、Swift descriptor 的 `id`、设置键和 Thread 的 `harnessId`。按新引擎的原生协议选一个参照，先从它的 `Open` 跟到第一条输入和终态，再看 Swift 如何读取同一条执行。

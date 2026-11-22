@@ -286,7 +286,7 @@ func (h *Handle) Send(ctx context.Context, r plugin.SendRequest) error {
 	}
 	if followup {
 		turn = current
-		turn.addPrompt(r.Input, "")
+		turn.addPrompt(r.Input, r.FollowUpRowID)
 	} else {
 		turn = h.state.NewTurn(r.ExecutionID, r.Input, settings)
 		h.parsers[r.ExecutionID] = newParser()

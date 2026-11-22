@@ -51,7 +51,7 @@ func TestCodexTerminalProperties(t *testing.T) {
 					t.Skip("no execution")
 				}
 				id := rapid.SampledFrom(ids).Draw(t, "execution")
-				state = codex.AppendFollowUp(state, id, codex.Map{"parts": []any{codex.Map{"kind": "text", "text": message.Draw(t, "follow-up")}}}, at, fmt.Sprintf("input-%d", at))
+				state = codex.AppendFollowUp(state, id, codex.Map{"parts": []any{codex.Map{"kind": "text", "text": message.Draw(t, "follow-up")}}}, at, fmt.Sprintf("input-%d", at), fmt.Sprintf("steer:command-%d", at))
 				at++
 			},
 			"rejection": func(t *rapid.T) {

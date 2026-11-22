@@ -144,7 +144,8 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 		s.send(w, 503, resultFailure(err))
 		return
 	}
-	hello, _ := encodeEvent(map[string]any{"type": "hello", "epoch": s.Connection.Epoch, "protocolVersion": ProtocolVersion, "clientId": clientID})
+	hello, _ := encodeEvent(map[string]any{"type": "hello", "epoch": s.Connection.Epoch, "protocolVersion": ProtocolVersion, "clientId": clientID,
+		"followUpRowIdentity": true})
 	_ = client.enqueue(hello, "")
 	s.clients[clientID] = client
 	s.content.connect(clientID)

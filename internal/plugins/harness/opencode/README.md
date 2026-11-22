@@ -4,7 +4,7 @@ Direct ordinary input retains `followUp` when `Send` targets an already active
 execution. Its existing `createdAt` is the captured submission time, not an
 acceptance or model-processing time. Before native I/O, `steerInputs` durably
 associates the submitted message ID with its exact native session, execution,
-visible input, timestamp and annotations. This private association is excluded
+visible input, timestamp, annotations and optional reading row ID. This private association is excluded
 from renderer projections and does not create a message or acknowledge admission.
 A successful HTTP prompt reply, matching native inbox event, or user-message
 history record consumes the association into one canonical message. Duplicate

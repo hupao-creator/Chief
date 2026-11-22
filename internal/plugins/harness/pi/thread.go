@@ -567,6 +567,9 @@ func (h *threadHandle) Send(ctx context.Context, request plugin.SendRequest) err
 	}
 	backup, _ := json.Marshal(h.state)
 	echo := &userEcho{ID: newID("pi-"), ExecutionID: request.ExecutionID, Text: input.Message}
+	if steering && request.FollowUpRowID != "" {
+		echo.ID = request.FollowUpRowID
+	}
 	if !steering {
 		h.assistantID = ""
 		h.readSnapshot = h.state.NativeSessionJSONL

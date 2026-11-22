@@ -526,7 +526,7 @@ func (h *Handle) Send(ctx context.Context, request plugin.SendRequest) error {
 			return plugin.ErrExecutionEnded
 		}
 		if err = h.flushLocked(ctx); err == nil {
-			err = h.commit(ctx, AppendFollowUp(h.state, active, inputMap(request.Input), now(), messageID))
+			err = h.commit(ctx, AppendFollowUp(h.state, active, inputMap(request.Input), now(), messageID, request.FollowUpRowID))
 		}
 		h.mu.Unlock()
 		if err != nil {

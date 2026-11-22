@@ -150,11 +150,13 @@ struct ClaudeTurnView: View {
     let publicInteractions: [JSONText: PublicInteraction]
     let actions: HarnessThreadActions
     let context: HarnessRenderContext
+    var steerReader = ThreadSteerReader()
     @Environment(\.locale) private var locale
     var body: some View {
         let usage = turn.raw["usage"]
         let inputs = [usage?["inputTokens"]?.numberValue, usage?["cachedTokens"]?.numberValue, usage?["cacheWriteTokens"]?.numberValue]
-        let layout = ThreadTranscriptLayout(turn.transcript(presence: executionPresence), agentDetail: agentDetail,
+        let transcript = steerReader.transcript(turn.transcript(presence: executionPresence), execution: turn.id)
+        let layout = ThreadTranscriptLayout(transcript, agentDetail: agentDetail,
             active: turn.status == "running", waiting: waiting, completed: turn.status == "completed", target: visibility.messageAnchorID)
         let workVisible = visibility.work && (visibility.workTurnID == nil || visibility.workTurnID == turn.id)
         let rows = layout.detailRows(executionID: turn.id, workVisible: workVisible, active: active, actions: actions, context: context) { id in
