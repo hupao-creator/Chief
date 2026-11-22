@@ -125,7 +125,7 @@ func (h *Handle) deliverBackground(items []Map) error {
 			if e := native.Steer(ctx, wire); e == nil {
 				h.mu.Lock()
 				defer h.mu.Unlock()
-				return h.commit(ctx, AppendFollowUp(h.state, active, inputMap(input), now(), uid()))
+				return h.commit(ctx, AppendFollowUp(h.state, active, inputMap(input), now(), uid(), ""))
 			}
 		}
 		select {

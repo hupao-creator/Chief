@@ -1060,7 +1060,7 @@ func (r *Runtime) sendLockedAdmitted(ctx context.Context, id string, input model
 		return admission.err
 	}
 	followUpOnly, _ := ctx.Value(mokuLazyAdmissionKey{}).(bool)
-	request := plugin.SendRequest{FollowUpOnly: followUpOnly, ExecutionID: executionID, Input: input, ContextEntries: entries, Admitted: func() error { return finishAdmission(nil, true) }}
+	request := plugin.SendRequest{FollowUpRowID: model.FollowUpRowID(ctx), FollowUpOnly: followUpOnly, ExecutionID: executionID, Input: input, ContextEntries: entries, Admitted: func() error { return finishAdmission(nil, true) }}
 	owner.mu.Lock()
 	if owner.closed {
 		owner.mu.Unlock()

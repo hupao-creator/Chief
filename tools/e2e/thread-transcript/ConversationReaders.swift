@@ -262,8 +262,23 @@ private struct ReaderSurface: View {
                 }
                 sweep[reader.thread.id.string] = changes
             }
-            let footer = labels.filter { $0.range(of: #"\d{4}/\d{2}/\d{2}"#, options: .regularExpression) != nil ||
-                $0.contains(" tokens") && !$0.contains("Execution process") || $0.contains("Worked for") }
+            // Vision can split the date, clock, count and unit into separate boxes.
+            // Compare complete visible captions, joining neighbours on the same baseline.
+            var captions: [(String, CGRect)] = []
+            for (text, box) in lines.sorted(by: { $0.1.minX < $1.1.minX }) {
+                if let index = captions.lastIndex(where: { _, previous in
+                    abs(box.midY - previous.midY) < min(box.height, previous.height) / 2 &&
+                        box.midX > previous.maxX && abs(box.minX - previous.maxX) < previous.height
+                }) {
+                    captions[index] = (captions[index].0 + " " + text, captions[index].1.union(box))
+                } else {
+                    captions.append((text, box))
+                }
+            }
+            let footer = captions.sorted { $0.1.midY > $1.1.midY }.map(\.0).filter {
+                $0.range(of: #"\d{4}/\d{2}/\d{2}"#, options: .regularExpression) != nil ||
+                    $0.contains(" tokens") && !$0.contains("Execution process") || $0.contains("Worked for")
+            }
             if harness == "codex", stage != "retained" {
                 guard reader.control("turn.author")?["value"]?["model"] == .text("fixture-model") else { throw Mismatch("Missing runtime model") }
                 if status == "Completed" || status == "Failed" {

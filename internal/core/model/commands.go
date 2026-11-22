@@ -1,5 +1,7 @@
 package model
 
+import "context"
+
 // commandReadOnly is the protocol registry, independent of installed plugins.
 var commandReadOnly = map[string]bool{
 	"attachment:preview": true, "attachment:discard": false,
@@ -17,3 +19,16 @@ var commandReadOnly = map[string]bool{
 
 func IsCommandChannel(channel string) bool  { _, ok := commandReadOnly[channel]; return ok }
 func IsReadOnlyChannel(channel string) bool { return commandReadOnly[channel] }
+
+type followUpRowKey struct{}
+
+// The transport receipt identifies a manual input across independent command
+// and transcript streams. Native dispatch and checkpoint IDs remain private.
+func WithFollowUpCommand(ctx context.Context, commandID string) context.Context {
+	return context.WithValue(ctx, followUpRowKey{}, "steer:"+commandID)
+}
+
+func FollowUpRowID(ctx context.Context) string {
+	id, _ := ctx.Value(followUpRowKey{}).(string)
+	return id
+}

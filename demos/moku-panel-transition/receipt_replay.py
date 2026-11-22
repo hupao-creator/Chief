@@ -100,7 +100,7 @@ try:
     backend = build("receipt-peer")
     files = json.loads(subprocess.check_output([collector, "stage"], cwd=replay.workspace))
     (replay.workspace / "files.json").write_text(json.dumps(files))
-    replay.compile([source / "ReceiptReplay.swift"])
+    replay.compile([source / "ReceiptReplay.swift", source / "SteerReaderReplay.swift"], extra_args=["-package-name", "macos"])
     with subprocess.Popen([backend], cwd=replay.workspace, stdin=subprocess.PIPE, stdout=subprocess.PIPE) as peer:
         try:
             upstream = json.loads(peer.stdout.readline())
@@ -111,6 +111,12 @@ try:
             calls = replay.workspace / "handler-calls.jsonl"
             assert status == 400 and invalid["error"]["code"] == "INVALID_COMMAND_ID" and not calls.read_bytes()
             print("Go rejected the baseline bare UUID before entering the handler", flush=True)
+            with closing(HTTPConnection("127.0.0.1", upstream["port"], timeout=5)) as stream:
+                stream.request("GET", "/events", headers=auth)
+                with stream.getresponse() as events:
+                    hello = json.loads(events.readline())
+                    assert hello["type"] == "hello" and hello["epoch"] == upstream["epoch"], hello
+                    upstream["followUpRowIdentity"] = hello["followUpRowIdentity"]
             with ThreadingHTTPServer(("127.0.0.1", 0), Proxy) as server:
                 (replay.workspace / "peer.json").write_text(json.dumps({**upstream, "port": server.server_port}))
                 Thread(target=server.serve_forever, daemon=True).start()
@@ -146,10 +152,11 @@ try:
             for channel in ("moku:submit", "thread:follow-up", "thread:fork"):
                 expected = ["A", "D", "BC", "rejected", "boundary", "direct"]
                 if channel == "moku:submit":
-                    expected += ["mixed picker"]
+                    expected += ["mixed picker", "Steer the running Chief"]
                 if channel == "thread:follow-up":
                     expected += ["after-fork", "historical", "after-followup", "historical", "same-checkpoint", "changed", "changed"]
                     expected += ["sidecard " + step for step in ("catalog first", "receipt first", "finished", "reject", "fold", "switch card", "leave")]
+                    expected += ["Repeat this instruction"] * 5
                 if channel == "thread:fork":
                     expected = ["historical"] * 4 + ["current"]
                 assert [text for _, text in writes[channel]] == actual[channel] == expected, (writes[channel], actual[channel])

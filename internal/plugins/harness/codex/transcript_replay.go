@@ -15,7 +15,7 @@ func NewTranscriptReplay() func(Map) (json.RawMessage, error) {
 		emit: func(e Map) { state = ReduceEvent(state, execution, e) }}
 	return func(frame Map) (json.RawMessage, error) {
 		if text, ok := frame["steer"].(string); ok {
-			state = AppendFollowUp(state, execution, input(text), now(), "follow")
+			state = AppendFollowUp(state, execution, input(text), now(), "follow", "steer:fixture")
 		} else if frame != nil {
 			params := obj(frame["params"])
 			params["threadId"], params["turnId"] = "primary", execution

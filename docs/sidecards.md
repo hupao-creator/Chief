@@ -4,7 +4,7 @@
 
 When you open a task conversation with earlier runs, an active run or one waiting for you opens in the **Execution** sidecard. Click **Execution** to hide it or bring it back. A first run appears in the main reading area. When a run ends, read its result there.
 
-Sending a follow-up from the latest result also opens **Execution**. If the conversation is still loading, you’ll see **Opening conversation…** until it is ready.
+A follow-up to a running agent appears immediately where you’re watching the run. When you send from the latest finished result, **Execution** opens. If the conversation is still loading, you’ll see **Opening conversation…** until it is ready.
 
 Drag the divider to adjust the panels in a side-by-side layout. In a narrow window, the panels stack. Closing a sidecard or switching to another leaves the task running.
 

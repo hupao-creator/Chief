@@ -45,7 +45,7 @@ private func checkRows(_ items: [ThreadTranscriptItem], stage: String, deferred:
     for row in layout.rows {
         switch row.item.body {
         case let .user(message):
-            guard row.kind == .steer, message.followUp else { throw Mismatch("Unexpected user input") }
+            guard row.kind == .steer, row.item.id == "steer:fixture", message.followUp else { throw Mismatch("Unexpected user input") }
             sequence.append(message.text)
         case let .reply(text, _, _):
             sequence.append(row.kind.rawValue + " " + text)
