@@ -91,6 +91,30 @@ and the open interval between blinks. To isolate compositor progress, hold the
 fixture's main thread during a second blink and read complete window frames
 on an independent capture queue.
 
+### OpenCode cold discovery
+
+Use a private home, XDG directories and Chief profile with the supported
+OpenCode CLI on PATH. Set `OPENCODE_DISABLE_MODELS_FETCH=1` and
+`OPENCODE_DB=:memory:` to enumerate built-in models without a real account.
+Start with no `$XDG_CONFIG_HOME/opencode` directory.
+
+In first-run setup, wait for OpenCode to appear ready. Open the Chief setup
+page and check for an OpenCode dispatch target. For the transport boundary,
+launch a separate cold profile and call `harness:detect-installation` with
+`["opencode"]`, then `harness:settings-presentation` with
+`{"scope":"global","harnessId":"opencode","executionOwner":"moku"}` as its
+single argument. The first presentation must report a ready CLI and a
+nonempty catalog with no execution snapshot error while the native CLI
+creates the empty directory. Repeat with a precreated empty directory as a
+control. For routing, call the adapter's `DiscoverMokuTarget` on a separate
+cold directory and require a complete nonempty catalog on its first request.
+
+Record the source revision, executable identities, OpenCode version, profile
+conditions, first result, and mounted setup observations when a desktop
+session is available. Built-in enumeration covers local discovery and target
+admission. Provider execution and real account state need separate evidence.
+[Catalog identity contract](../../internal/plugins/harness/opencode/README.md).
+
 ### System appearance and language
 
 Use a private profile and a disposable macOS session for system-wide setting
