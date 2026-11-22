@@ -36,6 +36,7 @@ private struct RegroupingCase: Codable {
             preferences: preferences, plugins: try .init(harnesses: [], sidecards: [], applications: NativeApplicationModules.make()))
         let host = NativeWorkspacePresentation(workspace: workspace)
         let model = host.overview
+        model.setCollectionWindowSize(CGSize(width: 1400, height: 900))
         let now = Date()
         let refs = (0..<reports).map { ApplicationThreadRef(threadID: JSONText("report-\($0)"), typeID: "report.document") }
         let records: [JSONValue] = refs.enumerated().map { index, ref in
@@ -60,9 +61,16 @@ private struct RegroupingCase: Codable {
                 return entries.map(\.entry.ref)
             }.flatMap { $0 }
         }
-        // Nine to twelve 2-cell reports leave seven singles beside the group.
+        // Four columns of two report cards leave seven singles beside the group.
         // At most six visits qualify, so fresh alternatives are always available.
         let seats = reports - 7
+        let narrowMembers = members()
+        model.setPresentationActive(false)
+        model.setCollectionWindowSize(CGSize(width: 2064, height: 1212))
+        guard members() == narrowMembers else { return "changed the paused reading backdrop" }
+        model.setPresentationActive(true)
+        guard members().isEmpty else { return "kept a pressure group on wide return" }
+        model.setCollectionWindowSize(CGSize(width: 1400, height: 900))
         var seen = Set<ApplicationThreadRef>(), qualified = Set<ApplicationThreadRef>()
         var clock = 0.0
         for visits in panels {

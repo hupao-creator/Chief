@@ -48,7 +48,7 @@ private struct DemoView: View {
             HStack(spacing: 16) {
                 Text("封面横向轮播 · 正文淡出 / 淡入").font(.system(size: 12)).foregroundStyle(.secondary)
                 Spacer()
-                Toggle("9 篇成员", isOn: $model.manyMembers).toggleStyle(.checkbox).font(.system(size: 11))
+                Toggle("更多报告", isOn: $model.manyMembers).toggleStyle(.checkbox).font(.system(size: 11))
                 Toggle("保持预览活跃", isOn: $keepActive).toggleStyle(.checkbox).font(.system(size: 11))
                 Toggle("慢速 ×3", isOn: $slow).toggleStyle(.checkbox).font(.system(size: 11))
             }
@@ -77,7 +77,7 @@ private struct DemoView: View {
             }
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("空间超过 16 格时收纳报告，闲置满一天的报告默认收纳。")
+                    Text("一屏放不下时临时收纳报告，闲置满一天的报告默认收纳。")
                     Text("至少两份报告成组。阅读正文和关联任务都能让报告优先单列。")
                         .foregroundStyle(.tertiary)
                 }.font(.system(size: 11)).foregroundStyle(.secondary)
@@ -142,8 +142,10 @@ private struct DemoView: View {
         let viewport = self.viewport
         let model = self.model
         let host = NSHostingView(rootView: GeometryReader { geometry in
+            let size = CGSize(width: geometry.size.width / viewport.scale, height: geometry.size.height / viewport.scale)
             DemoView(model: model, fixtures: self.fixtures)
-                .frame(width: geometry.size.width / viewport.scale, height: geometry.size.height / viewport.scale)
+                .frame(width: size.width, height: size.height)
+                .onChange(of: size, initial: true) { _, size in model.windowSize = size }
                 .environment(\.nativeWindowContentScale, viewport.scale)
                 .scaleEffect(viewport.scale, anchor: .topLeading)
         }.overlay(alignment: .bottomTrailing) {

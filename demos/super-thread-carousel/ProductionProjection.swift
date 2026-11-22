@@ -22,9 +22,11 @@ import ChiefHarnessCodex
         let workspace = NativeWorkspaceModel(client: RuntimeClient(profile: try RuntimeProfile(dataDirectory: directory)),
             preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())],
                 sidecards: [], applications: NativeApplicationModules.make()))
-        return .init(workspace: workspace, applications: .init(projectionCapabilities: { plugin, entry in
+        let model = NativeOverviewWorkspaceModel(workspace: workspace, applications: .init(projectionCapabilities: { plugin, entry in
             try .init(scope: .init(pluginID: plugin.ownerPluginID, thread: entry.ref), requires: plugin.requires, registrations: [])
         }, rendererContext: { _, _, _ in throw CancellationError() }))
+        model.setCollectionWindowSize(CGSize(width: 1192, height: 780))
+        return model
     }
     let records: [JSONValue] = ReportSample.samples.map { sample in
         let entry = fixtures[sample.id]!.props.entry
