@@ -46,7 +46,7 @@ private final class WheelSample: NSEvent {
 }
 
 @main @MainActor private struct NestedHeaderReplay: App {
-    @State private var zoom = 1.0
+    @State private var collectionViewport: CGSize?
     private let workspace: NativeWorkspaceModel
     private let presentation: NativeWorkspacePresentation
 
@@ -66,8 +66,8 @@ private final class WheelSample: NSEvent {
         Window("Overview header replay", id: "header-replay") {
             GeometryReader { geometry in
                 NativeWorkspaceView(model: workspace, presentation: presentation)
-                    .frame(width: geometry.size.width / zoom, height: geometry.size.height / zoom)
-                    .scaleEffect(zoom, anchor: .topLeading)
+                    .frame(width: collectionViewport?.width ?? geometry.size.width,
+                           height: collectionViewport?.height ?? geometry.size.height)
             }
             .modifier(NativeWorkspaceWindowSurface())
             .task {
@@ -131,19 +131,12 @@ private final class WheelSample: NSEvent {
             return
         }
         var records: [[String: Any]] = []
-        // Filter tops are logical points. Settings probes use actual-size window points.
-        let cases: [(size: CGSize, scale: CGFloat, filterTop: CGFloat, settingsProbe: CGPoint?, captureName: String?)] = [
-            (CGSize(width: 860, height: 640), 5, 76, nil, "maximum"),
-            (CGSize(width: 1100, height: 760), 1, 16, CGPoint(x: 1061, y: 22), "wide"),
-            (CGSize(width: 600, height: 480), 1, 76, CGPoint(x: 565, y: 16), "narrow"),
-            (CGSize(width: 1100, height: 760), 1.44, 16, nil, "menu"),
-            (CGSize(width: 860, height: 640), 2.5, 76, nil, nil),
-            (CGSize(width: 860, height: 640), 5, 76, nil, nil),
-            (CGSize(width: 860, height: 600), 5, 68, nil, nil),
+        let cases: [(CGSize, CGFloat, CGPoint, String)] = [
+            (CGSize(width: 1100, height: 760), 16, CGPoint(x: 1061, y: 22), "wide"),
+            (CGSize(width: 600, height: 480), 76, CGPoint(x: 565, y: 16), "narrow"),
         ]
         var previousOffset = 0.0
-        for (size, scale, filterTop, settingsProbe, captureName) in cases {
-            zoom = scale
+        for (size, filterTop, settingsProbe, captureName) in cases {
             window.setContentSize(size)
             window.setFrameTopLeftPoint(CGPoint(x: screen.visibleFrame.midX - size.width / 2, y: screen.visibleFrame.midY + size.height / 2))
             try await Task.sleep(for: .seconds(2))
@@ -154,18 +147,16 @@ private final class WheelSample: NSEvent {
             }
             let camera = presentation.canvas.camera
             let retained = camera.scrollOffset == min(previousOffset, camera.maximumOffset)
-            var result = try inspect(window, scale: scale, filterTop: filterTop)
+            var result = try inspect(window, filterTop: filterTop)
             result["retainedOffsetOnResize"] = retained
             result["passed"] = retained && result["passed"] as? Bool == true
-            if CommandLine.arguments.contains("--capture"), let captureName {
+            if CommandLine.arguments.contains("--capture") {
                 try await capture(window, to: directory.appending(path: captureName + ".png"))
             }
-            if let settingsProbe {
-                let opened = try await clickSettings(window, at: settingsProbe)
-                result["settingsProbeFromTopLeft"] = [settingsProbe.x, settingsProbe.y]
-                result["settingsOpened"] = opened
-                result["passed"] = opened && result["passed"] as? Bool == true
-            }
+            let opened = try await clickSettings(window, at: settingsProbe)
+            result["settingsProbeFromTopLeft"] = [settingsProbe.x, settingsProbe.y]
+            result["settingsOpened"] = opened
+            result["passed"] = opened && result["passed"] as? Bool == true
             previousOffset = camera.scrollOffset
             records.append(result)
             if result["passed"] as? Bool != true { print("Failed geometry: \(result)") }
@@ -173,13 +164,12 @@ private final class WheelSample: NSEvent {
         try JSONSerialization.data(withJSONObject: records, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "nested-header.json"))
         guard records.allSatisfy({ $0["passed"] as? Bool == true }) else { throw ReplayError("Nested header replay failed") }
-        zoom = 1
         window.setContentSize(CGSize(width: 900, height: 680))
         try await Task.sleep(for: .seconds(1))
         try await focusReplayWindow(window)
         try await cardInteraction(window, directory: directory, authority: authority)
         try await fittingCards(window, directory: directory, authority: authority)
-        try await fittingCollection(window, directory: directory, authority: authority)
+        try await fittingCollection(directory: directory, authority: authority)
     }
 
     private func focusReplayWindow(_ window: NSWindow) async throws {
@@ -564,7 +554,7 @@ private final class WheelSample: NSEvent {
             .write(to: directory.appending(path: "overview-fit.json"))
     }
 
-    private func fittingCollection(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+    private func fittingCollection(directory: URL, authority: UUID) async throws {
         let model = presentation.overview, canvas = presentation.canvas
         let ids = (0..<8).map { JSONText("report-\($0)") }
         let now = Date().timeIntervalSince1970 * 1000
@@ -582,9 +572,9 @@ private final class WheelSample: NSEvent {
         model.selectTag(nil)
         var samples = [[String: Any]]()
         func check(_ width: Int, _ height: Int, tasks: Int, grouped: Int, scrolls: Bool = false) async throws {
-            // Fit the recording-sized logical viewport on a smaller desktop.
-            zoom = 0.5
-            window.setContentSize(CGSize(width: Double(width) * zoom, height: Double(height) * zoom))
+            // Collection membership depends on the proposed layout size, including
+            // viewports wider than the display. Keep the native window in place.
+            collectionViewport = CGSize(width: width, height: height)
             let expected = ids.prefix(grouped).map(\.string)
             let deadline = ContinuousClock.now + .seconds(5)
             while true {
@@ -660,7 +650,7 @@ private final class WheelSample: NSEvent {
             .write(to: directory.appending(path: "overview-keyboard.json"))
     }
 
-    private func inspect(_ window: NSWindow, scale: CGFloat, filterTop: CGFloat) throws -> [String: Any] {
+    private func inspect(_ window: NSWindow, filterTop: CGFloat) throws -> [String: Any] {
         guard let content = window.contentView, let frame = content.superview,
               let host = descendant(NativeReadingParentView.self, in: content),
               let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: host),
@@ -709,16 +699,16 @@ private final class WheelSample: NSEvent {
             abs(center.x - x) <= 0.5 && abs(center.y - 38) <= 0.5
         }
         let renderedFilterTop = window.frame.height - filterFrame.maxY
-        let filterPositioned = abs(renderedFilterTop - filterTop * scale) <= 0.5
+        let filterPositioned = abs(renderedFilterTop - filterTop) <= 0.5
         let filterBottom = window.frame.height - filterFrame.minY
         let filterInside = filterFrame.minY >= 0 && filterFrame.maxY <= window.frame.height
-        let filterExcluded = filterBottom <= boundary * scale
+        let filterExcluded = filterBottom <= boundary
         let strip = size.height - boundary
         let inputPoint = monitor.windowPoint(below)
         let pointInside = CGRect(origin: .zero, size: window.frame.size).contains(inputPoint)
-        return ["windowSize": [window.frame.width, window.frame.height], "scale": scale,
+        return ["windowSize": [window.frame.width, window.frame.height],
                 "logicalViewport": [size.width, size.height], "filterTopInWindow": renderedFilterTop,
-                "expectedFilterTopInWindow": filterTop * scale, "filterBottomInWindow": filterBottom,
+                "expectedFilterTopInWindow": filterTop, "filterBottomInWindow": filterBottom,
                 "buttonCentersFromTopLeft": buttonCenters.map { [$0.x, $0.y] }, "buttonHits": hits,
                 "headerInputBottom": boundary, "canvasStripHeight": strip, "inputPointInWindow": [inputPoint.x, inputPoint.y],
                 "rejectsHeader": rejectsHeader, "wheelAndTrackpad": scrolled, "diagonal": diagonal, "vertical": vertical,

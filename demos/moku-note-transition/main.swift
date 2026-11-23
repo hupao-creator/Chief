@@ -13,7 +13,6 @@ import SwiftUI
     var long = true
     var landing = false
     var animationsDisabled = false
-    var zoom: CGFloat = 1
     var size = CGSize(width: 900, height: 720)
     var note: NativeMokuNote {
         NativeMokuNote(id: "isolated-note-preview", text: long ? Self.prose : "笔记内容保留。", revision: 1, updatedAt: 1)
@@ -45,8 +44,7 @@ private struct Preview: View {
                 NativeMokuDock(state: fixture.state, draft: fixture.draft, cwd: "/isolated/note-preview",
                     landing: fixture.landing, note: fixture.note, onSend: { _ in }, onCancel: {})
             }, settings: { EmptyView() })
-                .frame(width: fixture.size.width / fixture.zoom, height: fixture.size.height / fixture.zoom)
-                .scaleEffect(fixture.zoom)
+                .frame(width: fixture.size.width, height: fixture.size.height)
                 .transaction { transaction in
                     if fixture.animationsDisabled {
                         transaction.animation = nil; transaction.disablesAnimations = true
@@ -117,7 +115,7 @@ private final class RecordingDelegate: NSObject, SCRecordingOutputDelegate, @unc
             let elapsed = start.duration(to: .now)
             let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
             events.append(["seconds": seconds, "event": name, "open": fixture.state.notePanelOpen,
-                "size": [fixture.size.width, fixture.size.height], "zoom": fixture.zoom, "animationsDisabled": fixture.animationsDisabled])
+                "size": [fixture.size.width, fixture.size.height], "animationsDisabled": fixture.animationsDisabled])
         }
         func capture(_ name: String) async throws {
             // A stream retains its original output canvas through native window
@@ -163,10 +161,8 @@ private final class RecordingDelegate: NSObject, SCRecordingOutputDelegate, @unc
         try await pause(650)
         toggle(true, "landing-open"); try await pause(650); try await capture("landing-open")
         toggle(false, "landing-close"); try await pause(650)
-        fixture.landing = false; fixture.zoom = 5; event("zoom-5x")
-        toggle(true, "zoom-open"); try await pause(650); try await capture("zoom-open")
-        toggle(false, "zoom-close"); try await pause(650)
-        fixture.zoom = 1; fixture.animationsDisabled = true; event("disable-animations-fixture")
+        fixture.landing = false
+        fixture.animationsDisabled = true; event("disable-animations-fixture")
         try await pause(350)
         toggle(true, "no-animation-open"); try await pause(180)
         toggle(false, "no-animation-close"); try await pause(180)

@@ -30,7 +30,7 @@ def keyboard_client(replay, output):
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--output", type=Path, required=True)
-parser.add_argument("--capture", action="store_true", help="capture the own window at menu and maximum zoom")
+parser.add_argument("--capture", action="store_true", help="save images of the wide, narrow and four-column layouts")
 parser.add_argument("--keyboard", action="store_true", help="focus a card with system Accessibility and check arrow keys and Return")
 parser.add_argument("--note-swipe", action="store_true", help="run Note and scroll interactions entirely at actual size")
 args = parser.parse_args()

@@ -19,10 +19,10 @@ PNGs, then exits. `build.json` records source/binary hashes and the production
 diff. Rebuild production before linking and keep sources fixed during collection.
 
 The sequence includes long/short Note, rapid reversal, narrow/resize, landing,
-5× zoom and a locally disabled transaction animation. That last fixture is not a
+and a locally disabled transaction animation. That last fixture is not a
 system preference or a production motion branch. [Stored evidence](evidence/observations.json)
 retains recorded source/video identity; it does not certify current behavior,
-GPU performance, full-app zoom, real exposure receipts or Runtime sends.
+GPU performance, real exposure receipts or Runtime sends.
 
 Requires the repository macOS/Xcode toolchain. This preview has no automated
 correctness acceptance gate; it does not install or replace the production app.

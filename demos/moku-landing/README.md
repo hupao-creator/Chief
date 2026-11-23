@@ -23,8 +23,7 @@ python3 demos/moku-landing/verify_header.py --capture --keyboard --output .build
 ```
 
 The replay mounts the production workspace and its nested reading host with
-a temporary fixture catalog. The header cases start at 5×, check 1100pt and 600pt windows
-at actual size, visit 1.44× and 2.5×, and return to 5× at two window heights.
+a temporary fixture catalog. It checks 1100pt and 600pt windows at actual size.
 The JSON records rendered filter bounds, native window button centers and
 hit tests, and whether a window-local click in the upper part of the
 Settings button opens Settings in both actual-size windows. It also records
@@ -39,8 +38,10 @@ centered through wheel, trackpad and momentum input. At 1359pt the trailing
 edge is reachable. Widening to 1376pt clears the offset again. The replay
 writes the window widths and offsets to `overview-fit.json`. With eight fresh
 cover reports it records the mounted members and travel in `collection-fit.json`
-while a task enters and leaves a wide window, as the width crosses the three-column
-boundary, when scrolling remains necessary, and when the window grows again.
+while a task enters and leaves a wide viewport, as the viewport crosses the
+three-column boundary, when scrolling remains necessary, and when it grows again.
+Those Collection checks set the mounted workspace’s layout size directly so a
+2064×1212pt viewport can be measured on a smaller display.
 With `--keyboard`, the replay scrolls a column with each arrow key and opens the
 focused card with Return. It records both distances and the card identity in
 `overview-keyboard.json`. Optional captures show the isolated workspace.
