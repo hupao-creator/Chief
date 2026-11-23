@@ -38,7 +38,7 @@ public final class NativeMokuWorkspacePresentation {
     public private(set) var talkID: JSONText?
     public private(set) var talkMessage: NativeMokuTalkMessage?
     public private(set) var note: NativeMokuNote?
-    public private(set) var reply: NativeMokuDockReply?
+    public private(set) var replyKey: JSONText?
     public private(set) var intervention: NativeMokuDockIntervention?
     public private(set) var activeOperation: NativeOverviewMokuOperation?
     public private(set) var activity: HarnessActivity?
@@ -154,11 +154,10 @@ public final class NativeMokuWorkspacePresentation {
         talkMessage = NativeMokuTalkMessage.latest(in: moku)
         talkID = talkMessage?.id; talk = talkMessage?.text
         note = NativeMokuNote.current(in: moku)
-        reply = moku.flatMap { thread in harnessPresentation?.reply.flatMap { value in
-            guard let excerpt = Self.compactReply(value.excerpt.string) else { return nil }
-            return NativeMokuDockReply(id: value.id.string,
-                readKey: nativeMokuPresentationTuple([.string(thread.id), .string(thread.harnessID), .string(value.id)]),
-                excerpt: excerpt, executionID: value.executionID, target: value.target)
+        replyKey = moku.flatMap { thread in harnessPresentation?.reply.flatMap { value in
+            let text = value.excerpt.string.replacingOccurrences(of: "[*_~`>#-]+", with: " ", options: .regularExpression)
+            guard !Self.normalizeWhitespace(text).isEmpty else { return nil }
+            return JSONText(nativeMokuPresentationTuple([.string(thread.id), .string(thread.harnessID), .string(value.id)]))
         } }
         intervention = moku.flatMap(Self.intervention)
         queue.minimumDisplayMilliseconds = sessionIdle ? 800 : 2_000
@@ -281,13 +280,6 @@ public final class NativeMokuWorkspacePresentation {
 
     private static func dedicatedTool(_ name: String) -> Bool {
         ["list_threads", "create_thread", "send_to_thread", "get_thread_status", "interrupt_thread"].contains(name)
-    }
-
-    private static func compactReply(_ text: String) -> String? {
-        let compact = normalizeWhitespace(text.replacingOccurrences(of: "[*_~`>#-]+", with: " ", options: .regularExpression))
-        guard !compact.isEmpty else { return nil }
-        let head = String(String.UnicodeScalarView(compact.unicodeScalars.prefix(140)))
-        return head == compact ? compact : head.trimmingCharacters(in: .whitespacesAndNewlines) + "…"
     }
 
     private static func normalizeWhitespace(_ text: String) -> String {

@@ -61,7 +61,7 @@ final class NativeExecutionContinuation {
                 "先前操作的提交上下文无法可靠还原，请核对原 Thread 和回执；不会自动创建分支或重新发送。",
                 "The previous submission context cannot be restored reliably. Check the original thread and receipt; no fork or resend will be attempted."))
         }
-        guard let source = workspace.catalog.thread(threadID), source.moku != true, !source.mokuHistory,
+        guard let source = workspace.catalog.thread(threadID), source.isOrdinaryAgent,
               workspace.canExecute(source) else {
             throw PluginContractError(workspace.locale.text(
                 "此 Thread 当前无法接收输入，草稿已保留。", "This thread cannot accept input right now. Your draft has been kept."))

@@ -24,15 +24,12 @@ private extension RuntimeClient {
 }
 
 @MainActor @Observable private final class ReaderVisit {
-    let chief: Bool
     let client: RuntimeClient
     let plugins: NativePluginComposition
     let controls = NativeReadingInteractions()
-    let draft = NativeComposerDraft(services: .init(stageFiles: { _, _ in [] }, discardAttachments: { _ in }))
     var visit = UUID()
     var thread: HarnessThread
     var target: HarnessReadingTarget?
-    var sent: [String] = []
     @ObservationIgnored lazy var host = NativeHarnessHost(client: client, registry: plugins.harnesses,
         currentThread: { [weak self] id in self?.thread.id == id ? self?.thread : nil },
         callbacks: .init(openExternal: { _ in }, openFollowUp: { _, _ in }, onError: { _ in }))
@@ -40,39 +37,23 @@ private extension RuntimeClient {
     let panel = NSPanel(contentRect: .init(x: 50, y: 50, width: 960, height: 780),
         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
 
-    init(chief: Bool, harness: String, directory: URL, plugins: NativePluginComposition) throws {
-        self.chief = chief
+    init(harness: String, directory: URL, plugins: NativePluginComposition) throws {
         self.plugins = plugins
-        let id: JSONText = chief ? "chief" : "agent"
+        let id: JSONText = "agent"
         let profile = directory.appendingPathComponent(harness + "-" + id.string)
         client = RuntimeClient(profile: try RuntimeProfile(dataDirectory: profile))
-        var operations: [JSONValue] = []
-        if chief && harness == "codex" {
-            operations.append(.object(["type": .text("tool-operation"), "name": .text("create_thread"),
-                "id": .text("operation"), "executionId": .text("run"), "callId": .text("audit"), "harnessCallId": .text("dispatch"),
-                "arguments": .object(["target": .object(["codex": .object([:])]), "prompt": .text("Child task")]),
-                "createdAt": .integer(2), "completedAt": .integer(3),
-                "result": .object(["ok": .bool(true), "threadId": .text("child")])]))
-        }
         thread = try HarnessThread(id: id, harnessID: JSONText(harness), revision: 0, sessionState: .null,
             observation: .init(), cwd: "/fixture", settings: .object([:]), createdAt: 1, updatedAt: 1,
-            title: chief ? "Moku" : "Replay task", tags: [], moku: chief ? true : nil,
-            transcript: chief ? .array(operations) : nil)
+            title: "Replay task", tags: [])
         panel.isReleasedWhenClosed = false
         panel.ignoresMouseEvents = true
         panel.level = .init(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
     }
 
-    func updateCatalog(_ sample: JSONValue, archived: Bool = false) throws {
+    func updateCatalog(_ sample: JSONValue) throws {
         var envelope = thread.json.objectValue!
         envelope["observation"] = sample["observation"]
         envelope["revision"] = .integer(thread.revision + 1)
-        if archived && chief {
-            envelope["moku"] = nil
-            envelope["archived"] = .bool(true)
-            envelope["mokuHistory"] = .bool(true)
-            envelope["title"] = .text("Moku history · " + thread.harnessID.string)
-        }
         thread = try HarnessThread(json: .object(envelope))
     }
 
@@ -175,18 +156,10 @@ private extension RuntimeClient {
 private struct ReaderSurface: View {
     let model: ReaderVisit
     var body: some View {
-        Group {
-            if model.thread.moku == true {
-                NativeMokuThreadView(harnessHost: model.host, thread: model.thread, draft: model.draft,
-                    readingTarget: model.target, onNavigationChange: { _ in }, onBack: {},
-                    onSend: { model.sent.append($0.text) }, onCancel: {})
-            } else {
-                NativeAgentThreadWorkspace(harnessHost: model.host, thread: model.thread, registry: model.plugins.sidecards,
-                    readingTarget: model.target, services: .init(send: { _, _ in throw Mismatch("Unexpected Agent send") },
-                        stageAttachments: { _ in [] }, discardAttachments: { _ in }, openExternal: { _ in }),
-                    onBack: {}, onNavigationChange: { _ in })
-            }
-        }
+        NativeAgentThreadWorkspace(harnessHost: model.host, thread: model.thread, registry: model.plugins.sidecards,
+            readingTarget: model.target, services: .init(send: { _, _ in throw Mismatch("Unexpected Agent send") },
+                stageAttachments: { _ in [] }, discardAttachments: { _ in }, openExternal: { _ in }),
+            onBack: {}, onNavigationChange: { _ in })
         .environment(\.locale, Locale(identifier: "en"))
         .environment(\.scenePhase, .active)
         .environment(\.nativeReadingInteractions, model.controls)
@@ -196,143 +169,121 @@ private struct ReaderSurface: View {
 }
 
 @MainActor func replayConversationReaders(harness: String, directory: URL, plugins: NativePluginComposition) async throws -> [[String: Any]] {
-    let agent = try ReaderVisit(chief: false, harness: harness, directory: directory, plugins: plugins)
-    let chief = try ReaderVisit(chief: true, harness: harness, directory: directory, plugins: plugins)
-    let pair = [agent, chief]
-    defer { for reader in pair { reader.close() } }
+    let reader = try ReaderVisit(harness: harness, directory: directory, plugins: plugins)
+    defer { reader.close() }
     var evidence: [[String: Any]] = []
-    func update(_ stage: String, archived: Bool = false) async throws {
+    func update(_ stage: String) async throws {
         let file = directory.appendingPathComponent("\(harness)-\(stage).json")
         let sample = try JSONValue(data: Data(contentsOf: file))
-        for reader in pair {
-            try reader.updateCatalog(sample, archived: archived)
-            try await reader.client.publish(sample, thread: reader.thread.id)
-        }
+        try reader.updateCatalog(sample)
+        try await reader.client.publish(sample, thread: reader.thread.id)
     }
     func check(_ stage: String, paragraphs: [String], work: Bool, filter: Bool, status: String) async throws {
-        var snapshots: [JSONValue] = []
         var sweep: [String: [Int]] = [:]
-        for reader in pair {
-            try await reader.wait(stage) {
-                guard let state = reader.control("turn")?["value"]?["status"]?.stringValue else { return false }
-                let matchesStatus = status == "Running"
-                    ? !["Completed", "Failed", "Waiting for input", "Cancelled"].contains(state)
-                    : state == status
-                return reader.markdown.map(\.string) == paragraphs && matchesStatus &&
-                    reader.control("turn")?["value"]?["work"] == .bool(work) &&
-                    (reader.control("visibility.work") != nil) == filter
-            }
+        try await reader.wait(stage) {
+            guard let state = reader.control("turn")?["value"]?["status"]?.stringValue else { return false }
+            let matchesStatus = status == "Running"
+                ? !["Completed", "Failed", "Waiting for input", "Cancelled"].contains(state)
+                : state == status
+            return reader.markdown.map(\.string) == paragraphs && matchesStatus &&
+                reader.control("turn")?["value"]?["work"] == .bool(work) &&
+                (reader.control("visibility.work") != nil) == filter
         }
-        for reader in pair where reader.control("visibility.userMessages") != nil {
-            throw Mismatch("\(harness)/\(stage) user-message switch: Agent \(agent.control("visibility.userMessages") != nil), Chief \(chief.control("visibility.userMessages") != nil)")
-        }
+        guard reader.control("visibility.userMessages") == nil else { throw Mismatch("Unexpected user-message switch") }
         // A ready document registers its rows before the shared 200ms ink
         // entrance ends. Read the settled text, then sample its own sweep.
         try await Task.sleep(for: .milliseconds(300))
-        for reader in pair {
-            let lines = try await reader.readFrame(stage)
-            let labels = lines.map(\.0)
-            if labels.contains(where: { $0.contains("Retry once") }) != (status == "Running") {
-                throw Mismatch("\(harness)/\(stage): unexpected live follow-up on \(reader.thread.id.string): \(labels)")
-            }
-            // Vision can read the leading wrench and separator dots as punctuation.
-            // Compare the caption itself and retain each original frame as evidence.
-            let summaries = labels.compactMap { line -> String? in
-                guard let start = line.range(of: "Execution process") else { return nil }
-                return line[start.lowerBound...].components(separatedBy: CharacterSet.alphanumerics.inverted)
-                    .filter { !$0.isEmpty }.joined(separator: " ")
-            }
-            guard reader.control("execution.load") == nil, reader.control("execution.group") == nil,
-                  !labels.contains(where: { $0.contains("create_thread") || $0.contains("tool diagnostic") }) else {
-                throw Mismatch("\(harness)/\(stage): exposed tool members on \(reader.thread.id.string)")
-            }
-            if work {
-                let toolCount = harness == "codex" && stage != "dispatch" ? "2 tool calls" : "1 tool call"
-                guard summaries.count == 1, summaries[0].contains(toolCount),
-                      summaries[0].contains("1 reasoning segment") else { throw Mismatch("\(stage): unexpected summaries \(summaries), frame text \(labels)") }
-            } else if !summaries.isEmpty { throw Mismatch("\(stage): exposed collapsed summary \(summaries)") }
-            if stage == "failed", labels.filter({ $0.contains("independent failure") }).count != 1 {
-                throw Mismatch("\(stage): failure must appear once, got \(labels)")
-            }
-            if harness == "codex", ["work", "stream", "expanded"].contains(stage),
-               let line = lines.first(where: { $0.0.contains("Execution process") }) {
-                let changes = try await reader.sampleSummary(line.1)
-                guard changes.contains(where: { $0 > 0 }) == (stage == "work") else {
-                    throw Mismatch("\(stage): unexpected summary motion on \(reader.thread.id.string): \(changes)")
-                }
-                sweep[reader.thread.id.string] = changes
-            }
-            // Vision can split the date, clock, count and unit into separate boxes.
-            // Compare complete visible captions, joining neighbours on the same baseline.
-            var captions: [(String, CGRect)] = []
-            for (text, box) in lines.sorted(by: { $0.1.minX < $1.1.minX }) {
-                if let index = captions.lastIndex(where: { _, previous in
-                    abs(box.midY - previous.midY) < min(box.height, previous.height) / 2 &&
-                        box.midX > previous.maxX && abs(box.minX - previous.maxX) < previous.height
-                }) {
-                    captions[index] = (captions[index].0 + " " + text, captions[index].1.union(box))
-                } else {
-                    captions.append((text, box))
-                }
-            }
-            let footer = captions.sorted { $0.1.midY > $1.1.midY }.map(\.0).filter {
-                $0.range(of: #"\d{4}/\d{2}/\d{2}"#, options: .regularExpression) != nil ||
-                    $0.contains(" tokens") && !$0.contains("Execution process") || $0.contains("Worked for")
-            }
-            if harness == "codex", stage != "retained" {
-                guard reader.control("turn.author")?["value"]?["model"] == .text("fixture-model") else { throw Mismatch("Missing runtime model") }
-                if status == "Completed" || status == "Failed" {
-                    guard footer.contains(where: { $0.contains("148 tokens") }) else { throw Mismatch("Missing reported usage in \(labels)") }
-                } else if status == "Running", footer.contains(where: { $0.contains("148 tokens") }) {
-                    throw Mismatch("Terminal usage appeared during \(stage)")
-                }
-            }
-            let fonts = reader.markdown.map { view -> JSONValue in
-                var runs: [JSONValue] = []
-                view.textStorage?.enumerateAttribute(.font, in: NSRange(location: 0, length: view.string.utf16.count)) { font, range, _ in
-                    if let font = font as? NSFont {
-                        runs.append(.text("\(range.location)+\(range.length) \(font.fontName) \(font.pointSize)"))
-                    }
-                }
-                return .array(runs)
-            }
-            var geometry: [JSONValue] = []
-            if stage == "done" {
-                for view in reader.markdown {
-                    let rect = view.convert(view.bounds, to: nil)
-                    geometry.append(.object(["top": .number((reader.panel.frame.height - rect.maxY).rounded()),
-                        "width": .number(rect.width.rounded()), "height": .number(rect.height.rounded())]))
-                }
-            }
-            snapshots.append(.object([
-                "turn": reader.control("turn")?["value"] ?? .null, "author": reader.control("turn.author")?["value"] ?? .null,
-                "summary": .array(summaries.map(JSONValue.text)), "footer": .array(footer.map(JSONValue.text)),
-                "fonts": .array(fonts), "paragraphFrames": .array(geometry), "markdown": .array(paragraphs.map(JSONValue.text))
-            ]))
+        let lines = try await reader.readFrame(stage)
+        let labels = lines.map(\.0)
+        if labels.contains(where: { $0.contains("Retry once") }) != (status == "Running") {
+            throw Mismatch("\(harness)/\(stage): unexpected live follow-up on \(reader.thread.id.string): \(labels)")
         }
-        if snapshots[0] != snapshots[1] {
-            let values = try snapshots.map { String(decoding: try $0.encodedData(), as: UTF8.self) }
-            throw Mismatch("\(harness)/\(stage) Agent \(values[0]), Chief \(values[1])")
+        // Vision can read the leading wrench and separator dots as punctuation.
+        // Compare the caption itself and retain each original frame as evidence.
+        let summaries = labels.compactMap { line -> String? in
+            guard let start = line.range(of: "Execution process") else { return nil }
+            return line[start.lowerBound...].components(separatedBy: CharacterSet.alphanumerics.inverted)
+                .filter { !$0.isEmpty }.joined(separator: " ")
         }
-        evidence.append(["harness": harness, "stage": stage, "surfaces": ["Agent", chief.thread.mokuHistory ? "Chief archive" : "Chief history"],
-                         "reading": try JSONSerialization.jsonObject(with: snapshots[0].encodedData()), "summaryPixelChanges": sweep])
+        guard reader.control("execution.load") == nil, reader.control("execution.group") == nil,
+              !labels.contains(where: { $0.contains("create_thread") || $0.contains("tool diagnostic") }) else {
+            throw Mismatch("\(harness)/\(stage): exposed tool members on \(reader.thread.id.string)")
+        }
+        if work {
+            let toolCount = harness == "codex" && stage != "dispatch" ? "2 tool calls" : "1 tool call"
+            guard summaries.count == 1, summaries[0].contains(toolCount),
+                  summaries[0].contains("1 reasoning segment") else { throw Mismatch("\(stage): unexpected summaries \(summaries), frame text \(labels)") }
+        } else if !summaries.isEmpty { throw Mismatch("\(stage): exposed collapsed summary \(summaries)") }
+        if stage == "failed", labels.filter({ $0.contains("independent failure") }).count != 1 {
+            throw Mismatch("\(stage): failure must appear once, got \(labels)")
+        }
+        if harness == "codex", ["work", "stream", "expanded"].contains(stage),
+           let line = lines.first(where: { $0.0.contains("Execution process") }) {
+            let changes = try await reader.sampleSummary(line.1)
+            guard changes.contains(where: { $0 > 0 }) == (stage == "work") else {
+                throw Mismatch("\(stage): unexpected summary motion on \(reader.thread.id.string): \(changes)")
+            }
+            sweep[reader.thread.id.string] = changes
+        }
+        // Vision can split the date, clock, count and unit into separate boxes.
+        // Compare complete visible captions, joining neighbours on the same baseline.
+        var captions: [(String, CGRect)] = []
+        for (text, box) in lines.sorted(by: { $0.1.minX < $1.1.minX }) {
+            if let index = captions.lastIndex(where: { _, previous in
+                abs(box.midY - previous.midY) < min(box.height, previous.height) / 2 &&
+                    box.midX > previous.maxX && abs(box.minX - previous.maxX) < previous.height
+            }) {
+                captions[index] = (captions[index].0 + " " + text, captions[index].1.union(box))
+            } else {
+                captions.append((text, box))
+            }
+        }
+        let footer = captions.sorted { $0.1.midY > $1.1.midY }.map(\.0).filter {
+            $0.range(of: #"\d{4}/\d{2}/\d{2}"#, options: .regularExpression) != nil ||
+                $0.contains(" tokens") && !$0.contains("Execution process") || $0.contains("Worked for")
+        }
+        if harness == "codex", stage != "retained" {
+            guard reader.control("turn.author")?["value"]?["model"] == .text("fixture-model") else { throw Mismatch("Missing runtime model") }
+            if status == "Completed" || status == "Failed" {
+                guard footer.contains(where: { $0.contains("148 tokens") }) else { throw Mismatch("Missing reported usage in \(labels)") }
+            } else if status == "Running", footer.contains(where: { $0.contains("148 tokens") }) {
+                throw Mismatch("Terminal usage appeared during \(stage)")
+            }
+        }
+        let fonts = reader.markdown.map { view -> JSONValue in
+            var runs: [JSONValue] = []
+            view.textStorage?.enumerateAttribute(.font, in: NSRange(location: 0, length: view.string.utf16.count)) { font, range, _ in
+                if let font = font as? NSFont {
+                    runs.append(.text("\(range.location)+\(range.length) \(font.fontName) \(font.pointSize)"))
+                }
+            }
+            return .array(runs)
+        }
+        var geometry: [JSONValue] = []
+        if stage == "done" {
+            for view in reader.markdown {
+                let rect = view.convert(view.bounds, to: nil)
+                geometry.append(.object(["top": .number((reader.panel.frame.height - rect.maxY).rounded()),
+                    "width": .number(rect.width.rounded()), "height": .number(rect.height.rounded())]))
+            }
+        }
+        let snapshot = JSONValue.object([
+            "turn": reader.control("turn")?["value"] ?? .null, "author": reader.control("turn.author")?["value"] ?? .null,
+            "summary": .array(summaries.map(JSONValue.text)), "footer": .array(footer.map(JSONValue.text)),
+            "fonts": .array(fonts), "paragraphFrames": .array(geometry), "markdown": .array(paragraphs.map(JSONValue.text))
+        ])
+        evidence.append(["harness": harness, "stage": stage, "surfaces": ["Agent"],
+                         "reading": try JSONSerialization.jsonObject(with: snapshot.encodedData()), "summaryPixelChanges": sweep])
     }
 
     let final = ["Result", "Use café."]
     try await update(harness == "codex" ? "dispatch" : "work")
-    for reader in pair { await reader.open() }
+    await reader.open()
     if harness == "codex" {
-        guard NativeOverviewMokuOperation.project(transcript: chief.thread.transcript) == [
-            .init(id: "operation", kind: .start, phase: .completed, threadID: "child")
-        ] else { throw Mismatch("Lost the admitted child Thread reference") }
         try await check("dispatch", paragraphs: ["First note"], work: true, filter: false, status: "Running")
         try await update("work")
     }
     try await check("work", paragraphs: ["First note"], work: true, filter: false, status: "Running")
-    guard let editor = textViews(chief.panel.contentView!).first(where: \.isEditable),
-          chief.panel.makeFirstResponder(editor) else { throw Mismatch("Chief editor could not take focus") }
-    editor.insertText("next @draft", replacementRange: editor.selectedRange())
-    editor.setSelectedRange(NSRange(location: 5, length: 6))
     try await update("stream")
     try await check("stream", paragraphs: ["First note"], work: true, filter: false, status: "Running")
     try await update("reply")
@@ -341,34 +292,23 @@ private struct ReaderSurface: View {
         // The catalog can announce settlement before the scoped document. The
         // already settled Markdown remains readable between those deliveries.
         let done = try JSONValue(data: Data(contentsOf: directory.appendingPathComponent("codex-done.json")))
-        for reader in pair { try reader.updateCatalog(done) }
+        try reader.updateCatalog(done)
         try await check("catalog settled", paragraphs: ["First note"] + final, work: false, filter: true, status: "Running")
     }
     try await update("done")
     try await check("done", paragraphs: final, work: false, filter: true, status: "Completed")
-    guard chief.panel.firstResponder === editor, chief.draft.text == "next @draft",
-          editor.selectedRange() == NSRange(location: 5, length: 6) else { throw Mismatch("Settlement replaced the focused Chief draft") }
-    for reader in pair { try reader.toggleWork() }
+    try reader.toggleWork()
     try await check("expanded", paragraphs: final, work: true, filter: true, status: "Completed")
-    for reader in pair { reader.close() }
+    reader.close()
     try await update("reopen")
-    for reader in pair { await reader.open() }
+    await reader.open()
     try await check("reopen", paragraphs: final, work: false, filter: true, status: "Completed")
     if harness == "codex" {
-        for reader in pair {
-            reader.target = .init(executionID: "run", requestID: "visit-first", mode: .current,
-                message: .object(["executionId": .text("run"), "itemId": .text("m1")]))
-            try await reader.wait("locate earlier reply") { reader.control("timeline")?["value"]?["locatedRequestId"] == .text("visit-first") }
-        }
+        reader.target = .init(executionID: "run", requestID: "visit-first", mode: .current,
+            message: .object(["executionId": .text("run"), "itemId": .text("m1")]))
+        try await reader.wait("locate earlier reply") { reader.control("timeline")?["value"]?["locatedRequestId"] == .text("visit-first") }
         try await check("linked", paragraphs: ["First note"] + final, work: false, filter: true, status: "Completed")
-        guard let reopened = textViews(chief.panel.contentView!).first(where: \.isEditable),
-              chief.panel.makeFirstResponder(reopened), reopened.string == "next @draft" else { throw Mismatch("Lost current Chief draft on reopen") }
-        let enter = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
-            windowNumber: chief.panel.windowNumber, context: nil, characters: "\r", charactersIgnoringModifiers: "\r",
-            isARepeat: false, keyCode: 36)!
-        reopened.keyDown(with: enter)
-        try await chief.wait("send current Chief draft") { chief.sent == ["next @draft"] && chief.draft.text.isEmpty }
-        for reader in pair { reader.target = nil }
+        reader.target = nil
     }
     try await update("reply")
     try await check("running before failure", paragraphs: ["First note"] + final, work: true, filter: false, status: "Running")
@@ -377,13 +317,10 @@ private struct ReaderSurface: View {
     try await check("waiting", paragraphs: ["First note"] + final, work: ["pi", "opencode"].contains(harness), filter: true, status: "Waiting for input")
     try await update("failed")
     try await check("failed", paragraphs: final, work: false, filter: true, status: "Failed")
-    for reader in pair { reader.close() }
-    try await update("reopen", archived: true)
-    for reader in pair { await reader.open() }
-    try await check("archived", paragraphs: final, work: false, filter: true, status: "Completed")
-    guard !textViews(chief.panel.contentView!).contains(where: \.isEditable) else { throw Mismatch("Archive mounted an editable composer") }
+    reader.close()
     try await update("retained")
+    await reader.open()
     try await check("retained", paragraphs: ["Saved answer."], work: false, filter: harness == "opencode", status: "Completed")
-    for reader in pair { await reader.client.close() }
+    await reader.client.close()
     return evidence
 }

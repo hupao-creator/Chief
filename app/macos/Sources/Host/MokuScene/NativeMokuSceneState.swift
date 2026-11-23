@@ -17,10 +17,6 @@ import ChiefPluginUI
     /// over the capsule must retain control ownership on touch and pointer.
     let canvasInputRegions = NativeCanvasInputRegions()
     let executionDockPlacement = NativeExecutionDockPlacement()
-    public private(set) var mokuOpen = false
-    public let historyMotion = NativeReadingPageMotion()
-    public private(set) var historyVisit = UUID()
-    public private(set) var cameraActive = false
     private var landingActive = false
     // The handoff can cue only the Dock currently mounted in this scene.
     @ObservationIgnored weak var dockCharacter: NativeMokuCharacterMotion?
@@ -55,7 +51,6 @@ import ChiefPluginUI
     private(set) var settingsTransitionRequest = 0
     @ObservationIgnored var settingsSettle: (() -> Void)?
     public private(set) var flightActive = false
-    public private(set) var readingTarget: HarnessReadingTarget?
     public private(set) var readReplies: Set<JSONText> = []
     struct NoteReadingOrigin {
         enum Phase: String { case dismissing, locating, reading }
@@ -95,7 +90,6 @@ import ChiefPluginUI
     }
     public var disabled = false
     private(set) var dockVisibleViewport: CGRect?
-    public var onMokuOpenChange: ((Bool) -> Void)?
     public var onSettingsOpenChange: ((Bool) -> Void)?
     public var onFlightActiveChange: ((Bool) -> Void)?
     @ObservationIgnored var command: ((Command) -> Void)?
@@ -114,7 +108,6 @@ import ChiefPluginUI
     /// its viewport. Fixed descendants compensate imperatively, without a new
     /// SwiftUI update while the enclosing clip view is publishing its bounds.
     @ObservationIgnored public private(set) var shellScrollOffset = CGPoint.zero
-    @ObservationIgnored var liveReplyKey: String?
     public private(set) var windowVisible = false
     @ObservationIgnored var dockHitRects: [CGRect] = []
     @ObservationIgnored var dockMentionHitRect: CGRect?
@@ -130,7 +123,7 @@ import ChiefPluginUI
     @ObservationIgnored private var noteExposureAuthority = UUID()
     @ObservationIgnored private var claimedNoteOpenGeneration = 0
 
-    enum Command { case camera(Bool, Bool), settings(Bool), coordinator(CGRect?, Bool), position, visibility, shellScroll, settle }
+    enum Command { case settings(Bool), coordinator(CGRect?, Bool), position, visibility, shellScroll, settle }
     public init(replyReadFileURL: URL? = nil,
                 readingPanelMotion: NativeReadingPageMotion? = nil) {
         self.readingPanelMotion = readingPanelMotion
@@ -143,34 +136,15 @@ import ChiefPluginUI
         }.suffix(256))
         readReplies = Set(replyReadOrder)
     }
-    public var dockCovered: Bool { mokuOpen || cameraActive || settingsOpen || flightActive }
+    public var dockCovered: Bool { settingsOpen || flightActive }
     /// The resident Dock is available in Overview and ordinary Agent reading.
-    /// Covering Moku history, camera, Settings and flights own their own surfaces.
+    /// Settings and flights own their own surfaces.
     public var dockContentVisible: Bool {
         windowVisible && !dockCovered && (dockRouteVisible || inputOpen || dockInteractionVisible)
     }
-    public var interactionPaused: Bool { cameraActive || settingsOpen || flightActive || inputOpen }
-    public var canOpenSettings: Bool { overviewVisible && !mokuOpen && !cameraActive && !flightActive }
+    public var interactionPaused: Bool { settingsOpen || flightActive || inputOpen }
+    public var canOpenSettings: Bool { overviewVisible && !flightActive }
 
-    public func setMokuOpen(_ open: Bool, readingTarget: HarnessReadingTarget? = nil) {
-        guard !settingsOpen else { return }
-        guard !disabled || !open else { return }
-        if open { talkPresentation.setPresented(false); closeNotePanel() }
-        self.readingTarget = readingTarget
-        setInputOpen(false)
-        // Publish mounting admission before the route. Host callbacks may
-        // synchronously derive workspaceMounted from these two values.
-        cameraActive = false
-        if open && !mokuOpen { historyVisit = UUID() }
-        mokuOpen = open
-        command?(.camera(open, overviewVisible && !settingsOpen))
-        onMokuOpenChange?(open)
-    }
-    public func closeHistory() { historyMotion.close() }
-    public func toggleMoku() {
-        guard mokuOpen else { setMokuOpen(true); return }
-        if !historyMotion.reopenIfClosing() { closeHistory() }
-    }
     /// Entrance belongs to the scene, so remounting or uncovering the Dock
     /// cannot reopen input over the resident character or a waiting notification.
     func updateLanding(_ active: Bool) -> Bool {
@@ -179,13 +153,10 @@ import ChiefPluginUI
         return true
     }
     public func toggleInput(focusOnOpening: Bool = false) {
-        // Reject unavailable input before changing the history/camera route;
-        // a Compose shortcut must not navigate around the admission gate.
         guard dockRouteVisible, inputInteractionReady else { return }
-        let opening = !inputOpen || mokuOpen || cameraActive
+        let opening = !inputOpen
         let refocusingPinnedInput = inputPinnedOpen && inputOpen && !dockCovered
-        if mokuOpen || cameraActive { setMokuOpen(false); setInputOpen(true) }
-        else if !refocusingPinnedInput { setInputOpen(!inputOpen) }
+        if !refocusingPinnedInput { setInputOpen(!inputOpen) }
 
         // Compose accepts typing during the ink animation. In a pinned Agent
         // editor it can refocus even when TOC navigation suppressed autofocus.
@@ -441,9 +412,6 @@ import ChiefPluginUI
         if value && !settingsOpen { talkPresentation.setPresented(false); closeNotePanel() }
         dockInteractionVisible = value; dockInteractionIsQuestion = question; command?(.position)
     }
-    public func markReplyRead(_ key: String) {
-        markReplyRead(JSONText(key))
-    }
     public func markReplyRead(_ key: JSONText) {
         guard !readReplies.contains(key) else { return }
         replyReadOrder = Array((replyReadOrder + [key]).suffix(256))
@@ -470,22 +438,8 @@ import ChiefPluginUI
             talkPresentation.setPresented(false); closeNotePanel(cancelReading: false)
         }
         windowVisible = value
-        if value, mokuOpen, !cameraActive, let key = liveReplyKey { markReplyRead(key) }
     }
     func dockViewport(in size: CGSize) -> CGRect {
         dockVisibleViewport ?? CGRect(origin: .zero, size: size)
-    }
-}
-
-/// Small, immutable display input. Execution and transcript interpretation stays
-/// at their public boundary; the scene does not inspect a Harness sessionState.
-public struct NativeMokuDockReply: Equatable, Sendable {
-    public let id: String
-    public let readKey: String
-    public let excerpt: String
-    public let executionID: JSONText
-    public let target: JSONValue?
-    public init(id: String, readKey: String, excerpt: String, executionID: JSONText, target: JSONValue? = nil) {
-        self.id = id; self.readKey = readKey; self.excerpt = excerpt; self.executionID = executionID; self.target = target
     }
 }

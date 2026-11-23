@@ -11,18 +11,13 @@ scenarios. Actual runs and their fixed revisions are separate evidence.
 
 ## Content and execution identity
 
-Agent detail and Chief history display settled assistant replies and compact live follow-up
+Agent detail displays settled assistant replies and compact live follow-up
 text/time rows. Initial/internal user input, plans and ordinary info/warning
 notices do not appear. Pending permissions/questions and independent errors remain
 readable. Unfinished assistant bodies stay hidden until the message settles.
 Running/waiting executions retain settled replies; terminal executions retain the
 last non-error reply and an explicitly targeted reply outside work summaries.
-Intermediate replies and failed tools remain execution work. Both readers show
-reasoning and tool counts when work is visible. The current Chief session and
-read-only archives consume their owning Harness's manifest and scoped turn
-resources. The coordinator's audit identifies the child Thread admitted by a delegation.
-Note links carry the Harness execution and message identities into the reader.
-The current Chief session owns the history composer.
+Intermediate replies and failed tools remain execution work. The Agent reader shows reasoning and tool counts when work is visible.
 The window shows a manual steer in the running execution as soon as the composer
 captures it. Its stable row identity and presentation survive both receipt and
 transcript updates. [Send identity and ownership](composer.md#send-identity-and-ownership)
@@ -92,12 +87,6 @@ travel reaches the refreshed source at 86%, and the final 14% crossfades to card
 content. Closing before primary admission uses the opening-reversal path.
 A deleted/archived source supplies no stale return target. Route/generation
 identity fences all preparation and completion callbacks.
-
-[Chief history](../app/macos/Sources/Host/MokuScene/README.md) uses the same
-settled card frame. Its live reader and bottom input capsule share one native
-overlay that fades and moves at a fixed layout. The document uses the Agent
-reader’s scoped loading skeleton and one-time 200ms text entrance. Its return can reverse while
-retaining the same reading visit.
 
 The reading parent uses the window's existing material, without capturing the
 Overview bitmap. It keeps the native Overview owner and hides its host after

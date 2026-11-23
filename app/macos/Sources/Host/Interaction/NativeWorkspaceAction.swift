@@ -20,7 +20,7 @@ public enum NativeWorkspaceAction: Sendable {
     case overviewScroll(Double), overviewRetry
     case overviewDirectoryOpen(String), overviewDirectoryClose(String), overviewDirectorySelect(directory: String, filter: String)
     case overviewScrollFilter(String)
-    case toggleMokuInput, toggleMokuHistory, toggleMokuNote
+    case toggleMokuInput, toggleMokuNote
 
     public var name: String {
         switch self {
@@ -40,7 +40,6 @@ public enum NativeWorkspaceAction: Sendable {
         case .overviewDirectorySelect: "overview.directory.select"
         case .overviewScrollFilter: "overview.filters.scroll"
         case .toggleMokuInput: "moku.input.toggle"
-        case .toggleMokuHistory: "moku.history.toggle"
         case .toggleMokuNote: "moku.note.toggle"
         }
     }
@@ -106,7 +105,6 @@ public enum NativeWorkspaceAction: Sendable {
             self = .overviewDirectorySelect(directory: try string("directoryId"), filter: try string("filterId"))
         case "overview.filters.scroll": try fields(["filterId"]); self = .overviewScrollFilter(try string("filterId"))
         case "moku.input.toggle": try fields([]); self = .toggleMokuInput
-        case "moku.history.toggle": try fields([]); self = .toggleMokuHistory
         case "moku.note.toggle": try fields([]); self = .toggleMokuNote
         default: throw NativeInteractionError("invalid_request", "Unknown action: \(name)")
         }

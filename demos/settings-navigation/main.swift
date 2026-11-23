@@ -53,7 +53,7 @@ private struct Surface: View {
                 NativePalette.overview.canvas.swiftUI.overlay {
                     Button("Settings") { fixture.settings = true }.buttonStyle(.bordered)
                 }
-            } thread: { EmptyView() } dock: {
+            } dock: {
                 NativeMokuDock(state: fixture.scene, draft: fixture.draft, cwd: "/tmp", onSend: { _ in }, onCancel: {})
             } onCloseSettings: {
                 fixture.navigation.requestClose(model: fixture.model) { _ in fixture.scene.closeSettings() }

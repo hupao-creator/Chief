@@ -10,10 +10,10 @@ package final class ThreadLocalSteers {
 
     package init() {}
 
-    package func capture(_ submission: NativeComposerSubmission, in execution: ApplicationExecutionRef, knownDirectoryReferencesAsText: Bool) {
+    package func capture(_ submission: NativeComposerSubmission, in execution: ApplicationExecutionRef) {
         let id = JSONText("steer:" + submission.commandID)
         guard entries[execution]?.contains(where: { $0.id == id }) != true else { return }
-        let parts = submission.input(knownDirectoryReferencesAsText: knownDirectoryReferencesAsText)["parts"]?.arrayValue ?? []
+        let parts = submission.input["parts"]?.arrayValue ?? []
         let text = parts.compactMap { part in
             part["text"]?.stringValue ?? part["name"]?.stringValue.map { "@" + $0 }
         }.joined(separator: "\n")

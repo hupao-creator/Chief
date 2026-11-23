@@ -165,7 +165,7 @@ private struct PanelDemo: View {
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { state.viewport = $0 }
                 }
             }
-        } thread: { EmptyView() } dock: {
+        } dock: {
             NativeMokuDock(state: state.scene, draft: state.draft, cwd: "/demo/Chief", mode: .idle,
                 onSend: { _ in state.status = "已收到（演示）" }, onCancel: {})
         } settings: { EmptyView() }

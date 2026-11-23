@@ -17,7 +17,7 @@ gutter measurement, with a persistent knob whenever scrolling is possible.
 | [Sources/Composition](Sources/Composition/NativePlugins.swift) | Shared static Harness, Application and Sidecard registration |
 | [Sources/Core](Sources/Core/README.md) | Protocol, connections, public state, host files and offline recovery |
 | [Sources/Host/Overview](Sources/Host/Overview/README.md) | Layout, camera, selection and filtering |
-| [Sources/Host/MokuScene](Sources/Host/MokuScene/README.md) | Chief Dock, history composer, Talk, dispatch and notes |
+| [Sources/Host/MokuScene](Sources/Host/MokuScene/README.md) | Chief Dock, Talk, dispatch and notes |
 | [Sources/Host/Onboarding](Sources/Host/Onboarding/README.md) | First-run admission, role configuration and handoff into the Chief Dock |
 | [Sources/Host/Settings](Sources/Host/Settings/README.md) | Settings drafts, validation and autosave |
 | [Sources/Host/WindowNavigation](Sources/Host/WindowNavigation/README.md) | Window controls and reading navigation |
@@ -38,7 +38,7 @@ a scoped rendering policy, leaving ordinary launches flat. Its public
 The [external comparison runner](../../tools/benchmarks/README.md#agent-emoji-badge-material-comparison)
 uses only the built artifact and that protocol, without linking product modules.
 
-Agent Thread detail and Chief history display assistant replies and execution records including reasoning,
+Agent Thread detail displays assistant replies and execution records including reasoning,
 tools/activities, approvals/questions, review, context compaction, background work,
 execution status, author and usage. Errors are exempt from the content allowlist:
 explicit error records, error-level notices, failed assistant messages and

@@ -128,6 +128,23 @@ class Desktop:
         self.request({"name": "overview.show"})
         save(self.session.output / "ui-overview.json", self.stable(lambda s: s["page"] == "overview"))
 
+    def chief_controls(self):
+        overview = self.stable(lambda s: s["page"] == "overview" and "moku.note.toggle" in s["actions"])
+        assert "moku.history.toggle" not in overview["actions"]
+        hidden = {t["id"] for t in self.session.runtime.state()["threads"] if t.get("moku") or t.get("mokuHistory")}
+        assert hidden and hidden.isdisjoint(t["threadId"] for t in overview["threads"])
+        rejected = self.client.request({"name": "moku.history.toggle"})
+        assert rejected["ok"] is False and rejected["error"]["code"] == "invalid_request"
+        assert rejected["snapshot"]["page"] == "overview"
+        self.request({"name": "moku.note.toggle"})
+        note = self.stable(lambda s: s["page"] == "overview" and s["overview"]["dock"]["noteOpen"])
+        self.request({"name": "moku.input.toggle"})
+        composer = self.stable(lambda s: s["page"] == "overview" and s["overview"]["dock"]["inputOpen"]
+                               and not s["overview"]["dock"]["noteOpen"])
+        self.request({"name": "moku.input.toggle"})
+        self.stable(lambda s: not s["overview"]["dock"]["inputOpen"])
+        save(self.session.output / "chief-controls.json", {"note": note, "composer": composer, "rejected": rejected})
+
     def settings(self):
         def wait_for_chief():
             state = self.stable(lambda s: s["page"] == "settings")

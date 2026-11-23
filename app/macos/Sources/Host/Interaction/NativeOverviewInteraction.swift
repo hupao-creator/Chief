@@ -147,9 +147,6 @@ extension NativeWorkspacePresentation {
             if canToggleMokuNote { result.append("moku.note.toggle") }
         }
         if scene.dockRouteVisible, !scene.disabled, !scene.dockCovered { result.append("moku.input.toggle") }
-        if !scene.disabled, scene.dockRouteVisible || interactionPage == "moku" {
-            result.append("moku.history.toggle")
-        }
         return result
     }
 
@@ -221,7 +218,7 @@ extension NativeWorkspacePresentation {
             ]),
             "dock": .object(["inputOpen": .bool(scene.inputOpen), "inputLeaving": .bool(scene.inputLeaving),
                 "noteExecutionPhase": scene.noteReadingOrigin.map { .text($0.phase.rawValue) } ?? .null,
-                "historyOpen": .bool(scene.mokuOpen), "noteOpen": .bool(scene.notePanelOpen), "covered": .bool(scene.dockCovered)])
+                "noteOpen": .bool(scene.notePanelOpen), "covered": .bool(scene.dockCovered)])
         ])
     }
 
@@ -234,7 +231,6 @@ extension NativeWorkspacePresentation {
         case .overviewDirectorySelect(let id, let filter): try overview.chromeInteractions.perform(directory: id, operation: "select", child: filter)
         case .overviewScrollFilter(let id): try overview.chromeInteractions.scrollTo(id)
         case .toggleMokuInput: scene.toggleInput(focusOnOpening: true)
-        case .toggleMokuHistory: scene.toggleMoku()
         case .toggleMokuNote: toggleMokuNote()
         default: throw NativeInteractionError("invalid_request", "Not an Overview action")
         }

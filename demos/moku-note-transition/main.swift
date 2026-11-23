@@ -41,7 +41,7 @@ private struct Preview: View {
                     }
                 }
             }.padding(50)
-            NativeMokuScene(state: fixture.state, outside: { EmptyView() }, thread: { EmptyView() }, dock: {
+            NativeMokuScene(state: fixture.state, outside: { EmptyView() }, dock: {
                 NativeMokuDock(state: fixture.state, draft: fixture.draft, cwd: "/isolated/note-preview",
                     landing: fixture.landing, note: fixture.note, onSend: { _ in }, onCancel: {})
             }, settings: { EmptyView() })

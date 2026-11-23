@@ -1,6 +1,5 @@
 import AppKit
 import ChiefCore
-import ChiefHarnessCodex
 import ChiefPluginAPI
 import SwiftUI
 @testable import ChiefPluginUI
@@ -44,169 +43,118 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
                                     "name": .text(folder.lastPathComponent), "path": .text(folder.path)])
     let fileParts = files.map { JSONValue.object(["kind": .text("local-file"),
                                                   "file": .object(["id": .text(fileIDs[$0]!)])]) }
-    for history in [false, true] {
-        let surface = history ? "Chief history" : "Overview Chief Dock"
-        let draft = NativeComposerDraft(services: services)
-        let scene = NativeMokuSceneState()
-        scene.setComposerContext(draft, opensInput: true, autofocus: false)
-        let archivedMessage = "Previous request @Saved project"
-        let past = try history ? ChiefHistoryFixture(message: archivedMessage) : nil
-        let events = await past?.client.events()
-        let readingControls = NativeReadingInteractions()
-        let readingVisit = UUID()
-        let panel = ComposerReplayPanel(contentRect: NSRect(x: 100, y: 100, width: 720, height: 400),
-            styleMask: [.titled, .nonactivatingPanel], backing: .buffered, defer: false)
-        panel.isReleasedWhenClosed = false
-        panel.ignoresMouseEvents = true
-        var sent: [JSONValue] = []
-        var catalogLoads = 0
-        let send: (NativeComposerSubmission) async throws -> Void = {
-            sent.append($0.input(knownDirectoryReferencesAsText: true))
-        }
-        panel.contentView = NSHostingView(rootView: Group {
-            if let past {
-                NativeMokuThreadView(harnessHost: past.host, thread: past.thread, draft: draft,
-                    onBack: {}, onSend: send, onCancel: {})
-            } else {
-                NativeMokuScene(state: scene) { Color.clear } thread: { EmptyView() } dock: {
-                    NativeMokuDock(state: scene, draft: draft, cwd: "/fixture", loadMentionDirectories: {
-                        catalogLoads += 1
-                        return [.init(name: "Fixture", path: "/fixture/Fixture")]
-                    }, onSend: send, onCancel: {})
-                } settings: { EmptyView() }
-            }
-        }.environment(\.scenePhase, .active).environment(\.locale, Locale(identifier: "en"))
-            .environment(\.nativeReadingInteractions, readingControls)
-            .environment(\.nativeReadingInteractionVisit, readingVisit))
-        let historyFeed = Task {
-            guard let past, let events else { return }
-            for await event in events {
-                if case let .threadContent(id, _) = event {
-                    past.host.receive(.threadContent(subscriptionId: id, state: .ready(past.content)))
-                }
-            }
-        }
-        panel.orderBack(nil)
-        defer { historyFeed.cancel(); panel.close() }
-
-        let content = panel.contentView!
-        func focusEditor() async throws -> NSTextView {
-            let deadline = ContinuousClock.now + .seconds(4)
-            while ContinuousClock.now < deadline {
-                if let editor = find(content, NSTextView.self, matching: { $0.isEditable }), panel.makeFirstResponder(editor) {
-                    return editor
-                }
-                try await Task.sleep(for: .milliseconds(10))
-            }
-            throw ChiefInputReplayFailure(description: "\(surface) did not mount its native editor")
-        }
-        let editor = try await focusEditor()
-        editor.keyDown(with: key("@", code: 19, modifiers: .shift, unmodified: "2", panel: panel))
-        try await Task.sleep(for: .milliseconds(500))
-        try require(editor.string == "@" && draft.text == "@" && catalogLoads == 0 && scene.dockMentionHitRect == nil
-            && !hasCompletion(content), "\(surface) did not treat typed @ as ordinary text")
-        editor.keyDown(with: key("\r", code: 36, panel: panel))
-        try require(sent == [textInput("@")], "\(surface) did not send a bare @ on Return")
-
-        if !history { scene.setInputOpen(true) }
-        let reopened = try await focusEditor()
-        reopened.insertText("@", replacementRange: reopened.selectedRange())
-
-        // Use a private pasteboard so the replay leaves the clipboard alone.
-        let pasteboard = NSPasteboard.withUniqueName()
-        defer { pasteboard.releaseGlobally() }
-        try require(pasteboard.setString("draft@example.com", forType: .string)
-            && reopened.readSelection(from: pasteboard, type: .string), "\(surface) could not paste text")
-        reopened.setSelectedRange(NSRange(location: 1, length: 5))
-        reopened.insertText("team", replacementRange: reopened.selectedRange())
-        try require(draft.text == "@team@example.com" && draft.directories.isEmpty, "\(surface) changed pasted or edited @ text")
-        reopened.keyDown(with: key("\r", code: 36, panel: panel))
-        try require(sent == [textInput("@"), textInput("@team@example.com")], "\(surface) did not send literal @ text on Return")
-        try require(draft.text.isEmpty, "\(surface) did not consume its submitted draft")
-
-        if !history { scene.setInputOpen(true) }
-        let plainEditor = try await focusEditor()
-        plainEditor.insertText("ordinary request", replacementRange: plainEditor.selectedRange())
-        plainEditor.keyDown(with: key("\r", code: 36, panel: panel))
-        try require(sent == [textInput("@"), textInput("@team@example.com"), textInput("ordinary request")],
-            "\(surface) did not send ordinary text")
-        if !history { scene.setInputOpen(true) }
-        let pickerEditor = try await focusEditor()
-        func pick(_ urls: [URL]) async throws {
-            selection = urls
-            let previous = pickerVisits
-            let editor = try await focusEditor()
-            // The capsule can still be travelling after Return or a chip-strip resize.
-            // Deliver the window-local click after its 420ms transition settles.
-            try await Task.sleep(for: .milliseconds(500))
-            let deadline = ContinuousClock.now + .seconds(4)
-            guard let seat = editor.enclosingScrollView else { throw ChiefInputReplayFailure(description: "Missing editor seat") }
-            let bounds = seat.convert(seat.bounds, to: nil)
-            let point = NSPoint(x: bounds.minX - 14, y: bounds.midY)
-            func mouse(_ kind: NSEvent.EventType) -> NSEvent {
-                NSEvent.mouseEvent(with: kind, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: panel.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
-            }
-            let up = mouse(.leftMouseUp)
-            NSApp.postEvent(up, atStart: true)
-            panel.sendEvent(mouse(.leftMouseDown))
-            if NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: false) === up {
-                _ = NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true)
-                panel.sendEvent(up)
-            }
-            while previous == pickerVisits || draft.importing {
-                try require(ContinuousClock.now < deadline, "Picker did not finish in \(surface) at \(point), editor \(bounds), visits \(pickerVisits)/\(previous)")
-                try await Task.sleep(for: .milliseconds(10))
-            }
-            try require(draft.error == nil, draft.error ?? "Picker failed")
-        }
-        staged = []
-        try await pick([folder])
-        try await pick([])
-        try require(draft.directories.map(\.path) == [JSONText(folder.path)] && draft.attachments.isEmpty
-            && draft.canSubmit && staged.isEmpty, "Cancel changed the folder-only draft")
-        pickerEditor.keyDown(with: key("\r", code: 36, panel: panel))
-        try require(sent.last == .object(["parts": .array([mention])]), "Folder-only submission lost its path")
-        if !history { scene.setInputOpen(true) }
-        let mixedEditor = try await focusEditor()
-        try await pick([files[0], folder, files[1]])
-        try await pick([folder])
-        try require(staged == files && draft.attachments.count == 2 && draft.directories.count == 1,
-            "Mixed selection did not stage both files and reference the folder once")
-        mixedEditor.keyDown(with: key("\r", code: 36, panel: panel))
-        try require(sent.last == .object(["parts": .array([mention] + fileParts)])
-            && draft.attachments.isEmpty && draft.directories.isEmpty, "Mixed submission or draft consumption failed")
-        print("Passed \(surface): attachment plus, cancel, folder-only and mixed submissions.")
-        if history {
-            let controlDeadline = ContinuousClock.now + .seconds(4)
-            while true {
-                let controls = readingControls.snapshot(visit: readingVisit)
-                if let previous = controls.first(where: {
-                    $0["role"] == .text("history.open") && $0["label"]?.stringValue?.hasSuffix(archivedMessage) == true
-                }),
-                   let id = previous["id"]?.stringValue, let handle = previous["handle"]?.stringValue {
-                    try readingControls.perform(id: id, handle: handle, operation: "activate", value: .null, visit: readingVisit)
-                    break
-                }
-                try require(ContinuousClock.now < controlDeadline, "Chief history lost the directory mention in its earlier run's title")
-                try await Task.sleep(for: .milliseconds(10))
-            }
-            let deadline = ContinuousClock.now + .seconds(4)
-            while !readingControls.snapshot(visit: readingVisit).contains(where: {
-                $0["role"] == .text("history") && $0["value"]?["rowId"] == .text("turn:previous-execution")
-            }) {
-                try require(ContinuousClock.now < deadline, "Chief history did not open the run named by the saved message")
-                try await Task.sleep(for: .milliseconds(10))
-            }
-            let currentEditor = try await focusEditor()
-            currentEditor.insertText("Continue with Chief", replacementRange: currentEditor.selectedRange())
-            currentEditor.keyDown(with: key("\r", code: 36, panel: panel))
-            try require(sent.last == textInput("Continue with Chief") && draft.text.isEmpty,
-                "Selecting the historical run detached the current Chief composer")
-            print("Opened the earlier Chief run by its instruction and sent from the current Chief composer.")
-        }
-        print("Passed \(surface): typed @ without completion, pasted and edited @ text, and sent both literal and ordinary text.")
+    let surface = "Overview Chief Dock"
+    let draft = NativeComposerDraft(services: services)
+    let scene = NativeMokuSceneState()
+    scene.setComposerContext(draft, opensInput: true, autofocus: false)
+    let panel = ComposerReplayPanel(contentRect: NSRect(x: 100, y: 100, width: 720, height: 400),
+        styleMask: [.titled, .nonactivatingPanel], backing: .buffered, defer: false)
+    panel.isReleasedWhenClosed = false
+    panel.ignoresMouseEvents = true
+    var sent: [JSONValue] = []
+    var catalogLoads = 0
+    let send: (NativeComposerSubmission) async throws -> Void = {
+        sent.append($0.input(knownDirectoryReferencesAsText: true))
     }
+    let dock = NativeMokuScene(state: scene) { Color.clear } dock: {
+        NativeMokuDock(state: scene, draft: draft, cwd: "/fixture", loadMentionDirectories: {
+            catalogLoads += 1
+            return [.init(name: "Fixture", path: "/fixture/Fixture")]
+        }, onSend: send, onCancel: {})
+    } settings: { EmptyView() }
+    panel.contentView = NSHostingView(rootView: dock.environment(\.scenePhase, .active).environment(\.locale, Locale(identifier: "en")))
+    panel.orderBack(nil)
+    defer { panel.close() }
+
+    let content = panel.contentView!
+    func focusEditor() async throws -> NSTextView {
+        let deadline = ContinuousClock.now + .seconds(4)
+        while ContinuousClock.now < deadline {
+            if let editor = find(content, NSTextView.self, matching: { $0.isEditable }), panel.makeFirstResponder(editor) {
+                return editor
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        throw ChiefInputReplayFailure(description: "\(surface) did not mount its native editor")
+    }
+    let editor = try await focusEditor()
+    editor.keyDown(with: key("@", code: 19, modifiers: .shift, unmodified: "2", panel: panel))
+    try await Task.sleep(for: .milliseconds(500))
+    try require(editor.string == "@" && draft.text == "@" && catalogLoads == 0 && scene.dockMentionHitRect == nil
+        && !hasCompletion(content), "\(surface) did not treat typed @ as ordinary text")
+    editor.keyDown(with: key("\r", code: 36, panel: panel))
+    try require(sent == [textInput("@")], "\(surface) did not send a bare @ on Return")
+
+    scene.setInputOpen(true)
+    let reopened = try await focusEditor()
+    reopened.insertText("@", replacementRange: reopened.selectedRange())
+
+    // Use a private pasteboard so the replay leaves the clipboard alone.
+    let pasteboard = NSPasteboard.withUniqueName()
+    defer { pasteboard.releaseGlobally() }
+    try require(pasteboard.setString("draft@example.com", forType: .string)
+        && reopened.readSelection(from: pasteboard, type: .string), "\(surface) could not paste text")
+    reopened.setSelectedRange(NSRange(location: 1, length: 5))
+    reopened.insertText("team", replacementRange: reopened.selectedRange())
+    try require(draft.text == "@team@example.com" && draft.directories.isEmpty, "\(surface) changed pasted or edited @ text")
+    reopened.keyDown(with: key("\r", code: 36, panel: panel))
+    try require(sent == [textInput("@"), textInput("@team@example.com")], "\(surface) did not send literal @ text on Return")
+    try require(draft.text.isEmpty, "\(surface) did not consume its submitted draft")
+
+    scene.setInputOpen(true)
+    let plainEditor = try await focusEditor()
+    plainEditor.insertText("ordinary request", replacementRange: plainEditor.selectedRange())
+    plainEditor.keyDown(with: key("\r", code: 36, panel: panel))
+    try require(sent == [textInput("@"), textInput("@team@example.com"), textInput("ordinary request")],
+        "\(surface) did not send ordinary text")
+    scene.setInputOpen(true)
+    let pickerEditor = try await focusEditor()
+    func pick(_ urls: [URL]) async throws {
+        selection = urls
+        let previous = pickerVisits
+        let editor = try await focusEditor()
+        // The capsule can still be travelling after Return or a chip-strip resize.
+        // Deliver the window-local click after its 420ms transition settles.
+        try await Task.sleep(for: .milliseconds(500))
+        let deadline = ContinuousClock.now + .seconds(4)
+        guard let seat = editor.enclosingScrollView else { throw ChiefInputReplayFailure(description: "Missing editor seat") }
+        let bounds = seat.convert(seat.bounds, to: nil)
+        let point = NSPoint(x: bounds.minX - 14, y: bounds.midY)
+        func mouse(_ kind: NSEvent.EventType) -> NSEvent {
+            NSEvent.mouseEvent(with: kind, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: panel.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
+        }
+        let up = mouse(.leftMouseUp)
+        NSApp.postEvent(up, atStart: true)
+        panel.sendEvent(mouse(.leftMouseDown))
+        if NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: false) === up {
+            _ = NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true)
+            panel.sendEvent(up)
+        }
+        while previous == pickerVisits || draft.importing {
+            try require(ContinuousClock.now < deadline, "Picker did not finish in \(surface) at \(point), editor \(bounds), visits \(pickerVisits)/\(previous)")
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try require(draft.error == nil, draft.error ?? "Picker failed")
+    }
+    staged = []
+    try await pick([folder])
+    try await pick([])
+    try require(draft.directories.map(\.path) == [JSONText(folder.path)] && draft.attachments.isEmpty
+        && draft.canSubmit && staged.isEmpty, "Cancel changed the folder-only draft")
+    pickerEditor.keyDown(with: key("\r", code: 36, panel: panel))
+    try require(sent.last == .object(["parts": .array([mention])]), "Folder-only submission lost its path")
+    scene.setInputOpen(true)
+    let mixedEditor = try await focusEditor()
+    try await pick([files[0], folder, files[1]])
+    try await pick([folder])
+    try require(staged == files && draft.attachments.count == 2 && draft.directories.count == 1,
+        "Mixed selection did not stage both files and reference the folder once")
+    mixedEditor.keyDown(with: key("\r", code: 36, panel: panel))
+    try require(sent.last == .object(["parts": .array([mention] + fileParts)])
+        && draft.attachments.isEmpty && draft.directories.isEmpty, "Mixed submission or draft consumption failed")
+    print("Passed \(surface): attachment plus, cancel, folder-only and mixed submissions.")
+    print("Passed \(surface): typed @ without completion, pasted and edited @ text, and sent both literal and ordinary text.")
 
     let full = NativeComposerDraft(services: services)
     selection = capacityFiles
@@ -249,40 +197,6 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
     try require(!NSApp.isActive && foreground == NSWorkspace.shared.frontmostApplication?.processIdentifier,
         "Replay activated itself or the foreground app changed")
     print("Passed persisted Chief draft and explicit host directory serialization.")
-}
-
-@MainActor private struct ChiefHistoryFixture {
-    let client: RuntimeClient
-    let host: NativeHarnessHost
-    let thread: HarnessThread
-    let content: JSONValue
-
-    init(message: String) throws {
-        let storage = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("history-profile")
-        client = RuntimeClient(profile: try RuntimeProfile(dataDirectory: storage))
-        let current = try HarnessThread(id: "chief", harnessID: "codex", revision: 0,
-            sessionState: .null, observation: .init(), cwd: "/fixture", settings: .object([:]),
-            createdAt: 1, updatedAt: 2, title: "Chief", tags: [], moku: true, transcript: .array([]))
-        thread = current
-        host = NativeHarnessHost(client: client, registry: try HarnessPluginRegistry([AnyHarnessPlugin(CodexHarnessPlugin())]),
-            currentThread: { $0 == current.id ? current : nil },
-            callbacks: .init(openExternal: { _ in }, openFollowUp: { _, _ in }, onError: { _ in }))
-        content = .object(["schema": .text("mokusei.harness.codex.thread.v1"), "updatedAt": .integer(2),
-            "backgroundTerminals": .array([]), "turns": .array([.object([
-                "executionId": .text("previous-execution"), "createdAt": .integer(1), "updatedAt": .integer(2),
-                "finishedAt": .integer(2), "status": .text("completed"), "answer": .text(""), "reasoning": .text(""),
-                "plan": .array([]), "activities": .array([]), "interactions": .array([]), "notices": .array([]),
-                "messages": .array([.object(["id": .text("previous-message"), "content": .text(message),
-                    "role": .text("user"), "kind": .text("prompt"), "createdAt": .integer(1), "attachments": .array([])])]),
-                "timeline": .array([.object(["id": .text("previous-item"), "kind": .text("user-message"),
-                    "createdAt": .integer(1), "messageId": .text("previous-message")])]),
-            ]), .object([
-                "executionId": .text("current-execution"), "createdAt": .integer(2), "updatedAt": .integer(2),
-                "finishedAt": .integer(2), "status": .text("completed"), "answer": .text(""), "reasoning": .text(""),
-                "messages": .array([]), "timeline": .array([]), "plan": .array([]), "activities": .array([]),
-                "interactions": .array([]), "notices": .array([]),
-            ])])])
-    }
 }
 
 private func textInput(_ text: String) -> JSONValue {

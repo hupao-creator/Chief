@@ -94,7 +94,7 @@ def run(args):
     output = args.output.resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     specs = json.loads((Path(__file__).parent / "scenarios.json").read_text())["scenarios"]
-    suites = {"supported": {"E2E-OVERVIEW-002", "E2E-READ-001", "E2E-SETTINGS-001"}, "composer": {"E2E-COMPOSER-001"},
+    suites = {"supported": {"E2E-CHIEF-001", "E2E-OVERVIEW-002", "E2E-READ-001", "E2E-SETTINGS-001"}, "composer": {"E2E-COMPOSER-001"},
               "collection": {"E2E-OVERVIEW-002", "E2E-COLLECTION-001"}, "onboarding": {"E2E-ONBOARDING-001"}}
     suites["all"] = suites["supported"] | suites["composer"] | suites["collection"]
     specs = [s for s in specs if s["id"] in suites[args.suite]]
@@ -238,6 +238,8 @@ def run(args):
                 execute("E2E-COLLECTION-001", lambda: collection.journey(desktop, reports))
                 if args.suite == "all":
                     collection.enable_reports(session, False)
+            if "E2E-CHIEF-001" in requested:
+                execute("E2E-CHIEF-001", desktop.chief_controls)
             if "E2E-READ-001" in requested:
                 execute("E2E-READ-001", lambda: desktop.read(thread, initial, followup))
                 execute("E2E-SETTINGS-001", desktop.settings)

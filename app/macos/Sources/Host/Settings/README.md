@@ -157,8 +157,7 @@ explicit settling retire the current animation without leaving the modal gate
 stuck. Opening and return both report transitioning to semantic callers.
 
 The application menu and Cmd+, are enabled only for a loaded Overview. Direct
-presentation and semantic requests enforce the same boundary; reading, Moku
-history and initial connection/recovery pages cannot open Settings or implicitly
+presentation and semantic requests enforce the same boundary; reading and initial connection/recovery pages cannot open Settings or implicitly
 navigate to Overview. A previously loaded Overview can open Settings while
 disconnected.
 

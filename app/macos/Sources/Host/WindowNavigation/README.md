@@ -15,8 +15,7 @@ keys its front by that visit when reopening a retained thread. Settings belongs
 only to Overview and cannot cover a Thread or application reading route.
 
 [NativeWindowNavigationView](NativeWindowNavigationView.swift) owns shared
-window/back controls. The workspace hides its Back control for Agent, Report and
-Moku history panels; those surfaces use their own production panel Close.
+window/back controls. The workspace hides its Back control for Agent and Report panels; those surfaces use their own production panel Close.
 [NativeWindowControlPlacement](NativeWindowControlPlacement.swift) retains native
 Mac traffic-light actions through resize and workspace zoom. The real buttons
 keep their native size and sit 31 window points from the top in Overview.
@@ -71,7 +70,7 @@ Only actual controls own pointer regions; dragging the window header does not
 pan Overview. Hover is reconciled with current availability and pointer geometry
 rather than a stale enter event.
 
-The [workspace shell](../Shell/NativeWorkspaceView.swift) presents ordinary threads, Moku history and Report HTML reading routes. Their back actions close the owning route or nested history; a plugin does not replace the host's navigation state. Native document/HTML content keeps the shared navigation safe area and cannot cover the back target.
+The [workspace shell](../Shell/NativeWorkspaceView.swift) presents ordinary threads and Report HTML reading routes. Their back actions close the owning route or nested history; a plugin does not replace the host's navigation state. Native document/HTML content keeps the shared navigation safe area and cannot cover the back target.
 
 Application reading pages retain their back action across redraws. Publishing navigation into the shell must not create a new action on the next
 render and feed another publication. A changed route or language refreshes the
@@ -79,12 +78,7 @@ action; unmounting clears it and a new mount owns a new identity.
 
 [NativeReadingPageStack](../../Shared/PluginUI/Conversation/NativeReadingPageStack.swift) retains reading-page identity through transitions. [NativeReadingPageTiming](../../Shared/PluginUI/Conversation/NativeReadingPageTiming.swift) centralizes duration and curves: outer ordinary-detail opening uses the emphasized 420 ms curve, while nested/default navigation and closing retain their declared policies. Horizontal non-panel page offset, parent shade/blur and the clipped horizontal page shadow derive from shared progress. Panel position, aperture and closing fade use the independent native compositor driver in [NativeReadingPanelTransition](../../Shared/PluginUI/Conversation/NativeReadingPanelTransition.swift). Vertical conversation-history navigation uses equal full-height travel on a flat plane, without these depth effects; its retained document changes enabled state only offscreen to preserve the native scroller gutter during opening/return. History replacement keeps that hidden document disabled throughout, independently of the shared active-motion flag. The parent remains mounted through the return transition. Resize or an inactive scene completes an accepted Close for that same route visit; otherwise the animation simply settles. Identity replacement, explicit cancellation and disabled presentation still cancel the current generation without closing a replacement route.
 
-Chief history opts into the shared carrier's workspace overlay. Its live
-content spans the shared reading-card frame and the space below for the input
-capsule. The compositor animates position and opacity at this fixed layout.
-The front stays mounted through reversal and return, with the existing native
-completion fenced to the active visit. See the
-[Chief history contract](../MokuScene/README.md).
+A saved selection naming the current Chief or a retained Chief conversation resolves to Overview. Explicit execution links and catalog changes apply the same ordinary-Agent identity check before admitting a reader.
 
 The outer workspace reading stack also owns the retained Overview presentation
 gate. Panel opening pauses display projection immediately. Ordinary Agent card
@@ -158,16 +152,14 @@ handle; the surviving document remains loaded. Execution disclosure groups still
 share demand within their owning row, and retiring a surface releases all its
 remaining handles.
 
-Agent, Report and Moku history reading use a panel-owned Close rather than a Back control beside the
+Agent and Report readers use a panel-owned Close rather than a Back control beside the
 traffic lights. A Report opened from the member grid uses a panel-owned Back
 arrow in that seat and returns to the same grid. An Agent opened from a Chief Note
 link uses Close in that seat. Escape in the cited document returns to the Note. Agent history executions have no dedicated upper-left Back button,
 including when the shared history document has no navigation host. History retains
 TOC navigation, Escape and its close action with the existing route-visit fence.
 Other application navigation retains its own window-navigation behavior.
-Moku history retains the underlying route and owns a separate nested navigation
-scope. Its current conversation and earlier turns share the Thread document
-margins and Close clearance. Its transcript does not drive window navigation. Report panel HTML keeps its trusted
+Report panel HTML keeps its trusted
 DOM Escape/editing/dialog handling without installing the scroll-driven window
 navigation portal; scrolling never moves the traffic lights. Opening an application from an
 Agent still restores that Agent and its reading target on Close. Overview entry
@@ -175,9 +167,9 @@ remembers the actual source card, and refreshes
 its return frame after resize. These routes share panel margins, source-frame
 animation, rounded surfaces and the full-circle Close target.
 The shared Close sits at the panel's upper-left. Viewports normally reserve
-48pt below the top edge. The main Agent and Chief readers clear Close through
-their symmetric document margins and use 22pt vertical viewport insets.
-Chief reserves additional bottom space when its composer overlaps the card. The history
+48pt below the top edge. The main Agent reader clears Close through
+its symmetric document margins and uses 22pt vertical viewport insets.
+The history
 marks overlay the leading margin and retain 64pt of vertical clearance.
 The document margins apply to both opening
 heading preparation and the live current/history reader, retaining measured
@@ -188,7 +180,7 @@ owns its 32pt circular background and hit shape, so
 the entire visible circle responds rather than only the smaller icon area. Its outer
 14pt padding remains panel spacing and does not become a close target.
 
-Agent, Report and Moku history panels also close on a completed click in the surrounding
+Agent and Report panels also close on a completed click in the surrounding
 blank workspace margin. The shared reading stack owns a separate backdrop hit
 region, excluding the panel's complete rectangle (including internal whitespace,
 Sidecards and their divider). Front controls, including the Sidecard toolbar and

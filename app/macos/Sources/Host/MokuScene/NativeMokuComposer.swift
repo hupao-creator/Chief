@@ -73,8 +73,7 @@ private struct NativeMokuComposerRowLayout: Layout {
     }
 }
 
-/// The input row used by both the outside Dock and the permanently open history
-/// capsule. The scene supplies authority, draft lifetime.
+/// The scene supplies the Dock input row with its draft and send authority.
 struct NativeMokuComposerInput: View {
     let draft: NativeComposerDraft
     var cwd: JSONText = ""
@@ -365,51 +364,5 @@ private struct NativeMokuSendButton: NSViewRepresentable {
         button.setAccessibilityLabel(label)
         button.draft = draft
         button.send = send
-    }
-}
-
-/// History owns its permanent input seat and its supplied send route.
-public struct NativeMokuHistoryComposer: View {
-    public let draft: NativeComposerDraft
-    public let cwd: JSONText
-    public var disabled = false
-    public var running = false
-    public var focusEnabled = true
-    public var focusRequestKey = 0
-    public var suppressInitialFocus = false
-    public let onSend: (NativeComposerSubmission) async throws -> Void
-    public let onSendConsumed: (NativeComposerSubmission) async -> Void
-    public let onCancel: () -> Void
-    @State private var compact = false
-    @State private var hovered = false
-
-    public init(draft: NativeComposerDraft, cwd: JSONText, disabled: Bool = false, running: Bool = false,
-                focusEnabled: Bool = true, focusRequestKey: Int = 0, suppressInitialFocus: Bool = false,
-                onSend: @escaping (NativeComposerSubmission) async throws -> Void,
-                onSendConsumed: @escaping (NativeComposerSubmission) async -> Void = { _ in },
-                onCancel: @escaping () -> Void) {
-        self.draft = draft; self.cwd = cwd; self.disabled = disabled; self.running = running
-        self.focusEnabled = focusEnabled; self.focusRequestKey = focusRequestKey; self.suppressInitialFocus = suppressInitialFocus
-        self.onSend = onSend
-        self.onSendConsumed = onSendConsumed; self.onCancel = onCancel
-    }
-    public var body: some View {
-        NativeMokuComposerInput(draft: draft, cwd: cwd, disabled: disabled,
-            focusEnabled: focusEnabled, focusRequestKey: focusRequestKey, suppressInitialFocus: suppressInitialFocus,
-            compact: compact, running: running, onCancel: onCancel, showsEyes: true,
-            onSend: {
-                guard !disabled else { return }
-                let sendingDraft = draft, send = onSend, consumed = onSendConsumed
-                Task.immediate { await sendingDraft.submit(send, optimisticallyClear: true, didConsume: consumed) }
-            })
-            .fixedSize(horizontal: false, vertical: true)
-            .background { NativeMokuCapsuleGlass() }
-            .clipShape(RoundedRectangle(cornerRadius: NativeMokuCapsuleLayout.cornerRadius))
-            .shadow(color: .black.opacity(0.13), radius: hovered ? 17 : 13, y: 6)
-            .onHover { hovered = $0 }
-            .onGeometryChange(for: Bool.self) { $0.size.width < 260 } action: { compact = $0 }
-            .accessibilityElement(children: .contain).accessibilityLabel("Chief")
-            .accessibilityIdentifier("moku-history-capsule")
-            .environment(\.colorScheme, .dark)
     }
 }

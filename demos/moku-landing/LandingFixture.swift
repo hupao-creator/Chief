@@ -140,7 +140,7 @@ struct LandingSurface: View {
                         onTagChange: { _ in fixture.filteredEmpty = false }, onSettings: fixture.openControls)
                 }
             }
-        } thread: { EmptyView() } dock: {
+        } dock: {
             if showsDock {
                 NativeMokuDock(state: fixture.scene, draft: fixture.draft, cwd: "/demo",
                     landing: fixture.landing, mode: fixture.running ? .running : .idle, running: fixture.running,

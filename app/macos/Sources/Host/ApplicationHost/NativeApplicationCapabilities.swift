@@ -236,7 +236,7 @@ private struct NativeApplicationReferencedExecution: View {
     var body: some View {
         Group {
             let _ = catalogRevision
-            if let thread = host.workspace.catalog.thread(reference.thread.threadID), thread.moku != true, !thread.mokuHistory {
+            if let thread = host.workspace.catalog.thread(reference.thread.threadID), thread.isOrdinaryAgent {
                 if let sidecards {
                     reportConversation(thread, sidecards: sidecards)
                 } else {

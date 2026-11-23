@@ -68,9 +68,21 @@ private struct ReaderFrame: Equatable {
     let current = try thread("initial", id: source.threadID)
     let other = try thread("initial", id: "another-thread")
     let chief = try thread("initial", id: "chief", moku: true)
-    try workspace.catalog.install(.object(["revision": .integer(3), "settingsRevision": .integer(0),
+    var archiveRecord = other.json.objectValue!
+    archiveRecord["id"] = .text("retained-chief")
+    archiveRecord["mokuHistory"] = .bool(true)
+    archiveRecord["archived"] = .bool(true)
+    let archive = try HarnessThread(json: .object(archiveRecord))
+    let snapshot = JSONValue.object(["revision": .integer(3), "settingsRevision": .integer(0),
         "defaultCwd": .text("/fixture"), "executions": .array([]), "settings": .object([:]),
-        "threads": .array([current.json, other.json, chief.json]), "applicationThreads": .array([])]))
+        "threads": .array([current.json, other.json, chief.json, archive.json]), "applicationThreads": .array([])])
+    await workspace.installPrepared(snapshot, event: .snapshot(snapshot, authority: UUID()))
+    for id in [chief.id, archive.id] {
+        try workspace.preferences.selectThread(id.string)
+        let restored = NativeWorkspacePresentation(workspace: workspace)
+        guard restored.selected == nil, workspace.preferences.selectedThreadID == nil,
+              workspace.catalog.thread(id) != nil else { throw ReplayError(description: "Failed to retire saved Chief route") }
+    }
     let presentation = NativeWorkspacePresentation(workspace: workspace)
     func open(_ id: JSONText) {
         presentation.open(.init(threadID: id, typeID: "agent"))
@@ -204,24 +216,9 @@ private struct ReaderFrame: Equatable {
     try check(draft.inputText.isEmpty && !draft.hasInterruptedSend, "Receipt lookup altered the successor draft")
     print("Verified late canonical steer after interrupted-send recovery")
 
-    presentation.scene.setMokuOpen(true)
-    fixture.thread = chief
-    let chiefText = "Steer the running Chief"
-    let chiefDraft = presentation.draft
-    chiefDraft.inputText = chiefText
-    try mode("hold-chief")
-    let chiefSend = Task.immediate {
-        await chiefDraft.submit({ try await presentation.sendMoku($0) }, optimisticallyClear: true)
+    for id in [chief.id, archive.id] {
+        let ref = ApplicationThreadRef(threadID: id, typeID: "agent")
+        presentation.open(ref, target: .init(executionID: "E", requestID: "linked", mode: .history, position: .executionStart))
+        try check(presentation.selected == source, "A Chief execution link replaced the ordinary reader")
     }
-    try await waitForHandler(chiefText, count: 1)
-    let captured = try await rendered(1, matching: chiefText)
-    try check(chiefDraft.submitting && captured.labels.count == 2, "Expected an ordinary held Chief steer: " + captured.labels.description)
-    try mode("accepted")
-    await chiefSend.value
-    try check(chiefDraft.error == nil, "Chief send failed: " + (chiefDraft.error ?? ""))
-    fixture.thread = try thread("chief-next", id: chief.id, moku: true)
-    try check(try await rendered(1, matching: chiefText) == captured, "Chief receipt or event changed the user row")
-    fixture.includesLocalInput = false
-    _ = try await rendered(1, matching: chiefText)
-    print("Verified mounted Chief steer through receipt and native content")
 }

@@ -19,7 +19,7 @@ Run `python3 tools/e2e/thread-transcript/run.py --output /tmp/chief-thread-trans
 
 The replay first checks the manifest preview, the turn projection with deferred presence, full execution rows and the text in the native Markdown views. Retained-state fixtures exercise independent equal-text Codex notices, Claude fork history, a Pi extension notification and terminal partial reply, and a targeted OpenCode child reply. Additional frames exercise interleaved Unicode text, reasoning and a tool in Pi, and corrected Claude blocks around a moving review.
 
-Two nonactivating panels then mount the ordinary Agent workspace and Chief history. Each receives the same projections through its own isolated content store and live subscriptions. The replay compares native Markdown order and fonts, turn state, work controls, rendered group counts and metadata while work runs, when a reply settles, while waiting for permission, on success and on failure. At completion it compares paragraph positions and sizes, unfolds the work summary, remounts the saved turn, and opens a read-only Chief archive. The Codex case pairs a native `create_thread` with its coordinator receipt and verifies one tool call and the admitted child Thread ID. It also separates the catalog and scoped completion updates, locates an earlier reply by its message link, and keeps the focused Chief draft and selection through settlement. Local Return submits that draft to the fixture.
+A nonactivating panel mounts the ordinary Agent workspace with an isolated content store and live subscriptions. The replay checks native Markdown order, turn state, work controls, group counts and metadata during execution, settlement, permission requests, success and failure. It records paragraph geometry and fonts, unfolds the work summary and remounts the saved turn. The Codex case separates catalog and scoped completion updates and locates an earlier reply by its message link.
 
 The evidence directory contains the revision, platform, source projections, comparison results and images captured from the replay's own windows. Codex samples record changing pixels in the last work summary and its stationary text after the reply begins and after completion. These frames check whether the sweep appears at the right time. Installed CLI transport, real account permissions, database transactions and rendering latency have separate verification boundaries. [Reading contract](../../design/reading.md#content-and-execution-identity) · [Fixtures and launcher](thread-transcript)
 
@@ -34,6 +34,7 @@ contains every requested ID, including blocked and unreached entries.
 | --- | --- | --- | --- |
 | `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Each confirmation reaches an interactive destination in under 1,000ms. | Fresh profile, authorized system AX driver, exclusive desktop. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
 | `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve completed tasks in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
+| `E2E-CHIEF-001` | Open Note and switch to Compose. The legacy command is rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
 | `E2E-SETTINGS-001` | Open Settings with Chief Agent selected and only Chief Agent, Auto-Categorization and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief Agent and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
 | `E2E-COLLECTION-001` | Open a grouped member, return, then revisit and read. Switch directory and archive/restore unrelated reports while All remains mounted. | Two isolated directories, two completed tasks and eight reports from a deterministic peer. | In the three-column replay window, All groups six fresh reports and a four-report directory groups two. A brief visit holds the cover, a qualified visit promotes the report, and archiving down to three reports releases the group. Restoring reports groups them again. |
@@ -297,33 +298,9 @@ The semantic Note toggle exercises the Note entrance. Mounted route identity
 and window frame recordings supply separate evidence.
 [Note and link behavior](../../app/macos/Sources/Host/MokuScene/README.md)
 
-### Chief history panel
+### Chief navigation
 
-Use the isolated desktop session and shared GUI lease described below. Prepare
-two Chief turns, a long transcript, a completed Agent Thread, and a Super Thread.
-Keep all three readings on one display at the same window bounds, workspace
-zoom and system appearance. Measure the outer rounded reading card of each
-route in window-relative points with Agent and Super Thread sidecards folded.
-Record the top and bottom edges, card height and Chief capsule bounds at the
-ordinary window size and again after reducing the window size.
-
-Open Chief Note, activate **Chief history**, and close from the **×**. Window
-frames should show the card and input arrive together and fade out with their
-outlines intact. Compare the title, last visible transcript row, input and
-outer edges through both motions. Repeat from **⌘B** and exercise the backdrop
-click. Reverse a partly completed entrance and a partly completed return.
-Keep an unsent draft and verify the editor's focus and text after reversal.
-Scroll the document, select an earlier turn, and use Escape from read-only
-content to return to current and then close. Resize with history open and again
-after accepting Close. Reopen from an Agent or Super Thread and check the
-underlying visit on return. Check native window close and app quit with history
-open.
-
-Record the revision, app digest, display and capture scale, actual inputs,
-window bounds, frame timestamps and cleanup receipt. Keep frame evidence for
-Agent and Super Thread opening and closing in the same session. Use the
-[Chief history contract](../../app/macos/Sources/Host/MokuScene/README.md) for
-the expected layout and lifecycle.
+Start with a private profile containing a Chief conversation and a completed task. A saved selection for the current Chief or a retained Chief archive must open Overview. Open Chief Note and inspect its accessible controls and the View menu. Compose and Chief Note have their own shortcuts. A plain Command-B leaves the current route in place. Check that the former history action is rejected, then open an ordinary task and a Super Thread from Overview.
 
 ### Live Super Thread updates
 
@@ -733,8 +710,7 @@ submitted input and confirm the draft clears. A
 deterministic external peer can observe native delivery without a provider account.
 
 On a host-enabled draft, Control-click the plus and check that each host option
-opens the corresponding file or directory browser. Repeat the primary control
-and chooser check in Chief history. Check English and Chinese. Capture the plus and
+opens the corresponding file or directory browser. Check English and Chinese. Capture the plus and
 the eyes in the same row in light and dark system appearances and at a narrow
 width or app zoom that admits the two-row composer. Inspect the control's
 localized accessibility label, action and frame. Keep the commit, app digest,

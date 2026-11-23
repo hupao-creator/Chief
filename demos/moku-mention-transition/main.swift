@@ -29,7 +29,7 @@ private struct Preview: View {
             LinearGradient(colors: dark ? [Color(red: 0.17, green: 0.13, blue: 0.21), Color(red: 0.35, green: 0.22, blue: 0.22)]
                 : [Color(red: 0.91, green: 0.89, blue: 0.85), Color(red: 0.80, green: 0.85, blue: 0.87)], startPoint: .topLeading, endPoint: .bottomTrailing)
             if original {
-                NativeMokuScene(state: scene) { Color.clear } thread: { EmptyView() } dock: {
+                NativeMokuScene(state: scene) { Color.clear } dock: {
                     NativeMokuDock(state: scene, draft: draft, cwd: "/demo", threadID: "fixture-agent",
                         loadMentionDirectories: { directories }, onSend: { _ in }, onCancel: {})
                 } settings: { EmptyView() }

@@ -83,7 +83,7 @@ entry temporarily excluded into the active Sidecard. Row-only renders and
 execution Sidecards do not publish another input owner. Unavailable or aggregate
 history without an execution identity cannot silently become current input.
 
-The resident Dock and Moku history capture the submitted draft and its route
+The resident Dock captures the submitted draft and its route
 together. The shared draft persists each pending send under its initial
 command ID. Settlement writes the editable successor and its cleanup marker
 before the Host acknowledges the retained receipt. A reopened owner can
@@ -125,13 +125,13 @@ The focusable history sidebar uses this route too: foldable resident input gets
 first refusal; otherwise Escape returns to the current document directly.
 Its Arrow/Return navigation and document-owned cancellation remain independent.
 
-Thread, Report and Moku history panels share
+Thread and Report panels share
 [`NativeReadingPanelCloseButton`](Conversation/NativeReadingPanelCloseButton.swift).
 `nativeReadingPanelClose` places the 32pt circular target 14pt from the panel's
 top-left edge. Pair it with `nativeReadingPanelViewport`: its default 48pt top
 clearance keeps both scrolling content and native scrollers below Close. The
-main Agent and Chief history readers clear Close horizontally with the history
-rail, allowing 22pt vertical viewport insets and additional Chief composer clearance. Report uses 8pt insets on all
+main Agent reader clears Close horizontally with the history
+rail, allowing 22pt vertical viewport insets. Report uses 8pt insets on all
 sides and `overlaysContent: true` for an opaque canvas backing under Close.
 The Report host clips the viewport with a 14pt radius before applying its 8pt
 insets, matching the outer panel's 22pt radius. Spacing outside the circle
@@ -175,9 +175,7 @@ with ordinary Agent card readers preloading only after the native animation-star
 callback. Their host stays transparent, hit testing and accessibility stay closed,
 and reading controls are not registered until arrival. Primary Markdown and
 TextKit preparation therefore overlap compositor-owned travel without advancing
-text entrance or secondary surfaces. Chief history uses the carrier's workspace
-overlay mode to reveal the live card and its capsule together with native
-position and opacity. See the [history contract](../../Host/MokuScene/README.md).
+text entrance or secondary surfaces.
 Report and Collection entries mount their readers on arrival. The retained reader has one stable native hosting view after admission;
 its environment comes from the enclosing SwiftUI surface and its layout width
 stays at the destination width throughout return travel. Reversal samples native
@@ -266,7 +264,7 @@ semantic palette and locale follow the reader. This is presentation state only:
 content acquisition, decoding, caching and resource release are unchanged.
 See the [recording review and validation limits](../../../../../design/reading.md).
 
-The shared Agent and Chief reader hides its work visibility control when the mounted execution
+The Agent reader hides its work visibility control when the mounted execution
 content reports no displayable work. Missing reports during scoped loading remain
 unknown, and later content updates can restore the control. Summary admission
 and background terminal/task presence determine availability independently of the
@@ -278,8 +276,7 @@ group. Empty reasoning and completed Hooks without output qualify; tool calls,
 other activity kinds, running/failed/cancelled Hooks, interactions and unknown
 rows remain admitted. Classification follows content and native identity rather
 than position or zero counts. Lightweight Codex/Claude history carries output
-presence independently of stripped detail. Agent and Chief summary rows do not
-acquire deferred detail. See the [contract](../../../../../design/reading.md)
+presence independently of stripped detail. Agent summary rows use the lightweight projection. See the [contract](../../../../../design/reading.md)
 for the current execution-summary admission rules.
 
 Execution summaries label execution-scoped reported reasoning usage as “总共思考
@@ -439,7 +436,7 @@ visible-row projection is shared by the document and registration per body pass.
 See the [scroll contract](../../../../../design/reading.md)
 for the measured update counts and the remaining validation limits.
 
-The shared Agent and Chief reader withholds assistant reply bodies while their native
+The Agent reader withholds assistant reply bodies while their native
 message status is `streaming`. While an execution is running or waiting for the
 user, each settled message renders its complete Markdown; a later streaming reply does not replace the
 last settled reply. Once the execution terminates, intermediate ordinary replies
@@ -543,7 +540,7 @@ does not become width-dependent merely because its document enables capsules.
 See the [Note performance measurements](../../../../../tools/verification/moku-note-performance/README.md)
 for the isolated production-control comparison and its visual limitations.
 
-[Conversation/ThreadConversation.swift](Conversation/ThreadConversation.swift) and [ThreadTimeline.swift](Conversation/ThreadTimeline.swift) organize reading from the Harness's public turn index. [ThreadExecutionGroups.swift](Conversation/ThreadExecutionGroups.swift) presents adjacent execution rows under a summary with reasoning/tool counts and reported reasoning usage. Only the latest process summary in the running execution carries a left-to-right text highlight, and only while it is also the final message-stream group. Harnesses classify the native tail before withholding streaming replies; a later assistant reply stops the sweep immediately, including before its text is mounted. OpenCode checks the last native part because replies, reasoning and tools can share a message. The 64pt band uses opaque strong reading ink with a broad center and soft edges. Only while motion is admitted, its text base uses 55% muted ink so both sides of the band visibly recede; the wrench keeps normal ink. Inactive scenes and pending entrance restore normal static ink. Colors follow the light/dark palette; earlier groups, history, completed/interrupted/failed executions and waiting-for-user states stay static. Harnesses supply execution-running state separately from reader activity. The text mask clips a [native gradient layer](Conversation/ThreadExecutionLoadingSweep.swift). Its position animation holds off the far edge for 250 ms per cycle. Removing the running or entrance gate, losing the active scene or detaching the view retires the sweep. The decoration adds no accessibility content or hit target. The highlight travels at roughly 180pt/s with a short gap between passes, without animating the wrench or changing text layout. In Agent detail and Chief history, the reading header's execution visibility control shows only this summary: nested Used tools group titles, Hooks, tool calls, commands, reasoning bodies and failed-tool diagnostics are details and never mount. Agent-only background terminal/task sections likewise show static counts/status rather than commands or descriptions, and hide with work; task failure is not a standalone Harness error. Summary-only historical groups do not acquire the scoped loader in [ThreadDeferredExecution.swift](Conversation/ThreadDeferredExecution.swift). The full member-row presentation uses scoped historical demand when explicitly selected. Execution membership takes precedence over attention styling, so a tool failure cannot escape the visibility group. Standalone errors and pending interactions keep their own timeline rows; a visible nonmember splitting a native run receives distinct summary identities. The summary itself has no disclosure arrow, hover treatment, keyboard focus or accessibility/reading action. Individual activity disclosures on other conversation surfaces retain their existing behavior.
+[Conversation/ThreadConversation.swift](Conversation/ThreadConversation.swift) and [ThreadTimeline.swift](Conversation/ThreadTimeline.swift) organize reading from the Harness's public turn index. [ThreadExecutionGroups.swift](Conversation/ThreadExecutionGroups.swift) presents adjacent execution rows under a summary with reasoning/tool counts and reported reasoning usage. Only the latest process summary in the running execution carries a left-to-right text highlight, and only while it is also the final message-stream group. Harnesses classify the native tail before withholding streaming replies; a later assistant reply stops the sweep immediately, including before its text is mounted. OpenCode checks the last native part because replies, reasoning and tools can share a message. The 64pt band uses opaque strong reading ink with a broad center and soft edges. Only while motion is admitted, its text base uses 55% muted ink so both sides of the band visibly recede; the wrench keeps normal ink. Inactive scenes and pending entrance restore normal static ink. Colors follow the light/dark palette; earlier groups, history, completed/interrupted/failed executions and waiting-for-user states stay static. Harnesses supply execution-running state separately from reader activity. The text mask clips a [native gradient layer](Conversation/ThreadExecutionLoadingSweep.swift). Its position animation holds off the far edge for 250 ms per cycle. Removing the running or entrance gate, losing the active scene or detaching the view retires the sweep. The decoration adds no accessibility content or hit target. The highlight travels at roughly 180pt/s with a short gap between passes, without animating the wrench or changing text layout. In Agent detail, the reading header's execution visibility control shows only this summary: nested Used tools group titles, Hooks, tool calls, commands, reasoning bodies and failed-tool diagnostics are details and never mount. Agent-only background terminal/task sections likewise show static counts/status rather than commands or descriptions, and hide with work; task failure is not a standalone Harness error. Summary-only historical groups do not acquire the scoped loader in [ThreadDeferredExecution.swift](Conversation/ThreadDeferredExecution.swift). The full member-row presentation uses scoped historical demand when explicitly selected. Execution membership takes precedence over attention styling, so a tool failure cannot escape the visibility group. Standalone errors and pending interactions keep their own timeline rows; a visible nonmember splitting a native run receives distinct summary identities. The summary itself has no disclosure arrow, hover treatment, keyboard focus or accessibility/reading action. Individual activity disclosures on other conversation surfaces retain their existing behavior.
 
 Pending connection/status text in an otherwise empty active execution reuses
 the summary's `ThreadLoadingTextStyle`, including its 64pt band, 180pt/s travel,
@@ -680,7 +677,7 @@ keeps the previous model-based fallback. Vertical/history replacement, cancellat
 and settled-page returns do not use this correction. This boundary accounts for
 a model value being ahead of committed native geometry; it does not treat AppKit
 bounds as proof of WindowServer pixels or assert that such lag caused a specific
-historical failure. Agent, Report and Moku entry use panel presentation.
+historical failure. Agent and Report entry use panel presentation.
 
 Horizontal non-panel progress is written synchronously from a per-stack display callback in
 [NativeReadingPageFrames](Conversation/NativeReadingPageFrames.swift).
@@ -714,7 +711,7 @@ closing one cannot revoke the other's content.
 
 [ThreadReadingHeader.swift](Conversation/ThreadReadingHeader.swift) places the
 mounted turn's resolved author under the title, beside the execution visibility
-control. Agent detail and Chief history have no user-message visibility toggle, including historical
+control. Agent detail has no user-message visibility toggle, including historical
 and execution-card visits. Harness readers explicitly admit assistant replies and
 execution records, plus errors (including error-level notices); general warnings
 and input messages do not become work rows. Failed assistant messages and independent
@@ -739,8 +736,7 @@ row's execution timestamp. This applies to new executions awaiting naming and
 older executions without stored names. The fallback is a live reading projection:
 later generated names replace it without persisting the instruction as a title. The current catalog title and other executions' instructions are never substituted. This also applies when main retains an older execution while the newest one
 occupies a Sidecard. Thread title and emoji remain catalog metadata. The four Harnesses use the same
-execution reader for ordinary Threads, the current Chief session and its archives.
-The public Chief identity governs coordinator data and permitted actions. Narrow widths wrap the control and truncate the visible
+execution reader for ordinary Agent Threads. Narrow widths wrap the control and truncate the visible
 author while preserving its complete accessible label, tooltip and text selection. For the selected running execution, work stays visible and its visibility control
 is absent; completion restores the previous visibility behavior. Historical and
 result visits compare their own execution identity with the running execution. The author comes from the actual Harness-rendered body, including runtime model
@@ -838,7 +834,7 @@ Only the submitting dot pulses (opacity only, 2.4 seconds per cycle); viewport,
 window and host animation gates pause it. A mounted initial body gives way immediately to real content with a single 120ms
 opacity entrance; remounts and later excerpt revisions keep the existing policy.
 
-Composer state and submitted revision belong to the workspace. Attachment upload, file selection and send receipts are shared by the Dock and conversation surfaces. The Host’s `NativeMokuComposerInput` composes the shared text input, attachment chips and host file picker for both Dock and history; PluginUI owns those primitives and draft persistence. Harness and Moku interaction owners compose `InteractionQuestionField` with their own validation, submission and cancellation controls, sending through injected actions rather than bypassing Runtime admission.
+Composer state and submitted revision belong to the workspace. Attachment upload, file selection and send receipts are shared by the Dock and conversation surfaces. The Host’s `NativeMokuComposerInput` composes the shared text input, attachment chips and host file picker for the Dock; PluginUI owns those primitives and draft persistence. Harness and Moku interaction owners compose `InteractionQuestionField` with their own validation, submission and cancellation controls, sending through injected actions rather than bypassing Runtime admission.
 
 The device open panel reserves the draft import while it is open. Cancelling
 releases the reservation without staging files. Confirmed selections join the
@@ -1249,7 +1245,7 @@ onboarding share native field bindings, catalogs and persistence.
 
 ## Reading-panel presentation
 
-The shared reading stack can present Agent, Report and Moku history routes
+The shared reading stack can present Agent and Report routes
 as a bounded panel, using a source card frame where available. It retains the same route identity, explicit progress clock,
 close/cancel lifecycle as page navigation. Panel
 content remains reader-owned; Agent title/emoji can use the window-local identity
@@ -1263,10 +1259,9 @@ viewport/margin contract for production and the standalone native fixture.
 `nativeReadingPanelViewport()` reserves an inner frame of 8pt horizontally,
 48pt above and 22pt below by default. Report panels opt into
 `topInset: 8, balancedVerticalInsets: true`, reserving 8pt at both ends. The main
-Agent and Chief panels share `nativeThreadReadingViewport`. Both use 22pt
-vertical clearance, with additional room for an overlapping Chief composer. The
+Agent panel uses `nativeThreadReadingViewport` with 22pt of vertical clearance. The
 live execution Sidecard also uses a 22pt top inset. The Sidecard has no Close control of its own.
-The Agent and Chief readers and the related-execution reader in a Report overlay
+The Agent reader and the related-execution reader in a Report overlay
 the TOC on the page stack. The timeline reports the actual leading edge of its
 centered column. Within that margin each mark has a hit target up to 24pt wide
 and one row high, inset up to 4pt from the viewport edge. The index keeps 64pt
@@ -1294,8 +1289,7 @@ content width by only 16pt; native gutter ownership remains as described above.
 Report uses its compact host inset without rewriting document layout, overflow or
 external webpage/frame styles. Panel chrome uses the application canvas color;
 an authored Report background remains inside its viewport.
-The inset belongs to the reading card: Moku history's separate input capsule
-keeps its own layout and dark appearance. Nonpanel application pages and Browser
+Nonpanel application pages and Browser
 Sidecards keep their existing frames; no DOM style or scroll-offset translation
 is added. Readers derive their available width/height from the inset viewport.
 
@@ -1341,7 +1335,6 @@ inset gives the same 34pt boundary at each scroll limit. Its horizontal insets,
 scrolling, launcher and dismissal ownership remain unchanged. Report uses the
 balanced viewport argument with an 8pt top inset; its related-execution reader
 retains its own page-stack spacing.
-Chief history uses the main Agent viewport and its separate capsule's bottom clearance.
 
 No mounted viewport correctness replay is configured in this source tree.
 

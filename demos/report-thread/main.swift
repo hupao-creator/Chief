@@ -43,7 +43,7 @@ private struct ReportDemo: View {
                 }
             }
             .overlay(alignment: .top) { controls.padding(.top, 23).padding(.horizontal, 48) }
-        } thread: { EmptyView() } dock: {
+        } dock: {
             NativeMokuDock(state: state.scene, draft: state.draft, cwd: "/demo/Chief", mode: .idle,
                 onSend: { _ in }, onCancel: {})
                 .allowsHitTesting(false).accessibilityHidden(true)

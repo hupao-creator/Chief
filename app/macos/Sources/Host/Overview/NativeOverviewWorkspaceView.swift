@@ -248,7 +248,7 @@ private struct NativeOverviewWorkspaceCard: View {
         return { Task { await archive(thread.id) } }
     }
     private func canArchive(_ thread: HarnessThread) -> Bool {
-        guard thread.moku != true, !thread.mokuHistory, thread.archived != true,
+        guard thread.isOrdinaryAgent, thread.archived != true,
               !thread.pendingInput, thread.observation.backgroundWork == nil,
               let execution = thread.observation.latestExecution else { return false }
         return execution.status == .interrupted && thread.userInterruptedExecutionID == execution.executionID

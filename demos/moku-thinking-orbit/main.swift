@@ -151,7 +151,7 @@ private struct ThinkingDemoView: View {
         }
     }
     private var capsule: some View {
-        NativeMokuScene(state: fixture.scene) { Color.clear } thread: { Color.clear } dock: {
+        NativeMokuScene(state: fixture.scene) { Color.clear } dock: {
             NativeMokuDock(state: fixture.scene, draft: fixture.draft, cwd: "/tmp",
                 mode: fixture.role == .running ? .running : fixture.role == .idle ? .idle : .operation(activity: "thinking", phase: "running"),
                 running: fixture.role != .idle,

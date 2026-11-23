@@ -10,7 +10,6 @@
 | [execution-handoff](execution-handoff/README.md) | 独立交互/材质方案 fixture；生产行为见所属模块 |
 | [landing-setup](landing-setup/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-gradient-material](moku-gradient-material/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
-| [moku-history-theme](moku-history-theme/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-landing](moku-landing/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-mention-transition](moku-mention-transition/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-note-transition](moku-note-transition/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |

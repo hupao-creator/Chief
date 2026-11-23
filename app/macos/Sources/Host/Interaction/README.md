@@ -29,10 +29,7 @@ selects the reader. The field is null outside the visit. Compare the selected
 filter, Collection member and mounted execution with the isolated window
 recording to verify ordering and card travel.
 
-Moku history reports its shared reading-panel motion as `transitioning`, stays
-mounted until Close completes, and uses a separate navigation action from its
-retained parent. `navigation.back` first follows internal historical-turn
-navigation, then closes history without losing the parent's reading target.
+Overview offers Chief Compose and Note actions. Only ordinary Agent and application references can open a reader.
 
 Direct Swift callers can use, on the main actor:
 
@@ -96,6 +93,8 @@ focus and entrance admission. A selected report also exposes its reading evidenc
 while the retained canvas is hidden.
 
 ## E2E contract
+
+E2E-CHIEF-001 exercises Note and Compose on Overview and checks coordinator identities and rejection of the retired history command.
 
 [`E2E-READ-001`](../../../../../tools/e2e/README.md) uses these real navigation
 callbacks and mounted reading registrations. Preconditions are an isolated

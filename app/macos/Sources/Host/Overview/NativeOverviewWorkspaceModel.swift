@@ -20,17 +20,16 @@ public struct NativeOverviewApplicationFactories {
 
 public struct NativeOverviewPresentationFacts: Equatable, Sendable {
     public var overviewVisible: Bool
-    public var mokuOpen: Bool
     public var settingsOpen: Bool
     public var selectedThread: ApplicationThreadRef?
     public var followUpThread: ApplicationThreadRef?
     public var focused: Bool
     public var documentVisible: Bool
     public var available: Bool
-    public init(overviewVisible: Bool = true, mokuOpen: Bool = false, settingsOpen: Bool = false,
+    public init(overviewVisible: Bool = true, settingsOpen: Bool = false,
                 selectedThread: ApplicationThreadRef? = nil, followUpThread: ApplicationThreadRef? = nil,
                 focused: Bool = true, documentVisible: Bool = true, available: Bool = true) {
-        self.overviewVisible = overviewVisible; self.mokuOpen = mokuOpen; self.settingsOpen = settingsOpen
+        self.overviewVisible = overviewVisible; self.settingsOpen = settingsOpen
         self.selectedThread = selectedThread; self.followUpThread = followUpThread
         self.focused = focused; self.documentVisible = documentVisible; self.available = available
     }
@@ -823,7 +822,7 @@ public final class NativeOverviewWorkspaceModel {
     private func publishContext() -> JSONValue? {
         guard active else { return nil }
         var fields: [JSONText: JSONValue] = [
-            "overviewVisible": .bool(facts.overviewVisible), "mokuOpen": .bool(facts.mokuOpen), "settingsOpen": .bool(facts.settingsOpen),
+            "overviewVisible": .bool(facts.overviewVisible), "mokuOpen": .bool(false), "settingsOpen": .bool(facts.settingsOpen),
             "selectedThread": facts.selectedThread?.json ?? .null, "followUpThread": facts.followUpThread?.json ?? .null,
             "focused": .bool(facts.focused), "documentVisible": .bool(facts.documentVisible), "view": .text("default"),
             "selectedTag": (selectedFilter?.tag ?? selectedTag).nonEmpty.map(JSONValue.text) ?? .null,

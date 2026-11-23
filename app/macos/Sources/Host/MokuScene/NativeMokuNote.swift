@@ -145,7 +145,7 @@ struct NativeMokuNoteContent: View {
         // Observe the public catalog, not private transcript bodies. Missing or
         // unregistered targets keep their neutral symbol until metadata arrives.
         var result: [JSONText: AnyHarnessPlugin] = [:]
-        for thread in workspace.catalog.threads where thread.moku != true && !thread.mokuHistory {
+        for thread in workspace.catalog.threads where thread.isOrdinaryAgent {
             result[thread.id] = try? workspace.plugins.harnesses.require(thread.harnessID)
         }
         return result
@@ -391,36 +391,5 @@ private struct NativeMokuNoteExposureProbe: NSViewRepresentable {
                layout.usedRect(for: container).maxX > text.bounds.width + 1 { return true }
             return view.subviews.contains(where: horizontalOverflow)
         }
-    }
-}
-
-/// The Dock owns this action so note scrolling cannot move its bottom seat.
-struct NativeMokuNoteHistoryButton: View {
-    var compact = false
-    var onOpen: () -> Void
-    @Environment(\.locale) private var locale
-
-    private func localize(_ zh: String, _ en: String) -> String {
-        locale.language.languageCode?.identifier == "zh" ? zh : en
-    }
-
-    var body: some View {
-        Button(action: onOpen) {
-            HStack(spacing: 6) {
-                NativeIcon(name: "History", size: 13)
-                if !compact {
-                    Text(localize("Chief 历史", "Chief history"))
-                        .font(.system(size: 12, weight: .medium))
-                        .lineLimit(1)
-                }
-            }
-            .padding(.horizontal, 6)
-            .frame(minWidth: 28, minHeight: 28)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(localize("查看 Chief 历史详情", "View Chief conversation history"))
-        .accessibilityLabel(localize("查看 Chief 历史详情", "View Chief conversation history"))
-        .accessibilityIdentifier("moku-note-history")
     }
 }

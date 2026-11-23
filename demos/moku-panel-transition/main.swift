@@ -85,7 +85,7 @@ private struct Surface: View {
             } else {
                 previewBackdrop
             }
-        } thread: { Color.white } dock: {
+        } dock: {
             dock
         } settings: { EmptyView() }
         .environment(\.locale, Locale(identifier: model.language))
