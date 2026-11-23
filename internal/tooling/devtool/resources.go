@@ -41,6 +41,9 @@ func validatePackagedResources(app string) error {
 	if !info.IsDir() {
 		return fmt.Errorf("packaged UI resources must be an embedded directory")
 	}
+	if _, err = requiredResource(bundle, "ChiefStartupToss.gif", ""); err != nil {
+		return err
+	}
 	shader, err := requiredResource(bundle, "CloudLoading-macosx.metallib", "")
 	if err != nil {
 		return err

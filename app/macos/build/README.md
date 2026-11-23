@@ -210,9 +210,8 @@ Mermaid fences display source code. The built-in [Git card extension](../Sources
 There is no content-renderer subprocess. WKWebView remains available for browser
 and authored HTML document content.
 
-The application icon is generated entirely from geometry defined in this
-repository; see
-[its source, regeneration command and provenance limit](SOURCES.md).
+The application icon and animated startup skillet share the
+[Chief logo artwork](SOURCES.md).
 
 ## Web content networking
 
@@ -240,8 +239,8 @@ HTTP destination.
 
 ## Resource validation
 
-The packaging tool preserves Swift resource bundles, validates fonts and icon
-geometry, checks architecture and dynamic dependencies, and removes nonportable
+The packaging tool preserves Swift resource bundles, checks for the startup GIF, validates
+fonts and icon geometry, checks architecture and dynamic dependencies, and removes nonportable
 SwiftPM rpaths. Release packaging strips the Swift linker's debug map from the
 staged executable before signing. The UI looks up resources relative to the
 installed app or SwiftPM product. The bundle carries the Chief and Go licenses,
