@@ -15,7 +15,7 @@ struct NativeSkeletonLine: View {
     }
 }
 
-/// Shared loading skeleton used by scoped row loading and initial admission.
+/// Loading skeleton for a scoped row inside an existing document.
 public struct NativeThreadLoadingSkeleton: View {
     @Environment(\.locale) private var locale
     @State private var pulse = false

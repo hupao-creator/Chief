@@ -274,7 +274,7 @@ public struct ThreadConversation: View {
                 // A surface placeholder creates NativeThreadOpeningContent,
                 // which mounts another conversation under an identity visit.
                 // Admission must remain a leaf or layout recurses before onChange.
-                NativeReadingPlaceholder(placement: .inline)
+                NativeReadingPlaceholder(placement: .admission)
             } else {
                 readingLayout.nativeReadingScope(interactionScope)
             }
@@ -489,7 +489,7 @@ public struct ThreadConversation: View {
         if executionCard && relatedExecution {
             return AnyView(Text(localize("链接指向的执行不可用。")).nativeReadingContentReady())
         }
-        if executionCard { return AnyView(NativeReadingPlaceholder(placement: .inline)) }
+        if executionCard { return AnyView(NativeReadingPlaceholder(placement: .admission)) }
         return AnyView(ThreadDetailEmptyState().nativeReadingContentReady())
     }
     private func closeHistory() {

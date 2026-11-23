@@ -64,7 +64,7 @@ private struct RuntimeStartupScreen: View {
     var body: some View {
         Group {
             if loading {
-                NativeLoadingMark().frame(maxWidth: .infinity, maxHeight: .infinity)
+                NativeSurfaceLoading()
                     .background(RuntimeLoadingDragRegion())
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(locale.text("正在加载…", "Loading…"))

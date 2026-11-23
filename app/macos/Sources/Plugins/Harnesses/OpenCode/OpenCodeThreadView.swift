@@ -36,7 +36,7 @@ public struct OpenCodeThreadView: View {
                 case .failure(let error):
                     ThreadTranscriptFailure(message: ocLocalized("OpenCode 状态不可用", locale: locale) + " · " + error.localizedDescription)
                 }
-            } else { NativeThreadLoadingIndicator() }
+            } else { NativeHarnessLoadingIndicator(content: context.content) }
         }.task(id: HarnessReadingRequest(input: input, raw: input.thread.sessionState)) {
             if providedState == nil { await stateCache.load(input: input, raw: input.thread.sessionState) }
         }

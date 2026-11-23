@@ -46,10 +46,12 @@ public struct NativeComposerHostFilePicker: View {
                     List(directory.entries) { entry in row(entry) }.nativeControlScrollbars()
                         .listStyle(.plain).disabled(loading)
                     if directory.entries.isEmpty { Text(localized("此目录为空", "This directory is empty")).foregroundStyle(.secondary).padding() }
+                } else if loading {
+                    NativeSurfaceLoading()
                 } else {
                     Spacer()
                 }
-                if loading { ProgressView().frame(maxWidth: .infinity).padding(12) }
+                if loading && directory != nil { ProgressView().frame(maxWidth: .infinity).padding(12) }
                 if directoryLimitReached {
                     Text(localized("目录引用不能超过 50 个；请先移除一个目录。", "You can reference up to 50 directories. Remove one before choosing another."))
                         .font(NativeTypography.inter(size: 12)).foregroundStyle(.secondary).padding(16)

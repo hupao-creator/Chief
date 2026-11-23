@@ -19,8 +19,7 @@ public struct NativeRelatedExecutionEntrance<Content: View>: View {
     public var body: some View {
         ZStack {
             if !admitted {
-                ProgressView().controlSize(.small)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                NativeSurfaceLoading()
             }
             RelatedExecutionFade(admitted: admitted, fades: fades) {
                 content
