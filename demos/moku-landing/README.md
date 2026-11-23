@@ -63,4 +63,4 @@ The reader case also checks that a fresh upward gesture leaves Note closed.
 The camera geometry cases send samples directly to the mounted AppKit monitor.
 Physical trackpad delivery and system fullscreen need separate observation.
 
-The Note swipe replay also routes real window-addressed scroll events through an offscreen workspace with a pending long reminder. Its body scrolls independently, an upward swipe on the exposed canvas opens Note, and only an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
+The Note swipe replay also routes real window-addressed scroll events through an offscreen workspace with a pending long reminder. Two points of the panel remain on the display for WindowServer composition. The replay checks that the reminder viewport stays entirely outside all displays. Its body scrolls independently, an upward swipe on the exposed canvas opens Note, and only an explicit receipt advances the reminder. See `reminder-note-ownership.json`.

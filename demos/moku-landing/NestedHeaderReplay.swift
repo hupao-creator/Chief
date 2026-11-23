@@ -407,7 +407,8 @@ private final class WheelSample: NSEvent {
     /// Exercise both event owners in the same production workspace, entirely offscreen.
     private func reminderSwipe(directory: URL) async throws {
         guard let edge = NSScreen.screens.map({ $0.frame.maxX }).max() else { throw ReplayError("Missing screen") }
-        let frame = CGRect(x: edge + 20, y: 200, width: 900, height: 680)
+        // Keep WindowServer composing the panel while the controls stay offscreen.
+        let frame = CGRect(x: edge - 2, y: 200, width: 900, height: 680)
         let window = ReminderReplayPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -417,7 +418,7 @@ private final class WheelSample: NSEvent {
         window.setFrameOrigin(frame.origin)
         window.makeKeyAndOrderFront(nil)
         defer { window.close() }
-        guard NSScreen.screens.allSatisfy({ !$0.frame.intersects(window.frame) }) else {
+        guard NSScreen.screens.allSatisfy({ window.frame.intersection($0.frame).width <= 2 }) else {
             throw ReplayError("Reminder interaction must run offscreen")
         }
         try await installTasks(18, revision: 1, authority: UUID(), manyDirectories: true)
@@ -445,6 +446,10 @@ private final class WheelSample: NSEvent {
         guard let scroller = messageScroller(in: root) else { throw ReplayError("Missing long reminder viewport") }
         let clip = scroller.contentView
         let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
+        let bodyOnScreen = window.convertToScreen(clip.convert(clip.bounds, to: nil))
+        guard NSScreen.screens.allSatisfy({ !$0.frame.intersects(bodyOnScreen) }) else {
+            throw ReplayError("Reminder viewport must stay outside all screens")
+        }
         let generation = scene.noteOpenGeneration, camera = presentation.canvas.camera.scrollOffset
         try await postScroll(window, point, y: -70, phase: .began)
         try await postScroll(window, point, y: 0, phase: .ended)
