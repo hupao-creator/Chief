@@ -167,6 +167,11 @@ when it exceeds the available height. Within this limit, the best natural fit
 wins, followed by smaller area and width. A column pass includes the exact row
 limit so the next cards can extend to the right. Mixed-span passes consider
 up to 65 strip sizes per orientation and retain up to 64 disjoint openings.
+Within the chosen grid, the solver checks the space between occupied columns
+across the full height of a candidate card. It pulls cards from lower rows
+into these openings, including openings across strip boundaries. It visits
+upper rows first and prefers taller cards, then wider cards that fit. Equal
+footprints keep their existing reading order when competing for an opening.
 Returned placements follow product order. Empty input has no projection.
 Invalid identities, spans, metrics or viewport sizes produce a layout error.
 
@@ -641,6 +646,10 @@ It independently enumerates largest-card regular grids to check the documented
 quality floor within the row limit. Every fourth seed shuffles the six-cell tiling with base spans of
 1–3 columns and 1–2 rows per tile. An independent area and aspect check catches
 empty cells or a poorer orientation even when the regular-grid floor passes.
+Every eighth seed exercises two tall cards, two wide cards and a single cell
+in product order, with column spans scaled by 1–3 and room for 3–6 such
+columns. An independent cell check across the generated layouts rejects
+an internal row gap wide enough for a single-row card below it.
 Empty membership has no camera. No oracle calls the solver's
 placement/fit helpers. Failures shrink membership/spans/viewport while retaining
 the first violation and print seed plus minimized JSON. The generated positive

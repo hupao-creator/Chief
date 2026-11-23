@@ -264,7 +264,54 @@ public enum NativeOverviewLayout {
                 }
             }
         }
-        return best
+        return fillInteriorGaps(in: best)
+    }
+
+    /// A shelf boundary can divide one usable opening, and moving a card
+    /// into it need not improve the bounding box. Look at the actual cards
+    /// once the grid has been chosen. Only pull cards from a lower row.
+    private static func fillInteriorGaps(in placements: [NativeOverviewPlacement]) -> [NativeOverviewPlacement] {
+        var result = placements
+        let readingOrder = placements.indices.sorted {
+            (placements[$0].row, placements[$0].column) < (placements[$1].row, placements[$1].column)
+        }
+        let heights = Set(placements.map(\.rows)).sorted(by: >)
+        let lastRow = placements.map(\.row).max()!
+        var row = 0
+        while row < lastRow {
+            for height in heights {
+                let bottom = row + height
+                let later = readingOrder.reversed().filter { result[$0].rows == height && result[$0].row >= bottom }
+                guard !later.isEmpty else { continue }
+                // Project every obstacle in this height band onto the x axis.
+                // Overlapping projections form a single occupied run.
+                let obstacles = result.filter { $0.row < bottom && $0.row + $0.rows > row }
+                    .sorted { $0.column < $1.column }
+                guard let first = obstacles.first else { continue }
+                var available = Dictionary(grouping: later) { result[$0].columns }
+                let widths = available.keys.sorted(by: >)
+                var column = first.column + first.columns
+                for obstacle in obstacles.dropFirst() {
+                    while column < obstacle.column {
+                        let room = obstacle.column - column
+                        guard let width = widths.first(where: { $0 <= room && available[$0]?.isEmpty == false }),
+                              let index = available[width]?.popLast() else { break }
+                        let card = result[index]
+                        result[index] = .init(member: card.member, column: column, row: row)
+                        column += card.columns
+                    }
+                    column = max(column, obstacle.column + obstacle.columns)
+                }
+            }
+            // New space can open below a moved card. Jump between edges so
+            // work and storage are independent of the numerical grid spans.
+            row = result.reduce(lastRow) { next, card in
+                let bottom = card.row + card.rows
+                if card.row > row { return min(next, card.row) }
+                return bottom > row ? min(next, bottom) : next
+            }
+        }
+        return result
     }
 
     private static func shelfTargets(minimum: Int, maximum: Int) -> [Int] {

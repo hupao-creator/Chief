@@ -17,7 +17,9 @@ At the default 1× camera, the card origins in this layout are x = 92, 428,
 The tag filters and Chief Bar overlay the canvas.
 
 The pure solver returns placements and bounds from one input.
-Mixed spans can fill gaps within horizontal or vertical bands. The four-card
+Cards from lower rows can fill continuous interior gaps across packing bands.
+For example, a 2×1 card can sit beneath another wide card between two tall
+cards while a single card stays in the row below. The four-card
 mix of a wide card, a tall card and two single cells fills a 3×2 or 2×3
 rectangle according to the usable viewport and available rows. Fitting layouts
 remain centered with zero scroll range when their projected width leaves at least
