@@ -4,12 +4,22 @@
 
 [source.go](source.go), [parser.go](parser.go), [identity.go](identity.go) and [policy.go](policy.go) own upstream acquisition, cached evaluation facts, native-model attribution and bounded advisory output. Harnesses provide model catalogs; their model/account facts remain authoritative for execution. Evaluation matching does not choose a different model or grant account availability.
 
-The supported methodologies are Artificial Analysis Intelligence Index v5.0 and [v5.0.1](https://artificialanalysis.ai/methodology/intelligence-benchmarking).
-The public model roster and every detail page must declare the same supported version in their
-embedded evaluation metadata. Missing, conflicting or unsupported versions are
-acquisition failures; their scores and task costs cannot enter the cache.
-The published composite score and cost per task are retained without local
-recalculation. Snapshots and detailed/compact Moku context identify the version.
+The [public model roster](https://artificialanalysis.ai/models/) identifies release pages by
+slug and name. A native catalog match fetches that release once. Its `initialModels`
+comparison contains peers as well as the requested release. Only rows with the
+requested release slug, a configuration slug, a reasoning flag and valid optional
+effort enter that release. Configuration-addressed rosters use the individual
+detail page and match the requested configuration. Display names alone cannot
+establish an effort or a measurement.
+
+A detail page can identify the Intelligence Index version through its chart
+caption, Dataset description or named evaluation metadata. Missing, malformed
+or conflicting declarations leave that page's version unknown. Every measured
+configuration keeps the detail version alongside its published score and cost
+per task. The roster version describes the roster alone. Historical rows take
+their labels from the saved observation. Compare index scores, task costs and
+component grades only for matching known versions. The routing context includes
+v5 weights only for a common v5.0 or v5.0.1 cohort. [AA methodology](https://artificialanalysis.ai/methodology/intelligence-benchmarking)
 
 Version 5.0.1 regrades CritPt v2 with upstream grading robustness improvements.
 The nine v5 evaluations use these source fields. Omniscience contributes two
@@ -32,15 +42,28 @@ Missing/invalid measurements remain null; measured zero remains zero. Legacy
 HLE, Terminal-Bench 2.1, τ³-Banking, FrontierCode 1.1 and CritPt fields are never
 substituted for v5 metrics. Elo is finite but has no proportion bounds.
 
-The strict cache envelope uses `schemaVersion: 2` and
-the exact `intelligenceIndexVersion` (`"5.0"` or `"5.0.1"`). Unsupported envelopes are discarded,
-including their ETags and other catalogs' facts. There is no legacy migration.
-Only verified v5 facts can survive refresh failure or be reused after a 304.
-A version change refreshes every previously cached configuration, including other
-catalogs, without conditional ETags. Publication is atomic across this cohort.
-Any detail failure preserves the previous cache and its version, while confirmed
-404/410 responses remove gone configurations. Supported versions are never mixed.
-Invalid index metadata and roster documents fail acquisition.
+Performance v3 publishes end-to-end output tokens per second at
+`headline.outputSpeed` and seconds to the first **answer** token at
+`headline.timeToFirstAnswerToken`. Routing labels both as headline workload
+averages. The median fields require their own source measurements. Input and
+output prices retain USD per million tokens. [AA performance methodology](https://artificialanalysis.ai/methodology/performance-benchmarking)
+
+The schema-2 cache validates source, timestamps, unique identities, units and
+ranges before publication and on reopen. It stores the roster version, each
+row's version and the version common to all measured rows, if any. An empty
+version represents unknown. A schema-2 cohort with a single historical label
+keeps that label on its rows. An unlabeled cohort stays unknown. Detailed,
+compact and cached routing text label individual rows.
+
+A change between two known roster versions triggers an unconditional refresh
+of the cached releases. A detail failure in this refresh preserves the previous
+snapshot. A successful release response updates the observed configurations
+together. Configurations omitted from a comparison sample keep their original
+observations and labels. A failed request retains the previous rows,
+and HTTP 404/410 removes the requested release or configuration. A configuration
+response of 304 reuses the observation with its saved version only after a
+conditional request. Release-page ETags belong to the entire comparison and
+are never reused on configuration URLs.
 
 Services sharing a cache root share acquisition with reference-counted ownership. Within one methodology version, refresh deadlines and failure backoff belong to each catalog identity set: refreshing one catalog cannot postpone another's stale facts or trigger acquisition of a still-fresh catalog. Equal pending identity sets share one generation, while different generations remain serialized; at most 4096 deadline keys are retained. A warm cache returns immediately while its due generation refreshes in the background.
 
@@ -48,3 +71,13 @@ Collection and cached fallback use the declared 21-second timeout. Unavailable m
 
 Source closure stops pending detail dispatch and joins the active workers.
 Real acquisition failures retain the existing cache fallback and refresh backoff.
+
+## Verification
+
+[PBT-AA-VERSION](../../../../tools/verification/pbt/README.md) varies roster,
+detail and historical labels independently to exercise combinations a single
+public page cannot supply. It checks attribution, nulls, measured zero,
+conditional reuse, compact routing and schema-2 reopen.
+The [public-response replay](../../../../tools/e2e/README.md#aa-evaluation-context)
+exercises the registered before-send slot from a missing cache directory and
+again after the host reopens it.

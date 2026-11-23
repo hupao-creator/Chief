@@ -14,6 +14,8 @@ If Chief says no agents are available, install and sign in to a supported agent 
 
 Use **Task Orchestration Preferences** to guide which models Chief chooses when it assigns tasks. Pick **Economy**, **Balanced**, or **Performance**, or select **Custom** and click the text box below. When the cursor appears, describe what you prefer. The hint disappears as you type. Hover over a choice marked with an info icon to read its description. Chief keeps your custom text if you switch presets. Chief chooses from the agents you've enabled and the models available when it assigns the work.
 
+Chief can use Artificial Analysis measurements for the specific model and reasoning effort it matched. If you ask Chief to compare models, it can compare Intelligence Index scores and cost per task when their published index versions match. A model with an unknown version stays available for assignment.
+
 ## Set up Tag Agent and Super Thread Agent
 
 Use **Auto-Categorization** to set up Tag Agent and **Super Thread** to set up Super Thread Agent. When an agent is available, an illustration on a rounded glass panel plays above the role's settings. In the Super Thread illustration, several documents come together into one page with three diagrams. You can turn either role on independently. Hover over a choice marked with an info icon to see what it does.

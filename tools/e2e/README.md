@@ -23,6 +23,28 @@ A nonactivating panel mounts the ordinary Agent workspace with an isolated conte
 
 The evidence directory contains the revision, platform, source projections, comparison results and images captured from the replay's own windows. Codex samples record changing pixels in the last work summary and its stationary text after the reply begins and after completion. These frames check whether the sweep appears at the right time. Installed CLI transport, real account permissions, database transactions and rendering latency have separate verification boundaries. [Reading contract](../../design/reading.md#content-and-execution-identity) · [Fixtures and launcher](thread-transcript)
 
+## AA evaluation context
+
+Capture the public roster and Astra release HTML, then replay the response bodies
+through the registered Artificial Analysis plugin and the Context host.
+
+```sh
+curl -fLsS https://artificialanalysis.ai/models/ -o /tmp/aa-roster.html
+curl -fLsS https://artificialanalysis.ai/models/gpt-6-2-astra -o /tmp/aa-astra.html
+./scripts/go.sh run ./tools/e2e/aa-context /tmp/aa-roster.html /tmp/aa-astra.html
+```
+
+The [runner](aa-context/main.go) supplies one native catalog identity and starts
+with a missing cache directory. The November 2026 Astra scenario requires one
+index and one release request, five effort rows, published scores, cost, ten
+component measurements, token prices and headline performance. Both median
+measurements must be null. After reopening the host without a catalog, its
+cached fallback must reproduce each measured row. The JSON output includes
+both response digests, requested URLs and the two routing texts. This exercises
+the [evaluation contract](../../internal/plugins/contexts/artificialanalysis/README.md)
+up to the before-send slot. It supplies no evidence of a model's eventual
+routing choice, GUI behavior or live request latency.
+
 ## Current scenario contract
 
 [scenarios.json](scenarios.json) is the executable inventory. IDs remain stable
