@@ -49,6 +49,11 @@ struct NativeMokuCharacterPose {
     private var transitionAt = 0.0
     private var duration = 0.0
     private var runningElapsed = 0.0
+    private var orbitGeometry: NativeMokuRunningGeometry?
+    private var orbitElapsed = 0.0
+    private var orbitVisibility = 0.0
+    private(set) var orbitDots: [MokuRunningFrame.Dot] = []
+    var orbitOpacity: Double { MokuRunningStory.smooth(orbitVisibility) }
     private var lastWall = ProcessInfo.processInfo.systemUptime
     private var replacementAt = -Double.infinity
     private var replacementGlyphs: [MokuReasoningGlyph] = []
@@ -87,14 +92,7 @@ struct NativeMokuCharacterPose {
         let previousPose = previous == nil ? nil : sample(at: clock)
         let previousVelocity = previousPose.map { before in
             let after = sample(at: clock + 0.01)
-            return before.map { key in
-                // The authored palette is quantized to 8-bit channels. Inferring
-                // velocity from a single quantization step magnifies it over the
-                // handoff and can flash a saturated color. Blend color values;
-                // preserve derivatives for geometry and opacity only.
-                if key.hasPrefix("d") && ["r", "g", "b"].contains(String(key.suffix(1))) { return 0 }
-                return (after[key] - before[key]) / 0.01
-            }
+            return before.map { (after[$0] - before[$0]) / 0.01 }
         }
         let wasThinking = previous?.presentsReasoning == true
         let isThinking = next.presentsReasoning && next.reasoning != nil
@@ -115,9 +113,12 @@ struct NativeMokuCharacterPose {
         }
         if next.running, next.immediateOrbit,
            previous?.running != true || previous?.executionKey != next.executionKey {
-            // Direct-send feedback must move immediately, without the authored
-            // three-beat prelude. Pending -> active keeps the same orbit clock.
+            // Direct-send eyes skip the opening three beats of the gaze choreography.
             runningElapsed = MokuRunningStory.beatMS * 1.22
+        }
+        if next.running, previous?.running != true || previous?.capsuleSize != next.capsuleSize
+            || previous?.cornerRadius != next.cornerRadius {
+            orbitGeometry = NativeMokuRunningGeometry(size: next.capsuleSize, cornerRadius: next.cornerRadius)
         }
         input = next
         stationaryTarget = nil
@@ -193,7 +194,7 @@ struct NativeMokuCharacterPose {
             linkView = anchor
             link?.add(to: .main, forMode: .common)
         }
-        let moving = input?.running == true || isTransitioning
+        let moving = input?.running == true || orbitVisibility > 0 || isTransitioning
             || (input?.presentsReasoning == true && reasoningAnimation.needsFrames)
             || retirementPending || (!replacementGlyphs.isEmpty && clock - replacementAt < 220)
         // Sleeping between role changes must not advance the next transition.
@@ -205,7 +206,24 @@ struct NativeMokuCharacterPose {
         guard visible else { visibilityChanged(); return }
         let now = ProcessInfo.processInfo.systemUptime
         let dt = max(0, min(64, (now - lastWall) * 1000)); lastWall = now
+        advanceFrame(milliseconds: dt)
+    }
+
+    func advanceFrame(milliseconds dt: Double) {
         clock += dt
+        if let orbitGeometry {
+            // A reversal retraces the fade from its presented opacity. The
+            // decoration clock belongs to visible ink, even after execution ends.
+            orbitVisibility = MokuRunningStory.clamp(orbitVisibility + (input?.running == true ? dt : -dt) / 550)
+            if input?.running == true || orbitVisibility > 0 {
+                orbitElapsed += dt
+                orbitDots = orbitGeometry.dots(milliseconds: orbitElapsed)
+            } else {
+                orbitElapsed = 0
+                orbitDots = []
+                self.orbitGeometry = nil
+            }
+        }
         if input?.running == true { runningElapsed += dt }
         if input?.presentsReasoning == true { reasoningAnimation.advance(milliseconds: dt) }
         pose = sample(at: clock)
@@ -245,30 +263,17 @@ struct NativeMokuCharacterPose {
         let running = input.running
         if !running, let stationaryTarget { return stationaryTarget }
         let thinking = input.presentsReasoning && input.reasoning != nil
-        let story = NativeMokuRunningGeometry.sample(milliseconds: runningElapsed + (running ? time - clock : 0),
-            capsuleSize: input.capsuleSize, cornerRadius: input.cornerRadius)
+        let gaze = running ? MokuRunningStory.sample(time: (runningElapsed + time - clock) / MokuRunningStory.beatMS).eyes
+            : MokuRunningFrame.Eyes()
         let eyes = NativeMokuCapsuleEyes.resolved(expression: running ? .idle : input.expression, focus: running ? 0 : input.focus)
         var result = NativeMokuCharacterPose(values: ["arcAlpha": thinking ? 1 : 0,
                                                        "arcGather": thinking ? 0 : 1, "arcReveal": thinking ? 1 : 0])
         for (side, eye) in [("l", eyes.left), ("r", eyes.right)] {
-            result[side + "x"] = eye.x + (running ? story.eyes.x * 0.12 / 0.22 : 0)
-            result[side + "y"] = eye.y * (running ? story.eyes.scaleY : 1) + (running ? story.eyes.y * 0.12 / 0.22 : 0)
-            result[side + "w"] = eye.w; result[side + "h"] = eye.h * (running ? story.eyes.scaleY : 1)
+            result[side + "x"] = eye.x + gaze.x * 0.12 / 0.22
+            result[side + "y"] = eye.y * gaze.scaleY + gaze.y * 0.12 / 0.22
+            result[side + "w"] = eye.w; result[side + "h"] = eye.h * gaze.scaleY
             result[side + "r"] = eye.radius; result[side + "a"] = eye.rotation
         }
-        let track = NativeMokuReasoningArcTrack(body: CGRect(x: -input.capsuleSize.width / 2,
-            y: -input.capsuleSize.height / 2, width: input.capsuleSize.width, height: input.capsuleSize.height))
-        for (index, dot) in story.dots.enumerated() {
-            let key = "d\(index)", color = MokuGeometry.colorComponents(dot.color)
-            let seed = track.sample(track.length * (Double(index) + 0.5) / 3).point
-            result[key + "x"] = running ? (dot.x - 320) * 0.075 : thinking ? seed.x : 0
-            result[key + "y"] = running ? (dot.y - 300) * 0.075 : thinking ? seed.y : input.capsuleSize.height / 2 + 5.5
-            result[key + "a"] = running ? dot.opacity : 0
-            result[key + "r"] = color.red; result[key + "g"] = color.green; result[key + "b"] = color.blue
-            result[key + "radius"] = running ? 2.5 : 0.4
-        }
-        // A non-running target depends on the input and frozen run clock, not
-        // the frame timestamp. Preserve its exact handoff geometry and colors.
         if !running { stationaryTarget = result }
         return result
     }
@@ -276,16 +281,14 @@ struct NativeMokuCharacterPose {
     func paintDecorations(in context: CGContext, bounds: CGRect) {
         guard let input else { return }
         context.saveGState(); defer { context.restoreGState() }
-        for index in 0...2 {
-            let key = "d\(index)", opacity = max(0, min(1, pose[key + "a"]))
-            guard opacity > 0.001 else { continue }
-            let radius = max(0, pose[key + "radius"])
-            context.setAlpha(opacity)
-            context.setFillColor(NSColor(srgbRed: max(0, min(1, pose[key + "r"])),
-                green: max(0, min(1, pose[key + "g"])), blue: max(0, min(1, pose[key + "b"])), alpha: 1).cgColor)
-            context.fillEllipse(in: CGRect(x: bounds.midX + pose[key + "x"] - radius,
-                y: bounds.midY + pose[key + "y"] - radius, width: radius * 2, height: radius * 2))
+        context.saveGState()
+        context.setAlpha(orbitOpacity)
+        for dot in orbitDots {
+            context.setFillColor(dot.color.cgColor)
+            context.fillEllipse(in: CGRect(x: bounds.midX + dot.x - 2.5,
+                y: bounds.midY + dot.y - 2.5, width: 5, height: 5))
         }
+        context.restoreGState()
         let size = input.presentsReasoning ? input.capsuleSize : arcSize
         let track = NativeMokuReasoningArcTrack(body: CGRect(x: bounds.midX - size.width / 2,
             y: bounds.midY - size.height / 2, width: size.width, height: size.height))

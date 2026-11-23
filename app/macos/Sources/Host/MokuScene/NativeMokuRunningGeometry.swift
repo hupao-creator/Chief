@@ -1,18 +1,25 @@
 import SwiftUI
 
-/// The persistent character host samples this authored path and owns its clocks
-/// and handoffs.
-enum NativeMokuRunningGeometry {
-    static func sample(milliseconds: Double, capsuleSize: CGSize, cornerRadius: CGFloat) -> MokuRunningFrame {
-        let path = orbitPath(in: capsuleSize, cornerRadius: cornerRadius)
-        return MokuRunningStory.sample(time: milliseconds / MokuRunningStory.beatMS,
-            restingY: 300 + (capsuleSize.height / 2 + 5.5) / 0.075, restingSpacing: 8 / 0.075) { angle in
-            let phase = (angle - .pi / 2) / (2 * .pi)
-            let progress = (phase.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1)
+/// Dot centres in points relative to the centre of the compact capsule.
+struct NativeMokuRunningGeometry {
+    private let path: Path
+    private let size: CGSize
+
+    init(size: CGSize, cornerRadius: CGFloat) {
+        self.size = size
+        path = Self.orbitPath(in: size, cornerRadius: cornerRadius)
+    }
+
+    func dots(milliseconds: Double) -> [MokuRunningFrame.Dot] {
+        let lap = milliseconds / (MokuRunningStory.orbitBeats * MokuRunningStory.beatMS)
+        let palettePhase = milliseconds / (MokuRunningStory.cycleBeats * MokuRunningStory.beatMS)
+        return (0..<3).map { index in
+            let phase = lap + Double(1 - index) * 0.17 / (2 * .pi)
+            let progress = phase - floor(phase)
             let point = path.trimmedPath(from: 0, to: progress).currentPoint
-                ?? CGPoint(x: capsuleSize.width / 2, y: capsuleSize.height + 5.5)
-            return CGPoint(x: 320 + (point.x - capsuleSize.width / 2) / 0.075,
-                           y: 300 + (point.y - capsuleSize.height / 2) / 0.075)
+                ?? CGPoint(x: size.width / 2, y: size.height + 5.5)
+            return .init(x: point.x - size.width / 2, y: point.y - size.height / 2,
+                         opacity: 1, color: MokuRunningStory.color(palettePhase + Double(index) / 3))
         }
     }
 

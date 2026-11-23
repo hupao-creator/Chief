@@ -10,7 +10,7 @@ In a task conversation, the same input box shows the agent's icon and sends to t
 
 When Chief's input is at the bottom of Overview, click outside it or press **Esc** to close it. Your unsent draft is there when you reopen the box.
 
-When the bar is folded, three dots move around it while Chief thinks or uses tools such as updating its note. The animation continues as Chief moves from one tool to the next. If Chief needs your permission or an answer, a request appears above the bar.
+When the bar is folded, three dots fade in and circle its edge while Chief thinks or uses tools such as updating its note. They keep circling as Chief switches tools and fade out when the work ends. If Chief needs your permission or an answer, a request appears above the bar.
 
 To check your OpenCode Go allowance, ask Chief how much of your subscription is left. You can keep your usual default model. After you switch accounts in OpenCode, Chief checks the new account on your next message. If the reading is still pending, ask again after the refresh finishes.
 

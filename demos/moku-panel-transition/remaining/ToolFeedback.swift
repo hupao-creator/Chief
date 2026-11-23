@@ -19,7 +19,7 @@ private struct ToolFeedbackDock: View {
     }
 }
 
-@MainActor func toolFeedbackVisit() async throws {
+@MainActor func toolFeedbackVisit(orbitFade: Bool = false) async throws {
     let directory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     let client = RuntimeClient(profile: try RuntimeProfile(dataDirectory: directory))
     // The replay supplies catalog deliveries in place of a live service.
@@ -29,7 +29,7 @@ private struct ToolFeedbackDock: View {
     workspace.start()
     try await until("Replay workspace connected") { workspace.runtimeAvailable }
     let host = NativeWorkspacePresentation(workspace: workspace)
-    let panel = try Panel(size: .init(width: 820, height: 640))
+    let panel = try Panel(size: .init(width: 820, height: 640), offscreen: orbitFade)
     defer { panel.close() }
     panel.mount(ToolFeedbackDock(host: host))
     let authority = UUID()
@@ -72,10 +72,25 @@ private struct ToolFeedbackDock: View {
                   "Foreground lost the tool name or call ID")
     }
 
+    if orbitFade {
+        try deliver(.completed)
+        try await until("Compact Dock mounted") { host.scene.dockCharacter?.input?.running == false }
+        guard let character = host.scene.dockCharacter else { throw ReplayFailure("Missing Dock character") }
+        try await orbitFadeFrames(panel: panel, character: character) { running, key in
+            executionID = JSONText(key)
+            if running { try tool("update_note", sequence: revision + 1) }
+            else { try deliver(.completed) }
+            try await until("Updated compact expression") {
+                character.input?.running == running && (!running || character.input?.executionKey == host.moku.executionKey)
+            }
+        }
+        return
+    }
+
     try tool("update_note", sequence: 1)
     try await until("First tool shows three dots") {
         guard let character = host.scene.dockCharacter else { return false }
-        return character.input?.running == true && (0..<3).allSatisfy { character.pose["d\($0)a"] > 0.5 }
+        return character.input?.running == true && character.orbitDots.count == 3 && character.orbitOpacity > 0.5
     }
     observed.append("first-tool")
     let character = host.scene.dockCharacter!
@@ -95,7 +110,7 @@ private struct ToolFeedbackDock: View {
     try await continuous("reasoning")
     try deliver(.completed)
     try await until("Completion retires orbit") {
-        character.input?.running == false && host.moku.dockMode == .idle && character.pose["d0a"] == 0
+        character.input?.running == false && host.moku.dockMode == .idle && character.orbitDots.isEmpty
     }
     observed.append("completed")
 
@@ -105,7 +120,7 @@ private struct ToolFeedbackDock: View {
         try await until("Tool running before " + terminal.rawValue) { character.input?.running == true }
         try deliver(terminal)
         try await until(terminal.rawValue + " retires orbit") {
-            character.input?.running == false && host.moku.dockMode == .idle && character.pose["d0a"] == 0
+            character.input?.running == false && host.moku.dockMode == .idle && character.orbitDots.isEmpty
         }
         observed.append(terminal.rawValue)
     }
