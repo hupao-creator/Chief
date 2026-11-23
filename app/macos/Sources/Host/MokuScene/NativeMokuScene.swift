@@ -7,11 +7,21 @@ public struct NativeMokuScene<Outside: View, Dock: View, Settings: View>: View {
     private let dock: Dock
     private let settings: Settings
     private let closeSettings: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var dockMounted: Bool
+    @State private var visibilityGeneration = 0
+    @State private var inkVisible: Bool
+    private var showsDock: Bool { state.dockRouteVisible && (!state.dockCovered || state.settingsOpen) }
+
     public init(state: NativeMokuSceneState, @ViewBuilder outside: () -> Outside,
                 @ViewBuilder dock: () -> Dock,
                 onCloseSettings: (() -> Void)? = nil,
                 @ViewBuilder settings: () -> Settings) {
         self.state = state; self.outside = outside(); self.dock = dock(); self.settings = settings()
+        let visible = state.dockRouteVisible && (!state.dockCovered || state.settingsOpen)
+        _dockMounted = State(initialValue: visible)
+        _inkVisible = State(initialValue: visible)
         self.closeSettings = onCloseSettings ?? { state.closeSettings() }
     }
     public var body: some View {
@@ -28,19 +38,30 @@ public struct NativeMokuScene<Outside: View, Dock: View, Settings: View>: View {
             }
             // One resident instance spans Overview and reading panels. Other
             // application pages and covering routes remain ineligible for the Dock.
-            if !state.dockCovered || state.settingsOpen {
-                Group {
-                    if state.dockRouteVisible {
-                        NativeMokuHorizontalTravel {
-                            dock.environment(\.nativeMokuSettingsContent, AnyView(settings))
-                        }
-                        .transition(.opacity)
+            ZStack {
+                if dockMounted || showsDock {
+                    NativeMokuHorizontalTravel {
+                        dock.environment(\.nativeMokuSettingsContent, AnyView(settings))
                     }
+                    .transition(.identity)
                 }
-                .allowsHitTesting(state.dockRouteVisible)
-                .accessibilityHidden(!state.dockRouteVisible)
-                .disabled(!state.dockRouteVisible)
-                .animation(.smooth(duration: 0.42, extraBounce: 0), value: state.dockRouteVisible)
+            }
+            .opacity(inkVisible ? 1 : 0)
+            .allowsHitTesting(showsDock)
+            .accessibilityHidden(!showsDock)
+            .disabled(!showsDock)
+            .onChange(of: showsDock) { _, visible in
+                // The AppKit host must survive its last visible frame. A return
+                // redirects the same opacity and keeps the mounted editor.
+                if visible { dockMounted = true }
+                visibilityGeneration &+= 1
+                let generation = visibilityGeneration
+                let motion: Animation? = reduceMotion || scenePhase != .active ? nil : .mokuInk
+                withAnimation(motion, completionCriteria: .removed) {
+                    inkVisible = visible
+                } completion: {
+                    if visibilityGeneration == generation && !inkVisible { dockMounted = false }
+                }
             }
         }
         .background { NativeExecutionDockRegion(placement: state.executionDockPlacement, isScene: true) }

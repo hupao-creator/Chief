@@ -84,7 +84,10 @@ struct NativeMokuComposerInput: View {
     let draft: NativeComposerDraft
     var cwd: JSONText = ""
     var disabled = false
-    var submissionPending = false
+    var awaitingContinuation = false
+    // A native Return can arrive on the settlement stack before SwiftUI
+    // refreshes the editor callback. Read the draft's live send barrier.
+    private var submissionPending: Bool { draft.submitting || awaitingContinuation }
     var targetsThread = false
     var sidecardComposer: SidecardComposerRequest?
     var placeholderIcon: AnyView?
@@ -141,27 +144,28 @@ struct NativeMokuComposerInput: View {
             .sheet(item: $hostPicker) { mode in NativeComposerHostFilePicker(draft: draft, mode: mode) }
     }
     private var input: some View {
-        VStack(spacing: 0) {
-            NativeComposerAttachmentChips(attachments: retainedAttachments ?? draft.inputAttachments,
-                directories: retainedDirectories ?? draft.inputDirectories,
+        let attachments = retainedAttachments ?? draft.inputAttachments
+        let directories = retainedDirectories ?? draft.inputDirectories
+        return VStack(spacing: 0) {
+            NativeComposerAttachmentChips(attachments: attachments, directories: directories,
                 containerRadius: NativeMokuCapsuleLayout.cornerRadius,
                 onRemove: { id in Task { await draft.removeAttachment(id) } }, onRemoveDirectory: draft.removeDirectory)
                 .disabled(actionsUnavailable || readOnly)
+                .mokuInk(value: attachments.map(\.id))
+                .mokuInk(value: attachments.map(\.pending))
+                .mokuInk(value: directories.map(\.path))
             NativeMokuComposerRowLayout(compact: compact) {
                 eyeSeat
-                if let sidecardComposer {
-                    Button(action: sidecardComposer.cancel) {
-                        NativeIcon(name: "X", size: 16).frame(width: 28, height: 32).contentShape(Rectangle())
-                    }.buttonStyle(.plain)
-                        .help(localize("取消标注", "Cancel annotation"))
-                        .accessibilityLabel(localize("取消标注", "Cancel annotation"))
-                        .accessibilityIdentifier("moku-cancel-annotation")
-                } else { attachmentButton }
+                attachmentButton
                 editor
                 HStack(spacing: 0) { actions }
             }.padding(.leading, 6).padding(.trailing, Self.actionTrailingInset)
                 .onGeometryChange(for: CGFloat.self) { compact ? 34 : $0.size.height } action: { editorRowHeight = $0 }
-            footer.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
+            footer
+                .mokuInk(value: draft.interruptedInput != nil)
+                .mokuInk(value: draft.cleanupReceipt != nil && !draft.submitting)
+                .mokuInk(value: draft.error != nil)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
         }.foregroundStyle(.primary).disabled(editingUnavailable || readOnly)
             // Sizes are local to the row. Resolving an editor anchor through
             // an animating ancestor also includes its transient translation,
@@ -261,51 +265,73 @@ struct NativeMokuComposerInput: View {
             : localize("输入内容将发送给 Chief", "Input is sent to Chief")
     }
     @ViewBuilder private var actions: some View {
-        if overviewAction == nil && running && !targetsThread { stopButton }
+        if overviewAction == nil && running && !targetsThread {
+            stopMark.frame(width: 32, height: 32).accessibilityHidden(true)
+                .overlay { stopButton }
+        }
         // The ordinary Overview Dock carries Stop through the fold. Its hit
         // target occupies this same seat when the editor is open.
+        let send = overviewAction == .send || (overviewAction == nil && hasInput)
+        let stop = !send && (overviewAction == .stop || (overviewAction == nil && running && targetsThread))
+        let enabled = !actionsUnavailable && draft.canSubmit && !readOnly && (sidecardComposer?.ready ?? true)
         ZStack {
-            if overviewAction == .send || (overviewAction == nil && hasInput) {
+            NativeIcon(name: "ArrowUp", size: 16).frame(width: 32, height: 32)
+                .background(Color.primary.opacity(0.18), in: Circle())
+                .opacity(send ? (enabled ? 1 : 0.3) : 0)
+                .mokuInk(value: send)
+                .mokuInk(value: enabled)
+            stopMark.opacity(stop ? 1 : 0).mokuInk(value: stop)
+        }
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
+        .frame(width: 32, height: 32)
+        .overlay {
+            if send {
                 let label = sidecardComposer == nil ? localize("发送", "Send") : localize("发送批注", "Send annotation")
-                NativeIcon(name: "ArrowUp", size: 16).frame(width: 32, height: 32)
-                    .background(Color.primary.opacity(0.18), in: Circle())
-                    .accessibilityHidden(true)
-                    .overlay {
-                        NativeMokuSendButton(draft: draft, label: label, send: onSend)
-                            .disabled(actionsUnavailable || !draft.canSubmit || readOnly || !(sidecardComposer?.ready ?? true))
-                    }
-                    .opacity(!actionsUnavailable && draft.canSubmit && (sidecardComposer?.ready ?? true) ? 1 : 0.3)
-            } else if overviewAction == .stop || (overviewAction == nil && running && targetsThread) {
-                stopButton
+                NativeMokuSendButton(draft: draft, label: label, send: onSend)
+                    .disabled(!enabled)
+                    .transition(.identity)
+            } else if stop {
+                stopButton.transition(.identity)
             }
-        }.frame(width: 32, height: 32)
+        }
+    }
+    private var stopMark: some View {
+        RoundedRectangle(cornerRadius: 1).fill(.foreground).frame(width: 10, height: 10)
     }
     private var stopButton: some View {
         Button(action: onCancel) {
-            RoundedRectangle(cornerRadius: 1).fill(.foreground).frame(width: 10, height: 10)
-                .frame(width: 32, height: 32).contentShape(Circle())
+            Color.clear.frame(width: 32, height: 32).contentShape(Circle())
         }.buttonStyle(.plain).disabled(actionsUnavailable || readOnly)
             .help(stopLabel)
             .accessibilityLabel(stopLabel)
             .accessibilityIdentifier("moku-stop")
     }
     private var attachmentButton: some View {
-        Button(action: chooseDeviceItems) {
-            Image(systemName: "plus")
-                .font(.system(size: 14, weight: .medium))
-                .frame(width: 28, height: 32).contentShape(Rectangle())
+        let annotating = sidecardComposer != nil
+        let label = annotating ? localize("取消标注", "Cancel annotation") : localize("添加文件或文件夹", "Add files or folders")
+        return Button {
+            if let sidecardComposer { sidecardComposer.cancel() }
+            else { chooseDeviceItems() }
+        } label: {
+            ZStack {
+                Image(systemName: "plus").font(.system(size: 14, weight: .medium))
+                    .opacity(annotating ? 0 : 1)
+                NativeIcon(name: "X", size: 16).opacity(annotating ? 1 : 0)
+            }.frame(width: 28, height: 32).contentShape(Rectangle())
+                .mokuInk(value: annotating)
         }
         .buttonStyle(.plain)
         .contextMenu {
-            if draft.supportsHostFiles {
+            if !annotating && draft.supportsHostFiles {
                 Button(localize("从主机选择文件", "Choose host files")) { hostPicker = .files }
                 Button(localize("从主机选择目录", "Choose a host directory")) { hostPicker = .directory }
             }
         }
-        .disabled(actionsUnavailable || draft.importing || readOnly)
-        .help(localize("添加文件或文件夹", "Add files or folders"))
-        .accessibilityLabel(localize("添加文件或文件夹", "Add files or folders"))
-        .accessibilityIdentifier("moku-add-attachment")
+        .disabled(!annotating && (actionsUnavailable || draft.importing || readOnly))
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(annotating ? "moku-cancel-annotation" : "moku-add-attachment")
     }
     private func chooseDeviceItems() {
         Task.immediate { await draft.chooseItems(cwd: cwd) }

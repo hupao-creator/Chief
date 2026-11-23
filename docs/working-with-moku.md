@@ -47,7 +47,7 @@ After a successful removal, the checkout folder is gone. The task conversation s
 ## Find Chief's replies and notes
 
 - **Replies.** A direct reply appears where you typed your request. You can select the text and scroll through a longer reply. The reply closes on its own, so ask Chief to put anything you want to keep in its note.
-- **Task updates.** A dispatch message tells you that Chief handed off your request. Open the task card in Overview to see how the work is going.
+- **Task updates.** Watch the bar for **Dispatching task**. **Thread started** means the task is ready to open. If the handoff fails, the bar shows **Dispatch failed**. Open the task card in Overview to see how the work is going.
 - **Notes.** In Overview, press **⌘⇧N** to open **Chief Note**. With the input box closed, you can also swipe up with two fingers anywhere in Overview, including over a card, a tag, or Chief Bar. Click the eyes centered below the note to start a message, or click a run’s link to read it. The note closes. Overview keeps your selected filter and scroll position. If the conversation belongs to exactly one Super Thread, its card opens with the run you clicked in **Related executions**. If its collection is visible, it turns to that Super Thread’s page first. Other links open the cited run in the task conversation. In both readers, you start at the top of the run. Click the **×** at the top left of the reader or press **⌘K** to return to Overview with the note closed. To resume the note from a task conversation, press **Esc** in the run you opened. In a Super Thread, you can use **Back to related executions** to browse other runs before closing the report. To reopen the note from Overview, press **⌘⇧N**.
 
 ## Stop work or acknowledge an alert

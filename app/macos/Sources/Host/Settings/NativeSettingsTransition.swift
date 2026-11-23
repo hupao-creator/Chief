@@ -10,6 +10,7 @@ extension EnvironmentValues {
 struct NativeSettingsTransition: ViewModifier {
     let state: NativeMokuSceneState
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var generation = 0
     @State private var preparation: Task<Void, Never>?
 
@@ -21,10 +22,11 @@ struct NativeSettingsTransition: ViewModifier {
                 settle()
             }
             .onChange(of: state.settingsTransitionRequest) { _, _ in
-                if !state.settingsOpen || scenePhase != .active { settle() }
+                if !state.settingsOpen || reduceMotion || scenePhase != .active { settle() }
                 else { animate() }
             }
             .onChange(of: scenePhase) { _, phase in if phase != .active { settle() } }
+            .onChange(of: reduceMotion) { _, reduced in if reduced { settle() } }
             .onDisappear {
                 settle()
                 state.settingsSettle = nil

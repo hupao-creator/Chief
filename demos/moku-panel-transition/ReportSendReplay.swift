@@ -24,7 +24,7 @@ private struct ReportSendSurface: View {
                     .onPreferenceChange(NativeReportExecutionInputKey.self) { input in
                         presentation.updateReportExecution(input?.reference, ready: input?.ready == true, onBack: nil, route: route)
                     }
-                NativeMokuComposerInput(draft: presentation.dockDraft, submissionPending: presentation.dockDraft.submitting || presentation.awaitingExecutionContinuation, targetsThread: true,
+                NativeMokuComposerInput(draft: presentation.dockDraft, awaitingContinuation: presentation.awaitingExecutionContinuation, targetsThread: true,
                     automaticFocus: false, running: presentation.dockThread?.cancellationID != nil, onSend: onSend)
                     .frame(width: 600)
                     .background(.background)

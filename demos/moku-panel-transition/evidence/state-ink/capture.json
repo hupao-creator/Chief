@@ -1,0 +1,54 @@
+{
+  "revision": "b35c8f197fb41e87a1a1ef2a83a87fc5ad1d6ffd",
+  "productSourceTree": "df1f1cc5ec227ab0d25322338eba7b907f7ae272",
+  "collectorFiles": {
+    "demos/moku-panel-transition/main.swift": "6299c32261e317cba58d70cb9f5938aebc378cb0bac320dc5a50c97e639ab371",
+    "demos/moku-panel-transition/CollapseCapture.swift": "0634c34aedd96904d66293be73fde1c9e9a5675c60a67b5d065cbb7997c00c49",
+    "demos/moku-panel-transition/check_control_ink.py": "06e95c7826d3ddc9746dda202a9f0964650f1233adf923bf653fb2d6dba43993",
+    "demos/moku-panel-transition/check_overview.py": "2c5045816ac736b28bdd57c4962f9751376741c46be485a6b8e46aab991ebff9",
+    "demos/moku-panel-transition/check_frames.py": "f31ef937db92a555cbafcad3b573a5191e99cbcd2257cc8b77c3f459c78f5d55"
+  },
+  "build": {
+    "diffSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "productSHA256": "07a068e54e89e732283c0229462c81641163f520ec7e1112fa90d9b9b8bf4375",
+    "replaySHA256": "ccbf8a15d07f887bdd3a94e2f25ca35278b5923afd2f53aad262a6a2f206f563",
+    "OS": "26.5.1",
+    "build": "25F80"
+  },
+  "mountedVisits": {
+    "revision": "b35c8f197fb41e87a1a1ef2a83a87fc5ad1d6ffd",
+    "baseline": "9b61af09226e12e0c414273cf077154815e01e0a",
+    "os": "26.5.1",
+    "osBuild": "25F80",
+    "architecture": "arm64",
+    "sdk": "26.5",
+    "sourceDiffSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "executableSHA256": "9fdfb9c443484bc47cfd29745befd9b4aef62ef6de36219d35cc08f54dfc2dcb",
+    "collector": {
+      "Eyes.swift": "2e94057fdb5cc0b4ea16541b68b3b6ae637a737fbd2d519e9c9567fe199a013c",
+      "OrbitFade.swift": "8984c9b350eb1153a970fa3ca0e3a4c5d319290b00d3077f486873fd4c547554",
+      "Replay.swift": "a9c86fe33b9f5bd541c9e49c9ff4ac3f5b48b3c38aef071c5b73f9226bcd959d",
+      "Routes.swift": "ac48e482380b9dea3390bed2d358d5c77b878eba23d245c6bb8878b2dfe9dd7c",
+      "TagUnread.swift": "110b4b7151e2167f4aa7164fb9008a79c912364d03e903dace8e7c39c45d4263",
+      "ToolFeedback.swift": "a61d0efe3fdbe20a82b82d4d9860dc3f1cac5e5c554deb242cf75e48f9f5f80a",
+      "ReplayButtons.swift": "6392c91559205d98b0e69149f3750c85c75aa58aa0daae89a444dc81a25ce737",
+      "ReferenceNativeMokuCapsuleBlink.swift": "de5a119c95c3cf7e671f3b8089f2b9171415c69c1639b872540d7aeba4f6ee65",
+      "ReferenceNativeMokuRunningGeometry.swift": "3981ead17868505ca041a7edd04da5e7ce7c378630db9d2379760bc11f5acfb2",
+      "ReferenceNativeMokuCharacterMotion.swift": "046728bf637bf6c2577c9763e63850645f59fafa8d94871a52081d1e34466d7b",
+      "run.py": "9d78fd3bb96ba8d0f8e1a1d19bc1f4328685f5a7b6b9fcc583268dfb7745e287"
+    }
+  },
+  "artifacts": {
+    "normal/contact.png": "d6b977402a7bdfe565281d2fc9187be11b95b375f839975286ec590b31866781",
+    "normal/observations.json": "2e996a087b9e9d4242929b74793e9789791becdadae3a1f22c2bbdb98f87ce63",
+    "normal/window.mp4": "1a29c8d382a6bc870f52ce64ca8d0b8543a7831b15e736d3f91f33b0cbdc9c79",
+    "observations.json.gz": "4b0f4f174e7bd3f51b79ffcde97ee84e8ee642c9cfb0c9c10a992cca4e979313",
+    "overview/blink.png": "f7a071c82527914836bd3929e280481a416be277d5ea83d738535820a193e024",
+    "overview/observations.json": "0c5016eb8a604e5f29ba28439fc2f4dd8e515527bbd1d096445348ae2639ab66",
+    "overview/stop.png": "d63d51780c634288de503cef40e6d58d71d94eb6db1e86c95c6d1511c2cb3be9",
+    "overview/window.mp4": "fee4d0688446d5c1a551ee28a6bf4a0ba7c82cb056910bfee442f84f21ea13d2",
+    "reduced/observations.json": "f9d23a8c7e11bd6d822de1b19313a83d803826cb962e511517e7b8ca2cdc061b",
+    "reduced/window.mp4": "879abda52f670a43c2a40dea275804b1f6c94d5da0b52bc1691d3f0983559fcf",
+    "route-contact.jpg": "100951f318870a47218775c76a2bbd3c9106c6c063c3c39876b6e1aaf52229c8"
+  }
+}

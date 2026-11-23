@@ -18,9 +18,12 @@ struct NativeMokuTimerBar: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 3) {
                     Label(caption, systemImage: "bell.fill")
+                        .contentTransition(.opacity).mokuInk(value: timer.pending.count)
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(Color(red: 1, green: 0.82, blue: 0.54))
-                    messageContent.id(message.id)
+                    ZStack(alignment: .leading) {
+                        messageContent.id(message.id).transition(.opacity)
+                    }.mokuInk(value: message.id)
                 }
                 NativeMokuTimerReceiptButton(title: localize("已收到", "Received")) {
                     timer.acknowledge(id: message.id)
@@ -33,6 +36,7 @@ struct NativeMokuTimerBar: View {
                 }
             }
         }
+        .mokuInk(value: timer.audioError != nil)
         .foregroundStyle(.white)
         .padding(.horizontal, 18).padding(.vertical, 11)
         .background {
