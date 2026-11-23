@@ -196,19 +196,19 @@ Durable input events verify which Threads received the prompt. See the
 [property inventory](../../../tools/verification/pbt/README.md) for the domain
 and evidence controls.
 
-## System prompt budget and injection boundary
+## System prompt and injection boundary
 
 [DefaultSystemPrompt](prompt.go) names the assistant Chief and covers
 coordination, invisible assistant replies and the distinction between information
-for Moku itself and information needed by delegated Agent Threads. Count the
-complete built-in string by sentence-ending periods, not Go string literals or
-lines; it has no abbreviations, URLs or embedded periods.
+for Moku itself and information needed by delegated Agent Threads. It describes
+when a Talk message expires, what belongs in the persistent note, and how to
+direct the user to a Thread for a detailed answer.
 [Coordinator preparation](coordinator.go) injects that string as its only built-in
 `Injection.Instructions` entry, independently of the number of target Harnesses.
 `DescribeThreadCreation` supplies tool schemas, not an additional instruction
 block or prose target roster. Tool schemas and context remain separate instruction/data boundaries.
 
-The three-sentence budget is **not a cap on the provider's entire model input**:
+The provider also receives configuration, context and tool definitions.
 
 - In omitted/custom mode, saved `Moku.RoutingGuidance` is appended verbatim as
   user configuration after the built-in prompt and has no sentence cap within its existing settings
@@ -217,7 +217,6 @@ The three-sentence budget is **not a cap on the provider's entire model input**:
 - Existing tool descriptions and schemas retain their full contracts: exact
   native options and catalog status, routing, worktree naming, Talk/Timer
   limits, note evidence and compare-and-swap rules, and bounded Thread queries.
-  Their size is independent of the three-sentence base-prompt budget.
 - `ContextEntries` contain session-start workspace context and before-send note,
   directory, telemetry, evaluation and notification context, including runtime
   interpretation/safety guidance and variable user or native text; they have
@@ -226,14 +225,12 @@ The three-sentence budget is **not a cap on the provider's entire model input**:
   Codex `composeInstructions`, Claude `systemPrompt`, Pi `bridgeConfig` and
   OpenCode `Configure` compose it with context and, where needed, historical
   seeds or restoration guidance. Depending on the adapter, subsequent context
-  travels in messages or native system configuration, so even without routing
-  guidance the complete native system/developer payload can exceed three sentences.
+  travels in messages or native system configuration.
 - Native engines/providers may supply their own system instructions, workspace
-  instructions or session history outside this Moku coordinator budget.
+  instructions or session history alongside the coordinator instructions.
 
 Talk/Timer limits, Note evidence, native options and worktree naming live in
-their tool contracts. The three-sentence base prompt does not duplicate those
-contracts. Native session preparation injects current guidance; stored native
+their tool contracts. Native session preparation injects current guidance; stored native
 history retains its original messages.
 
 ## Talk and notes
@@ -246,7 +243,7 @@ immediate answers, questions, confirmations and updates; the note for persistent
 milestone recaps; and the relevant Agent Thread for detailed task discussion and
 deliverables.
 
-`talk` accepts only nonblank `text`, without NUL, up to **160 Unicode code points**, including whitespace/newlines. Rejection does not truncate or overwrite a successful message. The UI derives display identity from the audited operation, not from arbitrary model prose. Code-point budgets are independent from the UI's four-line reading viewport. Each Talk message bubble is visible to the user for about one minute and automatically hides after 60 seconds. [prompt.go](prompt.go)'s shared `TalkTextPolicy` supplies this visibility guidance to the registered tool and parameter descriptions, the built-in Moku prompt does not duplicate that policy. Use `update_note` for the persistent milestone recap; Talk messages are not copied into the note.
+`talk` accepts only nonblank `text`, without NUL, up to **160 Unicode code points**, including whitespace/newlines. Rejection does not truncate or overwrite a successful message. The UI derives display identity from the audited operation, not from arbitrary model prose. Code-point budgets are independent from the UI's four-line reading viewport. Each Talk message bubble is visible to the user for about one minute and automatically hides after 60 seconds. [prompt.go](prompt.go)'s shared `TalkTextPolicy` supplies this visibility guidance to the registered tool and parameter descriptions. Use `update_note` for the persistent milestone recap; Talk messages are not copied into the note.
 
 `timer(text)` is an immediate, one-time communication tool alongside `talk`.
 It uses the same closed text-only envelope, **160 Unicode code-point** budget,
@@ -444,10 +441,7 @@ uses the existing `routingGuidance` unchanged. Explicit custom is persisted even
 when empty; without a preset or manual text the balanced base policy applies.
 Presets never overwrite the user's
 retained manual text or Moku's own execution model. Economy prioritizes
-cost-effective models; balanced adds no routing guidance, retaining only the
-already-injected three-sentence base prompt and existing tool contracts, as the
-default did before routing presets. It neither duplicates the base prompt nor
-injects retained custom text. Performance prioritizes frontier capabilities even
+cost-effective models; balanced adds no routing guidance. Performance prioritizes frontier capabilities even
 for routine tasks. These are general priorities, with
 no fixed model mapping, candidate groups or preset-specific admission restrictions.
 Native creation schemas and admission still own available model choices.
