@@ -3,7 +3,8 @@ import ChiefPluginAPI
 
 /// Evidence belongs to the report, including foreground visits through a unique source Thread.
 public struct ApplicationCollectionReading: Codable, Equatable, Sendable {
-    static let idleInterval: TimeInterval = 86_400
+    static let idleInterval: TimeInterval = 30 * 60
+    static let revisitInterval: TimeInterval = 24 * 60 * 60
     public var lastClosedAt: Double?
     var lastQualifiedAt: Double?
     var lastForegroundClose: Double?
@@ -20,7 +21,7 @@ public struct ApplicationCollectionReading: Codable, Equatable, Sendable {
     }
 
     func visitThreshold(estimate: TimeInterval, openedAt: Double) -> TimeInterval {
-        let repeated = lastForegroundClose.map { openedAt >= $0 && openedAt - $0 < Self.idleInterval } ?? false
+        let repeated = lastForegroundClose.map { openedAt >= $0 && openedAt - $0 < Self.revisitInterval } ?? false
         return repeated ? 0 : Self.threshold(estimate)
     }
 

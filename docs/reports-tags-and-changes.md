@@ -24,6 +24,8 @@ To browse all members, click the page count in the upper-right corner of the col
 
 Click the reader’s upper-left arrow, **Back to Super Thread Collection**, to return to your place in the grid. You can read another member from there. The grid’s **Close** button stays in the upper-left corner as you scroll. In a narrow panel, the cards form one column below it. Click **Close** or press **Esc** in the grid to return to Overview. Any regrouping caused by reading those members takes effect when you close the grid.
 
+When you return to Overview, two or more Super Threads in your current view can share a collection once each has been idle for 30 minutes. The time starts when you close a report, or when it was created if you have never opened it.
+
 After a quick look at a Super Thread, its cover stays selected if it is still in the collection. Spending time reading a Super Thread or its source conversations, or returning to it within a day, gives it a better chance of appearing as an individual card. A Super Thread grouped to make room reappears on its own when the cards fit, including after you resize the window or archive another card.
 
 ## Archive a Super Thread

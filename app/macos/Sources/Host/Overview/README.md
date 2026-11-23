@@ -422,7 +422,7 @@ as the return page while it remains grouped. The [Note link contract](../MokuSce
 covers dismissal and navigation back to the Note.
 
 The [profile-local reading record](NativeOverviewCollectionReading.swift) determines
-default membership across views. At **24 hours** from the end of the last visit
+default membership across views. At **30 minutes** from the end of the last visit
 (or creation for an unvisited report), a report defaults to collection. Overview
 samples age on presentation and space changes. Idle time alone does not schedule a
 live canvas move. Two idle reports can share a collection even in a spacious window. A
