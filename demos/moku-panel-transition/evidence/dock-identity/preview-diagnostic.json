@@ -1,0 +1,1373 @@
+{
+  "events" : [
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "idle",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 0,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 4.3041999999999999e-05,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "shortcut-reopen",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 0.56214362500000004,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "a",
+      "covered" : false,
+      "editorSelection" : [
+        "{1, 0}"
+      ],
+      "editorText" : [
+        "a"
+      ],
+      "event" : "shortcut-first-key",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 0.71250645800000001,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "shortcut-focus-released",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 1.394915167,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "agent-enter-0",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 1,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 2.0678515829999999,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-expanding-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 2,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 3.5428652500000002,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-open-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 3,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 6.4442924999999995,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-close-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 4,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 6.5514252500000003,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "overview-closed-0",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 8.2138952500000002,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "agent-enter-1",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 5,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 8.2139991250000008,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-expanding-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 6,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 9.7066704999999995,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-open-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 7,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 12.549253,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-close-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 8,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 12.650532999999999,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "overview-closed-1",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 14.32229375,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "interrupted-open",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 9,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 14.322400667,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "interrupted-close",
+      "inputLeaving" : true,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 10,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 14.407959,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "interrupted-reopen",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "phase" : 11,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 14.490897083,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "interrupted-settled",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 15.183888,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "overview-edit",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "phase" : 12,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 15.184090041999999,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "cao",
+      "covered" : false,
+      "editorSelection" : [
+        "{3, 0}"
+      ],
+      "editorText" : [
+        "cao"
+      ],
+      "event" : "marked-text",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 15.287379791999999,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{3, 2}"
+      ],
+      "editorText" : [
+        "草稿 🦉 stays in Overview.\nThe second line stays too."
+      ],
+      "event" : "draft-open",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 15.292635541999999,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{3, 2}"
+      ],
+      "editorText" : [
+        "草稿 🦉 stays in Overview.\nThe second line stays too."
+      ],
+      "event" : "draft-close",
+      "inputLeaving" : true,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 13,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 15.292805333,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{3, 0}"
+      ],
+      "editorText" : [
+        "cao"
+      ],
+      "event" : "draft-leaving",
+      "inputLeaving" : true,
+      "inputOpen" : false,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 15.380189292000001,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{3, 0}"
+      ],
+      "editorText" : [
+        "cao"
+      ],
+      "event" : "draft-reopen",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "phase" : 14,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 15.380428125,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{3, 2}"
+      ],
+      "editorText" : [
+        "草稿 🦉 stays in Overview.\nThe second line stays too."
+      ],
+      "event" : "draft-reopened",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 16.067921999999999,
+      "shellHeight" : 78,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{3, 2}"
+      ],
+      "editorText" : [
+        "草稿 🦉 stays in Overview.\nThe second line stays too."
+      ],
+      "event" : "before-publish-talk",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 16.068124333,
+      "shellHeight" : 78,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{3, 2}"
+      ],
+      "editorText" : [
+        "草稿 🦉 stays in Overview.\nThe second line stays too."
+      ],
+      "event" : "after-publish-talk",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 16.191001917000001,
+      "shellHeight" : 78,
+      "shellWidth" : 560,
+      "talkMessage" : "Moku reply stays readable after closing input.",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{3, 2}"
+      ],
+      "editorText" : [
+        "草稿 🦉 stays in Overview.\nThe second line stays too."
+      ],
+      "event" : "close-to-talk",
+      "inputLeaving" : true,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 15,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 16.191224458000001,
+      "shellHeight" : 78,
+      "shellWidth" : 560,
+      "talkMessage" : "Moku reply stays readable after closing input.",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "talk-visible",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 16.880421500000001,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "Moku reply stays readable after closing input.",
+      "talkPresented" : true,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "realtime-enter-0",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 16,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 16.880575917000002,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "Moku reply stays readable after closing input.",
+      "talkPresented" : true,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "realtime-expanding-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 17,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 18.340384,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "realtime-open-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 18,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 18.918062041999999,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "realtime-close-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 19,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 19.025131708,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "realtime-idle-0",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 20.660643541999999,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "realtime-enter-1",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 20,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 20.660756249999999,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "realtime-expanding-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 21,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 22.106681500000001,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "realtime-open-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 22,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 22.687076542,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "realtime-close-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 23,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 22.794137708000001,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "realtime-idle-1",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 24.459137250000001,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "center-enter-0",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 24,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 24.459302957999999,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "center-expanding-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 25,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 25.389690874999999,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "center-open-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 26,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 26.055730832999998,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "center-close-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 27,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 26.162782249999999,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "center-enter-1",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 28,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 27.328466542000001,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "center-expanding-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 29,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 28.258744624999999,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "center-busy-opening",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 30,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 28.384668083000001,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "center-busy-opening-released",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 31,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 28.51024275,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "center-open-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 32,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 29.144504957999999,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "center-close-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 33,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 29.248551875,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "center-busy-folding",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 34,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 29.382389207999999,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "center-busy-folding-released",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 35,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 29.506308167,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "interrupt-horizontal-visit",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 36,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 30.649107292,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "interrupt-horizontal-close",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 37,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 32.690546417,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "interrupt-horizontal-reopen",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 38,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 33.314740624999999,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "interrupt-vertical-visit",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 39,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 37.068295917,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "interrupt-vertical-close",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 40,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 39.111869833,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "interrupt-vertical-reopen",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 41,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 40.215368333000001,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "explicit-enter",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "overview" : true,
+      "phase" : 42,
+      "physicallyVisible" : true,
+      "reading" : false,
+      "seconds" : 44.025334333000004,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "explicit-compose",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 43,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 45.475717416999998,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    },
+    {
+      "actualDraft" : "草稿 🦉 stays in Overview.\nThe second line stays too.",
+      "covered" : false,
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "explicit-settled",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "overview" : false,
+      "phase" : 44,
+      "physicallyVisible" : true,
+      "reading" : true,
+      "seconds" : 46.057080708000001,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkMessage" : "absent",
+      "talkPresented" : false,
+      "windowVisible" : true
+    }
+  ],
+  "failure" : null,
+  "foregroundUnchanged" : true,
+  "geometrySecondsPerStep" : 0.10000000000000001,
+  "geometrySourceFPS" : 60
+}

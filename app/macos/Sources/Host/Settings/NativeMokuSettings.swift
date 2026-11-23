@@ -160,8 +160,7 @@ import SwiftUI
     @ViewBuilder private var coordinationContent: some View {
         if rosterPending {
             rosterStatus {
-                NativeSettingsNotice(message: locale.text("正在读取 Agent 配置…", "Loading Agent configuration…"),
-                    leading: AnyView(ProgressView().controlSize(.small)))
+                NativeSettingsNotice.loading(locale.text("正在读取 Agent 配置…", "Loading Agent configuration…"))
             }.frame(maxWidth: formWidth, alignment: .leading)
         } else if !rosterReady || pickable.isEmpty {
             rosterStatus {

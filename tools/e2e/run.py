@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run bounded real-boundary journeys and retain an auditable receipt."""
 import argparse
+from contextlib import ExitStack
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools/benchmarks"))
 sys.path.insert(0, str(ROOT / "tools/native-interaction"))
 from adapter import wait_for
+from gate.runner import lease as performance_lease
 from reading.public import content, verify_reply
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -26,6 +28,7 @@ from build import validate
 from peer import digest
 from lease import DesktopLease
 import collection
+import onboarding
 import operator_input
 from report import save, sha256, finish, verify
 
@@ -46,11 +49,12 @@ def source_identity():
     def git(*args):
         return subprocess.check_output(["git", "-C", str(ROOT), *args], text=True, timeout=15).strip()
     paths = list((ROOT / "tools/e2e").glob("*.py")) + [ROOT / path for path in (
-        "tools/e2e/scenarios.json", "tools/benchmarks/adapter.py", "tools/benchmarks/provider.py",
+        "tools/e2e/scenarios.json", "tools/e2e/onboarding.swift", "tools/benchmarks/adapter.py",
+        "tools/benchmarks/gate/runner.py", "tools/benchmarks/provider.py",
         "tools/benchmarks/reading/public.py", "tools/native-interaction/client.py",
         "tools/e2e/README.md", ".github/workflows/e2e.yml",
         "app/macos/Sources/Host/Interaction/README.md", "app/macos/Sources/Host/Settings/README.md",
-        "app/macos/Sources/Host/Overview/README.md",
+        "app/macos/Sources/Host/Overview/README.md", "app/macos/Sources/Host/Onboarding/README.md",
         "internal/services/moku/README.md", "internal/core/runtime/README.md",
         "app/macos/Sources/Host/MokuScene/README.md", "app/macos/Sources/Host/Overview/README.md")]
     return {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain")),
@@ -90,9 +94,10 @@ def run(args):
     output = args.output.resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     specs = json.loads((Path(__file__).parent / "scenarios.json").read_text())["scenarios"]
-    suites = {"supported": {"E2E-OVERVIEW-002", "E2E-READ-001", "E2E-SETTINGS-001"}, "composer": {"E2E-COMPOSER-001"},
-              "collection": {"E2E-OVERVIEW-002", "E2E-COLLECTION-001"}}
-    specs = [s for s in specs if args.suite == "all" or s["id"] in suites[args.suite]]
+    suites = {"supported": {"E2E-CHIEF-001", "E2E-OVERVIEW-002", "E2E-READ-001", "E2E-SETTINGS-001"}, "composer": {"E2E-COMPOSER-001"},
+              "collection": {"E2E-OVERVIEW-002", "E2E-COLLECTION-001"}, "onboarding": {"E2E-ONBOARDING-001"}}
+    suites["all"] = suites["supported"] | suites["composer"] | suites["collection"]
+    specs = [s for s in specs if s["id"] in suites[args.suite]]
     requested = {s["id"] for s in specs}
     save(output / "scenario-contract.json", specs)
     source = source_identity()
@@ -100,11 +105,13 @@ def run(args):
     rows = [{"id": s["id"], "status": "not-run", "functionality": "unknown", "reason": "not reached"} for s in specs]
     report = {"version": 1, "source": source, "validity": "incomplete", "scenarios": rows,
               "startedAt": time.time(), "suite": args.suite, "deadlineSeconds": args.timeout,
-              "inputEvidence": {"mode": "operator-assisted-system-input" if args.operator_composer else "mounted-semantic-controls",
+              "inputEvidence": {"mode": ("system-accessibility" if args.suite == "onboarding" else
+                                         "operator-assisted-system-input" if args.operator_composer else "mounted-semantic-controls"),
                                 "operatorStages": {}}}
     session = None
     desktop = None
     lease = None
+    host = ExitStack()
     start = time.monotonic()
 
     def event(phase, **values):
@@ -134,44 +141,8 @@ def run(args):
                 report["validity"] = "invalid"
         event("scenario-end", **row)
 
-    for sig in (signal.SIGALRM, signal.SIGTERM, signal.SIGINT):
-        signal.signal(sig, alarm)
-    signal.setitimer(signal.ITIMER_REAL, args.timeout)
-    try:
-        event("prepare")
-        try:
-            artifact = validate(args.runtime.resolve())
-        except (OSError, ValueError) as error:
-            raise Blocked(str(error)) from error
-        save(output / "artifact.json", artifact)
-        session = Session(args.runtime.resolve(), output, uuid.uuid4().hex, event)
-        session.prepare()
-        session.start()
-        session.configure()
-        if "E2E-COLLECTION-001" in requested:
-            session.peer.prepare_collection()
-            collection.enable_reports(session, True)
-        elif "E2E-OVERVIEW-002" in requested:
-            session.peer.count = 12
-        report["validity"] = "valid"
-        event("prepare-thread")
-        receipt = session.runtime.invoke("moku:submit", [{"input": {"parts": [{"kind": "text", "text":
-            f"BENCHMARK CREATE {session.peer.count} completed tasks. E2E " + session.peer.nonce}]}}])
-        wait_for(lambda: session.peer.receipts, lambda v: len(v) == session.peer.count, 60)
-        thread = session.peer.receipts["bench_create_01"]["threadId"]
-        row = completed(session, thread)
-        for created in session.peer.receipts.values():
-            if created["threadId"] != thread:
-                completed(session, created["threadId"])
-        initial = row["observation"]["latestExecution"]["executionId"]
-        save(output / "creation.json", {"receipt": receipt, "thread": row})
-        save(output / "initial-oracle.json", read_turn(session, thread, initial, session.peer.body(1), "initial-content.json"))
-        if "E2E-COLLECTION-001" in requested:
-            reports = collection.prepare(session)
-        event("prepared", thread=thread, execution=initial)
-        report["preparation"] = "ready"
-        if args.prepare_only:
-            raise Blocked("preparation ready; no desktop interactions requested or covered")
+    def acquire_desktop():
+        nonlocal lease
         if not args.app or not args.desktop_lease or not args.desktop_owner:
             raise Blocked("requires --app, coordinator-agreed --desktop-lease directory and --desktop-owner; no GUI launched")
         app = args.app.resolve()
@@ -184,45 +155,101 @@ def run(args):
         except (OSError, ValueError) as error:
             raise Blocked(str(error)) from error
         save(output / "ui-artifact.json", ui_artifact)
-        if args.operator_composer or "E2E-COLLECTION-001" in requested:
-            app = operator_input.bundle(app, session)
-        session.app = session.spawn([app, "--runtime", session.binary, "--data-dir", session.profile,
-            "--automation-socket", session.root / "ui.sock", "--benchmark-scenario", "overview"], "app")
-        wait_for(lambda: (session.root / "ui.sock").exists(), bool, 40)
-        desktop = Desktop(session)
-        if args.operator_composer:
-            save(output / "operator-request.json", {"stage": "activate", "pid": session.app.pid,
-                "app": str(app).rsplit("/Contents/", 1)[0], "nonce": session.nonce})
-            # LaunchServices/AX activation belongs to the external operator.
-            # A new unique bundle can have a socket before its window mounts.
-            wait_for(desktop.request, lambda s: s["mounted"] and s["runtimeAvailable"], 300)
-        elif "E2E-COLLECTION-001" in requested:
-            collection.activate(session)
+        return app
 
-        def followup():
-            receipt = send(session, thread, initial, "BENCH ITEM 01: E2E FOLLOWUP " + session.peer.nonce)
-            latest = receipt["executionId"]
-            save(output / "followup.json", receipt)
-            completed(session, thread, latest)
-            save(output / "followup-oracle.json", read_turn(session, thread, latest, session.peer.followup_body(), "followup-content.json"))
-            return latest
+    for sig in (signal.SIGALRM, signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, alarm)
+    signal.setitimer(signal.ITIMER_REAL, args.timeout)
+    try:
+        event("prepare")
+        try:
+            artifact = validate(args.runtime.resolve())
+        except (OSError, ValueError) as error:
+            raise Blocked(str(error)) from error
+        save(output / "artifact.json", artifact)
+        session = Session(args.runtime.resolve(), output, uuid.uuid4().hex, event)
+        if args.suite == "onboarding":
+            if args.prepare_only:
+                raise Blocked("onboarding requires the first-run desktop")
+            try:
+                host.enter_context(performance_lease())
+            except RuntimeError as error:
+                raise Blocked(str(error)) from error
+            app = acquire_desktop()
+            session.prepare()
+            session.start()
+            report["validity"] = "valid"
+            execute("E2E-ONBOARDING-001", lambda: onboarding.journey(session, app))
+        else:
+            session.prepare()
+            session.start()
+            session.configure()
+            if "E2E-COLLECTION-001" in requested:
+                session.peer.prepare_collection()
+                collection.enable_reports(session, True)
+            elif "E2E-OVERVIEW-002" in requested:
+                session.peer.count = 12
+            report["validity"] = "valid"
+            event("prepare-thread")
+            receipt = session.runtime.invoke("moku:submit", [{"input": {"parts": [{"kind": "text", "text":
+                f"BENCHMARK CREATE {session.peer.count} completed tasks. E2E " + session.peer.nonce}]}}])
+            wait_for(lambda: session.peer.receipts, lambda v: len(v) == session.peer.count, 60)
+            thread = session.peer.receipts["bench_create_01"]["threadId"]
+            row = completed(session, thread)
+            for created in session.peer.receipts.values():
+                if created["threadId"] != thread:
+                    completed(session, created["threadId"])
+            initial = row["observation"]["latestExecution"]["executionId"]
+            save(output / "creation.json", {"receipt": receipt, "thread": row})
+            save(output / "initial-oracle.json", read_turn(session, thread, initial, session.peer.body(1), "initial-content.json"))
+            if "E2E-COLLECTION-001" in requested:
+                reports = collection.prepare(session)
+            event("prepared", thread=thread, execution=initial)
+            report["preparation"] = "ready"
+            if args.prepare_only:
+                raise Blocked("preparation ready; no desktop interactions requested or covered")
+            app = acquire_desktop()
+            if args.operator_composer or "E2E-COLLECTION-001" in requested:
+                app = operator_input.bundle(app, session)
+            session.app = session.spawn([app, "--runtime", session.binary, "--data-dir", session.profile,
+                "--automation-socket", session.root / "ui.sock", "--benchmark-scenario", "overview"], "app")
+            wait_for(lambda: (session.root / "ui.sock").exists(), bool, 40)
+            desktop = Desktop(session)
+            if args.operator_composer:
+                save(output / "operator-request.json", {"stage": "activate", "pid": session.app.pid,
+                    "app": str(app).rsplit("/Contents/", 1)[0], "nonce": session.nonce})
+                # LaunchServices/AX activation belongs to the external operator.
+                # A new unique bundle can have a socket before its window mounts.
+                wait_for(desktop.request, lambda s: s["mounted"] and s["runtimeAvailable"], 300)
+            elif "E2E-COLLECTION-001" in requested:
+                collection.activate(session)
 
-        if "E2E-OVERVIEW-002" in requested:
-            execute("E2E-OVERVIEW-002", lambda: desktop.overview_scroll(thread))
-        if "E2E-COLLECTION-001" in requested:
-            execute("E2E-COLLECTION-001", lambda: collection.journey(desktop, reports))
-            if args.suite == "all":
-                collection.enable_reports(session, False)
-        if "E2E-READ-001" in requested:
-            execute("E2E-READ-001", lambda: desktop.read(thread, initial, followup))
-            execute("E2E-SETTINGS-001", desktop.settings)
-        if args.suite in ("all", "composer"):
-            def composer():
-                if not args.operator_composer:
-                    raise Blocked("requires --operator-composer and actual external system-input receipts; no unattended input driver")
-                operator_input.composer(session, desktop, thread, (thread_state, completed, read_turn, content, wait_for),
-                                        report["inputEvidence"]["operatorStages"])
-            execute("E2E-COMPOSER-001", composer)
+            def followup():
+                receipt = send(session, thread, initial, "BENCH ITEM 01: E2E FOLLOWUP " + session.peer.nonce)
+                latest = receipt["executionId"]
+                save(output / "followup.json", receipt)
+                completed(session, thread, latest)
+                save(output / "followup-oracle.json", read_turn(session, thread, latest, session.peer.followup_body(), "followup-content.json"))
+                return latest
+
+            if "E2E-OVERVIEW-002" in requested:
+                execute("E2E-OVERVIEW-002", lambda: desktop.overview_scroll(thread))
+            if "E2E-COLLECTION-001" in requested:
+                execute("E2E-COLLECTION-001", lambda: collection.journey(desktop, reports))
+                if args.suite == "all":
+                    collection.enable_reports(session, False)
+            if "E2E-CHIEF-001" in requested:
+                execute("E2E-CHIEF-001", desktop.chief_controls)
+            if "E2E-READ-001" in requested:
+                execute("E2E-READ-001", lambda: desktop.read(thread, initial, followup))
+                execute("E2E-SETTINGS-001", desktop.settings)
+            if args.suite in ("all", "composer"):
+                def composer():
+                    if not args.operator_composer:
+                        raise Blocked("requires --operator-composer and actual external system-input receipts; no unattended input driver")
+                    operator_input.composer(session, desktop, thread, (thread_state, completed, read_turn, content, wait_for),
+                                            report["inputEvidence"]["operatorStages"])
+                execute("E2E-COMPOSER-001", composer)
 
     except BaseException as error:
         report["validity"] = "blocked" if isinstance(error, Blocked) else "invalid"
@@ -257,6 +284,7 @@ def run(args):
             except Exception as error:
                 cleanup["ok"] = False
                 cleanup["errors"].append(f"desktop lease cleanup: {error}")
+        host.close()
         save(output / "cleanup.json", cleanup)
         if not cleanup["ok"]:
             report["validity"] = "invalid"
@@ -278,7 +306,7 @@ def main():
     execute = sub.add_parser("run")
     execute.add_argument("--runtime", type=Path, required=True)
     execute.add_argument("--output", type=Path, required=True, help="new evidence directory; never overwrite")
-    execute.add_argument("--suite", choices=("supported", "all", "composer", "collection"), default="supported")
+    execute.add_argument("--suite", choices=("supported", "all", "composer", "collection", "onboarding"), default="supported")
     execute.add_argument("--timeout", type=int)
     execute.add_argument("--prepare-only", action="store_true", help="do not launch GUI; exits 2 because interactions remain uncovered")
     execute.add_argument("--app", type=Path)

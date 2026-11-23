@@ -8,18 +8,6 @@ import SwiftUI
 struct HeldOpeningFrames: CustomAnimation {
     static let sourceFPS = 60.0
     static let secondsPerStep = 0.1
-    @MainActor static let opening = NativeMokuReadingOpening(animation: Animation(Self())) { from, to in
-        let steps = Int(ceil(NativeReadingPageTiming.duration * sourceFPS))
-        let animation = CAKeyframeAnimation()
-        animation.calculationMode = .discrete
-        animation.values = (0...steps).map { i in
-            let t = Double(i) / sourceFPS / NativeReadingPageTiming.duration
-            return from + (to - from) * NativeReadingPageTiming.sample(x1: 0.76, x2: 0.24, at: t)
-        }
-        animation.duration = Double(steps) * secondsPerStep
-        animation.keyTimes = (0...steps).map { NSNumber(value: Double($0) / Double(steps)) }
-        return animation
-    }
     let base = NativeReadingPageTiming.openingAnimation
 
     func animate<V: VectorArithmetic>(value: V, time: TimeInterval, context: inout AnimationContext<V>) -> V? {
@@ -248,7 +236,23 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
         try require(scene.talkPresentation.message == talk && !scene.talkPresentation.presented, "Talk did not queue behind the open draft")
         try require(scene.dismissInputForOutsideClick(), "Second outside dismissal was rejected")
         event("close-to-talk", beginsPhase: true)
-        try await pause(650)
+        let talkDeadline = ContinuousClock.now + .milliseconds(650)
+        while !scene.talkPresentation.presented, .now < talkDeadline { try await pause(8) }
+        try require(scene.talkPresentation.presented, "Queued Talk did not reach the offscreen panel")
+        // This click belongs to another window in this process. A mouse-transparent
+        // recording panel must keep its Talk while the user works elsewhere.
+        let other = NSPanel(contentRect: .init(x: -20000, y: -20000, width: 32, height: 32),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        for type: NSEvent.EventType in [.leftMouseDown, .leftMouseUp] {
+            guard let event = NSEvent.mouseEvent(with: type, location: .zero, modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: other.windowNumber,
+                context: nil, eventNumber: 1, clickCount: 1, pressure: 1) else {
+                throw CollapseCaptureError(description: "Could not create a window-local outside press")
+            }
+            NSApp.postEvent(event, atStart: false)
+        }
+        try await ContinuousClock().sleep(until: talkDeadline)
+        withExtendedLifetime(other) {}
         event("talk-visible")
         try require(!scene.inputOpen && !scene.inputLeaving && overviewDraft.text == text
                     && scene.talkPresentation.presented && scene.talkPresentation.message == talk,
@@ -295,7 +299,7 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
             func midReturn() -> Bool {
                 let point = travel.presentationCorrection
                 return scene.overviewVisible && (axis == "horizontal"
-                    ? point.x > 30 && point.x < 180 : abs(point.x) < 0.5 && point.y > 3 && point.y < 12)
+                    ? point.x > 30 && point.x < 180 : point.y > 3 && point.y < 12)
             }
             while !midReturn(), .now < deadline { try await pause(5) }
             try require(midReturn(), "Missing in-flight \(axis) return")

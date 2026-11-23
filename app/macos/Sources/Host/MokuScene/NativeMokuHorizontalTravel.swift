@@ -60,11 +60,14 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
     private var onSettled: ((NativeMokuHorizontalDestination) -> Void)?
     private var generation = 0
     private var activeAxes: [String: Int] = [:]
-    private var travelling: Bool { !activeAxes.isEmpty }
+    // SwiftUI installs the destination reading inset at route release. Keep
+    // the old screen y in the native seat until the column trip has arrived.
+    private var heldLift: CGFloat = 0
+    private var travelling: Bool { !activeAxes.isEmpty || heldLift != 0 }
 
     var presentationCorrection: CGPoint {
         let transform = surface.layer?.presentation()?.transform ?? CATransform3DIdentity
-        return CGPoint(x: transform.m41, y: transform.m42)
+        return CGPoint(x: transform.m41, y: heldLift + transform.m42)
     }
 
     override var isFlipped: Bool { true }
@@ -94,59 +97,57 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
     override func layout() {
         super.layout()
         CATransaction.begin(); CATransaction.setDisableActions(true)
-        let frame = bounds.offsetBy(dx: destination?.offset ?? 0, dy: 0)
-        if surface.frame != frame { surface.frame = frame }
+        placeSurface()
         if hosting?.frame != surface.bounds { hosting?.frame = surface.bounds }
         CATransaction.commit()
+    }
+
+    private func placeSurface() {
+        let frame = bounds.offsetBy(dx: destination?.offset ?? 0, dy: heldLift)
+        if surface.frame != frame { surface.frame = frame }
     }
 
     func configure(destination next: NativeMokuHorizontalDestination, hitRects: [CGRect],
                    onSettled: @escaping (NativeMokuHorizontalDestination) -> Void) {
         let previous = destination
         self.hitRects = hitRects; self.onSettled = onSettled; destination = next
-        let layer = surface.layer!
+        let visible = presentationCorrection
         guard previous != next else { return }
 
         let immediate = previous == nil || next.inactive || next.dragging || previous?.viewport != next.viewport
         if !immediate, previous?.offset == next.offset,
-           previous?.verticalOffset == next.verticalOffset, travelling { return }
+           previous?.verticalOffset == next.verticalOffset, previous?.frame == next.frame,
+           previous?.reading == next.reading, travelling { return }
         generation += 1
         let current = generation
-        let visible = presentationCorrection
         let delta = CGPoint(x: visible.x + (previous?.offset ?? next.offset) - next.offset,
             y: visible.y + (previous?.verticalOffset ?? next.verticalOffset) - next.verticalOffset)
         // Commit the horizontal model seat with its presentation correction.
         // A separate SwiftUI offset can show the destination a frame early.
         CATransaction.begin(); CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
-        let origin = CGPoint(x: bounds.minX + next.offset, y: bounds.minY)
-        if surface.frame.origin != origin { surface.setFrameOrigin(origin) }
         let columnChanged = previous?.frame != next.frame
-        // Route release can arrive before, during or after column travel. Use
-        // the submitted X animation’s layer-local end time so the compositor
-        // holds the current height through its last frame, even on a busy return.
-        let xAxis = "transform.translation.x"
-        let yAxis = "transform.translation.y"
-        let now = layer.convertTime(CACurrentMediaTime(), from: nil)
+        let duration: TimeInterval = columnChanged ? 0.38 : 0.42
+        let timing = columnChanged
+            ? CAMediaTimingFunction(controlPoints: 0.22, 1, 0.36, 1)
+            : abs(delta.y) > 0.01 ? CAMediaTimingFunction(name: .easeInEaseOut)
+            : next.reading ? NativeReadingPageTiming.emphasizedOpening : CAMediaTimingFunction(name: .easeInEaseOut)
+
         if immediate || previous?.offset != next.offset {
-            let timing = columnChanged ? CAMediaTimingFunction(controlPoints: 0.30, 0.12, 0.44, 1)
-                : next.reading && abs(delta.y) <= 0.01 ? NativeReadingPageTiming.emphasizedOpening
-                : CAMediaTimingFunction(name: .easeInEaseOut)
-            retarget(xAxis, delta: immediate ? 0 : delta.x, begin: now,
-                     duration: columnChanged ? 0.52 : 0.42, timing: timing)
+            retarget("transform.translation.x", delta: immediate ? 0 : delta.x,
+                duration: columnChanged ? 0.52 : duration,
+                timing: columnChanged ? CAMediaTimingFunction(controlPoints: 0.30, 0.12, 0.44, 1) : timing)
         }
-        let returning = !next.reading && next.frame == nil
-        if immediate || previous?.verticalOffset != next.verticalOffset
-            || (returning && previous?.offset != next.offset && activeAxes[yAxis] != nil) {
-            let xTravel = returning ? layer.animation(forKey: xAxis) : nil
-            let begin = xTravel.map { max(now, $0.beginTime + $0.duration) } ?? now
-            retarget(yAxis, delta: immediate ? 0 : delta.y, begin: begin, duration: 0.42,
-                     timing: CAMediaTimingFunction(name: .easeInEaseOut))
+        let holdHeight = !immediate && !next.reading && (next.frame != nil || activeAxes["transform.translation.x"] != nil)
+        if immediate || previous?.verticalOffset != next.verticalOffset || heldLift != 0 || holdHeight {
+            heldLift = holdHeight && abs(delta.y) > 0.01 ? delta.y : 0
+            retarget("transform.translation.y", delta: immediate || holdHeight ? 0 : delta.y, duration: duration, timing: timing)
         }
+        placeSurface()
         if !travelling { deliverCompletion(generation: current) }
     }
 
-    private func retarget(_ axis: String, delta: CGFloat, begin: CFTimeInterval, duration: TimeInterval, timing: CAMediaTimingFunction) {
+    private func retarget(_ axis: String, delta: CGFloat, duration: TimeInterval, timing: CAMediaTimingFunction) {
         let layer = surface.layer!
         layer.removeAnimation(forKey: axis)
         guard abs(delta) > 0.01 else { activeAxes[axis] = nil; return }
@@ -154,7 +155,8 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
         let animation = CABasicAnimation(keyPath: axis)
         animation.fromValue = delta; animation.toValue = 0
         animation.duration = duration; animation.timingFunction = timing
-        animation.beginTime = begin
+        // Let Core Animation start the trip when this transaction commits.
+        // Preparing the Overview can take time after this layer is configured.
         animation.fillMode = .backwards
         animation.delegate = self; animation.setValue(generation, forKey: "generation")
         layer.add(animation, forKey: axis)
@@ -166,6 +168,15 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
         Task { @MainActor [weak self] in
             guard let self, activeAxes[axis] == token else { return }
             activeAxes[axis] = nil
+            if axis == "transform.translation.x", heldLift != 0, destination?.frame == nil {
+                let lift = heldLift
+                CATransaction.begin(); CATransaction.setDisableActions(true)
+                heldLift = 0
+                placeSurface()
+                retarget("transform.translation.y", delta: lift, duration: NativeReadingPageTiming.duration,
+                    timing: CAMediaTimingFunction(name: .easeInEaseOut))
+                CATransaction.commit()
+            }
             if !travelling { deliverCompletion(generation: generation) }
         }
     }
@@ -200,6 +211,7 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
 
     func retire() {
         generation += 1; destination = nil; onSettled = nil; handle.view = nil
+        heldLift = 0
         activeAxes.removeAll()
         surface.layer?.removeAllAnimations()
         hosting?.removeFromSuperview(); hosting = nil; contentState = nil

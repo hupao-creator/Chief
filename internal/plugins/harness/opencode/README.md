@@ -146,7 +146,7 @@ Expired entries trigger an owned background refresh with a 30-second failure
 cooldown. Concurrent refreshes do not block routing through the last complete
 snapshot. The native phase has
 a 30-second cancellation timer and the whole flight a 55-second budget, with
-process cleanup joined. The editor can still show the earlier native projection
+process cleanup joined. Ordinary Thread settings can show the earlier native projection
 with `accountCheckPending`; Moku routing does not use that partial projection.
 
 The full native model inventory accompanies creation options, including disabled,
@@ -187,6 +187,26 @@ nonautomatic image detail remain explicit errors, matching the previous adapter.
 
 `permissionMode` accepts `auto` or `default`. An omitted creation option inherits configured Harness mode, falling back to `auto`. Automatic mode replies once only after native deny policy allows the request; forms still need typed responses. Reconnect skips already answered or stopped interactions, and no wildcard persistent allow rule is installed.
 
+Chief reads Go subscription windows from the native `opencode-go` provider in
+the configured workspace. The provider must have a recognized package, an
+official Go route and a single verifiable binding. The native integration
+selects the active connection even when other credentials are stored. OAuth
+uses the pinned Console workspace and its reported access meters. A private
+API key uses the official Go usage endpoint. Conflicting keys, unsupported
+routes and ambiguous organization overrides leave capacity unknown. Required
+request failures produce an error reading with empty windows. Execution token
+counts cannot supply a missing window.
+
+The account reading is independent of the default model, build agent and
+variant. It represents the Go subscription only. Model discovery and admission
+check the model's own route and credentials. Before each Moku message the
+adapter resolves the local catalog source, including the native credential
+selection and revision. An unreadable configuration dependency prevents reuse.
+A source change drops the cached reading immediately.
+The background probe uses the captured launch environment and rechecks its
+source before publishing. Only the current source can replace the cache.
+Remote changes without a local revision rely on the five-minute refresh.
+
 The native Console callback pins credential identity while describing and resolving the selected provider/model/variant. Account switches fail the read. Native OAuth refresh remains native; Go telemetry checks official Console authority, organization and routes, rejects redirects and bounds reads. Unknown capacity remains unknown; credentials never enter public settings or persisted sessions.
 
 Temporary environment removal retries only wrapped `ENOTEMPTY` errors at 20 ms intervals for up to two seconds after process drain. Persistent or different errors remain visible and retain the normal failed-cleanup ownership policy.
@@ -214,7 +234,9 @@ fact is projection-only and never enters canonical session state. Native cards
 use it for ordinary threads with zero or one execution; eligible agent content
 retains its existing precedence. Other scopes omit the field.
 
-Settings presentation publishes an immutable native model/agent/default catalog
+The Chief, Tag Agent and Super Thread Agent execution editors, including independent previews, await the complete account-filtered catalog on initial load and Retry. A native read error reaches the editor, and a confirmed account exclusion removes the model and preserves its reason for the selected profile.
+
+Ordinary Thread settings presentation publishes an immutable native model/agent/default catalog
 before optional Console account/remote billing checks finish. The response marks
 `accountCheckPending`, but the native editor keeps that transient state silent:
 the user sees no banner or retry action while account evidence is merely

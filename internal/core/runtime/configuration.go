@@ -439,11 +439,8 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings *model.
 		}
 	}
 	h := r.config.Harnesses[harnessID]
-	if h == nil || !h.Descriptor().ThreadCapabilities.CanHostMoku() {
-		return false, fmt.Errorf("harness cannot host internal execution: %s", harnessID)
-	}
-	if reason := r.config.DisabledHarnesses[harnessID]; reason != "" {
-		return false, fmt.Errorf("harness disabled: %s", reason)
+	if err := r.checkExecutionHarness(harnessID); err != nil {
+		return false, err
 	}
 	existing, exists := profiles[harnessID]
 	captured := existing
@@ -537,7 +534,12 @@ func retainExecutionProfiles(settings, previous model.Settings) (model.Settings,
 			continue
 		}
 		if value.Mode == "override" {
-			value.Harnesses = mergeProfiles(profiles.Harnesses, value.Harnesses)
+			merged := mergeProfiles(profiles.Harnesses, value.Harnesses)
+			if sameExecutionProfiles(value.Harnesses, merged) {
+				// Keep the required explicit empty harness map on a cold role.
+				continue
+			}
+			value.Harnesses = merged
 		} else {
 			if value.Independent == nil {
 				value.Independent = &executionProfiles{HarnessPreference: profiles.HarnessPreference, Harnesses: profiles.Harnesses}
@@ -553,22 +555,20 @@ func retainExecutionProfiles(settings, previous model.Settings) (model.Settings,
 	}
 	return settings, nil
 }
-func (r *Runtime) validateChangedProfiles(ctx context.Context, settings, previous model.Settings) (model.Settings, error) {
-	var err error
-	for id, value := range settings.Moku.ExecutionHarnesses {
-		if !same(value, previous.Moku.ExecutionHarnesses[id]) {
-			_, err = r.captureExecutionProfiles(ctx, &settings, "", id, false)
-			if err != nil {
-				return settings, err
-			}
-		}
+func (r *Runtime) checkExecutionHarness(id string) error {
+	h := r.config.Harnesses[id]
+	if h == nil || !h.Descriptor().ThreadCapabilities.CanHostMoku() {
+		return fmt.Errorf("harness cannot host internal execution: %s", id)
 	}
-	if settings.Moku.HostHarnessPreference != previous.Moku.HostHarnessPreference {
-		_, err = r.captureExecutionProfiles(ctx, &settings, "", "", false)
-		if err != nil {
-			return settings, err
-		}
+	if r.config.DisabledHarnesses[id] != "" {
+		return fmt.Errorf("harness disabled: %s", id)
 	}
+	return nil
+}
+
+// Application contracts validate the binding's envelope. Harnesses decode
+// changed slices without consulting the executable or replacing saved choices.
+func (r *Runtime) validateBackgroundProfiles(settings, previous model.Settings) error {
 	old := map[string]backgroundSettings{}
 	for _, entry := range previous.PluginSettings {
 		var value backgroundSettings
@@ -589,21 +589,24 @@ func (r *Runtime) validateChangedProfiles(ctx context.Context, settings, previou
 			oldPreference = before.Independent.HarnessPreference
 		}
 		for id, profile := range value.Harnesses {
-			if !same(profile, oldProfiles[id]) {
-				_, err = r.captureExecutionProfiles(ctx, &settings, entry.ID, id, false)
-				if err != nil {
-					return settings, err
-				}
+			if sameExecutionProfile(profile, oldProfiles[id]) {
+				continue
+			}
+			h := r.config.Harnesses[id]
+			if h == nil || !h.Descriptor().ThreadCapabilities.CanHostMoku() {
+				return fmt.Errorf("harness cannot host internal execution: %s", id)
+			}
+			if _, err := h.Settings().Normalize(profile); err != nil {
+				return err
 			}
 		}
-		if before.Mode != "override" || oldPreference != value.HarnessPreference {
-			_, err = r.captureExecutionProfiles(ctx, &settings, entry.ID, "", false)
-			if err != nil {
-				return settings, err
+		if p := value.HarnessPreference; p != "auto" && (before.Mode != "override" || oldPreference != p) {
+			if err := r.checkExecutionHarness(p); err != nil {
+				return err
 			}
 		}
 	}
-	return settings, nil
+	return nil
 }
 func sameMokuConfiguration(a, b model.Settings) bool {
 	return same(a.Harnesses, b.Harnesses) && same(a.Moku.ExecutionHarnesses, b.Moku.ExecutionHarnesses) && a.Moku.HostHarnessPreference == b.Moku.HostHarnessPreference && same(a.Moku.TargetHarnessIDs, b.Moku.TargetHarnessIDs) && same(a.Moku.RoutingGuidance, b.Moku.RoutingGuidance) && a.Moku.RoutingPreset == b.Moku.RoutingPreset

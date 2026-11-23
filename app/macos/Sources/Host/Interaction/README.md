@@ -29,10 +29,7 @@ selects the reader. The field is null outside the visit. Compare the selected
 filter, Collection member and mounted execution with the isolated window
 recording to verify ordering and card travel.
 
-Moku history reports its shared reading-panel motion as `transitioning`, stays
-mounted until Close completes, and uses a separate navigation action from its
-retained parent. `navigation.back` first follows internal historical-turn
-navigation, then closes history without losing the parent's reading target.
+Overview offers Chief Compose and Note actions. Only ordinary Agent and application references can open a reader.
 
 Direct Swift callers can use, on the main actor:
 
@@ -69,7 +66,9 @@ Back and Overview remain available.
 
 First-run setup reports `page: "onboarding"` and an `onboarding` object containing
 step (0–4), admission, editor readiness, continuation availability, save/error
-and persisted completion state. Only its mounted `settings.control` actions are
+and persisted completion state. Its window-local `handoffUptimeNS` records
+monotonic timestamps at persistence, the starts of fade, contraction and reveal,
+and reveal completion. The confirmation replay reads them after observing AX focus. Only its mounted `settings.control` actions are
 admitted, using an independent visit/step registry. The handoff reports
 `transitioning` until the real Dock is revealed; workspace navigation remains
 blocked throughout setup and the morph.
@@ -87,6 +86,7 @@ the snapshot reports `transitioning`, withholds reading controls and excludes
 that time from foreground reading. Selecting a carousel page is not a reading event.
 
 
+Overview filter observations include the unread Thread count for each folder and semantic tag.
 Individual report observations expose `collectionEligibility`. Collections expose
 the same fields per real member in `memberEligibility`. `lastClosedAt` and
 `lastQualifiedAt` use epoch milliseconds or null. `defaultsToCollection`
@@ -96,6 +96,8 @@ focus and entrance admission. A selected report also exposes its reading evidenc
 while the retained canvas is hidden.
 
 ## E2E contract
+
+E2E-CHIEF-001 exercises Note and Compose on Overview and checks coordinator identities and rejection of the retired history command.
 
 [`E2E-READ-001`](../../../../../tools/e2e/README.md) uses these real navigation
 callbacks and mounted reading registrations. Preconditions are an isolated

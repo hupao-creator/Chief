@@ -89,11 +89,32 @@ def finish(directory, report):
     lines = ["# E2E run", "", f"Validity: **{report['validity']}**; functionality: **{report['functionality']}**; exit: **{report['exitCode']}**.",
              "", "Boundary: real Runtime / HTTP+NDJSON / SQLite / real Codex CLI; deterministic external provider.",
              "Overview uses semantic camera actions. Reading, Settings and Collection use mounted controls. Composer uses operator-assisted system input.",
+             "Onboarding uses system AXPress and checks page changes against 1,000 ms and the final Dock handoff against 1,560 ms.",
              "Only passing rows are certified for this attempt; real external-provider behavior is not covered.", "",
              "| Scenario | Status | Functionality | Reason |", "| --- | --- | --- | --- |"]
     for row in report["scenarios"]:
         reason = row.get("reason", "").replace("|", "\\|").replace("\n", " ")
         lines.append(f"| {row['id']} | {row['status']} | {row['functionality']} | {reason} |")
+    onboarding = directory / "onboarding-ax.jsonl"
+    if onboarding.is_file():
+        trace = [json.loads(line) for line in onboarding.read_text().splitlines()]
+        late = {r["step"]: r["observedNS"] for r in trace if r["kind"] == "late-readiness"}
+        lines += ["", "| Confirmation | Destination | Observed ms | Status |", "| --- | --- | ---: | --- |"]
+        for r in trace:
+            if r["kind"] == "confirmation":
+                ms = (late.get(r["step"], r["observedNS"]) - r["startNS"]) / 1_000_000
+                lines.append(f"| {r['step']} | {r['destination']} | {ms:.6f} | {r['status']} |")
+        phases_file = directory / "onboarding-handoff.json"
+        final = next((r for r in trace if r.get("step") == "report" and r["kind"] == "confirmation"), None)
+        if phases_file.exists() and final and (final["status"] == "passed" or "report" in late):
+            try:
+                intervals = handoff_intervals(json.loads(phases_file.read_text()), final["startNS"],
+                                              late.get("report", final["observedNS"]))
+            except (KeyError, ValueError, TypeError) as error:
+                lines.append(f"Final handoff timing unavailable ({error}).")
+            else:
+                lines += ["", "| Final handoff interval | Observed ms |", "| --- | ---: |"]
+                lines += [f"| {name} | {ns / 1_000_000:.3f} |" for name, ns in intervals.items()]
     lines += ["", "## Input backend and retained evidence", "",
               "Operator metadata is a declaration, not an automatically recorded AX trace or TCC-host proof.",
               "Unknown stays unknown. A null raw-artifact inventory is unknown; an empty list declares none archived.",
@@ -136,9 +157,15 @@ def verify(directory):
     cleanup = json.loads((directory / "cleanup.json").read_text())
     if report["validity"] == "valid" and cleanup.get("ok") is not True:
         raise ValueError("valid run lacks successful cleanup")
-    if any(row["status"] == "passed" for row in report["scenarios"]):
-        required = {"artifact.json", "ui-artifact.json", "peer.json", "api.jsonl", "ui-events.jsonl",
-                    "native-cli.json", "selection.json", "creation.json", "initial-content.json", "initial-oracle.json"}
+    for row in report["scenarios"]:
+        if row["status"] != "passed":
+            continue
+        required = {"artifact.json", "ui-artifact.json", "peer.json", "api.jsonl", "desktop-lease.json"}
+        if row["id"] == "E2E-ONBOARDING-001":
+            verify_onboarding(directory)
+        else:
+            required |= {"ui-events.jsonl", "native-cli.json", "selection.json", "creation.json",
+                         "initial-content.json", "initial-oracle.json"}
         if not required.issubset(files):
             raise ValueError("passing interaction lacks cross-boundary evidence")
     for stage, metadata in report.get("inputEvidence", {}).get("operatorStages", {}).items():
@@ -159,3 +186,47 @@ def verify(directory):
     if code != report["exitCode"]:
         raise ValueError("exit code contradicts report")
     return code
+
+
+def handoff_intervals(phases, press, focused):
+    # The app and AX driver use the same system-wide monotonic uptime clock.
+    boundaries = [press, *(phases[key] for key in ("saved", "fade", "contract", "reveal", "finished")), focused]
+    names = ("pressToSaved", "prepareDock", "fade", "contract", "reveal", "focusAX")
+    intervals = {name: end - start for name, start, end in zip(names, boundaries, boundaries[1:])}
+    if min(intervals.values()) < 0:
+        raise ValueError("out-of-order onboarding handoff timestamps")
+    return intervals
+
+
+def check_handoff(intervals):
+    # Retain the original 460ms allowance outside the authored animation.
+    # A shorter animation cannot buy more time for saving or acquiring focus.
+    preparation = intervals["pressToSaved"] + intervals["prepareDock"]
+    if preparation >= 260_000_000:
+        raise AssertionError(f"save and Dock preparation exceeded 260ms: {preparation} ns")
+    if intervals["focusAX"] >= 200_000_000:
+        raise AssertionError(f"revealed Dock did not acquire AX focus within 200ms: {intervals['focusAX']} ns")
+    for stage, duration_ms in (("fade", 140), ("contract", 780), ("reveal", 180)):
+        if intervals[stage] < (duration_ms - 34) * 1_000_000:
+            raise AssertionError(f"onboarding {stage} completed early: {intervals[stage]} ns")
+
+
+def verify_onboarding(directory):
+    trace = [json.loads(line) for line in (directory / "onboarding-ax.jsonl").read_text().splitlines()]
+    steps = [row for row in trace if row["kind"] == "confirmation"]
+    if ([(row["step"], row["destination"]) for row in steps] !=
+            [("discovery", "moku"), ("moku", "tag"), ("tag", "report"), ("report", "dock")]):
+        raise ValueError("onboarding evidence lacks the ordered confirmations")
+    if any(not 0 < row["observedNS"] - row["startNS"] < (1_560_000_000 if row["destination"] == "dock" else 1_000_000_000)
+           or row["status"] != "passed" for row in steps):
+        raise ValueError("passing onboarding evidence exceeds a confirmation budget")
+    phases = json.loads((directory / "onboarding-handoff.json").read_text())
+    check_handoff(handoff_intervals(phases, steps[-1]["startNS"], steps[-1]["observedNS"]))
+    roles = {"tag.settings": {"enabled": True, "mode": "override"},
+             "report.settings": {"enabled": True, "mode": "override"}}
+    if [(row["id"], row["selection"]) for row in trace if row["kind"] == "role"] != [
+            ("tag.settings", "independent"), ("report.settings", "independent")]:
+        raise ValueError("onboarding evidence lacks separate role selections")
+    persisted = json.loads((directory / "onboarding-persisted.json").read_text())
+    if persisted["onboardingCompleted"] is not True or persisted["roles"] != roles:
+        raise ValueError("passing onboarding evidence lacks saved settings")

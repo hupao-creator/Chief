@@ -6,17 +6,17 @@
 
 ## See the work behind a Super Thread
 
-A **Super Thread** is a report that **Super Thread Agent** puts together from completed work in the same project folder. Its card shows up to three lines of the introduction, including when you browse a collection. Click the card to read the report, then open **Related executions** if the list is closed.
+A **Super Thread** is a report that **Super Thread Agent** puts together from completed work in the same project folder. Its card shows up to three lines of the introduction, including when you browse a collection. Click the card to read the report, then open **Related executions** if the list is closed. If Super Thread Agent updates the report while you’re reading, the new content appears in the open report and the related list stays where you left it.
 
 A Super Thread can cite one run per source conversation. Each related card shows that run's title, a reply excerpt, and its duration when available. The status tells you how the source conversation is doing now.
 
 Click the related card to open the source conversation's latest run beside the Super Thread. It may be newer than the cited run or still in progress. Use **Conversation contents** on the left edge of the source conversation to switch between its current run and earlier runs. The Super Thread stays open beside it. When you follow a link from Chief Note, a visible collection containing the Super Thread turns to its page before it opens. The side panel opens at the top of the run named in the note, even if the related card cites a different run. If a related card fails to open, click it again to retry. The list shows when a conversation or run is unavailable.
 
-Use the input below the source conversation to write a follow-up for the run you’re viewing. When you send from a finished run, the upper-right corner shows which agent Chief is connecting to, for example **Connecting to Codex**. You can start typing your next message while you wait. If the agent rejects the follow-up, Chief restores it above any text you added.
+Use the input below the source conversation to write a follow-up for the run you’re viewing. When you send from a finished run, the side panel turns directly to your follow-up. Its title is the message you sent, with a status such as **Connecting to Codex** below it. The input stays beneath the panel, so you can start typing your next message. If the agent rejects the follow-up, Chief returns to the source run and restores the message above any text you added.
 
-If the run is active, your message appears immediately in the source conversation beside the report. If you switch runs before sending, select the same run again to pick up your draft. Click **Back to related executions** to see the cards and their available excerpts together. If the excerpts are still loading, the list shows Chief’s skillet until the cards are ready.
+If the run is active, your message and its timestamp slide gently into place beside the report. With Reduce Motion on, the message appears in place. If you switch runs before sending, select the same run again to pick up your draft. Click **Back to related executions** to see the cards and their available excerpts together. If the excerpts are still loading, the list shows Chief’s skillet until the cards are ready.
 
-When you close the report with a source conversation open, the input bar folds beneath that conversation, glides horizontally to the center, then rises to its resting position in Overview. If you came from Chief Note, click the report’s **×** from either the source conversation or the related list to return to Overview. The note stays closed until you reopen it with **⌘⇧N** or a two-finger swipe up over Chief.
+When you close the report with a source conversation open, the agent logo flips back to Chief’s eyes as the input bar folds beneath that conversation. The bar moves horizontally to the center of Overview, then rises to its resting height. If you came from Chief Note, click the report’s **×** from either the source conversation or the related list to return to Overview. The note stays closed until you reopen it with **⌘⇧N** or a two-finger swipe up over the eyes on Chief Bar with the input box closed.
 
 ## Browse Super Threads in a collection
 
@@ -25,6 +25,8 @@ A collection shows one Super Thread at a time and can turn pages automatically. 
 To browse all members, click the page count in the upper-right corner of the collection card. The cards start near the top of the panel. Widen the window to see more cards side by side, or scroll down to see the rest. Click a Super Thread to read it. The reader expands from the card you chose and may show Chief’s skillet while the report loads.
 
 Click the reader’s upper-left arrow, **Back to Super Thread Collection**, to return to your place in the grid. You can read another member from there. The grid’s **Close** button stays in the upper-left corner as you scroll. In a narrow panel, the cards form one column below it. Click **Close** or press **Esc** in the grid to return to Overview. Any regrouping caused by reading those members takes effect when you close the grid.
+
+When you return to Overview, two or more Super Threads in your current view can share a collection once each has been idle for 30 minutes. The time starts when you close a report, or when it was created if you have never opened it.
 
 After a quick look at a Super Thread, its cover stays selected if it is still in the collection. Spending time reading a Super Thread or its source conversations, or returning to it within a day, gives it a better chance of appearing as an individual card. A Super Thread grouped to make room reappears on its own when the cards fit, including after you resize the window or archive another card.
 

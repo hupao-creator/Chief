@@ -8,7 +8,6 @@ public extension NativeWorkspacePresentation {
     var interactionPage: String {
         if onboarding.blocksWorkspace { return "onboarding" }
         if scene.settingsOpen { return "settings" }
-        if scene.mokuOpen { return "moku" }
         if browsingCollection { return "collection" }
         return selected == nil ? "overview" : "thread"
     }
@@ -56,7 +55,7 @@ public extension NativeWorkspacePresentation {
             if !interactionThreads.isEmpty { actions += ["thread.open"] }
         } else {
             actions += ["overview.show"]
-            if readingCollectionMember || navigation != nil || scene.mokuOpen || (selected != nil && nativeApplicationNavigation) { actions += ["navigation.back"] }
+            if readingCollectionMember || navigation != nil || (selected != nil && nativeApplicationNavigation) { actions += ["navigation.back"] }
         }
         actions += overviewInteractionActions
         actions += readingInteractionActions
@@ -70,7 +69,6 @@ public extension NativeWorkspacePresentation {
         let section = settingsNavigation.activeSection(in: sections)
         let draft = workspace.settingsModel.draft
         let pageMounted = onboarding.blocksWorkspace ? onboarding.mounted : scene.settingsOpen ? settingsNavigation.mounted
-            : scene.mokuOpen ? mokuNavigation != nil
             : selected == nil || mountedReadingThread == selected
         let settings: JSONValue = .object([
                 "controls": .array(onboarding.blocksWorkspace && onboarding.mounted ? onboarding.interactions.snapshot(context: onboarding.context)
@@ -82,13 +80,17 @@ public extension NativeWorkspacePresentation {
                 "invalidField": draft.firstInvalidField.map(JSONValue.text) ?? .null,
                 "appearance": .text(workspace.systemTheme.rawValue), "locale": .text(workspace.locale.rawValue)
             ])
+        let handoffTimes = Dictionary(uniqueKeysWithValues: onboarding.handoffTimes.map {
+            (JSONText($0.key.rawValue), JSONValue.integer($0.value))
+        })
         return .object([
             "page": .text(interactionPage), "mounted": .bool(interactionReady && pageMounted),
-            "transitioning": .bool(openingCollectionMember || collectionPanel.transitioning || messageMotion.active || scene.historyMotion.active || scene.cameraActive || scene.flightActive || scene.settingsTransitioning
+            "transitioning": .bool(openingCollectionMember || collectionPanel.transitioning || messageMotion.active || scene.flightActive || scene.settingsTransitioning
                 || (onboarding.blocksWorkspace && onboarding.step == .landing)),
             "onboarding": .object(["step": .integer(onboarding.step.rawValue), "canContinue": .bool(onboarding.canAdvance),
                 "editorReady": .bool(onboarding.editorReady), "admitted": .bool(onboarding.admitted),
                 "error": onboarding.error.map(JSONValue.text) ?? .null,
+                "handoffUptimeNS": .object(handoffTimes),
                 "saving": .bool(onboarding.busy), "completed": .bool(workspace.preferences.onboardingCompleted)]),
             "runtimeAvailable": .bool(workspace.runtimeAvailable),
             "selectedThread": selected?.json ?? .null,
@@ -146,14 +148,9 @@ public extension NativeWorkspacePresentation {
             showOverview()
         case .back:
             if scene.settingsOpen { try closeSettingsForInteraction() }
-            else if scene.mokuOpen {
-                if let mokuNavigation { mokuNavigation.onBack() }
-                else { scene.closeHistory() }
-            }
             else if browsingCollection, let owner = collectionPanel.owner { collectionPanel.close(owner: owner) }
             else if let navigation { navigation.onBack() }
             else if selected != nil, nativeApplicationNavigation || readingCollectionMember { backFromReader() }
-            else { scene.setMokuOpen(false) }
         case .openThread(let ref):
             guard interactionThreads.contains(ref) else {
                 throw NativeInteractionError("not_found", "Thread is not in the current Overview")
@@ -166,7 +163,7 @@ public extension NativeWorkspacePresentation {
         case .overviewScroll, .overviewRetry,
              .overviewDirectoryOpen, .overviewDirectoryClose, .overviewDirectorySelect,
              .overviewScrollFilter,
-             .toggleMokuInput, .toggleMokuHistory, .toggleMokuNote:
+             .toggleMokuInput, .toggleMokuNote:
             try performOverviewInteraction(action)
         }
     }

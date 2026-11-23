@@ -13,59 +13,26 @@ extension EnvironmentValues {
 struct NativeApplicationReadingPanel: ViewModifier {
     let enabled: Bool
     var suppressed = false
-    var escapeEnabled = true
     var returnsToCollection = false
     var dismissToOverview: (() -> Void)?
-    var reservesAuxiliaryLane = true
-    var minimumBottomInset: CGFloat = 0
-    let identifier: String
     let onClose: () -> Void
     @Environment(\.locale) private var locale
 
     func body(content: Content) -> some View {
         if enabled {
-            if identifier == "report-reading-panel" {
-                let chinese = locale.language.languageCode?.identifier == "zh"
-                let isBack = dismissToOverview == nil && returnsToCollection
-                let label = dismissToOverview != nil ? (chinese ? "返回俯瞰" : "Back to overview")
-                    : returnsToCollection ? (chinese ? "返回 Super Thread 合集" : "Back to Super Thread Collection")
-                    : (chinese ? "关闭 Super Thread" : "Close Super Thread")
-                NativeReportLinkWorkspace(suppressed: suppressed, onClose: onClose) {
-                    content
-                        .nativeReadingPanelClose(label: label, identifier: isBack ? "reading-panel-back" : "reading-panel-close",
-                            overlaysContent: true, isBack: isBack, onClose: dismissToOverview ?? onClose)
-                        .background(NativeReadingPanelFrame(identifier: identifier))
-                        .accessibilityIdentifier(identifier)
-                }
-            } else {
-                panel(content).padding(.trailing, reservesAuxiliaryLane ? 76 : 0)
+            let chinese = locale.language.languageCode?.identifier == "zh"
+            let isBack = dismissToOverview == nil && returnsToCollection
+            let label = dismissToOverview != nil ? (chinese ? "返回俯瞰" : "Back to overview")
+                : returnsToCollection ? (chinese ? "返回 Super Thread 合集" : "Back to Super Thread Collection")
+                : (chinese ? "关闭 Super Thread" : "Close Super Thread")
+            NativeReportLinkWorkspace(suppressed: suppressed, onClose: onClose) {
+                content
+                    .nativeReadingPanelClose(label: label, identifier: isBack ? "reading-panel-back" : "reading-panel-close",
+                        overlaysContent: true, isBack: isBack, onClose: dismissToOverview ?? onClose)
+                    .background(NativeReadingPanelFrame(identifier: "report-reading-panel"))
+                    .accessibilityIdentifier("report-reading-panel")
             }
         } else { content }
-    }
-
-    private func panel(_ content: Content) -> some View {
-        viewport(content)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(NativePalette.thread.canvas.swiftUI)
-            .background(NativeReadingPanelFrame(identifier: identifier))
-            .clipShape(RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22).stroke(NativePalette.thread.line.swiftUI.opacity(0.6)))
-            .nativeReadingPanelClose(label: locale.language.languageCode?.identifier == "zh" ? "关闭面板" : "Close panel",
-                overlaysContent: identifier == "report-reading-panel", onClose: onClose)
-            .accessibilityIdentifier(identifier)
-            .nativeReadingEscape(perform: suppressed || !escapeEnabled || identifier == "report-reading-panel" ? nil : onClose)
-    }
-
-    @ViewBuilder private func viewport(_ content: Content) -> some View {
-        if identifier == "report-reading-panel" {
-            // Clip before padding so the 8pt border follows the outer 22pt curve.
-            content.clipShape(RoundedRectangle(cornerRadius: 14))
-                .nativeReadingPanelViewport(topInset: 8, balancedVerticalInsets: true)
-        } else if identifier == "moku-reading-panel" {
-            content.nativeThreadReadingViewport(minimumBottomInset: minimumBottomInset)
-        } else {
-            content.nativeReadingPanelViewport(minimumBottomInset: minimumBottomInset)
-        }
     }
 }
 
@@ -174,8 +141,11 @@ private struct NativeReportLinkWorkspace<Content: View>: View {
                 .allowsHitTesting(false)
         }
         .onPreferenceChange(NativeReportExecutionInputKey.self) { next in
+            let sameReadyColumn = executionInput?.ready == true && next?.ready == true && executionInput?.frame == next?.frame
             executionInput = next
-            inputChanged?(next?.reference, false, returnFromExecution)
+            // A ready-to-ready handoff at the same seat publishes its new owner
+            // together with the native marker. Withdrawing input here folds the Dock.
+            if !sameReadyColumn { inputChanged?(next?.reference, false, returnFromExecution) }
         }
         .onPreferenceChange(NativeReadingAuxiliaryBackKey.self) { auxiliaryBack = $0 }
         .onChange(of: suppressed) { _, hidden in

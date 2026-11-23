@@ -24,13 +24,12 @@ Core Animation after admission; native main-thread layout can still delay
 preparation, mounting and callback delivery. A scheduled tick, display-link
 callback or GPU submission is not evidence of physical presentation or FPS.
 
-The Overview Metal renderer receives immutable inputs and encodes on its serial
-queue. Visibility retirement stops production; unchanged static fields stop
-requesting work. Native status decorations use their own admitted motion clock.
-Their completion/lifetime owners are distinct from task execution. Bounded
-resource caches invalidate on actual input changes, not arbitrary redraws.
+Running Agent Thread cards confine their status animation to the emoji badge.
+Core Animation sweeps the harness accent across fixed perforations. Reduce
+Motion holds a lit diagonal. Visibility and detachment retire the animations.
+The foreground emoji and the card body keep their positions.
 
-Source: [cloud renderer](../app/macos/Sources/Shared/PluginUI/Design/NativeOverviewCloudRenderer.swift),
+Source: [running badge](../app/macos/Sources/Shared/PluginUI/Cards/RunningThreadBadge.swift),
 [panel transition](../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingPanelTransition.swift),
 [reading return](../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingPanelReturn.swift).
 
@@ -40,9 +39,7 @@ or replaced route cannot hide its successor. Showing remains synchronous for
 return preparation; keyboard/focus behavior is not disabled to hide warnings.
 See [parent surface](../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingParentSurface.swift).
 
-The [compact eye replay](../demos/moku-panel-transition/remaining/README.md)
-compares the resident eyes with the original controller at the same device coordinates
-and records window frames during a main-thread hold. Mounted Dock visits exercise
+The [mounted Dock visits](../demos/moku-panel-transition/remaining/README.md) exercise
 the reply read key, permissions, questionnaires, Timer acknowledgments and native
 input. The [transition study](research/chief-bar-remaining.md) records unshipped
 candidates and the boundaries of their measurements. Physical presentation and

@@ -68,7 +68,6 @@ public struct NativeWindowNavigationView: View {
     private let backFocus: FocusState<Bool>.Binding?
     @FocusState private var unmanagedBackFocus: Bool
     @Environment(\.locale) private var locale
-    @Environment(\.nativeWindowContentScale) private var contentScale
     public init(action: ThreadDetailBackAction?, hidden: Bool = false, suspended: Bool = false,
                 managesNativeButtons: Bool = true, compact: Bool = false, reading: NativeReadingNavigationState? = nil,
                 onRevealChange: ((Bool) -> Void)? = nil,
@@ -107,8 +106,6 @@ public struct NativeWindowNavigationView: View {
                 .allowsHitTesting(action != nil && !suspended)
                 .padding(.leading, NativeWindowNavigationGeometry.left)
                 .padding(.top, NativeWindowNavigationGeometry.top)
-                // Window controls do not participate in application content zoom.
-                .scaleEffect(1 / contentScale, anchor: .topLeading)
             }
         }
         .onChange(of: hidden, initial: true) { _, value in onRevealChange?(!value) }

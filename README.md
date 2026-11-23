@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  Apple silicon · macOS 26+ · Invited alpha
+  Apple silicon · macOS 26+ · Invited alpha · <a href="https://github.com/hupao-creator/Chief/releases/tag/v0.1.0-alpha.2">Alpha 2 download (about 31 MB)</a>
 </p>
 
 ---
@@ -32,9 +32,12 @@ Select the screenshot to open its original file. The Overview grid rearranges as
 - **Connect the work.** Super Thread Agent prepares Super Threads with links back to source conversations. Git task cards can show branch and change summaries. [Super Threads and file changes →](docs/reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 - **Give feedback beside the work.** Open a web page in a sidecard, annotate an element or area, and send the screenshot and comment to the current agent conversation. [Sidecards →](docs/sidecards.md)
 
-The interface uses SwiftUI and AppKit, backed by a Go service. Agents run through
-their externally installed tools and retain their own accounts, models, and
-credentials.
+Chief uses the agent CLIs you’ve already configured on your Mac, with their
+existing accounts, models, and credentials. Chief connects its tools within the
+session without rewriting user or project configuration, registering global
+hooks, or installing global plugins.
+
+The interface uses SwiftUI and AppKit, backed by a Go service.
 
 <a name="auto-categorization"></a>
 

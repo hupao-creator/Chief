@@ -4,7 +4,7 @@ Run on macOS 26 with Xcode, the resolved SwiftPM dependencies, a graphical sessi
 and current-process ScreenCaptureKit access. Use a fresh output directory.
 
 ```sh
-python3 demos/moku-panel-transition/remaining/run.py .build/compact-eyes eyes routes routes-reduced
+python3 demos/moku-panel-transition/remaining/run.py .build/compact-eyes routes routes-reduced
 ```
 
 The runner acquires the shared performance and native-window leases, builds the
@@ -12,21 +12,42 @@ current Debug product and mounts the production eye layers and Dock in isolated,
 non-key panels. Each visit records its PID, the foreground application and the
 collector and executable fingerprints.
 
-- `eyes` builds the original controller and renderer from commit `9b61af09`.
-  Six 420 ms legs compare original and submitted paths at identical device
-  coordinates, including fractional phases and a reversal. A separate capture
-  queue samples the two originals and production eyes while the main thread is
-  held. Hiding the face, interrupting a blink and redirecting to a third pose
-  check the handoff to the display link.
+- `timers` and `timers-reduced` mount the compact production Timer at original
+  scale in an offscreen panel. They check its bottom placement and AppKit hit
+  region, explicit FIFO receipts, reading to the final line and restoring idle
+  and running Docks. A failed bell exposes Retry bell and keeps the same pending receipt through retry.
+  A pending head also moves to a route without a Dock and
+  back. The fixture injects a silent bell and records its start/stop lifetime.
+- `eyes` compares the compact expression layers with the original renderer at matched phases
+  and during main-thread holds. Running or retiring orbit dots keep the shared display clock.
 - `routes` and `routes-reduced` mount a reply, permission and questionnaire
   controls and two completed Timer operations. An external AX client restricted
   to the fixture's own PID presses the controls. The visits check first-key
   delivery, UTF-16 selection, marked-text commit and draft restoration across
-  reversal and retirement. The fixture supplies the projected requests and
-  records bell callbacks.
+  reversal and retirement. A Talk visit opens Note, reverses its return, opens
+  Settings, interrupts its close and uses the restored close controls. The fixture supplies the projected requests and
+  records bell callbacks. `routes-offscreen` runs the same normal-motion
+  interaction checks entirely beyond the desktop and records AppKit view
+  bitmaps. These images document layout and do not measure composited glass.
+
+- `orbit-fade` mounts the production 168 × 44-point Dock entirely offscreen.
+  Catalog fixtures start, interrupt, reverse, replace and complete executions.
+  The replay advances the production display-frame step by 25ms. Each visible
+  sample must stay on the capsule contour, advance with an uninterrupted peer
+  and paint three 5-point dots at the current fade opacity. The evidence includes
+  intermediate Dock images, 1-pixel-per-point decoration rasters and
+  `orbit-frames.json`. This fixture checks drawing and state, not display pacing.
+- `tool-feedback` mounts the production Dock and delivers Codex catalog fixtures
+  to its workspace presentation. The check observes painted dots, the mounted
+  character and its animation input across consecutive named calls and reasoning.
+  It checks the foreground call IDs and names, retirement on completion, failure and interruption, both
+  intervention panels and the pending dispatch notification. Results are in
+  `tool-feedback/tool-feedback.json`; no model or external tool runs.
 
 The [transition study](../../../design/research/chief-bar-remaining.md) records
 the separate onboarding, route lifetime, mask, Talk, Collection and identity
 experiments and their limitations. Their collectors and rejected candidates are
 available in Git object `9979d53b15b04243d87000e390d1d90d39d0ac6a` under
 `demos/moku-panel-transition/remaining/`.
+
+The `tag-unread` case mounts the production directory and child menu in a 1× offscreen panel with an isolated read history. It records counts and images before reading, after a receipt, after rereading the same version and after the final receipt.

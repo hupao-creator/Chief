@@ -24,11 +24,11 @@ def main():
         command.add_argument('--output',type=Path,required=True);command.add_argument('--capabilities',type=Path)
         command.add_argument('--count',type=int,nargs='+',choices=(5,10,20),default=[10] if command is compare else [5,10,20])
         command.add_argument('--scenario',nargs='+',choices=BADGE_SCENARIOS if command is compare else SCENARIOS,
-            default=list(BADGE_SCENARIOS) if command is compare else [s for s in SCENARIOS if 'zoom' not in s])
+            default=list(BADGE_SCENARIOS) if command is compare else list(SCENARIOS))
         command.add_argument('--seconds',type=float,default=8)
         command.add_argument('--warmup-seconds',type=float,default=6 if command is compare else 1)
         command.add_argument('--window-bounds',type=float,nargs=4,metavar=('X','Y','WIDTH','HEIGHT'),
-            default=[50,60,1280,950] if command is compare else None,
+            default=[50,60,1280,820] if command is compare else None,
             help='explicit OS window bounds; actual bounds must match before measurement')
         command.add_argument('--pacing',choices=tuple(RATES),default=DEFAULT_PACING,
             help='sparse (default): low-rate output; sustained/burst: explicit stress loads')

@@ -48,16 +48,26 @@ public struct NativeHarnessSettingsConfiguration: Hashable, Sendable {
               scope: .thread(thread.id))
     }
     public static func background(harnessID: JSONText, cwd: JSONText, settingID: JSONText,
-                                  inherited: Bool, source: JSONValue) -> Self {
-        // Inheritance uses Moku's exact execution workspace and saved profile.
-        // Canonicalize before cache admission so role readers join that flight.
-        if inherited {
-            return .init(harnessID: harnessID, cwd: cwd, source: source, scope: .global(executionOwner: .moku))
+                                  saved: ApplicationBackgroundExecutionSettings, chiefSource: JSONValue) -> Self {
+        let source: JSONValue
+        let previewIndependent: Bool
+        switch saved.mode {
+        case .inherit(let retained):
+            source = retained.map { $0.harnesses[harnessID] ?? .null } ?? chiefSource
+            previewIndependent = true
+        case .override(let overrides):
+            source = overrides.harnesses[harnessID] ?? .null
+            // Reuse a preview when its profile becomes the saved choice. Only
+            // a missing slot or automatic host needs an initialization read.
+            previewIndependent = !saved.enabled || (overrides.harnessPreference != "auto" && source != .null && source != .object([:]))
         }
-        // Independent roles retain their own workspace, even for equal profiles.
         return .init(harnessID: harnessID, cwd: cwd,
-              source: .object(["inherited": .bool(inherited), "settings": source]),
+              source: .object(["previewIndependent": .bool(previewIndependent), "settings": source]),
               scope: .global(applicationSettings: settingID))
+    }
+    var isIndependentPreview: Bool {
+        guard case .global(let application, _) = scope, application != nil else { return false }
+        return source["previewIndependent"] == .bool(true)
     }
     /// Saved settings can change on another device while this editor has a draft.
     /// Only changing its workspace or owner replaces the editor's state.
@@ -76,6 +86,9 @@ public struct NativeHarnessSettingsConfiguration: Hashable, Sendable {
             object = ["scope": .text("global"), "harnessId": .string(harnessID)]
             object["applicationSettings"] = applicationSettings.map(JSONValue.string)
             object["executionOwner"] = executionOwner.map { .text($0.rawValue) }
+            if isIndependentPreview {
+                object["previewIndependent"] = .bool(true)
+            }
         }
         if refresh { object["refresh"] = .bool(true) }
         return .object(object)
@@ -92,8 +105,6 @@ public final class NativeHarnessSettingsSurface {
     public private(set) var threadSettingsFailure: String?
     public private(set) var threadSettingsEditorID = UUID()
     private var baselineThreadSettings: ThreadSettingsSnapshot?
-    private var latestThreadSettings: ThreadSettingsSnapshot?
-    private var pendingThreadChange: JSONValue?
     @ObservationIgnored private let host: NativeHarnessHost
     @ObservationIgnored private var session: HarnessSettingsSession!
     @ObservationIgnored private var sequence = 0
@@ -111,6 +122,9 @@ public final class NativeHarnessSettingsSurface {
     var preparationError: String? {
         if let error = executionSnapshotError?.string ?? session.preparationError { return error }
         guard session.isReady else { return nil }
+        // Independent drafts can fill missing choices once their catalog is
+        // ready. The mounted editor still requires a complete draft to advance.
+        if configuration.isIndependentPreview { return nil }
         let snapshot: JSONValue
         switch configuration.scope {
         case .global(let application, let owner) where application != nil || owner != nil:
@@ -124,9 +138,7 @@ public final class NativeHarnessSettingsSurface {
 
     init(host: NativeHarnessHost, plugin: AnyHarnessPlugin, configuration: NativeHarnessSettingsConfiguration) {
         self.host = host; self.configuration = configuration
-        let initialThreadSettings = ThreadSettingsSnapshot(configuration)
-        baselineThreadSettings = initialThreadSettings
-        latestThreadSettings = initialThreadSettings
+        baselineThreadSettings = ThreadSettingsSnapshot(configuration)
         session = plugin.makeSettingsSession(load: { [weak self] refresh in
             guard let self else { throw CancellationError() }; return try await load(refresh: refresh)
         }, onError: { [weak host] error in host?.callbacks.onError(error) })
@@ -152,14 +164,13 @@ public final class NativeHarnessSettingsSurface {
         try checkAuthority()
         guard next.editorIdentity == configuration.editorIdentity else { throw CancellationError() }
         guard next != configuration else { return }
-        if let snapshot = ThreadSettingsSnapshot(next) { observeThreadSettings(snapshot) }
         configuration = next; sequence += 1; needsReload = true
         session.sourceChanged()
     }
 
     public func release() {
         guard !isReleased else { return }
-        isReleased = true; sequence += 1; executionSnapshotError = nil; pendingThreadChange = nil
+        isReleased = true; sequence += 1; executionSnapshotError = nil
         session.invalidate(); host.unregisterSettingsSurface(id)
     }
 
@@ -242,25 +253,18 @@ public final class NativeHarnessSettingsSurface {
                 change: change, expectedSettingsRevision: expectedRevision) { [weak self] in
                     guard let self else { throw CancellationError() }; try checkAuthority()
                 }
-            let snapshot = ThreadSettingsSnapshot(revision: result.settingsRevision, settings: result.settings)
-            observeThreadSettings(snapshot)
             guard result.saved else {
-                pendingThreadChange = change
                 throw PluginContractError("Thread settings changed on another device. Your draft is retained; choose retry or reload above.")
             }
             guard result.settingsRevision >= expectedRevision else {
                 throw PluginContractError("Thread settings update returned an older version")
             }
-            baselineThreadSettings = snapshot; pendingThreadChange = nil
+            baselineThreadSettings = ThreadSettingsSnapshot(revision: result.settingsRevision, settings: result.settings)
             threadSettingsEditorID = UUID()
         } catch {
             threadSettingsFailure = error.localizedDescription
             throw error
         }
-    }
-
-    private func observeThreadSettings(_ snapshot: ThreadSettingsSnapshot) {
-        if snapshot.revision >= (latestThreadSettings?.revision ?? -1) { latestThreadSettings = snapshot }
     }
 
     public func harnessSettings(section: HarnessSettingsSection, executionSnapshot: Bool = false,
@@ -353,8 +357,7 @@ public struct NativeHarnessSettingsView: View {
                 }
                 content(surface)
             } else {
-                NativeSettingsNotice(message: text("正在读取 Agent 配置…", "Loading Agent configuration…"),
-                                     leading: AnyView(ProgressView().controlSize(.small)))
+                NativeSettingsNotice.loading(text("正在读取 Agent 配置…", "Loading Agent configuration…"))
             }
         }
         .task(id: SettingsLoadIdentity(configuration: configuration, generation: host.settingsLifetime.generation,

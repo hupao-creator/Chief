@@ -4,12 +4,21 @@ This runner checks **interaction input → real system → user-observable state
 Overview, Reading, Settings and Collection use the opt-in
 [native automation protocol](../native-interaction/README.md), with real Swift
 UI, Runtime, authenticated HTTP/NDJSON, persistence and native Codex processes.
+Onboarding uses an unattended macOS Accessibility driver with real confirmation
+buttons and a strict per-confirmation deadline.
 Composer uses an explicit operator-assisted system Accessibility/input path; the
 runner independently checks its public persisted inputs, output and interruption.
 It does not link reducers or instantiate fixture views. Runtime setup and public
-content reads establish prerequisites and independent result evidence; they are
-not counted as interaction coverage. Runtime invariants belong to PBT; UX timing,
-resource use and visual-performance measurements belong to benchmarks.
+content reads establish prerequisites and independent result evidence. Runtime
+invariants belong to PBT. Benchmarks own general UX timing, resource use and
+visual-performance measurements.
+
+## Agent Thread running badge
+
+The [native badge replay](../../demos/running-emoji-badge/README.md) mounts the default
+44pt badge in four production card views. Its window recording exercises running,
+idle and completed fixtures and the adaptive harness colors. The [Overview probe](../verification/overview-ci-performance/README.md)
+checks the active decorations in the mounted workspace against a fixture Runtime.
 
 ## Harness Thread Markdown
 
@@ -17,9 +26,31 @@ Run `python3 tools/e2e/thread-transcript/run.py --output /tmp/chief-thread-trans
 
 The replay first checks the manifest preview, the turn projection with deferred presence, full execution rows and the text in the native Markdown views. Retained-state fixtures exercise independent equal-text Codex notices, Claude fork history, a Pi extension notification and terminal partial reply, and a targeted OpenCode child reply. Additional frames exercise interleaved Unicode text, reasoning and a tool in Pi, and corrected Claude blocks around a moving review.
 
-Two nonactivating panels then mount the ordinary Agent workspace and Chief history. Each receives the same projections through its own isolated content store and live subscriptions. The replay compares native Markdown order and fonts, turn state, work controls, rendered group counts and metadata while work runs, when a reply settles, while waiting for permission, on success and on failure. At completion it compares paragraph positions and sizes, unfolds the work summary, remounts the saved turn, and opens a read-only Chief archive. The Codex case pairs a native `create_thread` with its coordinator receipt and verifies one tool call and the admitted child Thread ID. It also separates the catalog and scoped completion updates, locates an earlier reply by its message link, and keeps the focused Chief draft and selection through settlement. Local Return submits that draft to the fixture.
+A nonactivating panel mounts the ordinary Agent workspace with an isolated content store and live subscriptions. The replay checks native Markdown order, turn state, work controls, group counts and metadata during execution, settlement, permission requests, success and failure. It records paragraph geometry and fonts, unfolds the work summary and remounts the saved turn. The Codex case separates catalog and scoped completion updates and locates an earlier reply by its message link.
 
 The evidence directory contains the revision, platform, source projections, comparison results and images captured from the replay's own windows. Codex samples record changing pixels in the last work summary and its stationary text after the reply begins and after completion. These frames check whether the sweep appears at the right time. Installed CLI transport, real account permissions, database transactions and rendering latency have separate verification boundaries. [Reading contract](../../design/reading.md#content-and-execution-identity) · [Fixtures and launcher](thread-transcript)
+
+## AA evaluation context
+
+Capture the public roster and Astra release HTML, then replay the response bodies
+through the registered Artificial Analysis plugin and the Context host.
+
+```sh
+curl -fLsS https://artificialanalysis.ai/models/ -o /tmp/aa-roster.html
+curl -fLsS https://artificialanalysis.ai/models/gpt-6-2-astra -o /tmp/aa-astra.html
+./scripts/go.sh run ./tools/e2e/aa-context /tmp/aa-roster.html /tmp/aa-astra.html
+```
+
+The [runner](aa-context/main.go) supplies one native catalog identity and starts
+with a missing cache directory. The November 2026 Astra scenario requires one
+index and one release request, five effort rows, published scores, cost, ten
+component measurements, token prices and headline performance. Both median
+measurements must be null. After reopening the host without a catalog, its
+cached fallback must reproduce each measured row. The JSON output includes
+both response digests, requested URLs and the two routing texts. This exercises
+the [evaluation contract](../../internal/plugins/contexts/artificialanalysis/README.md)
+up to the before-send slot. It supplies no evidence of a model's eventual
+routing choice, GUI behavior or live request latency.
 
 ## Current scenario contract
 
@@ -30,10 +61,12 @@ contains every requested ID, including blocked and unreached entries.
 
 | ID | Implemented interaction and criterion | Prerequisite / evidence | Coverage boundary |
 | --- | --- | --- | --- |
+| `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Page changes take under 1,000ms each. The final Dock handoff takes under 1,560ms. | Fresh profile, authorized system AX driver, exclusive desktop. Each press verifies the private runtime PID/epoch, target button and focused test window. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
 | `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve completed tasks in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
+| `E2E-CHIEF-001` | Open Note and switch to Compose. The legacy command is rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
 | `E2E-SETTINGS-001` | Open Settings with Chief Agent selected and only Chief Agent, Auto-Categorization and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief Agent and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
-| `E2E-COLLECTION-001` | Open a grouped member, return, then revisit and read. Switch directory and archive/restore unrelated reports while All remains mounted. | Two isolated directories, two completed tasks and eight reports from a deterministic peer. | In the three-column replay window, All groups six fresh reports and a four-report directory groups two. A brief visit holds the cover, a qualified visit promotes the report, and archiving down to three reports releases the group. Restoring reports groups them again. |
+| `E2E-COLLECTION-001` | Open a grouped member, return, then revisit and read. Switch directory and archive/restore unrelated reports while All remains mounted. | Two isolated directories, two completed tasks and eight reports from a deterministic peer. | In the three-column replay window, All groups six fresh reports and a four-report directory groups two. A brief visit holds the cover, a qualified visit promotes the report, and archiving down to three reports releases the group. Restoring reports groups them again. Each fresh directory shows five unread Threads. Visiting the same Report twice removes one from its directory’s count. |
 | `E2E-COMPOSER-001` | Type a follow-up and activate the actual Send button; observe accepted draft clearing and completed output; send a held task, observe Stop in the empty action seat, activate it and observe interruption and an editable empty composer without navigating away | Exclusive desktop, accessible isolated bundle, external operator; `operator-send/stop.json` AX observations, exact persisted prompts, `composer-send-content/oracle/ui.json`, `composer-running/stopped/stop-content/stop-ui.json` | Operator-assisted OS input, not unattended CI; current ordinary Thread text input and cancellation only, not pause/resume, historical forks, IME or uncertain receipt recovery |
 
 The implemented desktop scenarios require execution evidence before they can be
@@ -64,6 +97,52 @@ version, quit it and open the candidate against the same home. Check its saved
 work and settings. Record the OS, fixture, observed pages and cleanup.
 Downloaded-file Gatekeeper and permission prompts require a quarantined copy
 on a clean Mac. A local launch cannot establish those outcomes.
+
+### Onboarding confirmations
+
+Build with `python3 tools/e2e/build.py --go ./scripts/go.sh --with-app`, then
+use the local E2E runner from a macOS graphical session with Accessibility
+authorization for the invoking tool and Reduce Motion off. Coordinate the
+desktop slot before running. The measurement holds the shared performance lease
+and the desktop lease through cleanup.
+
+```sh
+python3 tools/e2e/run.py run --suite onboarding --runtime .build/e2e/chief-runtime \
+  --app app/macos/.build/debug/Chief \
+  --desktop-lease /private/tmp/mokusei-ui-verification.lock \
+  --desktop-owner YOUR_COORDINATOR_THREAD_ID \
+  --output output/e2e/onboarding
+python3 tools/e2e/run.py verify output/e2e/onboarding
+```
+
+The runner launches a uniquely bundled development App, starts Runtime with a
+fresh isolated profile and passes no Overview preparation flags. It performs
+no settings writes during preparation. Native discovery uses the installed
+Harnesses found in the isolated environment. The external peer and private
+native homes follow the same isolation policy as the other desktop scenarios.
+
+The clock starts immediately before each AXPress. The next page must expose its
+own enabled confirmation after the normal page animation. After **Start using
+Chief**, the same window must expose the enabled attachment button and have an
+editable Chief text area focused. Observation and AX transport overhead count
+toward each deadline. The timings are individual samples, with one press per
+confirmation. A sample at or above its deadline fails. Page changes have 1,000ms each.
+The final handoff has 1,560ms, including 140ms of form fade, 780ms of
+contraction and 180ms of reveal. A late destination can allow
+the journey to continue measuring subsequent confirmations in that same visit.
+After AX observes the editable field, a single read of the app's local interaction
+socket retrieves its monotonic timestamps for successful persistence, Dock preparation
+and the three animation boundaries. The terminal and report show each interval.
+Persistence and preparation before the fade together must take under 260ms.
+Post-reveal AX focus must take under 200ms. Each animation must last its
+authored duration with at most 34ms of early completion (two 60Hz frames).
+These are callback intervals. Use the window recording for rendered motion. The run also reads
+both saved role modes through Runtime and checks the profile completion marker.
+
+The `onboarding` suite runs separately from prepared-profile suites, including
+`all`. The hosted Desktop interaction workflow covers its supported mounted
+journeys. Onboarding requires a local AX-authorized graphical session. The
+driver records macOS and accessibility settings for that session.
 
 ### Full-surface loading mark
 
@@ -111,9 +190,7 @@ and the open interval between blinks. To isolate compositor progress, hold the
 fixture's main thread during a second blink and read complete window frames
 on an independent capture queue.
 
-The [compact eye and Dock replay](../../demos/moku-panel-transition/remaining/README.md)
-compares ordinary and redirected eyes at the same window coordinates, including
-during a main-thread hold. Its native input visits exercise reply read state,
+The [mounted Dock replay](../../demos/moku-panel-transition/remaining/README.md) exercises reply read state,
 permission and questionnaire controls, Timer acknowledgment and editor reversal
 with ordinary and reduced motion.
 
@@ -184,10 +261,10 @@ owns resolution, profile compatibility and window appearance.
    until the illustration canvas scales down. Check that the art and the panel
    fit, that the form below remains reachable by scrolling, and that clicking a
    Chief dispatch target and each role's mode control updates its selection.
-   At 5× zoom, scroll the header out of view and continue down to the form.
+   In a short Settings viewport, scroll the header out of view and continue down to the form.
    Check that the resident eyes move out with the header.
    Repeat the backdrop check with Reduce Transparency and inspect the opaque
-   fallback. Record the window width, zoom, frames and observed selections.
+   fallback. Record the window width, height, frames and observed selections.
    See the [Settings backdrop and playback contract](../../app/macos/Sources/Host/Settings/README.md).
 
 Keep the revision, primary language order, appearance, profile fixture, launch
@@ -269,8 +346,7 @@ carousel member, execution identities and link position alongside the recording.
    Repeat the comparison for an ordinary Thread and an individual Report.
    After a brief Report visit, type an unsent draft in its source conversation
    and close the report. From the same window recording, check that the input
-   folds in its source column, travels at reading height to the canvas center,
-   then rises at that center. Check the carousel page, collapsed Note and retired editor focus.
+   folds in its source column and travels back to the resting canvas center. Check the carousel page, collapsed Note and retired editor focus.
    Reopen the Note and follow the same citation to recover the focused draft.
    Check the separate Overview draft through its Compose shortcut. On the ordinary
    Thread route, use Escape to check the restored Note’s scroll position.
@@ -278,37 +354,47 @@ carousel member, execution identities and link position alongside the recording.
    Chinese. Record the capture rate. Track source revision, executable identity, scoped replies,
    input targets and returned state for each visit.
 
-The semantic Note toggle exercises the Note entrance. Mounted route identity
+The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size) checks the Overview status filters, live card membership, retained tags and the Chief Bar scroll-event path to Chief Note. The semantic Note toggle exercises the Note entrance. Mounted route identity
 and window frame recordings supply separate evidence.
 [Note and link behavior](../../app/macos/Sources/Host/MokuScene/README.md)
 
-### Chief history panel
+### Chief navigation
 
-Use the isolated desktop session and shared GUI lease described below. Prepare
-two Chief turns, a long transcript, a completed Agent Thread, and a Super Thread.
-Keep all three readings on one display at the same window bounds, workspace
-zoom and system appearance. Measure the outer rounded reading card of each
-route in window-relative points with Agent and Super Thread sidecards folded.
-Record the top and bottom edges, card height and Chief capsule bounds at the
-ordinary window size and again after reducing the window size.
+Start with a private profile containing a Chief conversation and a completed task. A saved selection for the current Chief or a retained Chief archive must open Overview. Open Chief Note and inspect its accessible controls and the View menu. Compose and Chief Note have their own shortcuts. A plain Command-B leaves the current route in place. Check that the former history action is rejected, then open an ordinary task and a Super Thread from Overview.
 
-Open Chief Note, activate **Chief history**, and close from the **×**. Window
-frames should show the card and input arrive together and fade out with their
-outlines intact. Compare the title, last visible transcript row, input and
-outer edges through both motions. Repeat from **⌘B** and exercise the backdrop
-click. Reverse a partly completed entrance and a partly completed return.
-Keep an unsent draft and verify the editor's focus and text after reversal.
-Scroll the document, select an earlier turn, and use Escape from read-only
-content to return to current and then close. Resize with history open and again
-after accepting Close. Reopen from an Agent or Super Thread and check the
-underlying visit on return. Check native window close and app quit with history
-open.
+### Live Super Thread updates
 
-Record the revision, app digest, display and capture scale, actual inputs,
-window bounds, frame timestamps and cleanup receipt. Keep frame evidence for
-Agent and Super Thread opening and closing in the same session. Use the
-[Chief history contract](../../app/macos/Sources/Host/MokuScene/README.md) for
-the expected layout and lifecycle.
+In an isolated app, open an existing Super Thread from its Overview card with
+a cited execution visible beside the document. Use a long report with a
+recognizable background, a section link, and text that distinguishes each
+revision. Record the target window before triggering any update.
+
+Complete a follow-up in the cited source conversation. Have the background
+Super Thread Agent read the report and update just its introduction. Complete
+another follow-up and have the agent replace only the HTML. Record the report
+ID, revisions, accepted fields and selected reader throughout. Inspect the
+window frames from the old text through the first visible new text. The body
+must stay visible and the related list must keep its width and position.
+Repeat after following the section link and compare the visible section, its
+updated text and focus across the change. Keep the source commits, capture
+conditions and movies with the results.
+[Reader contract](../../design/reading.md#report-and-execution-sidecards)
+
+### Live follow-up in a related execution
+
+Open a Super Thread in an isolated app and select a source conversation from
+**Related executions** while its latest execution is running. With the external
+model stream still active, type two follow-ups in the sidecard composer and
+send each through its mounted Send control. Capture the window across both
+submissions and a subsequent content update. Inspect the text, timestamp and
+background together in the intermediate frames. Each new row rises and fades
+in once. Compare the position of an earlier visible row across sends, check
+that the report and execution stay open, and check the exact inputs and
+execution ID through Runtime. Repeat with a settled reply taller than the
+viewport. Scroll partway up before sending and compare the timeline's offset
+and following state before and after each steer. Repeat with Reduce Motion
+enabled to check the immediate final placement. Record the build, capture settings, input method
+and which cases were exercised. [Reading contract](../../design/reading.md#content-and-execution-identity) · [Recorded window and observations](../../demos/moku-panel-transition/evidence/live-steer/README.md)
 
 ### Super Thread reading regression
 
@@ -364,6 +450,29 @@ progress indicator. Once the cards appear, check that their excerpts match the
 cited runs and that a late completion from a closed visit does not change a new
 visit. The [production component preview](../../demos/report-thread/README.md)
 can exercise this visually with synthetic data and a window recording.
+
+### Overview unread bookmarks
+
+Use a private profile with an individual Super Thread and an ordinary completed
+Agent Thread. In the native window, capture the two emoji badges, open each
+reader, wait for its content in the key window and return to Overview. The red
+bookmark disappears on the visited card. For the background case, open the
+reader while the test window is inactive. Check that no receipt appears until
+the reader comes to the foreground. Restart Chief with the same profile and
+check both badges again. Provide a new HTML revision and another completed
+execution for the same IDs. Each badge should show its bookmark again until
+that version is displayed. Keep the window captures and profile receipt set
+for each step. Also check the red count on each containing tag before and after
+opening a bookmarked card, including a shared child tag, a covered execution
+and a Report collection. Selecting a tag preserves the count. When its last
+unread version is acknowledged the number disappears while the selected check
+and any activity ring remain. Expand a directory at normal window scale and
+capture the opening, settled and returning child row. Child badges first appear
+when their chips settle. Check the complete white digits and red capsule over
+the glass, including its upper edge. Close and reopen during travel, switch
+folders rapidly, and change a child’s count during entry, including to zero.
+Only the settled, open row should show its latest positive counts. Repeat with
+Reduce Motion and check the folder badge throughout. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)
 
 ### Agent reader alignment
 
@@ -490,7 +599,7 @@ does not certify first-run onboarding.
 ### Collection member opening
 
 Open the page count with two reports, then with enough covered reports to fill
-several rows. At 2352×1400pt and 1× zoom, capture the member panel at the top
+several rows. At 2352×1400pt, capture the member panel at the top
 of the grid. Measure the first row from the panel's top edge, both side
 margins, card width, and the counts of fully and partially visible cards.
 The first row starts 20pt from the top in both cases. Two cards sit together
@@ -500,11 +609,11 @@ between the side margins, with individual cards capped at 360pt. The
 and [after](../../demos/super-thread-carousel/evidence/member-grid-after.png)
 frames use the same 17 covered reports and one report without a cover.
 
-Resize the open window to 1192×780pt, then to 860×600pt at 2× zoom. Scroll
-with the pointer over the single column and check that it clears Close.
+Resize the open window to 1192×780pt, then to 860×600pt. Scroll
+with the pointer over the grid and check that it clears Close.
 Click a scrolled member, confirm its report title and body, and use Back.
 Compare the visible cards and scroll offset on return. Widen the window again
-and check the column count. At 500×400pt and 2× zoom, reach the final card
+and check the column count. At 500×400pt in the preview, reach the final card
 and click Close with the grid scrolled.
 
 Use a report with a cover and an introduction long enough to wrap past three
@@ -676,6 +785,16 @@ switch focus to an Overview filter and verify that the Dock leaves it there.
 Check that Escape and outside click still close the bottom input. A Compose
 shortcut sent while another app is foreground belongs to that app.
 
+For visible-caret latency, record three untyped Compose openings per build
+in a populated, key Overview window. Use the same window size, appearance,
+capture scale and input driver for both builds. On each video, mark the first
+frame where both shell edges are within one pixel of their settled positions,
+then locate the first visible insertion stroke at the editor's text origin.
+Use frame presentation timestamps. Record both times and the signed difference.
+A caret already visible at arrival has zero post-expansion wait. Keep the
+preceding frames, the window recording and the separate typing/focus
+observations with each build's identity.
+
 This procedure uses the real workspace menu and system keyboard input. The
 [Agent entrance replay](../../demos/moku-panel-transition/README.md#agent-entrance-replay)
 separately drives the Compose intent and the responder chain of a non-key
@@ -705,10 +824,9 @@ submitted input and confirm the draft clears. A
 deterministic external peer can observe native delivery without a provider account.
 
 On a host-enabled draft, Control-click the plus and check that each host option
-opens the corresponding file or directory browser. Repeat the primary control
-and chooser check in Chief history. Check English and Chinese. Capture the plus and
+opens the corresponding file or directory browser. Check English and Chinese. Capture the plus and
 the eyes in the same row in light and dark system appearances and at a narrow
-width or app zoom that admits the two-row composer. Inspect the control's
+width that admits the two-row composer. Inspect the control's
 localized accessibility label, action and frame. Keep the commit, app digest,
 profile and input backend, screenshots or AX observations, fixture digests,
 transcript result and cleanup receipt. This local system-input procedure is

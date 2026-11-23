@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import shutil
 import statistics
 import subprocess
 import time
@@ -13,6 +14,16 @@ SOURCE = Path(__file__).resolve().parent
 REPO = SOURCE.parents[2]
 PACKAGE = REPO / "app/macos"
 OUTPUT = REPO / ".build/overview-performance"
+UI_RESOURCES = "ChiefNative_ChiefPluginUI.bundle"
+
+
+def resource_hash(directory):
+    digest = hashlib.sha256()
+    for path in sorted(directory.rglob("*")):
+        if path.is_file():
+            digest.update(str(path.relative_to(directory)).encode() + b"\0")
+            digest.update(hashlib.sha256(path.read_bytes()).digest())
+    return digest.hexdigest()
 
 
 def source_fingerprint():
@@ -43,6 +54,8 @@ def build(label):
         include = PACKAGE / ".build/checkouts" / relative
         args += ["-I", str(include), "-Xcc", "-fmodule-map-file=" + str(include / "module.modulemap")]
     subprocess.run([*args, str(destination / "main.swift"), *objects, "-o", str(destination / "probe")], cwd=REPO, check=True)
+    resources = destination / UI_RESOURCES
+    shutil.copytree(binary / UI_RESOURCES, resources)
     if source_fingerprint() != fingerprint:
         raise RuntimeError("Production sources changed during build; discard this label and build again")
     untracked = subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "app/macos/Sources"], text=True).splitlines()
@@ -52,6 +65,7 @@ def build(label):
                 "builtAt": time.time(), "probeSourceSHA256": hashlib.sha256(probe_source).hexdigest(),
                 "productionSourceSHA256": fingerprint,
                 "untrackedSources": {path: (REPO / path).read_text() for path in untracked},
+                "resourceSHA256": resource_hash(resources),
                 "binarySHA256": hashlib.sha256((destination / "probe").read_bytes()).hexdigest()}
     (destination / "build.json").write_text(json.dumps(metadata, indent=2))
     print(destination / "probe", flush=True)
@@ -67,6 +81,9 @@ def measure(labels, destination, repetitions):
     for label, metadata in builds.items():
         if hashlib.sha256((OUTPUT / label / "probe").read_bytes()).hexdigest() != metadata["binarySHA256"]:
             raise RuntimeError("Preserved binary changed: " + label)
+        resources = OUTPUT / label / UI_RESOURCES
+        if not resources.is_dir() or resource_hash(resources) != metadata.get("resourceSHA256"):
+            raise RuntimeError("Missing or changed production UI resources; rebuild label: " + label)
     destination.mkdir(parents=True, exist_ok=False)
     observations = []
     for repetition in range(repetitions):

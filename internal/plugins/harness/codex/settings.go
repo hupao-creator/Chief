@@ -774,6 +774,17 @@ func (s *SettingsAPI) SnapshotExecution(ctx context.Context, request plugin.Sett
 	if err != nil {
 		return nil, err
 	}
+	thread, err := executionThreadSettings(current, observed, initial)
+	if err != nil {
+		return nil, err
+	}
+	if err = s.validate(ctx, thread, request.Cwd, "execution settings", true); err != nil {
+		return nil, err
+	}
+	return json.Marshal(Map{"useDefaultThreadSettings": false, "threadSettings": thread})
+}
+
+func executionThreadSettings(current, observed Map, initial bool) (Map, error) {
 	config, _ := csRecord(observed["configuration"])
 	models := ccModels(observed["models"])
 	configuredModel := csString(config["model"])
@@ -804,6 +815,7 @@ func (s *SettingsAPI) SnapshotExecution(ctx context.Context, request plugin.Sett
 	}
 	effort := csString(current["effort"])
 	if choice, exists := current["thinking"]; exists {
+		var err error
 		effort, err = ThinkingEffort(choice)
 		if err != nil {
 			return nil, err
@@ -822,6 +834,10 @@ func (s *SettingsAPI) SnapshotExecution(ctx context.Context, request plugin.Sett
 	tier := csString(current["serviceTier"])
 	if tier == "" && initial {
 		tier = csString(config["service_tier"])
+		// config/read can spell the catalog's priority tier "fast".
+		if tier == "fast" && !ccOptionsInclude(selected["serviceTiers"], tier) && ccOptionsInclude(selected["serviceTiers"], "priority") {
+			tier = "priority"
+		}
 		if tier == "" {
 			if value, exists := selected["defaultServiceTier"]; exists {
 				if value == nil {
@@ -852,17 +868,14 @@ func (s *SettingsAPI) SnapshotExecution(ctx context.Context, request plugin.Sett
 		if tier != "" {
 			explicit["serviceTier"] = tier
 		}
-		if _, err = ValidateModelSettings(models, explicit, "execution settings"); err != nil {
+		if _, err := ValidateModelSettings(models, explicit, "execution settings"); err != nil {
 			return nil, err
 		}
 	}
-	if _, err = ValidateExecutionModelSettings(models, thread, "execution settings"); err != nil {
+	if _, err := ValidateExecutionModelSettings(models, thread, "execution settings"); err != nil {
 		return nil, err
 	}
-	if err = s.validate(ctx, thread, request.Cwd, "execution settings", true); err != nil {
-		return nil, err
-	}
-	return json.Marshal(Map{"useDefaultThreadSettings": false, "threadSettings": thread})
+	return thread, nil
 }
 func (s *SettingsAPI) validate(ctx context.Context, settings Map, cwd, label string, autoReviewOnly bool) error {
 	if err := ctx.Err(); err != nil {

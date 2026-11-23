@@ -5,8 +5,7 @@ from pathlib import Path
 
 VERSION = 1
 CLOCK = 'macos.mach_absolute_time.nanoseconds'
-SCENARIOS = ('first-render', 'idle.completed', 'idle.active', 'pan', 'zoom',
-             'body', 'body.pan', 'body.zoom')
+SCENARIOS = ('first-render', 'idle.completed', 'idle.active', 'pan', 'body', 'body.pan')
 ROLES = ('application', 'runtime', 'helper', 'collector', 'source')
 
 
@@ -122,7 +121,7 @@ def plan(value):
             raise ValueError('input deadlines must strictly increase')
         previous = at
         kind = event['kind']
-        if kind not in ('move', 'down', 'drag', 'up', 'zoom', 'scroll'):
+        if kind not in ('move', 'down', 'drag', 'up', 'scroll'):
             raise ValueError('unsupported input kind')
         if kind == 'down':
             if down: raise ValueError('duplicate mouse down')
@@ -145,8 +144,6 @@ def plan(value):
                 raise ValueError('invalid pixel scroll sequence')
             scroll_direction = direction
             horizontal = not reading
-        if kind == 'zoom':
-            integer(event['delta'], 'wheel delta', -100, 100)
         for axis in ('x', 'y'):
             number(event[axis], axis, -100_000, 100_000)
     if down or scroll_direction:
@@ -156,8 +153,6 @@ def plan(value):
         raise ValueError('Overview scroll and drag probes cannot be combined')
     if 'pan' in value['scenario'] and not (drags or horizontal):
         raise ValueError('pan scenario lacks navigation inputs')
-    if 'zoom' in value['scenario'] and not any(e['kind'] == 'zoom' for e in events):
-        raise ValueError('zoom scenario lacks real zoom inputs')
     if reading:
         from reading.contract import validate
         validate(value)

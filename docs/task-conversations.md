@@ -6,7 +6,11 @@ Click a task card in Overview to read its conversation. If the reader takes a mo
 
 Click **Show work** when it appears for a summary, including the number of reasoning steps and tool calls when available. If you scroll up during a live run, use **Jump to latest** when it appears to return to new replies.
 
-When a conversation opens with an **Execution** sidecard on the right, the input bar glides beneath it and opens there. Click the blank margin outside the conversation to return to Overview. The bar folds beneath the sidecard, glides horizontally to the center, then rises to its resting position in Overview.
+A Codex task continues normally when a command returns binary data. You can follow the agent’s next step in the same conversation.
+
+When you open a Codex task, Chief’s eyes flip to the Codex logo inside the input bar. When you close the conversation, the logo flips back to the eyes as the bar shrinks.
+
+When a conversation opens with an **Execution** sidecard on the right, the input bar glides beneath it and opens there. Click **×** at the top left of the conversation or click the blank margin to return to Overview. The bar shrinks beneath the sidecard, moves left at the same height, then rises into place at the center of Overview.
 
 ## Respond to a request or stop a run
 
@@ -16,7 +20,7 @@ To stop the current run, click **Stop this thread**. The button shares the **Sen
 
 ## Send a follow-up or attachment
 
-Type your follow-up in **Type a message…** and click **Send** or press Return. Use Shift+Return for a new line. When you send to a running agent, your message appears immediately in the conversation, alongside the agent’s work. If the run has ended, sending starts a new run in the same conversation. Answer any pending question or permission request first.
+Type your follow-up in **Type a message…** and click **Send** or press Return. Use Shift+Return for a new line. When you send to a running agent, your message fades into place alongside the agent’s work. With Reduce Motion on, it appears in place immediately. If the run has ended, sending starts a new run in the same conversation. Answer any pending question or permission request first.
 
 Click **+** to attach files or point the agent to a folder on your Mac. Command-click to select several items together. Their names or image previews appear above your draft. Supported attachments vary by agent. If the agent rejects an attachment, remove it and try a supported type or describe it in text. You can return to finish an unsent draft after opening a different conversation.
 

@@ -147,7 +147,6 @@ struct PiOverviewCard: View {
                 harnessLogo: AnyView(PiLogo(size: 12)),
                 onInterventionResponse: respond, onOpenThread: openThread)
                 .environment(\.threadCardProviderColor, PiLogo.themeColor)
-                .environment(\.threadCardCloudPalette, PiLogo.threadCardCloudPalette)
             if let failure { PiFailure(message: failure) }
         }
     }

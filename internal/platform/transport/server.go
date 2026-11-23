@@ -110,7 +110,6 @@ func Start(options Options) (*Server, error) {
 	go func() { _ = s.http.Serve(listener) }()
 	return s, nil
 }
-func (s *Server) Overview() *OverviewBroker { return s.overview }
 func (s *Server) client(id string) *eventStream {
 	s.mu.Lock()
 	defer s.mu.Unlock()

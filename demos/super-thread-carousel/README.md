@@ -25,9 +25,9 @@ retires its native hit/AX children on exit; x/x remains the member-panel control
 The member panel scrolls real report-card fixtures, including coverless members.
 To check the member panel, open the count on the collection card and scroll the
 grid. Close stays in the upper-left corner while the cards move. In the 500×400
-window at 2×, the compact column sits below Close. Click a visible member and
+window, check that the compact column clears Close. Click a visible member and
 check that its report opens. Reopen the collection and check Close and Escape.
-The preview's active/slow/time/window/zoom controls are local and cannot certify
+The preview's active/slow/time/window controls are local and cannot certify
 system foreground lifecycle. It neither starts Runtime nor reads real sessions.
 
 ## Member archive replay

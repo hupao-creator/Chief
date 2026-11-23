@@ -2,6 +2,14 @@
   "version": 1,
   "scenarios": [
     {
+      "id": "E2E-ONBOARDING-001",
+      "implementation": "system-accessibility",
+      "title": "Confirm each first-run page within its deadline and reach an editable Chief composer",
+      "doc": "app/macos/Sources/Host/Onboarding/README.md#confirmation-e2e",
+      "evidence": ["onboarding-bundle.json", "onboarding-environment.json", "onboarding-ax.jsonl",
+                   "onboarding-handoff.json", "onboarding-persisted.json"]
+    },
+    {
       "id": "E2E-OVERVIEW-002",
       "implementation": "implemented",
       "title": "Scroll between Overview boundaries and retain the position through Settings",
@@ -12,6 +20,13 @@
         "overview-uncovered.json",
         "overview-start.json"
       ]
+    },
+    {
+      "id": "E2E-CHIEF-001",
+      "implementation": "implemented",
+      "title": "Open Chief Note and Compose while coordinator conversations stay outside reading navigation",
+      "doc": "app/macos/Sources/Host/Interaction/README.md#e2e-contract",
+      "evidence": ["chief-controls.json"]
     },
     {
       "id": "E2E-READ-001",

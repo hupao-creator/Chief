@@ -114,6 +114,15 @@ public struct NativeOverviewWorkspaceView: View {
                     }
                 }
             }
+            .overlay(alignment: .bottomLeading) {
+                if !landing && chromeVisible && model.statusFilter != .all && !model.content.isEmpty {
+                    Text(model.statusFilter == .running ? locale.text("仅运行中", "Running only") : locale.text("仅已完成", "Completed only"))
+                        .font(NativeTypography.inter(size: 11, weight: 590))
+                        .foregroundStyle(NativePalette.overview.muted.swiftUI)
+                        .padding(.leading, 16).padding(.bottom, 8)
+                        .allowsHitTesting(false)
+                }
+            }
             .overlay {
                 NativeOverviewRefreshDecoration(operation: model.featuredOperation,
                     visible: model.facts.overviewVisible && model.facts.documentVisible && !landing).allowsHitTesting(false)
@@ -156,9 +165,19 @@ public struct NativeOverviewWorkspaceView: View {
     }
 
     private var emptyDetail: String {
+        switch model.statusFilter {
+        case .running: return locale.text("双指下滑查看全部会话。", "Swipe down with two fingers to show all conversations.")
+        case .completed: return locale.text("双指上滑查看全部会话。", "Swipe up with two fingers to show all conversations.")
+        case .all: break
+        }
         return locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads.")
     }
     private var emptyTitle: String {
+        switch model.statusFilter {
+        case .running: return locale.text("没有运行中的会话", "No running conversations")
+        case .completed: return locale.text("没有已完成的会话", "No completed conversations")
+        case .all: break
+        }
         if !model.selectedTag.isEmpty { return locale.text("没有 \(model.selectedFilter?.tag ?? model.selectedTag) 会话", "No \(model.selectedFilter?.tag ?? model.selectedTag) conversations") }
         return locale.text("还没有会话", "No conversations yet")
     }
@@ -175,6 +194,7 @@ public struct NativeOverviewWorkspaceView: View {
             strings.closeFilter = "Close child tag menu"
             strings.filter = "Filter by tag"
             strings.containsActiveTasks = "Contains active tasks"
+            strings.unread = "unread"
         }
         return strings
     }
@@ -197,6 +217,9 @@ private struct NativeOverviewWorkspaceCard: View {
             case .harness(let snapshot):
                 let thread = snapshot.input.thread
                 snapshot.card(respond: { try await respond($0, thread: thread) }, openThread: { open(thread.id) })
+                    .environment(\.threadCardUnread, thread.bookmarkVersion.map {
+                        model.workspace.preferences.threadReadHistory.isUnread(.init(threadID: thread.id, typeID: "agent"), version: $0)
+                    } ?? false)
                     .environment(\.threadCardArchiveAction, archiveAction(for: thread))
                     .environment(\.threadCardArchivePending, archivePending)
                     .environment(\.nativeThreadIdentityKey, thread.id.string)
@@ -248,7 +271,7 @@ private struct NativeOverviewWorkspaceCard: View {
         return { Task { await archive(thread.id) } }
     }
     private func canArchive(_ thread: HarnessThread) -> Bool {
-        guard thread.moku != true, !thread.mokuHistory, thread.archived != true,
+        guard thread.isOrdinaryAgent, thread.archived != true,
               !thread.pendingInput, thread.observation.backgroundWork == nil,
               let execution = thread.observation.latestExecution else { return false }
         return execution.status == .interrupted && thread.userInterruptedExecutionID == execution.executionID

@@ -10,7 +10,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
-from gate.engine import catalog, digest, judge, read, require, save_report, sha, text, write
+from gate.engine import catalog, digest, judge, read, require, save_report, sha, text
 from gate.runner import BENCHMARKS, ROOT, phase, run, utc
 
 

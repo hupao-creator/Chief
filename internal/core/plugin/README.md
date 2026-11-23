@@ -108,6 +108,8 @@ provenance is retained without becoming a routing rejection. Optional `MokuTarge
 uses this same contract; it cannot defer model discovery to a later tool call.
 Advisory model caches remain separate from task admission.
 
+`SettingsPresentationRequest.ExecutionProfile` identifies Chief and background execution editors, including independent previews. These editors can depend on model availability filtering to finish before the returned choices become actionable.
+
 `SettingsRequest.RoutingCatalog` permits a complete same-configuration directory
 to be stale and refreshed in the background. It is only set for Moku routing;
 creation and execution validation keep strict reads. Completeness evidence also
@@ -124,3 +126,8 @@ only a nonempty list. Each native snapshot retains its own evidence; ordinary
 model validation may use enumeration data without asserting remote completeness.
 Moku routing also accepts successful nonempty native enumeration under the current
 policy; source evidence remains informational, not an admission prerequisite.
+
+`MokuMessageTelemetrySource` supplies account evidence scoped to an outgoing
+message. Its send-time read must validate local identity and keep remote I/O
+in the background. Moku can warm the provider through `MokuContextContributor`
+and requests the message-scoped text when composing each send.

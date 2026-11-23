@@ -327,6 +327,14 @@ See the [cover viewport contract](../../../../design/overview.md).
 The passive native WebKit surface uses a nonpersistent store, disabled author JavaScript,
 a host-owned document response with a sandbox CSP blocking external resources.
 It neither navigates nor handles input; theme follows the native appearance.
+When a tag switch mounts several individual Report cards, their metadata and
+cached posters can enter the Overview together. The Report plugin admits one
+pending browser mount at a time, with a 16ms scheduling interval. WebKit can
+launch a content process synchronously when a card starts navigating. The
+interval lets the main actor present the grid between starts. A disappearing
+cover cancels its pending mount. The carousel and member grid own their existing
+cover loading and playback paths. [Tag-switch workload](../../../../tools/verification/tag-space/README.md)
+
 A failed cover leaves the native card usable with an unavailable label.
 
 An isolated host-owned WebKit content world controls the admitted CSS effects.

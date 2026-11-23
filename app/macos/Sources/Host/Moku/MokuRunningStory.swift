@@ -62,7 +62,7 @@ public enum MokuRunningStory {
         return MokuRunningFrame(stage: stage, eyes: eyes, dots: dots)
     }
 
-    private static func color(_ phase: Double) -> NativePlatformColor {
+    static func color(_ phase: Double) -> NativePlatformColor {
         let p = (phase.truncatingRemainder(dividingBy: 1) + 1).truncatingRemainder(dividingBy: 1) * Double(palette.count)
         let index = Int(floor(p)), next = (index + 1) % palette.count
         let values = (0..<3).map { mix(palette[index][$0], palette[next][$0], p - Double(index)).rounded() / 255 }

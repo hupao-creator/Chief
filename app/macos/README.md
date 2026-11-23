@@ -17,7 +17,7 @@ gutter measurement, with a persistent knob whenever scrolling is possible.
 | [Sources/Composition](Sources/Composition/NativePlugins.swift) | Shared static Harness, Application and Sidecard registration |
 | [Sources/Core](Sources/Core/README.md) | Protocol, connections, public state, host files and offline recovery |
 | [Sources/Host/Overview](Sources/Host/Overview/README.md) | Layout, camera, selection and filtering |
-| [Sources/Host/MokuScene](Sources/Host/MokuScene/README.md) | Chief Dock, history composer, Talk, dispatch and notes |
+| [Sources/Host/MokuScene](Sources/Host/MokuScene/README.md) | Chief Dock, Talk, dispatch and notes |
 | [Sources/Host/Onboarding](Sources/Host/Onboarding/README.md) | First-run admission, role configuration and handoff into the Chief Dock |
 | [Sources/Host/Settings](Sources/Host/Settings/README.md) | Settings drafts, validation and autosave |
 | [Sources/Host/WindowNavigation](Sources/Host/WindowNavigation/README.md) | Window controls and reading navigation |
@@ -38,7 +38,7 @@ a scoped rendering policy, leaving ordinary launches flat. Its public
 The [external comparison runner](../../tools/benchmarks/README.md#agent-emoji-badge-material-comparison)
 uses only the built artifact and that protocol, without linking product modules.
 
-Agent Thread detail and Chief history display assistant replies and execution records including reasoning,
+Agent Thread detail displays assistant replies and execution records including reasoning,
 tools/activities, approvals/questions, review, context compaction, background work,
 execution status, author and usage. Errors are exempt from the content allowlist:
 explicit error records, error-level notices, failed assistant messages and
@@ -106,7 +106,9 @@ See the [reading lifecycle](../../design/reading.md)
 for ownership and admission boundaries.
 
 Report HTML fades in over 200ms after its first successful WebKit load in a
-reader visit; later content revisions do not repeat the entrance. Loading and error controls remain independent.
+reader visit. A body revision reloads the same WebKit view after the matching
+HTML arrives. The displayed page stays visible during the read, and the related
+sidecard keeps its selection and width. A failed read or load exposes Retry.
 The Super Thread's selected associated execution uses a persistent composer
 without suppressing its document or sidecards; covering surfaces such as Settings
 still suppress them. The default document/list keeps Moku input closed and
@@ -219,10 +221,9 @@ block. A second Quit uses the same bounded exit path.
 
 Before Runtime teardown, Quit flushes pending valid Settings edits. Invalid or
 failed saves expose an explicit continue-editing or quit-without-saving choice.
-The View menu routes Reload and Zoom through the focused Browser/Report document
-before changing the workspace. App zoom persists levels bounded to 1×…5×. Saved
-levels below 1× are normalized and rewritten during load. Clamping stored levels
-keeps the first reverse step at either limit responsive.
+The workspace lays out in window points. View menu zoom commands target focused
+web content. Reload goes to the focused web content when available and otherwise
+reloads the workspace.
 
 Agent panels carry source title/emoji ink separately during deferred opening,
 show a scoped skeleton while loading, and draw the full parsed Markdown body

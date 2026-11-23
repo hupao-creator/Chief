@@ -20,6 +20,7 @@ public final class NativeSettingsDraft {
     public private(set) var error: String?
     public private(set) var conflicted = false
     public let editorDrafts = NativeSettingsEditorDrafts()
+    @ObservationIgnored var reconcileFirstRunDiscovery = false
     /// Only a Settings visit defers role settings. Onboarding and other editors
     /// retain their existing autosave/explicit-flush behavior.
     @ObservationIgnored private var deferredBase: JSONValue?
@@ -237,6 +238,8 @@ public final class NativeSettingsDraft {
                     guard !self.retired else { return false }
                     switch result {
                     case let .conflict(settings, revision):
+                        let authority = self.latest.1 > revision ? self.latest : (settings, revision)
+                        if self.reconcileFirstRunDiscovery, self.mergeUncontestedFirstRunChanges(authority) { continue }
                         self.conflict = (settings, revision); self.conflicted = true; self.failed = true
                         self.error = "设置已被其他客户端修改，草稿已保留。保留我的修改并重试会合并独立修改，并以我的修改处理相同字段。"
                         self.status = .error; return false
@@ -262,7 +265,7 @@ public final class NativeSettingsDraft {
                 } catch {
                     guard !self.retired else { return false }
                     // A newer edit may have fixed the rejected combination while
-                    // native validation was still running. Drain that edit before
+                    // the previous draft was saving. Drain that edit before
                     // reporting an error for a value no longer shown in the UI.
                     if self.ready != snapshot { continue }
                     self.failed = true; self.error = error.localizedDescription; self.status = .error
@@ -273,6 +276,20 @@ public final class NativeSettingsDraft {
                 || (self.deferredBase != nil && Self.comparableValue(self.value) != self.saved) ? .pending : .saved
             self.dismissReport(); return true
         }
+    }
+
+    private func mergeUncontestedFirstRunChanges(_ authority: (settings: JSONValue, revision: Int)) -> Bool {
+        guard authority.revision > revision else { return false }
+        // Discovery and the first form can publish different Harness entries
+        // concurrently. Admit the merge only when neither side can win a field
+        // by changing the application order.
+        let persisted = Self.rebase(base: saved, draft: ready, latest: authority.settings)
+        let editable = Self.rebase(base: saved, draft: value, latest: authority.settings)
+        guard persisted == Self.rebase(base: saved, draft: authority.settings, latest: ready),
+              editable == Self.rebase(base: saved, draft: authority.settings, latest: value) else { return false }
+        ready = persisted; value = editable
+        saved = authority.settings; revision = authority.revision
+        return true
     }
 
     private func dismissReport() { dismissReportedError?(); dismissReportedError = nil }

@@ -16,11 +16,13 @@ import SwiftUI
 
 @MainActor private struct ReportThreadPlugin: ApplicationThreadPlugin {
     private let coverCache = NativeReportCoverCache()
+    private let coverStarts = NativeReportCoverStarts()
     var type: ApplicationValueKey<NativeReportView> { NativeReportContracts.thread }
     var requires: [ApplicationCapabilityRequirement] {
         [ApplicationCapabilities.executionReferencesUI.requirement, ApplicationCapabilities.threadUserActions.requirement,
          ApplicationCapabilities.isolatedHTML.requirement]
     }
+    var bookmarkVersion: KeyPath<NativeReportView, JSONText>? { \.contentRevision }
     var overviewCollection: ApplicationOverviewCollectionPolicy? {
         .init(footprint: .init(columns: 1, rows: 2), providesCardSurface: true)
     }
@@ -41,6 +43,7 @@ import SwiftUI
     }
     func card(props: ApplicationThreadProps<NativeReportView>, projection: NativeReportCardProjection, openThread: @escaping () -> Void) -> some View {
         NativeReportCard(props: props, projection: projection, openThread: openThread)
+            .environment(\.overviewReportCoverStarts, coverStarts)
             .environment(\.nativeReportCoverCache, coverCache)
     }
     func detail(props: ApplicationThreadProps<NativeReportView>) -> some View {
@@ -123,22 +126,14 @@ struct NativeReportDetail: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if let selected {
                         let visit = sidecards.executionVisit
-                        NativeReportExecutionScroll(visit: visit, continuing: sidecards.continuedExecution,
+                        let connection = sidecards.connection
+                        let awaitingReceipt = connection.map { $0.destination == nil } ?? false
+                        NativeReportExecutionScroll(visit: sidecards.pageVisit, continuing: connection != nil || sidecards.continuedExecution,
                             active: expanded && !suppressed && returning == nil,
+                            connection: awaitingReceipt || !sidecards.executionReady ? connection : nil,
                             onReady: { sidecards.admitExecution(visit: visit) }) {
-                            execution(selected).id(selected)
+                            if !awaitingReceipt { execution(selected).id(selected) }
                         }
-                            .overlay(alignment: .topTrailing) {
-                                if let harness = sidecards.connectingHarness {
-                                    ThreadConnectionLabel(harness: harness)
-                                        .padding(.horizontal, 12).padding(.vertical, 7)
-                                        .background(.regularMaterial, in: Capsule())
-                                        .padding(12)
-                                        .allowsHitTesting(false)
-                                } else if sidecards.continuedExecution && !sidecards.executionReady {
-                                    ProgressView().controlSize(.small).padding(18)
-                                }
-                            }
                             .overlay(alignment: .topLeading) {
                                 Button { if !sidecards.retainingForReturn { sidecards.selectExecution(nil) } } label: {
                                     Image(systemName: "chevron.left")
@@ -192,9 +187,9 @@ struct NativeReportDetail: View {
                 }
             }
             .preference(key: NativeReportExecutionInputKey.self,
-                value: expanded && !suppressed && returning == nil ? sidecards.inputExecution.map {
+                value: expanded && !suppressed && returning == nil ? sidecards.composerExecution.map {
                     NativeReportExecutionInput(reference: $0, frame: CGRect(x: layout.surfaceX, y: layout.surfaceY,
-                        width: layout.surfaceWidth, height: layout.surfaceHeight), ready: sidecards.executionReady && sidecards.inputReady)
+                        width: layout.surfaceWidth, height: layout.surfaceHeight), ready: sidecards.connection != nil || (sidecards.executionReady && sidecards.inputReady))
                 } : nil)
         }
         .onAppear { subscribeReferences(); refresh() }
@@ -224,7 +219,9 @@ struct NativeReportDetail: View {
                 suppressed: suppressed, retainingForReturn: returning != nil)
             if returning == nil { refresh() }
         }
-        .onChange(of: props.entry.view.contentRevision) { _, _ in sidecards.updateDocument(nil) }
+        .onChange(of: props.entry.view.contentRevision) { _, _ in
+            if !sidecards.admitted { sidecards.updateDocument(nil) }
+        }
         .onChange(of: props.entry.view.relatedExecutions) { _, _ in subscribeReferences(); refresh() }
         .onChange(of: props.entry.revision) { _, _ in refresh() }
         .task(id: relationsRefresh) {

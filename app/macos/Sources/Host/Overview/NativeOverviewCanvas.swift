@@ -171,7 +171,6 @@ public struct NativeOverviewCanvas<Content: View>: View {
     public var cardContentIdentity: ObjectIdentifier?
     private var card: (NativeOverviewItem) -> Content
     @Environment(\.threadCardCloudAnimationsEnabled) private var inheritedCloudAnimationsEnabled
-    @Environment(\.nativeWindowContentScale) private var windowContentScale
     @Environment(\.locale) private var locale
     @FocusedValue(\.overviewFocusedCard) private var focusedCard
     @State private var rendered: [OverviewCardContentState] = []
@@ -260,7 +259,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: .topLeading)
             .background(alignment: .topLeading) {
                 NativeOverviewScrollInput(regions: navigationRegions, size: geometry.size, toolbarBottom: headerInputBottom,
-                    identity: "\(ownership)|\(sceneKey)|\(selectionID ?? "")|\(resetEpoch)", contentScale: windowContentScale,
+                    identity: "\(ownership)|\(sceneKey)|\(selectionID ?? "")|\(resetEpoch)",
                     enabled: { visible && !interactionPaused && state.hostOwner == ownership && state.canScroll },
                     scroll: { state.camera.scroll(by: $0) })
             }
@@ -485,7 +484,10 @@ public struct NativeOverviewCanvas<Content: View>: View {
 
     private func reconcile(_ viewport: CGSize, items: [NativeOverviewItem],
                            revisions: [NativeOverviewLayoutRevision], token: UUID) async {
-        guard viewport.width > 0, viewport.height > 0, state.hostOwner == ownership else { return }
+        // Geometry reuse can cancel a queued worker before its first actor turn.
+        // Only the current worker may suspend scrolling and card activation.
+        guard !Task.isCancelled, layoutToken == token, state.hostOwner == ownership,
+              viewport.width > 0, viewport.height > 0 else { return }
         state.isLayingOut = true
         defer {
             if state.hostOwner == ownership, layoutToken == token {
@@ -672,7 +674,6 @@ public struct NativeOverviewCanvas<Content: View>: View {
 /// Scrolling updates the two planes together without rebuilding card content.
 private struct OverviewCameraPlane<Content: View>: View {
     let camera: NativeOverviewCamera
-    @Environment(\.nativeWindowContentScale) private var windowScale
     // Only decorative surfaces may opt out of geometry propagation.
     let ignoreLayout: Bool
     let content: Content
@@ -683,7 +684,7 @@ private struct OverviewCameraPlane<Content: View>: View {
     }
     var body: some View {
         let transform = camera.transform
-        let magnification = max(1, transform.scale * windowScale)
+        let magnification = max(1, transform.scale)
         let textResolution = min(32, pow(2, ceil(log2(magnification))))
         Group {
             if ignoreLayout {

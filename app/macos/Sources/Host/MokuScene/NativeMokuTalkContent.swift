@@ -50,6 +50,8 @@ struct NativeMokuTalkContent: View {
                 // instead of letting the scroller reveal it.
                 Text(message.text).font(.system(size: 13, weight: .semibold))
                     .lineSpacing(NativeMokuTalkTypography.lineSpacing).multilineTextAlignment(.center).textSelection(.enabled)
+                    .contentTransition(.opacity)
+                    .mokuInk(value: message.id)
                     .fixedSize(horizontal: false, vertical: true)
                     // AppKit reserves a persistent gutter after SwiftUI has proposed
                     // the full scroll width. Constrain prose to the actual clip width;

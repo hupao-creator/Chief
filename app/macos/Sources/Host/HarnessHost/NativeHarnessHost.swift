@@ -175,10 +175,6 @@ public final class NativeHarnessHost {
         return thread
     }
 
-    func hasAuthority(threadID: JSONText, harnessID: JSONText) -> Bool {
-        (try? authoritativeThread(threadID: threadID, harnessID: harnessID)) != nil
-    }
-
     func register(_ resource: HarnessContentResource, id: String) { resources[id] = resource }
     func unregisterResource(_ id: String) { resources[id] = nil }
     func unregisterSurface(_ id: UUID) { surfaces[id] = nil }
@@ -274,8 +270,9 @@ public final class NativeHarnessHost {
     }
 
     /// Evict removed workspaces/scopes, without retaining every previous cwd.
-    public func retainGlobalSettings(configurations: [NativeHarnessSettingsConfiguration]) {
-        let identities = Set(configurations.map(\.editorIdentity))
+    public func retainGlobalSettings(configurations: [NativeHarnessSettingsConfiguration],
+                                     availablePreviews: [NativeHarnessSettingsConfiguration] = []) {
+        let identities = Set((configurations + availablePreviews).map(\.editorIdentity))
         settingsLifetime.configurations = configurations
         allowedGlobalSettings = identities
         for (identity, surface) in Array(globalSettingsSurfaces) where !identities.contains(identity) {

@@ -56,22 +56,23 @@ struct NativeOverviewScrollSequence {
 /// Transparent geometry/lifecycle anchor, never a hit target or first responder.
 /// A local monitor also sees events above SwiftUI's semantic card subviews.
 struct NativeOverviewScrollInput: NSViewRepresentable {
+    @Environment(\.reminderScrollRegions) private var reminderScrollRegions
+    @Environment(\.overviewSwipeActions) private var swipeActions
     var regions: NativeCanvasInputRegions
     var size: CGSize
     var toolbarBottom: Double
     var identity: String
-    var contentScale: CGFloat
     var enabled: () -> Bool
     var scroll: (Double) -> Void
 
-    // At high workspace zoom, a card can make the canvas stack larger than the
-    // viewport. Window-to-canvas conversion must use the viewport-sized anchor.
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: MonitorView, context: Context) -> CGSize? { size }
 
     func makeNSView(context: Context) -> MonitorView { MonitorView() }
     func updateNSView(_ view: MonitorView, context: Context) {
-        let geometry = Configuration(size: size, toolbarBottom: toolbarBottom, identity: identity, contentScale: contentScale)
+        let geometry = Configuration(size: size, toolbarBottom: toolbarBottom, identity: identity)
         if view.configuration != geometry { view.cancelSequence(); view.configuration = geometry }
+        view.swipeActions = swipeActions
+        view.reminderScrollRegions = reminderScrollRegions
         view.regions = regions
         view.enabled = enabled; view.scroll = scroll
         if !enabled() { view.cancelSequence() }
@@ -82,15 +83,17 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
         var size: CGSize
         var toolbarBottom: Double
         var identity: String
-        var contentScale: CGFloat
     }
 
     @MainActor final class MonitorView: NSView {
-        var configuration = Configuration(size: .zero, toolbarBottom: 0, identity: "", contentScale: 1)
+        var configuration = Configuration(size: .zero, toolbarBottom: 0, identity: "")
+        weak var reminderScrollRegions: NativeCanvasInputRegions?
         weak var regions: NativeCanvasInputRegions?
         var enabled: () -> Bool = { false }
         var scroll: (Double) -> Void = { _ in }
         var sequence = NativeOverviewScrollSequence()
+        var swipeActions: NativeOverviewSwipeActions?
+        private var verticalSwipe = NativeOverviewVerticalSwipe()
         private var monitor: Any?
         private var observers: [NSObjectProtocol] = []
         private var requiresNewSequence = false
@@ -123,6 +126,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                   NSEvent.pressedMouseButtons == 0 else { return false }
             let location = windowPoint(point)
             guard bounds.intersection(visibleRect).contains(convert(location, from: nil)),
+                  reminderScrollRegions?.contains(location, in: window) != true,
                   regions?.contains(location, in: window) != true else { return false }
             // Public AppKit fallback for native editors/embedded scrolling views.
             guard let content = window.contentView else { return false }
@@ -135,13 +139,46 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             return true
         }
 
+        private func verticalTarget(_ event: NSEvent, actions: NativeOverviewSwipeActions) -> NativeOverviewVerticalSwipe.Target? {
+            guard actions.available(), let window, window.isVisible, let content = window.contentView,
+                  event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,
+                  NSEvent.pressedMouseButtons == 0 else { return nil }
+            let point = event.locationInWindow
+            guard content.bounds.contains(content.convert(point, from: nil)),
+                  !actions.regions.controls.contains(point, in: window),
+                  reminderScrollRegions?.contains(point, in: window) != true else { return nil }
+            // A long Talk or another vertically overflowing native viewport
+            // keeps the whole contact, even when already at either end.
+            let hit = content.superview?.convert(point, from: nil) ?? point
+            var view = content.hitTest(hit)
+            while let current = view {
+                if let editor = current as? NSTextView, editor.isEditable { return nil }
+                if let scroll = current as? NSScrollView, let document = scroll.documentView,
+                   document.bounds.height > scroll.contentView.bounds.height + 1 { return nil }
+                view = current.superview
+            }
+            if actions.regions.note.contains(point, in: window) { return .note }
+            if actions.regions.bar.contains(point, in: window) || !actions.canFilter() { return nil }
+            return .filter
+        }
+
         /// Called by the local monitor; exposed internally for window-level replays.
         func handle(_ event: NSEvent) -> NSEvent? {
             guard let window, event.window === window else { return event }
             if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
-                cancelSequence(); return event
+                interruptGestures(); return event
             }
             guard event.type == .scrollWheel else { return event }
+            if let swipeActions, verticalSwipe.route(event, target: { verticalTarget(event, actions: swipeActions) },
+                perform: { target, up in
+                    switch target {
+                    case .note: swipeActions.openNote()
+                    case .filter: swipeActions.stepFilter(up)
+                    }
+                }) {
+                sequence.reset()
+                return nil
+            }
             guard enabled(), window.isVisible, !isHiddenOrHasHiddenAncestor else {
                 cancelSequence(); return event
             }
@@ -195,21 +232,25 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                 observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
                     MainActor.assumeIsolated {
                         if name == NSWindow.willCloseNotification { self?.stop() }
-                        else { self?.cancelSequence() }
+                        else { self?.interruptGestures() }
                     }
                 })
             }
             observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification,
                 object: NSApp, queue: .main) { [weak self] _ in
-                    MainActor.assumeIsolated { self?.cancelSequence() }
+                    MainActor.assumeIsolated { self?.interruptGestures() }
                 })
         }
         override func viewWillMove(toWindow newWindow: NSWindow?) {
             if newWindow !== window { stop() }
             super.viewWillMove(toWindow: newWindow)
         }
-        func stop() {
+        private func interruptGestures() {
+            verticalSwipe = NativeOverviewVerticalSwipe()
             cancelSequence()
+        }
+        func stop() {
+            interruptGestures()
             if let monitor { NSEvent.removeMonitor(monitor); self.monitor = nil }
             for observer in observers { NotificationCenter.default.removeObserver(observer) }
             observers.removeAll()

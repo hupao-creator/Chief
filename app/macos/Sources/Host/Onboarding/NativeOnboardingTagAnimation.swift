@@ -112,13 +112,16 @@ struct NativeOnboardingTagAnimation: View {
     private let categories: [(String, Color)] = [
         ("设计", .purple), ("开发", .blue), ("调研", .orange), ("文档", .teal), ("维护", .green)
     ]
-    private var tasks: [(String, Int, Int)] { [
-        (locale.text("设计登录页面", "Refine login UI"), 0, 0), (locale.text("优化搜索体验", "Improve search"), 1, 1), (locale.text("整理用户访谈", "Review interviews"), 2, 2),
-        (locale.text("补充使用指南", "Write user guide"), 3, 1), (locale.text("执行回归检查", "Run regression"), 4, 0), (locale.text("调整窗口布局", "Arrange windows"), 0, 2),
-        (locale.text("接入模型接口", "Connect models"), 1, 0), (locale.text("分析竞品体验", "Compare products"), 2, 1), (locale.text("更新开发文档", "Update dev docs"), 3, 2),
-        (locale.text("修复会话恢复", "Restore sessions"), 4, 1), (locale.text("打磨标签样式", "Polish tag style"), 0, 0), (locale.text("完善搜索结果", "Refine search results"), 1, 2),
-        (locale.text("调研快捷操作", "Explore shortcuts"), 2, 0), (locale.text("整理版本说明", "Write release notes"), 3, 1), (locale.text("排查窗口焦点", "Fix window focus"), 4, 2)
-    ] }
+    private var tasks: [(String, Int, Int)] {
+        let openCode = harnesses.firstIndex { $0.descriptor.id.string == "opencode" }
+        return [
+            (locale.text("设计登录页面", "Refine login UI"), 0, 0), (locale.text("优化搜索体验", "Improve search"), 1, openCode ?? 1), (locale.text("整理用户访谈", "Review interviews"), 2, 2),
+            (locale.text("补充使用指南", "Write user guide"), 3, 1), (locale.text("执行回归检查", "Run regression"), 4, 0), (locale.text("调整窗口布局", "Arrange windows"), 0, 2),
+            (locale.text("接入模型接口", "Connect models"), 1, 0), (locale.text("分析竞品体验", "Compare products"), 2, 1), (locale.text("更新开发文档", "Update dev docs"), 3, openCode ?? 2),
+            (locale.text("修复会话恢复", "Restore sessions"), 4, 1), (locale.text("打磨标签样式", "Polish tag style"), 0, 0), (locale.text("完善搜索结果", "Refine search results"), 1, 2),
+            (locale.text("调研快捷操作", "Explore shortcuts"), 2, openCode ?? 0), (locale.text("整理版本说明", "Write release notes"), 3, 1), (locale.text("排查窗口焦点", "Fix window focus"), 4, 2)
+        ]
+    }
     static let arrivals: [(index: Int, pause: Int)] = [
         (5, 90), (1, 230), (11, 75), (3, 110), (8, 320),
         (0, 65), (13, 170), (6, 90), (4, 260), (10, 80),

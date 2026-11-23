@@ -39,7 +39,7 @@ func pause(_ milliseconds: Int) async throws { try await Task.sleep(for: .millis
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
-    init(size: CGSize) throws {
+    init(size: CGSize, offscreen: Bool = false) throws {
         guard let screen = NSScreen.screens.max(by: { $0.frame.maxX < $1.frame.maxX }) else {
             throw ReplayFailure("Missing graphical session")
         }
@@ -50,7 +50,7 @@ func pause(_ milliseconds: Int) async throws { try await Task.sleep(for: .millis
         ignoresMouseEvents = true
         level = .floating
         hasShadow = false
-        setFrameOrigin(.init(x: screen.visibleFrame.maxX - 6, y: screen.visibleFrame.midY - size.height / 2))
+        setFrameOrigin(.init(x: (offscreen ? screen.frame.maxX + 8 : screen.visibleFrame.maxX - 6), y: screen.visibleFrame.midY - size.height / 2))
         let root = NSView(frame: CGRect(origin: .zero, size: size))
         root.wantsLayer = true
         // Keep window capture delivering complete frames during a stationary
@@ -69,6 +69,10 @@ func pause(_ milliseconds: Int) async throws { try await Task.sleep(for: .millis
         marker.add(pulse, forKey: "capture-clock")
         contentView = root
         orderFrontRegardless()
+        if offscreen && NSScreen.screens.contains(where: { $0.frame.intersects(frame) }) {
+            orderOut(nil)
+            throw ReplayFailure("Replay panel entered the visible desktop")
+        }
     }
 
     func mount<V: View>(_ content: V) {
@@ -77,6 +81,16 @@ func pause(_ milliseconds: Int) async throws { try await Task.sleep(for: .millis
         host.frame = contentView!.bounds
         host.autoresizingMask = [.width, .height]
         contentView!.addSubview(host)
+    }
+
+    func saveOffscreenImage(_ name: String) throws {
+        guard let view = contentView, let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+            throw ReplayFailure("Missing offscreen bitmap")
+        }
+        view.displayIfNeeded()
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        guard let image = bitmap.cgImage else { throw ReplayFailure("Missing offscreen pixels") }
+        try savePNG(image, name + ".png")
     }
 
     func filter() async throws -> SCContentFilter {
@@ -114,7 +128,12 @@ extension NSView {
                 try FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
                 switch CommandLine.arguments.last {
                 case "--eyes": try await eyeVisit()
+                case "--tag-unread": try await tagUnreadVisit()
+                case "--orbit-fade": try await toolFeedbackVisit(orbitFade: true)
+                case "--tool-feedback": try await toolFeedbackVisit()
                 case "--routes", "--routes-reduced": try await routesVisit(reduced: CommandLine.arguments.last == "--routes-reduced")
+                case "--routes-offscreen": try await routesVisit(reduced: false, offscreen: true)
+                case "--timers", "--timers-reduced": try await timersVisit(reduced: CommandLine.arguments.last == "--timers-reduced")
                 default: throw ReplayFailure("Unknown visit")
                 }
                 let after = NSWorkspace.shared.frontmostApplication?.processIdentifier
@@ -134,11 +153,7 @@ extension NSView {
 
 @main @MainActor enum Replay {
     static func main() throws {
-        if let action = CommandLine.arguments.dropFirst().first, ["--read", "--press"].contains(action), let id = CommandLine.arguments.last {
-            let matches = parentButton(id, press: CommandLine.arguments[1] == "--press")
-            FileHandle.standardOutput.write(try JSONEncoder().encode(matches))
-            return
-        }
+        if try serveReplayButtonQuery() { return }
         try prepareIsolatedNativeReplay()
         NativeTypography.registerFonts()
         let app = NSApplication.shared

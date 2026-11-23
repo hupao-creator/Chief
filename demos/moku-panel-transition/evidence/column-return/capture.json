@@ -1,0 +1,71 @@
+{
+  "macOS": "26.5.1",
+  "configuration": "SwiftPM Debug",
+  "productionBase": "f6c940ec9ae2ee29648d6b3308a9c17f4569087d",
+  "productionSourceBlobs": {
+    "app/macos/Sources/Host/MokuScene/NativeMokuComposer.swift": "630d866326ff47a5a28156012c3bc31696ce8297",
+    "app/macos/Sources/Host/MokuScene/NativeMokuDock.swift": "b43fb43194d3e5b8b039599848c8105d6031d07a",
+    "app/macos/Sources/Host/MokuScene/NativeMokuHorizontalTravel.swift": "ee1789c2bd273a68b69f1923b6078662e45f29c1",
+    "app/macos/Sources/Host/Shell/NativeWorkspaceView.swift": "1e9780ddb0a775326a45f213e185d166480c0246",
+    "app/macos/Sources/Host/Sidecards/NativeExecutionDockPlacement.swift": "d2c7817806f49792ba73953288d18f5f551b647d",
+    "app/macos/Sources/Host/WindowNavigation/NativeApplicationReadingPanel.swift": "2a071d3d1362bc7e2d72eb98b65131ba95047401",
+    "app/macos/Sources/Plugins/Applications/Report/NativeReportApplication.swift": "612ce6a77b4886d6d213ad4fe9821312ae857f3a",
+    "app/macos/Sources/Shared/PluginUI/Conversation/NativeReportExecutionScroll.swift": "36aaaff203b71883f7f8666b9f567976cc43e4b9",
+    "app/macos/Sources/Shared/PluginUI/Conversation/NativeReportSidecardPresentation.swift": "96f3813017543676fa06bee93d5d66088203945e"
+  },
+  "capture": "ScreenCaptureKit, desktop-independent window of the capture process. Untrimmed and unscaled.",
+  "windowPoints": [
+    1280,
+    820
+  ],
+  "moviePixels": [
+    2560,
+    1640
+  ],
+  "coordinateSpace": "Top-left of the recorded window in native backing pixels. centerPx is the horizontal midpoint of the dark glass cap and topPx is its top edge.",
+  "profile": "Fresh private Go Runtime and native Codex CLI with a deterministic loopback Responses peer.",
+  "captureHostSHA256": "3624e46843fad5aaf57f255cd841b091b9fc5e836dc084267782484b3de12096",
+  "runtimeSHA256": "6639fc5f5c3cb47c7de9c7f1f9a2a9447711e46f8795816260249c1d47de63e4",
+  "movieSHA256": "60bc78369d8be943f480783bc42cd7e31a9966314551fd2c292f68b7c883af89",
+  "foregroundUnchanged": true,
+  "frameMeasurements": {
+    "frames": 141,
+    "openWidthPx": 640,
+    "compactWidthPx": 330,
+    "intermediateWidths": 18,
+    "maxWidthStepPx": 42,
+    "maxFoldCenterDriftPx": 0.5,
+    "maxRightwardReversalPx": 1.0,
+    "reversalFrame": 103,
+    "corner": {
+      "frame": 96,
+      "x": 1280.5,
+      "top": 1512.0,
+      "sourceX": 2036.5,
+      "sourceTop": 1512.0,
+      "targetX": 1279.5,
+      "targetTop": 1480.0,
+      "firstLiftFrame": 103,
+      "glideDriftYPx": 0.0,
+      "liftDriftXPx": 1.0,
+      "intermediateHeights": 13,
+      "pts": 1.66,
+      "firstLiftPTS": 1.783333,
+      "centerBeforeLift": {
+        "frame": 97.0,
+        "pts": 1.676667,
+        "centerPx": 1280.0,
+        "topPx": 1512.0
+      },
+      "firstChangedTop": {
+        "frame": 99.0,
+        "pts": 1.711667,
+        "centerPx": 1280.0,
+        "topPx": 1511.0
+      }
+    },
+    "errors": []
+  },
+  "action": "NativeWorkspacePresentation.backFromReader",
+  "sameFollowupCompletedAfterClose": true
+}

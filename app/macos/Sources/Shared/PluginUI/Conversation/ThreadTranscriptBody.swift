@@ -20,6 +20,7 @@ struct ThreadTranscriptBody: View {
             if agentDetail {
                 ThreadSteerMessage(content: input.text, createdAt: input.createdAt,
                     details: input.annotations.isEmpty && input.attachments.isEmpty ? nil : AnyView(message))
+                    .modifier(ThreadSteerEntrance(capturedAt: input.localCaptureTime))
             } else { message }
         case let .reply(text, _, _):
             ThreadMessage(id: item.id, author: .assistant, content: text, openExternal: openExternal, resolveMedia: context.resolveMedia)

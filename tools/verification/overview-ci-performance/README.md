@@ -12,7 +12,10 @@ explicit dispatch workflow; it does not configure remote required checks.
 The suite ID is `overview-release`; scenario IDs are `R0`, `S4`, `A4`.
 All use N=40 with four running 2×1 cards fully visible at the fixed opening scroll position, dark
 appearance, product-owned animation, Reduce Transparency disabled and the
-product's default card materials.
+product's default card materials. The probe checks all four scan animations and
+the running decoration before warmup and after sampling. Badge-enabled products
+must mount four animated badge surfaces and zero cloud surfaces. For baselines
+with the cloud renderer, it requires 40 surfaces and four active Metal layers.
 The harness gives each probe window a dark appearance and supplies Simplified
 Chinese through the locale API exposed by the paired product checkout.
 Each fresh process receives 5s load-bearing warmup, 20s formal input and a maximum
@@ -84,7 +87,7 @@ A real foreground window and all four full card bounds must fit a physical
 reported screen. The runner requires macOS 26 arm64, Metal and the
 [runner image contract](../../../scripts/ci/self-hosted.md). Optional
 `--configure-display` is restricted to disposable GitHub-hosted runners and
-chooses an already offered mode ≥1265×800, preferring 1440×900. It records and
+chooses an already offered mode ≥1392×800, preferring 1440×900. The visible desktop must fit a 1392×600pt content area: the first two wide cards in each row reach x=1392pt at the opening offset. It records and
 restores the original mode. It creates no virtual display. Self-hosted images
 must supply the display policy in advance.
 

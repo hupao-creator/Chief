@@ -1,16 +1,14 @@
 # Overview glass evidence tools
 
 `run.py` unconditionally refuses live build/trials. No all-on/shell-off/all-off
-product experiment is available in this source tree. Its error text mentions
-`overview-input/run.py --card-materials`, which is not a current command; do not
-use that suggestion as a validation entry point.
+product experiment is available in this source tree.
 
 The retained [measurement report](REPORT.md), evidence manifest and raw data
 identify the measured source revision. `analyze.py` reads those artifacts without
 running the product. Existing baseline/candidate data cannot establish current
 flat-card behavior or GPU/FPS/energy results.
 
-The independent geometry probe links the current production
+The independent geometry probe builds current Release objects under the shared host and native leases, then links the production
 `NativeOverviewLayout.solve` and horizontal scroll geometry. It measures geometry without a
 visible window and does not measure glass, GPU or real input:
 

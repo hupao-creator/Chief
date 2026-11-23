@@ -286,11 +286,12 @@ type UpdateSettingsRequest struct {
 	Cwd        string
 }
 type SettingsPresentationRequest struct {
-	Settings       json.RawMessage
-	Cwd            string
-	ThreadSettings json.RawMessage
-	Refresh        bool
-	RoutingCatalog bool // internal catalog projection; never execution authority
+	ExecutionProfile bool // Chief or background-role execution settings, including independent previews
+	Settings         json.RawMessage
+	Cwd              string
+	ThreadSettings   json.RawMessage
+	Refresh          bool
+	RoutingCatalog   bool // internal catalog projection; never execution authority
 }
 
 type Installer interface{ Install(context.Context) error }
@@ -372,4 +373,11 @@ type MokuTargetDiscoverer interface {
 }
 type MokuContextContributor interface {
 	MokuContext(context.Context, string, SettingsRequest, TelemetryLedger) (string, error)
+}
+
+// MokuMessageTelemetrySource serves an account-checked snapshot at message
+// preparation. Periodic collection can warm it but must not retain the text.
+type MokuMessageTelemetrySource interface {
+	MokuContextContributor
+	MokuMessageTelemetry(context.Context, SettingsRequest, TelemetryLedger) (string, error)
 }

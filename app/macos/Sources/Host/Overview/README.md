@@ -53,19 +53,17 @@ emoji badges opt into regular glass with a light mint tint at the unchanged
 uses opaque palette fills; the material helper falls back to system Material
 when Liquid Glass is unavailable. Other card content keeps the shared flat
 policy for provider badges, terminal marks and plan highlights.
-Agent Thread emoji badges ordinarily use static opaque palette fills
-without an added border: adaptive accent-soft green when completed, neutral
-surface-strong otherwise. This also applies under Reduce Transparency. Removing
-per-card Liquid Glass on ordinary cards avoids its spatial update cost during canvas movement.
-The terminal symbol and accessible status label remain independent of color.
+Running Agent Threads show a diagonal sweep of harness-colored perforations
+behind the stationary emoji. Reduce Motion holds the pattern still. Idle badges
+have a neutral fill and completed badges have an accent-soft green fill and
+terminal symbol. Their accessible labels follow the projected execution status.
 The isolated `--benchmark-agent-emoji-badge liquid-glass` scenario can compare only
 Agent emoji backdrops with regular glass; ordinary launch defaults and all other
 card materials remain unchanged. See the [external comparison](../../../../../tools/benchmarks/README.md#agent-emoji-badge-material-comparison).
 Only Super Thread collections opt into the new card material; individual Report
 and ordinary Thread surfaces stay flat.
 There is no `glass world` preference. Chrome, directory menus, Moku,
-Settings and shared controls outside a card keep their own materials. Cloud,
-scan and spatial-animation ownership are unchanged.
+Settings and shared controls outside a card keep their own materials.
 
 Overview cannot originate steer/send input for a specified Thread. Emoji badges
 retain their status presentation. For an unarchived ordinary Thread whose latest
@@ -138,16 +136,11 @@ remounting.
 The body counter is an observation-boundary diagnostic, not a CPU/FPS
 measurement.
 
-The production card closure alone enables `threadCardNativeDecorationsEnabled`.
-Clouds use an independently sampled native Metal view with the existing seeded field;
-derived scans use a compositor-owned gradient animation. Neither decoration
-publishes a SwiftUI frame value. Card semantics, duration, spatial wrappers and
-surfaces remain with their existing owners. The native views fill the supplied
-bounds, preserve pause/visibility behavior, and cannot own input or accessibility.
-See the shared [native decoration contract](../../Shared/PluginUI/README.md#native-overview-decorations)
-for color, lifetime and native-composition acceptance. Standalone card fixtures
-default to the shared renderer, so Overview performance verification must mount
-this production workspace path and confirm that its native renderer is active.
+The production card closure enables native derived scans. Both the scan and
+the running badge use Core Animation and receive viewport visibility from the
+canvas. The badge only mounts for a running status. The Release probe checks
+the mounted decorations on the production workspace path.
+See the [native decoration contract](../../Shared/PluginUI/README.md#native-overview-decorations).
 
 ## Accessibility gesture ownership
 
@@ -167,6 +160,11 @@ when it exceeds the available height. Within this limit, the best natural fit
 wins, followed by smaller area and width. A column pass includes the exact row
 limit so the next cards can extend to the right. Mixed-span passes consider
 up to 65 strip sizes per orientation and retain up to 64 disjoint openings.
+Within the chosen grid, the solver checks the space between occupied columns
+across the full height of a candidate card. It pulls cards from lower rows
+into these openings, including openings across strip boundaries. It visits
+upper rows first and prefers taller cards, then wider cards that fit. Equal
+footprints keep their existing reading order when competing for an opening.
 Returned placements follow product order. Empty input has no projection.
 Invalid identities, spans, metrics or viewport sizes produce a layout error.
 
@@ -231,7 +229,13 @@ live.
 
 [NativeOverviewStageCoordinator](NativeOverviewStageCoordinator.swift) serializes card spatial motion with Moku.
 
-[NativeOverviewScrollInput](NativeOverviewScrollInput.swift) routes AppKit wheel events.
+### Overview scroll input
+
+[NativeOverviewScrollInput](NativeOverviewScrollInput.swift) routes window-local AppKit wheel events.
+On a fresh, precise, unmodified contact, the [vertical gesture router](NativeOverviewVerticalSwipe.swift) takes a physical swipe with at least 24 points of vertical travel and more than 1.5 times its horizontal travel. It accounts for either Natural Scrolling setting and consumes the remaining contact and its momentum. Horizontal starts retain their original owner through reversals. The background, cards, carousel cover and tag bar step between Running, All (initial) and Completed. Up moves toward Running, down toward Completed, stopping at either end. The [Chief Bar](../MokuScene/README.md) reserves its own Note target. Vertically overflowing native viewports keep scrolling at either limit. Open Note, editing, interventions, onboarding, Settings, readers and collection panels keep their input.
+
+Status filters apply to the selected tag's eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and visible interruptions with no ongoing work appear only in All. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
+
 A trackpad contributes its horizontal delta, including native momentum. A line
 wheel uses its horizontal delta when available and otherwise its vertical delta,
 at 40 window points per line. Pointer presses interrupt inertia. Dragging the
@@ -241,9 +245,17 @@ Settings, readers and active text entry gate canvas scrolling. Card focus keeps
 horizontal arrow navigation and Return available. Opening the Chief input
 explicitly hands focus to its editor.
 
-Geometry reuse applies when the current membership and viewport are unchanged; a structural slot refresh then updates content without invoking the solver. Recovery from an interrupted entry, resize or exit samples the current poses and starts the latest presentation, so transparent entrants and retired snapshots are released. No reading-position edge seat is retained.
+A superseded layout worker cannot pause input after a newer layout has settled or reused its geometry. Geometry reuse applies when the current membership and viewport are unchanged; a structural slot refresh then updates content without invoking the solver. Recovery from an interrupted entry, resize or exit samples the current poses and starts the latest presentation, so transparent entrants and retired snapshots are released. No reading-position edge seat is retained.
 
 ## Tags and filter transitions
+
+Selecting a chip reconciles against the admitted catalog and projects the selected
+membership into card slots. Full Report cover HTML is requested on mount and
+reused by revision and appearance. On a switch into a directory with several
+standalone Report cards, the plugin schedules browser mounts across main-loop
+turns so metadata and cached posters can enter with the card transition.
+[Report cover contract](../../../../../internal/plugins/applications/report/README.md#cover-cards)
+and [mounted switch benchmark](../../../../../tools/verification/tag-space/README.md).
 
 [NativeOverviewChrome](NativeOverviewChrome.swift) owns the tag and action controls. Semantic tag identity remains a plain name with separately validated emoji. Each scope exposes up to five semantic tags, including singly assigned tags and separate names with equal membership. Directory filters use persistent scope identity for membership and exclude managed temporary roots. Labels are presentation only: a symlink alias or linked checkout with another label remains in its canonical directory’s All view, and same-named directories stay separate.
 
@@ -285,7 +297,7 @@ and independent opening/closing progress keep their existing ownership.
 
 Tag widths have no fixed point cap. Each top-level chip may use the scroll viewport left after All and bar insets; sibling chips remain horizontally scrollable. The centered bar leaves room on both sides for the window controls and actions, plus 16pt clearance. At viewport widths of 620 logical points or less, filters occupy a second row. Child chips may use the full available bar width, and overflowing child rows scroll within that width. Their glass container stays inside the scroll viewport so captured labels cannot bypass clipping. Chips use shadowless `.clear` glass over a view-layer material fill rather than `.regular` glass: the regular variant's system-drawn shadow is composited outside the SwiftUI layer, so neither a per-chip `clipShape` nor the bar's capsule clip can trim it, and the 4pt gaps let neighboring shadows overlap into a visible band. The material fill supplies the frosted face and follows the pill shape, while selection tint and interactive feedback remain on the glass. Selected All, directory and semantic chips use the overview accent with 22% tint alpha, or 34% with Increased Contrast; unselected chips have no tint. Selected directory chips replace their folder or child emoji prefix with a check icon. Selected semantic chips replace their emoji prefix with the same check, including in child menus; All remains prefix-free. Accessibility labels retain the original tag names and emoji. Label font weights remain unchanged; the shared selected check uses a 2-unit Lucide stroke instead of the default 1.5-unit stroke. Names only truncate when their individual viewport cannot hold them. Presentation does not change tag identity or membership.
 
-All, directory and semantic capsules (including child menus) retain the 1.1× enlarged label and prefix metrics. Their height shares `NativeWindowNavigationGeometry.height` (42pt) with the traffic-light capsule and right-side circular actions. In the single-row layout, the centered filters and right-side actions sit 16 logical points from the top. In the two-row layout, the right-side actions sit 10pt from the top. In the two-row layout it sits 76pt from the top when space permits. The filter bar moves up in short viewports to leave at least 8 logical points for starting canvas scrolling at supported window sizes and zoom levels. The traffic lights have their own fixed window-relative position. Header dragging and scroll exclusion end at 60 logical points in the single-row layout and 2pt below the filter bar in the two-row layout. Semantic labels always lay out the emoji separately from the plain title, in both selection states. The shared prefix retains both its unselected glyph and centered check as opacity-switched layout participants, reserving the same natural width and height across selection changes. This stability applies to a fixed title/child; choosing a different directory child can still change the title width. The shared prefix keeps its native ideal size: an emoji's advance and line bounds can exceed its point size, so an icon-sized square can cut its glyph even inside a roomy chip. The Lucide folder and selected check use the same icon size; emoji do not use per-glyph offsets.
+All, directory and semantic capsules (including child menus) retain the 1.1× enlarged label and prefix metrics. Their height shares `NativeWindowNavigationGeometry.height` (42pt) with the traffic-light capsule and right-side circular actions. In the single-row layout, the centered filters and right-side actions sit 16 logical points from the top. In the two-row layout, the right-side actions sit 10pt from the top. In the two-row layout it sits 76pt from the top when space permits. The filter bar moves up in short viewports to leave at least 8 logical points for starting canvas scrolling at supported window sizes. The traffic lights have their own fixed window-relative position. Header dragging and scroll exclusion end at 60 logical points in the single-row layout and 2pt below the filter bar in the two-row layout. Semantic labels always lay out the emoji separately from the plain title, in both selection states. The shared prefix retains both its unselected glyph and centered check as opacity-switched layout participants, reserving the same natural width and height across selection changes. This stability applies to a fixed title/child; choosing a different directory child can still change the title width. The shared prefix keeps its native ideal size: an emoji's advance and line bounds can exceed its point size, so an icon-sized square can cut its glyph even inside a roomy chip. The Lucide folder and selected check use the same icon size; emoji do not use per-glyph offsets.
 
 ## Tag activity
 
@@ -403,6 +415,34 @@ than guessing from terminal status or local UI actions.
 
 Ordinary browsing ignores retired agent-authored visibility markers. Archive, execution eligibility and Report coverage retain their own selection rules. Detail reading sends no per-thread visit or foreground-time receipts to Runtime; application collection reading remains independently owned by the desktop.
 
+## Unread bookmarks
+
+Folder and semantic chips show a system-red unread count at the upper trailing
+edge for their exact browsing membership. Each eligible Thread contributes once
+per space, after visibility, archive and execution coverage filtering and before
+collection grouping. A directory chip displaying a selected child uses that
+child’s count. All and zero-count chips have no badge. The count is included
+in the accessibility value independently of member count and activity. It
+does not change chip width, selection, ordering or the Runtime filter context.
+Receipt and catalog version changes update counts even for unselected spaces.
+A child chip shows its current count once its glass reaches the expanded
+position. Closing or switching folders immediately hides the departing row’s
+badges. With Reduce Motion enabled, the measured child chips settle directly.
+
+The emoji badge shows a system-red bookmark for each unseen Report content revision
+and for an ordinary Agent Thread whose latest execution completed and has no read
+receipt. Collection members use their own document revisions. An open route,
+preview, loading placeholder or related-execution list cannot acknowledge content.
+The key, foreground reader acknowledges the revision reported ready by WebKit or
+the selected settled execution body on its active page after entrance. Reading
+a completed execution in the Report's open sidecard can acknowledge that execution.
+
+[Profile-local read receipts](NativeThreadReadHistory.swift) live in the desktop
+profile's `thread-reading/` directory. The client creates one immutable file
+per type, Thread ID and version. Revisiting that version is idempotent. A new
+revision or completed execution starts unread. The collection visit timer and
+ranking keep their independent rules.
+
 ## Viewed application collections
 
 Report opts into one two-cell collection per selected space. The Host first applies
@@ -417,7 +457,7 @@ as the return page while it remains grouped. The [Note link contract](../MokuSce
 covers dismissal and navigation back to the Note.
 
 The [profile-local reading record](NativeOverviewCollectionReading.swift) determines
-default membership across views. At **24 hours** from the end of the last visit
+default membership across views. At **30 minutes** from the end of the last visit
 (or creation for an unvisited report), a report defaults to collection. Overview
 samples age on presentation and space changes. Idle time alone does not schedule a
 live canvas move. Two idle reports can share a collection even in a spacious window. A
@@ -500,7 +540,7 @@ focus loss, leaving the card and offscreen removal clear hover; keyboard focus
 and menu tracking never force the capsule visible. Carousel timing remains
 independent of hover.
 A native cover input region retains pointer drag and trackpad input instead of
-moving the canvas; its scroll/pinch region is intentionally reserved for the
+moving the canvas; its horizontal paging and pinch region remain reserved for the
 collection cover.
 
 The upper-right page count opens a scrollable, adaptive grid of the exact ordered
@@ -641,6 +681,10 @@ It independently enumerates largest-card regular grids to check the documented
 quality floor within the row limit. Every fourth seed shuffles the six-cell tiling with base spans of
 1–3 columns and 1–2 rows per tile. An independent area and aspect check catches
 empty cells or a poorer orientation even when the regular-grid floor passes.
+Every eighth seed exercises two tall cards, two wide cards and a single cell
+in product order, with column spans scaled by 1–3 and room for 3–6 such
+columns. An independent cell check across the generated layouts rejects
+an internal row gap wide enough for a single-row card below it.
 Empty membership has no camera. No oracle calls the solver's
 placement/fit helpers. Failures shrink membership/spans/viewport while retaining
 the first violation and print seed plus minimized JSON. The generated positive

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -88,6 +89,9 @@ func (r *Runtime) UpdateSettings(ctx context.Context, expected int64, settings m
 			if err != nil {
 				return SettingsResult{}, err
 			}
+			if !h.Descriptor().ThreadCapabilities.CanHostMoku() && !sameExecutionProfile(normalized, previous.Moku.ExecutionHarnesses[id]) {
+				return SettingsResult{}, fmt.Errorf("harness cannot host internal execution: %s", id)
+			}
 			settings.Moku.ExecutionHarnesses[id] = normalized
 		}
 	}
@@ -105,9 +109,15 @@ func (r *Runtime) UpdateSettings(ctx context.Context, expected int64, settings m
 		}
 		settings = validated
 	}
-	settings, err = r.validateChangedProfiles(ctx, settings, previous)
-	if err != nil {
+	if err := r.validateBackgroundProfiles(settings, previous); err != nil {
 		return SettingsResult{}, err
+	}
+	// Catalogs and native snapshot acquisition belong to configuration entry
+	// and execution admission. This command only persists the edited choices.
+	if preference := settings.Moku.HostHarnessPreference; preference != "auto" && preference != previous.Moku.HostHarnessPreference {
+		if err := r.checkExecutionHarness(preference); err != nil {
+			return SettingsResult{}, err
+		}
 	}
 	if previous.Moku.HostHarnessPreference != settings.Moku.HostHarnessPreference {
 		release, changeErr := r.beginMokuHarnessChange(false)
@@ -261,12 +271,17 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 		Refresh             bool   `json:"refresh,omitempty"`
 		ExecutionOwner      string `json:"executionOwner,omitempty"`
 		ApplicationSettings string `json:"applicationSettings,omitempty"`
+		PreviewIndependent  bool   `json:"previewIndependent,omitempty"`
 	}
 	if err := model.Unmarshal(raw, &request); err != nil {
 		return nil, err
 	}
+	if request.PreviewIndependent && (request.Scope != "global" || request.ApplicationSettings == "" || request.ExecutionOwner != "") {
+		return nil, errors.New("independent preview requires a global application settings binding")
+	}
 	snapshotError := ""
-	if request.Scope == "global" && (request.ExecutionOwner == "moku" || request.ApplicationSettings != "") {
+	executionProfile := request.Scope == "global" && (request.ExecutionOwner == "moku" || request.ApplicationSettings != "")
+	if executionProfile && !request.PreviewIndependent {
 		_, snapshotErr := r.EnsureExecutionSettings(ctx, request.HarnessID, request.ApplicationSettings)
 		if err := snapshotErr; err != nil {
 			if ctx.Err() != nil {
@@ -340,15 +355,21 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 				if err := model.Unmarshal(entry.Value, &value); err != nil {
 					return nil, "", err
 				}
-				if value.Mode == "inherit" {
+				owner := request.ApplicationSettings
+				switch value.Mode {
+				case "inherit":
 					selected = saved.Moku.ExecutionHarnesses[request.HarnessID]
-					workspace, workspaceErr = r.configurationCwd("")
-				} else if value.Mode == "override" {
+					if !request.PreviewIndependent {
+						owner = ""
+					} else if value.Independent != nil {
+						selected = value.Independent.Harnesses[request.HarnessID]
+					}
+				case "override":
 					selected = value.Harnesses[request.HarnessID]
-					workspace, workspaceErr = r.configurationCwd(request.ApplicationSettings)
-				} else {
+				default:
 					return nil, "", errors.New("not an execution settings binding")
 				}
+				workspace, workspaceErr = r.configurationCwd(owner)
 				if workspaceErr != nil {
 					return nil, "", workspaceErr
 				}
@@ -367,7 +388,18 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 	if err != nil {
 		return nil, err
 	}
-	value, err := h.Settings().Presentation(ctx, plugin.SettingsPresentationRequest{Settings: harnessSettings, Cwd: cwd, ThreadSettings: threadSettings, Refresh: request.Refresh})
+	if request.PreviewIndependent {
+		if err := r.checkExecutionHarness(request.HarnessID); err != nil {
+			return nil, err
+		}
+		if err := os.MkdirAll(cwd, 0700); err != nil {
+			return nil, err
+		}
+	}
+	value, err := h.Settings().Presentation(ctx, plugin.SettingsPresentationRequest{
+		Settings: harnessSettings, Cwd: cwd, ThreadSettings: threadSettings,
+		Refresh: request.Refresh, ExecutionProfile: executionProfile,
+	})
 	if err != nil {
 		return nil, err
 	}

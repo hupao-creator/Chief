@@ -79,7 +79,7 @@ final class NativeExecutionDockPlacement {
             let nextDragging = execution.dragging
             if dragging != nextDragging { dragging = nextDragging }
             let nextThread = next == nil ? nil : execution.threadID
-            if !destinationReady || frame != next || threadID != nextThread {
+            if !destinationReady || frame != next {
                 travelRevision += 1
                 travelSettled = false
             }

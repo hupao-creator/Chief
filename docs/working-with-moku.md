@@ -2,11 +2,19 @@
 
 ## Send a request
 
-From **Overview**, click Chief's eyes or press **⌘⇧B** to open **Type a message…**. After pressing the shortcut, start typing in the box. Ask a question, describe a task for Chief to assign, or ask it to find work you already started. Say what you want back and which materials to use.
+From **Overview**, click Chief's eyes or press **⌘⇧B** to open **Type a message…**. The bar opens around its center. If Chief is showing a dispatch message, the input box takes its place. You can start typing as the bar opens. The cursor shows where your text will go. Press the shortcut again to fold the bar. Ask a question, describe a task for Chief to assign, or ask it to find work you already started. Say what you want back and which materials to use.
+
+Typing or pressing Delete in the open bar plays a keyboard click when your Mac has the matching Apple sounds and interface sound effects are enabled. To silence the clicks, turn off **Play user interface sound effects** in **System Settings → Sound**. Pasting text is quiet. Choosing an input method candidate adds no extra click. You can still type normally on Macs where the sounds are unavailable.
 
 In a task conversation, the same input box shows the agent's icon and sends to that conversation. In a Super Thread, open a source conversation in **Related executions** before sending a follow-up. [Agent conversations](task-conversations.md) · [Super Threads](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 
+The button at the right of the input box shows **Send** when your message is ready, even while Chief is working. Click it or press **Return** to send. When Chief is idle, an empty or whitespace-only draft leaves **Send** disabled. A ready file or a selected folder can be sent on its own.
+
 When Chief's input is at the bottom of Overview, click outside it or press **Esc** to close it. Your unsent draft is there when you reopen the box.
+
+When the bar is folded, three dots fade in and circle its edge while Chief thinks or uses tools such as updating its note. They keep circling as Chief switches tools and fade out when the work ends. If Chief needs your permission or an answer, a request appears above the bar.
+
+To check your OpenCode Go allowance, ask Chief how much of your subscription is left. You can keep your usual default model. After you switch accounts in OpenCode, Chief checks the new account on your next message. If the reading is still pending, ask again after the refresh finishes.
 
 ## Point Chief to the right files
 
@@ -39,15 +47,16 @@ After a successful removal, the checkout folder is gone. The task conversation s
 ## Find Chief's replies and notes
 
 - **Replies.** A direct reply appears where you typed your request. You can select the text and scroll through a longer reply. The reply closes on its own, so ask Chief to put anything you want to keep in its note.
-- **Task updates.** A dispatch message tells you that Chief handed off your request. Open the task card in Overview to see how the work is going.
-- **Notes.** From Overview, press **⌘⇧N** or swipe up with two fingers over Chief to open **Chief Note**. Scroll to a run and click its link. The note closes. Overview keeps your selected filter and scroll position. If the conversation belongs to exactly one Super Thread, its card opens with the run you clicked in **Related executions**. If its collection is visible, it turns to that Super Thread’s page first. Other links open the cited run in the task conversation. In both readers, you start at the top of the run. Click the **×** at the top left of the reader or press **⌘K** to return to Overview with the note closed. To resume the note from a task conversation, press **Esc** in the run you opened. In a Super Thread, you can use **Back to related executions** to browse other runs before closing the report. To reopen the note from Overview, press **⌘⇧N**.
-- **Conversation history.** Press **⌘B** or click **Chief history** below the note. As Chief works, each finished reply appears in order. When the run ends, its final answer and any reported error stay on the page. Click **Show work** for the reasoning and tool counts when available. To read an earlier run, select its mark along the left edge. The input at the bottom still sends to your current Chief conversation. If Chief is already working, your follow-up appears immediately as a message in the current run. Click **×** or press **⌘B** to return. When a different agent takes over as Chief, a new conversation starts and the note carries over.
+- **Task updates.** Watch the bar for **Dispatching task**. **Thread started** means the task is ready to open. If the handoff fails, the bar shows **Dispatch failed**. Open the task card in Overview to see how the work is going.
+- **Notes.** In Overview, press **⌘⇧N** to open **Chief Note**. With the input box closed, you can also swipe up with two fingers over the eyes on Chief Bar. Click the eyes centered below the note to start a message, or click a run’s link to read it. The note closes. Overview keeps your selected filter and scroll position. If the conversation belongs to exactly one Super Thread, its card opens with the run you clicked in **Related executions**. If its collection is visible, it turns to that Super Thread’s page first. Other links open the cited run in the task conversation. In both readers, you start at the top of the run. Click the **×** at the top left of the reader or press **⌘K** to return to Overview with the note closed. To resume the note from a task conversation, press **Esc** in the run you opened. In a Super Thread, you can use **Back to related executions** to browse other runs before closing the report. To reopen the note from Overview, press **⌘⇧N**.
 
 ## Stop work or acknowledge an alert
 
-To stop Chief's current response, hover over its eyes at the bottom of Overview and click the square **Stop Chief** button on the right. The button stays on the right when you open the input box. To stop one or more delegated tasks, name them in a message to Chief. Chief tries each request separately. You can also stop a task yourself from its conversation. [Stop a run](task-conversations.md#respond-to-a-request-or-stop-a-run)
+To stop Chief's current response, hover over its eyes at the bottom of Overview and click the square **Stop Chief** button on the right. With the input box open, **Stop Chief** appears in the same spot whenever the draft cannot be sent. If you want to stop Chief while keeping a ready draft, fold the bar with **⌘⇧B**, then hover over the eyes. To stop one or more delegated tasks, name them in a message to Chief. Chief tries each request separately. You can also stop a task yourself from its conversation. [Stop a run](task-conversations.md#respond-to-a-request-or-stop-a-run)
 
-Chief can send an immediate alert that rings until you click **Received**. If another alert is waiting, it appears next. Alerts are kept while Chief is open and are cleared when you quit.
+When Chief sends an alert, read it in the compact bar at the bottom of the workspace. Scroll inside a longer message to read the rest. To open Chief Note while an alert is visible, press **⌘⇧N**. Click **Received** to confirm just that alert. If more are waiting, the bar shows how many and brings up the next one.
+
+The bell keeps ringing until you confirm the last alert. If the bell fails to play, you can still confirm the message or click **Retry bell**. An open input box keeps your draft and selection above the alert. After the final receipt, the bar returns to its current task. Quitting Chief clears pending alerts.
 
 If a message fails to send, review the error and the text in the input box before retrying. If Chief is still checking the previous send, wait for confirmation or use **Check previous receipt** if shown. Open any task card Chief already created to see what happened.
 

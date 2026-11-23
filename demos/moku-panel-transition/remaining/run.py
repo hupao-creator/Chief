@@ -51,9 +51,9 @@ def reference(replay):
     # Compile the original controller and eyes independently. Seeking changes
     # only the replay clock; production geometry and rasterization stay intact.
     paths = []
-    for name in ("NativeMokuCapsuleBlink", "NativeMokuCharacterMotion"):
+    for name in ("NativeMokuCapsuleBlink", "NativeMokuRunningGeometry", "NativeMokuCharacterMotion"):
         source = git("show", f"{BASE}:{SCENE}/{name}.swift").decode()
-        for symbol in ("NativeMokuBlinkingEyes", "NativeMokuCapsuleBlinkTiming", "NativeMokuBlinkLayers",
+        for symbol in ("NativeMokuRunningGeometry", "NativeMokuBlinkingEyes", "NativeMokuCapsuleBlinkTiming", "NativeMokuBlinkLayers",
                        "NativeMokuCharacterPose", "NativeMokuCharacterMotion", "NativeMokuCharacterSeat",
                        "NativeMokuCharacterSurface", "NativeMokuCharacterCanvas"):
             source = source.replace(symbol, symbol.replace("NativeMoku", "Reference"))
@@ -79,7 +79,7 @@ extension ReferenceCharacterMotion {
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
-    parser.add_argument("cases", nargs="+", choices=["eyes", "routes", "routes-reduced"])
+    parser.add_argument("cases", nargs="+", choices=["eyes", "routes", "routes-reduced", "tool-feedback", "orbit-fade", "routes-offscreen", "timers", "timers-reduced", "tag-unread"])
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     with exclusive():
@@ -87,7 +87,7 @@ def main():
                         "--only-use-versions-from-resolved-file"], cwd=ROOT, check=True)
         replay = NativeReplay(ROOT, "ChiefBarRemainingReplay", "dev.chief.replay.bar-remaining")
         try:
-            sources = sorted(HERE.glob("*.swift")) + reference(replay)
+            sources = sorted(HERE.glob("*.swift")) + [HERE.parent / "ReplayButtons.swift"] + reference(replay)
             replay.compile(sources)
             meta = {"revision": git("rev-parse", "HEAD").decode().strip(),
                     "baseline": git("rev-parse", BASE).decode().strip(), "os": platform.mac_ver()[0],

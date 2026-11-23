@@ -65,7 +65,9 @@ def summarize(directory, attempts):
                 app = report.get('metrics', {}).get('formal', {}).get('roles', {}).get('application', {})
                 row.update({k: report[k] for k in ('measurement', 'product', 'comparison', 'reasons')})
                 row['application'] = app
-                origin = next((event for event in plan['events'] if event['kind'] == 'down'), {'x': 0, 'y': 0})
+                origin = next((e for e in plan['events'] if e['kind'] in ('down', 'scroll')), None)
+                if origin is None:
+                    raise ValueError('badge observation lacks its navigation probe')
                 relative_input = [{**event, **{axis: round(event[axis]-origin[axis], 6) for axis in ('x', 'y')}}
                                   for event in plan['events']]
                 identity = load(case/'identity.json')
@@ -77,6 +79,7 @@ def summarize(directory, attempts):
                     'window': plan['windowBounds'], 'mode': plan['mode'],
                     'warmupSeconds': plan['warmupSeconds'], 'formalSeconds': plan['formalSeconds'],
                     'tailSeconds': plan['tailSeconds'], 'relativeInput': relative_input,
+                    'scrollRange': report.get('inputPreparation', {}).get('scrollRange'),
                     'budgets': {k: plan[k] for k in ('maximumNoProgressSeconds', 'maximumCaptureGapSeconds', 'motionTolerancePixels')},
                     'sampleHz': plan['sampleHz'], 'captureHz': plan['captureHz'],
                     'workload': workload_signature(plan.get('workload')),
@@ -97,8 +100,10 @@ def summarize(directory, attempts):
                 allowed = ('process lifecycle/exit CPU coverage incomplete',
                     'declared process root missing from sample',
                     'native hitch sensitivity/ownership controls did not establish capability',
+                    'native hitch unavailable: native XCTest hitch collection has been removed',
                     'native hitch unavailable: native XCTest hitch collection not requested; default collection never starts the privileged performance service')
                 row['resourceEligible'] = (row['appPresentInEverySample'] and report['product'] == 'passed' and report['measurement'] != 'invalid'
+                    and ('pan' not in plan['scenario'] or report.get('motionEvidence') is True)
                     and all(reason in allowed for reason in report['reasons'])
                     and type(cpu) in (int, float) and math.isfinite(cpu) and cpu >= 0
                     and type(peak) is int and peak > 0)

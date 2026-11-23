@@ -10,5 +10,4 @@ Artificial Analysis 的 ID 保持 `artificial-analysis`，贡献仍是 `artifici
 
 [host.go](host.go) owns registration and generations; [collect.go](collect.go) owns collection, bounds and failure handling. [Artificial Analysis](../../plugins/contexts/artificialanalysis/README.md) is the registered implementation.
 
-No Context lifecycle replay is configured in this source tree. Registration,
-collection bounds and generation ownership above are source-backed contracts.
+The [AA response replay](../../../tools/e2e/README.md#aa-evaluation-context) exercises registration, cold before-send collection and cached fallback across host generations. Concurrent closure and collection bounds have separate verification boundaries.

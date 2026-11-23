@@ -87,11 +87,12 @@ type CatalogNativeAgent struct {
 	} `json:"request"`
 }
 type CatalogNativeProvider struct {
-	ID       string `json:"id"`
-	Package  string `json:"package,omitempty"`
-	Settings Object `json:"settings,omitempty"`
-	Body     Object `json:"body,omitempty"`
-	Headers  Object `json:"headers,omitempty"`
+	IntegrationID string `json:"integrationID"`
+	ID            string `json:"id"`
+	Package       string `json:"package,omitempty"`
+	Settings      Object `json:"settings,omitempty"`
+	Body          Object `json:"body,omitempty"`
+	Headers       Object `json:"headers,omitempty"`
 }
 type CatalogSelection struct {
 	Provider string `json:"provider"`

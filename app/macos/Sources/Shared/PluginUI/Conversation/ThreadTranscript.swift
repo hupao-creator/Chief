@@ -43,6 +43,7 @@ package enum ThreadTranscriptPhase {
 package struct ThreadTranscriptInput {
     package var text: String
     package var followUp: Bool
+    var localCaptureTime: TimeInterval?
     package var createdAt: Double?
     package var annotations: [ThreadMessageAnnotation]
     package var attachments: [ThreadMessageAttachment]

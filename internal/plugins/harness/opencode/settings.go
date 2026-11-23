@@ -238,11 +238,13 @@ type catalogSource struct {
 }
 
 func (s *SettingsAPI) catalogKey(ctx context.Context, settings Settings, cwd string) (string, error) {
-	source, err := s.resolveCatalogSource(ctx, settings, cwd)
+	source, err := s.resolveCatalogSource(ctx, settings, cwd, discovery.ObservedIdentity)
 	return source.key, err
 }
 
-func (s *SettingsAPI) resolveCatalogSource(ctx context.Context, settings Settings, cwd string) (catalogSource, error) {
+type sourceFingerprint func(context.Context, map[string]string, string, string, string, ...string) (string, error)
+
+func (s *SettingsAPI) resolveCatalogSource(ctx context.Context, settings Settings, cwd string, fingerprint sourceFingerprint) (catalogSource, error) {
 	var env map[string]string
 	var err error
 	executable := settings.ExecutablePath
@@ -286,7 +288,7 @@ func (s *SettingsAPI) resolveCatalogSource(ctx context.Context, settings Setting
 	}
 	// Every cache layer uses this same dependency identity. A routing read must
 	// never wrap a shallow-key editor snapshot in a newer configuration's key.
-	identity, err := discovery.ObservedIdentity(ctx, env, executable, source, ".opencode", files...)
+	identity, err := fingerprint(ctx, env, executable, source, ".opencode", files...)
 	if err != nil {
 		return catalogSource{}, err
 	}
@@ -311,7 +313,7 @@ func (s *SettingsAPI) observe(ctx context.Context, settings Settings, cwd string
 	if len(modes) > 0 {
 		mode = modes[0]
 	}
-	source, err := s.resolveCatalogSource(ctx, settings, cwd)
+	source, err := s.resolveCatalogSource(ctx, settings, cwd, discovery.ObservedIdentity)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +324,7 @@ func (s *SettingsAPI) observe(ctx context.Context, settings Settings, cwd string
 			if err != nil {
 				return value, err
 			}
-			current, err := s.resolveCatalogSource(probeCtx, settings, cwd)
+			current, err := s.resolveCatalogSource(probeCtx, settings, cwd, discovery.ObservedIdentity)
 			if err != nil {
 				return nil, err
 			}
@@ -858,7 +860,11 @@ func (s *SettingsAPI) Presentation(ctx context.Context, input plugin.SettingsPre
 	if err != nil {
 		return nil, err
 	}
-	observed, err := s.observe(ctx, selected, input.Cwd, input.Refresh, presentationCatalogRead)
+	mode := presentationCatalogRead
+	if input.ExecutionProfile {
+		mode = completeCatalogRead
+	}
+	observed, err := s.observe(ctx, selected, input.Cwd, input.Refresh, mode)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()

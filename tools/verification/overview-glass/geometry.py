@@ -1,27 +1,44 @@
-"""Link the real production geometry probe against the prepared Release objects."""
+"""Measure current production geometry without starting a window or a glass trial."""
 import hashlib
 import json
-import os
 from pathlib import Path
 import subprocess
+import sys
 
 source = Path(__file__).resolve().parent
 repo = source.parents[2]
-output = repo / ".build/overview-glass"
-bundle = Path((output / "bundle.txt").read_text())
-build = json.loads((bundle.parent / "performance/build.json").read_text())
-original = build["linkCommand"]
-prefix = original[:original.index(str(output / "driver/environment.swift"))]
-frameworks = prefix[prefix.index("-F") + 1]
-prefix = [frameworks if arg == "@executable_path/../Frameworks" else arg for arg in prefix]
-objects = [arg for arg in original if arg.endswith(".o")]
-executable = output / "geometry-probe"
-command = [*prefix, str(source / "geometry.swift"), *objects, "-o", str(executable)]
-subprocess.run(command, check=True)
-result = subprocess.check_output([str(executable)], env=os.environ.copy())
-(output / "geometry.json").write_bytes(result)
-(output / "geometry-build.json").write_text(json.dumps({"command": command,
-    "sourceSHA256": hashlib.sha256((source / "geometry.swift").read_bytes()).hexdigest(),
-    "executableSHA256": hashlib.sha256(executable.read_bytes()).hexdigest(),
-    "productionBuild": build}, indent=2))
-print(result.decode(), end="")
+sys.path.insert(0, str(repo))
+from tools.benchmarks.gate.runner import lease
+from tools.benchmarks.gate.ux import native_lease
+from tools.verification.native_replay import NativeReplay
+
+
+def main():
+    output = repo / ".build/overview-glass"
+    output.mkdir(parents=True, exist_ok=True)
+    command = ["xcrun", "swift", "build", "--package-path", "app/macos", "--product", "Chief",
+               "-c", "release", "--force-resolved-versions", "-Xswiftc", "-enable-testing"]
+    with lease(), native_lease():
+        subprocess.run(command, cwd=repo, check=True)
+        replay = NativeReplay(repo, "GeometryProbe", "dev.chief.overview-geometry", configuration="release")
+        try:
+            probe = source / "geometry.swift"
+            replay.compile([probe], ["-O"])
+            result = subprocess.check_output([replay.executable], cwd=replay.workspace)
+            manifest = {
+                "head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip(),
+                "productionStatus": subprocess.check_output(["git", "status", "--porcelain", "--", "app/macos"], cwd=repo, text=True),
+                "command": command, "toolchain": subprocess.check_output(["xcrun", "swift", "--version"], text=True),
+                "sourceSHA256": hashlib.sha256(probe.read_bytes()).hexdigest(),
+                "executableSHA256": hashlib.sha256(replay.executable.read_bytes()).hexdigest(),
+                "linkedObjectSHA256": [hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in replay.objects],
+            }
+            (output / "geometry.json").write_bytes(result)
+            (output / "geometry-build.json").write_text(json.dumps(manifest, indent=2) + "\n")
+            print(result.decode(), end="")
+        finally:
+            replay.close()
+
+
+if __name__ == "__main__":
+    main()

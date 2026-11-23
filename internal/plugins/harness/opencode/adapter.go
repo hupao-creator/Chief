@@ -16,22 +16,23 @@ import (
 )
 
 type Harness struct {
-	host         plugin.HostContext
-	settings     *SettingsAPI
-	backgroundMu sync.Mutex
-	lifetime     context.Context
-	stop         context.CancelFunc
-	workers      sync.WaitGroup
-	pending      map[string]bool
-	telemetry    map[string]telemetryCacheEntry
-	closed       bool
-	closeOnce    sync.Once
-	closeErr     error
+	host          plugin.HostContext
+	settings      *SettingsAPI
+	backgroundMu  sync.Mutex
+	lifetime      context.Context
+	stop          context.CancelFunc
+	workers       sync.WaitGroup
+	pending       map[string]bool
+	telemetry     telemetryCacheEntry
+	readTelemetry func(context.Context, Options) (Object, error)
+	closed        bool
+	closeOnce     sync.Once
+	closeErr      error
 }
 
 func New(host plugin.HostContext) *Harness {
 	lifetime, stop := context.WithCancel(context.Background())
-	h := &Harness{host: host, lifetime: lifetime, stop: stop, pending: map[string]bool{}, telemetry: map[string]telemetryCacheEntry{}}
+	h := &Harness{host: host, lifetime: lifetime, stop: stop, pending: map[string]bool{}, readTelemetry: readTelemetry}
 	// Production discovery launches the captured source directly. A callback here
 	// would resolve the environment and executable again after fingerprinting.
 	h.settings = NewSettings(host, nil)

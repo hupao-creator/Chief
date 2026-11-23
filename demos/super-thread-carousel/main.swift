@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import Observation
 import ChiefUI
 import ChiefPluginUI
 @testable import ChiefApplications
@@ -121,15 +120,10 @@ private struct DemoView: View {
     }
 }
 
-@MainActor @Observable private final class DemoViewport {
-    var scale: CGFloat = 1
-}
-
 @MainActor private final class Delegate: NSObject, NSApplicationDelegate {
     let model: DemoModel
     let fixtures: [String: ReportFixture]
     var window: NSWindow?
-    let viewport = DemoViewport()
     init(model: DemoModel, fixtures: [String: ReportFixture]) {
         self.model = model; self.fixtures = fixtures
     }
@@ -139,22 +133,16 @@ private struct DemoView: View {
         window.title = "Super Thread · Production Carousel"
         window.minSize = .init(width: 500, height: 400)
         window.isReleasedWhenClosed = false
-        let viewport = self.viewport
         let model = self.model
         let host = NSHostingView(rootView: GeometryReader { geometry in
-            let size = CGSize(width: geometry.size.width / viewport.scale, height: geometry.size.height / viewport.scale)
+            let size = geometry.size
             DemoView(model: model, fixtures: self.fixtures)
                 .frame(width: size.width, height: size.height)
                 .onChange(of: size, initial: true) { _, size in model.windowSize = size }
-                .environment(\.nativeWindowContentScale, viewport.scale)
-                .scaleEffect(viewport.scale, anchor: .topLeading)
         }.overlay(alignment: .bottomTrailing) {
             HStack(spacing: 6) {
                 Button("1192×780") { [weak window] in window?.setContentSize(.init(width: 1192, height: 780)) }
                 Button("500×400") { [weak window] in window?.setContentSize(.init(width: 500, height: 400)) }
-                Button("1×") { viewport.scale = 1 }
-                Button("1.5×") { viewport.scale = 1.5 }
-                Button("2×") { viewport.scale = 2 }
             }.font(.system(size: 10)).buttonStyle(.bordered).padding(6)
         })
         host.sizingOptions = []

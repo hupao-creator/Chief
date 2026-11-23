@@ -37,13 +37,6 @@ type Delta struct {
 	Complete   bool
 }
 
-// CreateJSONDelta returns a complete patch within the production operation and
-// frame budgets, or nil when the values require a snapshot. Callers that need
-// to distinguish an incomplete diff should use CreateBoundedJSONDelta.
-func CreateJSONDelta(previous, next any) []map[string]any {
-	return CreateBoundedJSONDelta(previous, next, DeltaBudget{MaxOperations: maxDeltaOperations, MaxBytes: contentWriteLimit}).Operations
-}
-
 // CreateBoundedJSONDelta stops before an operation would exceed either budget.
 // It returns no partial operations when incomplete so callers must fall back to
 // a complete snapshot rather than trying to salvage a prefix.

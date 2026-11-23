@@ -71,6 +71,7 @@ public struct NativeComposerTextInput: View {
     private let onFocusChange: ((Bool) -> Void)?
     private let onEditorStateChange: ((NativeComposerEditorState) -> Void)?
     private let onKeyDown: ((NativeComposerKeyEvent) -> Bool)?
+    private let onTypingKey: ((NativeComposerTypingKey) -> Void)?
     private let submitOnReturn: Bool
     private let emphasizedInsertionPoint: Bool
     @State private var focused = false
@@ -98,6 +99,7 @@ public struct NativeComposerTextInput: View {
                 initialSelection: NSRange? = nil, preservesSelection: Bool = false,
                 onEditorStateChange: ((NativeComposerEditorState) -> Void)? = nil,
                 onKeyDown: ((NativeComposerKeyEvent) -> Bool)? = nil,
+                onTypingKey: ((NativeComposerTypingKey) -> Void)? = nil,
                 submitOnReturn: Bool = false, emphasizedInsertionPoint: Bool = false) {
         _value = value; self.draft = draft; self.placeholder = placeholder; self.disabled = disabled; self.readOnly = readOnly
         self.placeholderIcon = placeholderIcon
@@ -114,6 +116,7 @@ public struct NativeComposerTextInput: View {
         self.preservesSelection = preservesSelection
         self.onSubmit = onSubmit; self.onEscape = onEscape; self.onFiles = onFiles; self.preparePaste = preparePaste; self.onFocusChange = onFocusChange
         self.onEditorStateChange = onEditorStateChange; self.onKeyDown = onKeyDown
+        self.onTypingKey = onTypingKey
         self.submitOnReturn = submitOnReturn
         self.emphasizedInsertionPoint = emphasizedInsertionPoint
         _measuredHeight = State(initialValue: minHeight)
@@ -129,7 +132,7 @@ public struct NativeComposerTextInput: View {
             selectionRequest: selectionRequest, initialSelection: initialSelection, preservesSelection: preservesSelection, focusEnabled: focusEnabled, unavailable: unavailable,
             fontSize: fontSize, spacing: spacing, showsScroller: measuredHeight > maxHeight,
             onState: onEditorStateChange, onKeyDown: onKeyDown, onSubmit: { if !pasting { onSubmit() } }, onEscape: onEscape,
-            submitOnReturn: submitOnReturn, emphasizedInsertionPoint: emphasizedInsertionPoint,
+            onTypingKey: onTypingKey, submitOnReturn: submitOnReturn, emphasizedInsertionPoint: emphasizedInsertionPoint,
             onPaste: nativePaste, textInsets: emphasizedInsertionPoint ? editorInsets : EdgeInsets())
             // Split the trailing line spacing around the glyphs to center a single line.
             // Keep glow space inside the native viewport so the scroll clip

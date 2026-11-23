@@ -23,7 +23,7 @@ if not options.skip_build:
 replay = NativeReplay(repo, "MokuPanelPreview", "com.chief.moku-panel-preview")
 try:
     replay.compile([source / name for name in (
-        "main.swift", "CollapseCapture.swift", "AgentEntranceCapture.swift", "PendingSendReplay.swift", "ChiefInputReplay.swift",
+        "main.swift", "CollapseCapture.swift", "AgentEntranceCapture.swift", "PendingSendReplay.swift", "ChiefInputReplay.swift", "ReplayButtons.swift",
     )])
     retained = Path(tempfile.mkdtemp(prefix="chief-native-replay-panel-", dir="/private/tmp"))
     (retained / "workspace").mkdir()

@@ -14,6 +14,8 @@ public final class DesktopPreferences {
     public private(set) var readError: String?
     @ObservationIgnored private let fileURL: URL
 
+    let threadReadHistory: NativeThreadReadHistory
+
     private struct SavedState: Codable {
         // Unknown keys in earlier files, including the old UI overrides, are ignored.
         var selectedThreadId: String?
@@ -23,6 +25,7 @@ public final class DesktopPreferences {
     }
 
     public init(directory: URL) {
+        threadReadHistory = NativeThreadReadHistory(profile: directory)
         fileURL = directory.appendingPathComponent("desktop-preferences.json")
         selectedThreadID = nil
         onboardingCompleted = false

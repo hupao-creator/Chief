@@ -24,7 +24,7 @@ private struct ReportSendSurface: View {
                     .onPreferenceChange(NativeReportExecutionInputKey.self) { input in
                         presentation.updateReportExecution(input?.reference, ready: input?.ready == true, onBack: nil, route: route)
                     }
-                NativeMokuComposerInput(draft: presentation.dockDraft, submissionPending: presentation.dockDraft.submitting, targetsThread: true,
+                NativeMokuComposerInput(draft: presentation.dockDraft, awaitingContinuation: presentation.awaitingExecutionContinuation, targetsThread: true,
                     automaticFocus: false, running: presentation.dockThread?.cancellationID != nil, onSend: onSend)
                     .frame(width: 600)
                     .background(.background)
@@ -118,7 +118,7 @@ throws -> ApplicationThreadProps<NativeReportView> {
             }
         }
         let view = NSHostingView(rootView: surface.frame(width: 1240, height: 560)
-            .environment(\.locale, Locale(identifier: "en-US")))
+            .environment(\.locale, Locale(identifier: "en-US")).environment(\.scenePhase, .active))
         let panel = NSPanel(contentRect: .init(x: -2000, y: -2000, width: 1240, height: 560),
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.contentView = view; panel.orderBack(nil)
@@ -140,20 +140,24 @@ throws -> ApplicationThreadProps<NativeReportView> {
         editor.insertText(prompt, replacementRange: editor.selectedRange())
         let evidence = ProcessInfo.processInfo.environment["CHIEF_REPORT_REPLAY_EVIDENCE"].map { URL(fileURLWithPath: $0) }
         var start = ContinuousClock.now
+        var lastFrame: ReaderFrame?
         func sample(_ stage: String) throws -> [String] {
             view.layoutSubtreeIfNeeded()
             var captured = ContinuousClock.now
-            let labels = try readerFrame(view, saveTo: evidence?.appendingPathComponent(step + "-" + stage + ".png")) {
+            let frame = try readerFrame(view, saveTo: evidence?.appendingPathComponent(step + "-" + stage + ".png")) {
                 captured = .now
-            }.labels
+            }
+            lastFrame = frame
+            let labels = frame.labels
             print("Report", step, stage, start.duration(to: captured), labels)
             return labels
         }
-        func observe(_ expected: String, stage: String) async throws {
+        func observe(_ expected: String, stage: String, afterRemovalOf outgoing: String? = nil) async throws {
             let deadline = ContinuousClock.now + .seconds(3)
             repeat {
                 try await Task.sleep(for: .milliseconds(16))
-                if try sample(stage).contains(expected) { return }
+                let labels = try sample(stage)
+                if labels.contains(expected), outgoing.map(labels.contains) != true { return }
             } while ContinuousClock.now < deadline
             throw PluginContractError("Missing Report pixels: " + expected)
         }
@@ -161,9 +165,17 @@ throws -> ApplicationThreadProps<NativeReportView> {
         try require(try sample("source").contains(prompt), "Source frame did not show the submitted input")
         start = .now
         editor.keyDown(with: enter)
-        try require(draft.inputText.isEmpty && draft.submitting && cards.connectingHarness == harness,
+        try require(draft.inputText.isEmpty && draft.submitting && cards.connection?.source == src,
             "Return cleared the editor without publishing the connection")
-        try await observe(expected, stage: "held")
+        let page = cards.pageVisit
+        try await observe(expected, stage: "turning")
+        try await observe(expected, stage: "held", afterRemovalOf: "Previous result")
+        guard let frame = lastFrame, let label = frame.labels.firstIndex(of: expected),
+              let title = frame.labels.firstIndex(of: prompt) else { throw PluginContractError("Missing submitted page heading or body") }
+        let line = frame.bounds[label], heading = frame.bounds[title]
+        try require(frame.labels.filter { $0 == expected }.count == 1 && !frame.labels.contains("Previous result")
+            && abs(line.minX - heading.minX) < 0.025 && line.maxY < heading.minY,
+            "Connection must appear once, below the submitted page heading")
         try require(cards.selectedExecution == src && presentation.dockThread?.cancellationID == nil
             && draft.submitting && draft.inputText.isEmpty && editor.string.isEmpty,
             "Connection feedback changed execution authority or retained the submitted text")
@@ -179,13 +191,14 @@ throws -> ApplicationThreadProps<NativeReportView> {
         print("Report", step, "peer released", start.duration(to: .now))
         await sending?.value
         if step == "accept" {
-            try require(cards.selectedExecution?.executionID == "E" && !cards.executionReady, "Receipt bypassed reader readiness")
+            try require(cards.pageVisit == page && cards.selectedExecution?.executionID == "E" && !cards.executionReady, "Receipt bypassed reader readiness")
             try await observe(expected, stage: "awaiting-reader")
             try install(active)
             destination.hasContent = true
             try await observe("Processing request", stage: "accepted")
-            try require(cards.selectedExecution?.executionID == "E" && draft.text == "next", "Wrong accepted execution or draft")
+            try require(cards.pageVisit == page && cards.selectedExecution?.executionID == "E" && draft.text == "next", "Wrong accepted execution or draft")
         } else if step == "reject" {
+            try await observe("Previous result", stage: "restored")
             try require(draft.error != nil && draft.text == prompt + "\n\nnext" && cards.selectedExecution == src,
                 "Rejection lost the source or its draft")
         } else {

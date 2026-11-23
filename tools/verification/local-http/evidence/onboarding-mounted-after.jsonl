@@ -1,0 +1,6 @@
+{"role": "readiness", "command": "state:load", "start": 1082585807269375, "headers": 1082585808612083, "end": 1082585808628083, "bytes": 2347, "http": 200, "ok": true}
+{"role": "persisted-tag.settings", "command": "state:load", "start": 1082587677352083, "headers": 1082587679394750, "end": 1082587679416083, "bytes": 3041, "http": 200, "ok": true}
+{"role": "tag.settings", "command": "mounted-onboarding", "independentToReadyMs": 379.383667, "confirmToNextStepMs": 502.872208, "revision": 5, "savedHarnesses": 4, "fixtureDelaySeconds": 4.0}
+{"role": "persisted-report.settings", "command": "state:load", "start": 1082588436611375, "headers": 1082588437351875, "end": 1082588437364041, "bytes": 3736, "http": 200, "ok": true}
+{"role": "report.settings", "command": "mounted-onboarding", "independentToReadyMs": 643.274417, "confirmToNextStepMs": 101.440417, "revision": 6, "savedHarnesses": 4, "fixtureDelaySeconds": 4.0}
+{"kind": "artifact", "appSHA256": "7c6fd98c8f40c4ad648c638f0ff75c577541dd70dc4f4220d75017925251367e", "runtimeSHA256": "ddd7f5aa4d153ee80d85c1c39bf69e1fc70079dff1a3e18eccca1f9819fa9fa9", "collectorSHA256": "4ff012ea7ae0ee7cad4c4b711f96af1348ac3d9f6ffa700d23defce82ab6ea6c"}

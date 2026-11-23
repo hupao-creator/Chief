@@ -206,13 +206,13 @@ struct NativeMokuOutsideClickMonitor: NSViewRepresentable {
         }
 
         private func clickOutsideWindow() {
-            guard let window, window.isVisible, !isHiddenOrHasHiddenAncestor, isActive(),
+            guard let window, !window.ignoresMouseEvents, window.isVisible, !isHiddenOrHasHiddenAncestor, isActive(),
                   !ownsAuxiliaryInteraction(in: window) else { return }
             outsideWindowClick?()
         }
 
         private func syncGlobalMonitor() {
-            guard window != nil, outsideWindowClick != nil else {
+            guard window?.ignoresMouseEvents == false, outsideWindowClick != nil else {
                 if let globalMonitor { NSEvent.removeMonitor(globalMonitor); self.globalMonitor = nil }
                 return
             }

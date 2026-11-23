@@ -54,6 +54,7 @@ public protocol ApplicationThreadPlugin {
     var hasDetail: Bool { get }
     var allowsManualArchiving: Bool { get }
     var overviewCollection: ApplicationOverviewCollectionPolicy? { get }
+    var bookmarkVersion: KeyPath<Value, JSONText>? { get }
     func estimatedReadingSeconds(entry: ApplicationThreadCatalogEntry<Value>) -> TimeInterval
     func collectionCard(props: [ApplicationThreadProps<Value>], initialSelection: ApplicationThreadRef?, active: Bool,
                         onSelection: @escaping (ApplicationThreadRef) -> Void,
@@ -68,6 +69,7 @@ extension ApplicationThreadPlugin {
     public var hasDetail: Bool { true }
     public var allowsManualArchiving: Bool { true }
     public var overviewCollection: ApplicationOverviewCollectionPolicy? { nil }
+    public var bookmarkVersion: KeyPath<Value, JSONText>? { nil }
     public func estimatedReadingSeconds(entry: ApplicationThreadCatalogEntry<Value>) -> TimeInterval { 0 }
     public func collectionCard(props: [ApplicationThreadProps<Value>], initialSelection: ApplicationThreadRef?, active: Bool,
                                onSelection: @escaping (ApplicationThreadRef) -> Void,
@@ -115,6 +117,7 @@ public struct AnyApplicationThreadPlugin {
     public let hasDetail: Bool
     public let allowsManualArchiving: Bool
     public let overviewCollection: ApplicationOverviewCollectionPolicy?
+    public let bookmarkVersion: ((JSONValue) throws -> JSONText)?
     public let estimatedReadingSeconds: (ApplicationThreadCatalogEntry<JSONValue>) throws -> TimeInterval
     private let collectionBody: ([ApplicationThreadProps<JSONValue>], ApplicationThreadRef?, Bool,
                                 @escaping (ApplicationThreadRef) -> Void, @escaping (ApplicationThreadRef) -> Void) throws -> AnyView
@@ -124,6 +127,9 @@ public struct AnyApplicationThreadPlugin {
         id = plugin.type.id; ownerPluginID = plugin.type.ownerPluginID; requires = plugin.requires; hasDetail = plugin.hasDetail
         allowsManualArchiving = plugin.allowsManualArchiving
         overviewCollection = plugin.overviewCollection
+        bookmarkVersion = plugin.bookmarkVersion.map { key in
+            { try plugin.type.codec.decode($0)[keyPath: key] }
+        }
         estimatedReadingSeconds = { entry in
             guard entry.ref.typeID == plugin.type.id else { throw PluginContractError("Application collection type mismatch") }
             return try plugin.estimatedReadingSeconds(entry: entry.mapView(plugin.type.codec.decode))

@@ -12,7 +12,6 @@ import (
 )
 
 const SourceID = "artificial-analysis"
-const IntelligenceIndexVersion = "5.0.1"
 const cacheSchemaVersion = 2
 const MaxFactsBytes = 8 * 1024 * 1024
 const MaxCatalogBytes = 64 * 1024
@@ -44,15 +43,18 @@ func (s BenchmarkScores) values() []*float64 {
 }
 
 type Facts struct {
-	EvaluatedModel                      string          `json:"evaluatedModel"`
-	Deprecated                          bool            `json:"deprecated"`
-	IntelligenceIndex                   *float64        `json:"intelligenceIndex"`
-	MedianOutputTokensPerSecond         *float64        `json:"medianOutputTokensPerSecond"`
-	CostPerIntelligenceIndexTaskUSD     *float64        `json:"costPerIntelligenceIndexTaskUsd"`
-	BenchmarkScores                     BenchmarkScores `json:"benchmarkScores"`
-	MedianTimeToFirstAnswerTokenSeconds *float64        `json:"medianTimeToFirstAnswerTokenSeconds"`
-	InputUSDPer1MTokens                 *float64        `json:"inputUsdPer1MTokens"`
-	OutputUSDPer1MTokens                *float64        `json:"outputUsdPer1MTokens"`
+	IntelligenceIndexVersion              IndexVersion    `json:"intelligenceIndexVersion"`
+	HeadlineOutputTokensPerSecond         *float64        `json:"headlineOutputTokensPerSecond"`
+	HeadlineTimeToFirstAnswerTokenSeconds *float64        `json:"headlineTimeToFirstAnswerTokenSeconds"`
+	EvaluatedModel                        string          `json:"evaluatedModel"`
+	Deprecated                            bool            `json:"deprecated"`
+	IntelligenceIndex                     *float64        `json:"intelligenceIndex"`
+	MedianOutputTokensPerSecond           *float64        `json:"medianOutputTokensPerSecond"`
+	CostPerIntelligenceIndexTaskUSD       *float64        `json:"costPerIntelligenceIndexTaskUsd"`
+	BenchmarkScores                       BenchmarkScores `json:"benchmarkScores"`
+	MedianTimeToFirstAnswerTokenSeconds   *float64        `json:"medianTimeToFirstAnswerTokenSeconds"`
+	InputUSDPer1MTokens                   *float64        `json:"inputUsdPer1MTokens"`
+	OutputUSDPer1MTokens                  *float64        `json:"outputUsdPer1MTokens"`
 }
 type Evaluation struct {
 	Slug          string        `json:"slug"`
@@ -66,11 +68,11 @@ type Release struct {
 	Evaluations []Evaluation `json:"evaluations"`
 }
 type Snapshot struct {
-	Source                   string    `json:"source"`
-	IntelligenceIndexVersion string    `json:"intelligenceIndexVersion,omitempty"`
-	ObservedAt               *string   `json:"observedAt"`
-	Availability             string    `json:"availability"`
-	Releases                 []Release `json:"releases"`
+	Source                   string       `json:"source"`
+	IntelligenceIndexVersion IndexVersion `json:"intelligenceIndexVersion,omitempty"`
+	ObservedAt               *string      `json:"observedAt"`
+	Availability             string       `json:"availability"`
+	Releases                 []Release    `json:"releases"`
 }
 type Identity struct {
 	Selector           string   `json:"selector"`
@@ -112,8 +114,9 @@ type persistedConfiguration struct {
 	Facts         *Facts        `json:"facts,omitempty"`
 }
 type persistedSnapshot struct {
+	RosterVersion            IndexVersion             `json:"rosterIndexVersion"`
 	SchemaVersion            int                      `json:"schemaVersion"`
-	IntelligenceIndexVersion string                   `json:"intelligenceIndexVersion"`
+	IntelligenceIndexVersion IndexVersion             `json:"intelligenceIndexVersion"`
 	Source                   string                   `json:"source"`
 	ObservedAt               string                   `json:"observedAt"`
 	FetchedAt                string                   `json:"fetchedAt"`
@@ -122,6 +125,7 @@ type persistedSnapshot struct {
 type target struct {
 	Slug, ReleaseSlug, ReleaseName string
 	Configuration                  *Configuration
+	ReleasePage                    bool
 }
 
 func unavailable() Snapshot {
@@ -223,13 +227,13 @@ func validConfiguration(value any) bool {
 }
 func validFacts(value any) bool {
 	v := record(value)
-	if !keys(v, []string{"evaluatedModel", "deprecated", "intelligenceIndex", "medianOutputTokensPerSecond", "costPerIntelligenceIndexTaskUsd", "benchmarkScores", "medianTimeToFirstAnswerTokenSeconds", "inputUsdPer1MTokens", "outputUsdPer1MTokens"}, nil) || canonical(v["evaluatedModel"], 512) == "" {
+	if !keys(v, []string{"evaluatedModel", "deprecated", "intelligenceIndex", "medianOutputTokensPerSecond", "costPerIntelligenceIndexTaskUsd", "benchmarkScores", "medianTimeToFirstAnswerTokenSeconds", "inputUsdPer1MTokens", "outputUsdPer1MTokens"}, []string{"intelligenceIndexVersion", "headlineOutputTokensPerSecond", "headlineTimeToFirstAnswerTokenSeconds"}) || canonical(v["evaluatedModel"], 512) == "" {
 		return false
 	}
 	if _, ok := v["deprecated"].(bool); !ok {
 		return false
 	}
-	for _, key := range []string{"intelligenceIndex", "medianOutputTokensPerSecond", "costPerIntelligenceIndexTaskUsd", "medianTimeToFirstAnswerTokenSeconds", "inputUsdPer1MTokens", "outputUsdPer1MTokens"} {
+	for _, key := range []string{"headlineOutputTokensPerSecond", "headlineTimeToFirstAnswerTokenSeconds", "intelligenceIndex", "medianOutputTokensPerSecond", "costPerIntelligenceIndexTaskUsd", "medianTimeToFirstAnswerTokenSeconds", "inputUsdPer1MTokens", "outputUsdPer1MTokens"} {
 		if v[key] != nil && nonnegative(v[key]) == nil {
 			return false
 		}
@@ -250,6 +254,35 @@ func validFacts(value any) bool {
 	}
 	return true
 }
+
+// IndexVersion is the numeric label on an observation. Absent or malformed
+// cache metadata leaves the measurements intact with unknown methodology.
+type IndexVersion string
+
+func (v *IndexVersion) UnmarshalJSON(data []byte) error {
+	var label string
+	*v = ""
+	if json.Unmarshal(data, &label) == nil && exactVersion.MatchString(label) {
+		*v = IndexVersion(label)
+	}
+	return nil
+}
+
+func commonVersion(entries []persistedConfiguration) IndexVersion {
+	var version IndexVersion
+	for _, entry := range entries {
+		if entry.Facts == nil {
+			continue
+		}
+		current := entry.Facts.IntelligenceIndexVersion
+		if current == "" || (version != "" && version != current) {
+			return ""
+		}
+		version = current
+	}
+	return version
+}
+
 func parsePersisted(data []byte) (*persistedSnapshot, error) {
 	if len(data) > MaxFactsBytes {
 		return nil, fmt.Errorf("evaluation facts exceed %d bytes", MaxFactsBytes)
@@ -258,9 +291,10 @@ func parsePersisted(data []byte) (*persistedSnapshot, error) {
 	if err := json.Unmarshal(data, &value); err != nil {
 		return nil, err
 	}
-	if !keys(value, []string{"schemaVersion", "intelligenceIndexVersion", "source", "observedAt", "fetchedAt", "configurations"}, nil) || value["schemaVersion"] != float64(cacheSchemaVersion) || !supportedIndexVersion(text(value["intelligenceIndexVersion"])) || value["source"] != SourceID || !iso(text(value["observedAt"])) || !iso(text(value["fetchedAt"])) {
+	if !keys(value, []string{"schemaVersion", "source", "observedAt", "fetchedAt", "configurations"}, []string{"intelligenceIndexVersion", "rosterIndexVersion"}) || value["schemaVersion"] != float64(cacheSchemaVersion) || value["source"] != SourceID || !iso(text(value["observedAt"])) || !iso(text(value["fetchedAt"])) {
 		return nil, fmt.Errorf("invalid evaluation cache envelope")
 	}
+	_, rowVersions := value["rosterIndexVersion"]
 	entries, ok := value["configurations"].([]any)
 	if !ok || len(entries) > 10000 {
 		return nil, fmt.Errorf("invalid evaluation configurations")
@@ -284,13 +318,29 @@ func parsePersisted(data []byte) (*persistedSnapshot, error) {
 		if etag, ok := entry["etag"]; ok && canonical(etag, 4096) == "" {
 			return nil, fmt.Errorf("invalid evaluation etag")
 		}
-		if facts, ok := entry["facts"]; ok && !validFacts(facts) {
-			return nil, fmt.Errorf("invalid evaluation metrics")
+		if facts, ok := entry["facts"]; ok {
+			if !validFacts(facts) {
+				return nil, fmt.Errorf("invalid evaluation metrics")
+			}
+			if _, ok := record(facts)["intelligenceIndexVersion"]; ok {
+				rowVersions = true
+			}
 		}
 	}
 	var result persistedSnapshot
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, err
 	}
+	if !rowVersions {
+		// Schema 2 originally recorded one verified version for the whole cohort.
+		version := result.IntelligenceIndexVersion
+		result.RosterVersion = version
+		for _, row := range result.Configurations {
+			if row.Facts != nil {
+				row.Facts.IntelligenceIndexVersion = version
+			}
+		}
+	}
+	result.IntelligenceIndexVersion = commonVersion(result.Configurations)
 	return &result, nil
 }

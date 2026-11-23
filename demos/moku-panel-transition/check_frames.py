@@ -6,6 +6,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from check_workspace_folds import column_return
 
 
 def dock_frame(movie, phase_count):
@@ -149,8 +150,7 @@ def check_return(frames, codes, times, close, open_width, idle_width, name):
     source_center = sum(glass_edges(frames[close - 1])) / 2
     idle_center = sum(glass_edges(frames[0])) / 2
     max_fold_drift = 0.0
-    horizontal = []
-    vertical = []
+    fold_widths, fold_centers, fold_tops = [open_width], [source_center], [None]
     samples = []
     def compact_top(frame, center):
         # Follow the top of the warm finish, away from the mark and end caps.
@@ -168,24 +168,32 @@ def check_return(frames, codes, times, close, open_width, idle_width, name):
         left, right = glass_edges(frames[i])
         width = right - left + 1
         center = (left + right) / 2
+        fold_widths.append(width)
+        fold_centers.append(center)
         if delay is None and width <= threshold:
             delay = float(times[i] - times[close])
         if width > idle_width + 4:
+            fold_tops.append(None)
             max_fold_drift = max(max_fold_drift, abs(center - source_center))
         else:
             top = compact_top(frames[i], center)
+            fold_tops.append(top)
             samples.append([float(times[i]), center, top, width])
-            if abs(center - idle_center) > 4:
-                horizontal.append(abs(top - reading_top))
-            if idle_top + 4 < top < reading_top - 4:
-                vertical.append(abs(center - idle_center))
+    centers = np.array([row[1] for row in samples])
+    tops = np.array([row[2] for row in samples])
+    regrowth = int(max(fold_widths - np.minimum.accumulate(fold_widths)))
+    path = column_return(fold_widths, fold_centers, fold_tops, idle_width, idle_center, idle_top, 2)
+    horizontal = centers[(centers > idle_center + 4) & (centers < source_center - 4)]
+    vertical = tops[(tops > idle_top + 4) & (tops < reading_top - 4)]
     return dict(visit=name, secondsToTenPercentFold=delay, maxExpandedCenterDriftPx=max_fold_drift,
-                horizontalFrames=len(horizontal), verticalFrames=len(vertical),
-                maxHorizontalYErrorPx=max(horizontal, default=None), maxVerticalXErrorPx=max(vertical, default=None),
-                finalCenterErrorPx=abs(center - idle_center), compactSamples=samples,
-                passed=delay is not None and delay <= 0.210 and max_fold_drift <= 4
-                and len(horizontal) >= 3 and len(vertical) >= 3 and max(horizontal) <= 4 and max(vertical) <= 4
-                and abs(top - idle_top) <= 4 and abs(center - idle_center) <= 4 and abs(width - idle_width) <= 4)
+                horizontalFrames=len(horizontal), verticalFrames=len(vertical), maxReturnRegrowthPx=regrowth,
+                finalCenterErrorPx=abs(center - idle_center), compactSamples=samples, columnReturn=path,
+                passed=bool(not path["errors"] and delay is not None and delay <= 0.210 and max_fold_drift <= 4 and regrowth <= 4
+                            and len(set(horizontal)) >= 3 and len(set(vertical)) >= 3
+                            and np.all((centers >= idle_center - 4) & (centers <= source_center + 4))
+                            and np.all((tops >= idle_top - 4) & (tops <= reading_top + 4))
+                            and abs(top - idle_top) <= 4 and abs(center - idle_center) <= 4
+                            and abs(width - idle_width) <= 4))
 
 
 
@@ -233,17 +241,19 @@ def check_center(frames, times, panels, marks, phases, name, opening):
     gaps = np.diff(times[start:end + 1])
     steps = np.diff(widths) * (1 if opening else -1)
     moving_panel = {row[4] for row in samples if row[4] is not None}
-    # A progressing panel and a frozen bar are distinguishable even when all
-    # encoded timestamps are regular. Check actual intermediate paint during
-    # the bounded main-thread hold, including the Harness mark on the same bar.
-    moving_marks = {row[3] for row in samples if row[3] is not None}
+    # The reader panel keeps its submitted return during a main-thread hold.
+    # Record compositor independence separately from shell continuity. The
+    # SwiftUI reference can hold its last width until the next layout pass.
     contained = all(mark is not None and abs(mark - center) < width / 2
                     for _, width, center, mark, _ in samples)
+    moving_marks = len({row[3] for row in samples if row[3] is not None})
+    width_steps = int(np.count_nonzero(steps > 2))
     return dict(phase=name, samples=samples, maxFrameIntervalMs=round(float(max(gaps)) * 1000, 2),
-                movingWidthSteps=int(np.count_nonzero(steps > 2)), movingPanelSeats=len(moving_panel),
-                passed=bool(len(samples) >= 3 and np.count_nonzero(steps > 2) >= 3
-                            and np.all(steps >= -3) and len(moving_marks) >= 3 and contained
+                movingWidthSteps=width_steps, movingPanelSeats=len(moving_panel), movingMarkSeats=moving_marks,
+                independentShellProgress=width_steps >= 3 and moving_marks >= 3,
+                passed=bool(len(samples) >= 3 and np.all(steps >= -3) and contained
                             and (opening or len(moving_panel) >= 3)))
+
 
 def check_focus(frames, focus, times, start, end, x, y, name, *, reference_index=None, explicit=False):
     # The bottom seat moves vertically during an Overview reversal. Locate

@@ -25,7 +25,16 @@ private func frame(of placement: NativeOverviewPlacement) -> CGRect {
 private func generate(seed: UInt64) -> LayoutCase {
     var random = SplitMix64(seed: seed)
     var members = [NativeOverviewMember]()
-    if seed.isMultiple(of: 4) {
+    if seed % 8 == 1 {
+        let unit = random.integer(1...3)
+        let spans = [(1, 2), (2, 1), (1, 2), (1, 1), (2, 1)]
+        members = spans.enumerated().map { index, span in
+            .init(id: "card-\(index)", columns: unit * span.0, rows: span.1)
+        }
+        let columns = random.integer(3...6)
+        return .init(seed: seed, members: members, usable: .init(left: 0, top: 0,
+            width: metrics.width(columns: columns * unit), height: metrics.height(rows: 4)))
+    } else if seed.isMultiple(of: 4) {
         // A six-tile rectangle with a known optimum, in different units and orders.
         let w = random.integer(1...3), h = random.integer(1...2)
         let spans = [(2 * w, h), (w, 2 * h), (w, h), (w, h)].shuffled(using: &random)
@@ -109,6 +118,21 @@ private func violations(_ input: LayoutCase) -> [String] {
     if actualIDs != expectedIDs { issues.append("placements are not in product order") }
     if Set(actualIDs) != Set(expectedIDs) { issues.append("membership mismatch") }
     if actualIDs.sorted() != expectedIDs.sorted() { issues.append("duplicate or missing identity") }
+    // Read the published cells directly. A single-row card below two occupied
+    // cells should never fit in the uninterrupted gap between them.
+    for row in 0..<result.bounds.rows {
+        let below = result.placements.filter { $0.row > row && $0.rows == 1 }
+        guard let narrowest = below.map(\.columns).min() else { continue }
+        var cells = Set<Int>()
+        for card in result.placements where (card.row..<(card.row + card.rows)).contains(row) {
+            cells.formUnion(card.column..<(card.column + card.columns))
+        }
+        let occupied = cells.sorted()
+        if zip(occupied, occupied.dropFirst()).contains(where: { $1 - $0 - 1 >= narrowest }) {
+            issues.append("interior gap fits a lower single-row card")
+            break
+        }
+    }
     for placement in result.placements {
         guard let member = input.members.first(where: { $0.id == placement.id }) else {
             issues.append("unknown member \(placement.id)"); continue

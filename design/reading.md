@@ -11,21 +11,21 @@ scenarios. Actual runs and their fixed revisions are separate evidence.
 
 ## Content and execution identity
 
-Agent detail and Chief history display settled assistant replies and compact live follow-up
+Agent detail displays settled assistant replies and compact live follow-up
 text/time rows. Initial/internal user input, plans and ordinary info/warning
 notices do not appear. Pending permissions/questions and independent errors remain
 readable. Unfinished assistant bodies stay hidden until the message settles.
 Running/waiting executions retain settled replies; terminal executions retain the
 last non-error reply and an explicitly targeted reply outside work summaries.
-Intermediate replies and failed tools remain execution work. Both readers show
-reasoning and tool counts when work is visible. The current Chief session and
-read-only archives consume their owning Harness's manifest and scoped turn
-resources. The coordinator's audit identifies the child Thread admitted by a delegation.
-Note links carry the Harness execution and message identities into the reader.
-The current Chief session owns the history composer.
+Intermediate replies and failed tools remain execution work. The Agent reader shows reasoning and tool counts when work is visible.
 The window shows a manual steer in the running execution as soon as the composer
-captures it. Its stable row identity and presentation survive both receipt and
-transcript updates. [Send identity and ownership](composer.md#send-identity-and-ownership)
+captures it. Each local steer reserves its final row height and enters from
+18pt below with the 420ms reading replacement curve. The capture time belongs
+to the command, so subsequent steers can enter independently and transcript
+refreshes retain each row's progress. Reduce Motion shows the settled row
+immediately. The entrance leaves scrolling to the reader's existing follow or
+manual position. When the result anchor moves to a new tail row, the preceding
+reply stays mounted at its measured height. [Send identity and ownership](composer.md#send-identity-and-ownership)
 
 Empty no-output bookkeeping does not create a visible execution summary.
 
@@ -90,14 +90,10 @@ starts a new positioning identity.
 Closing retains the native return: reader ink fades over the first 80%, shell
 travel reaches the refreshed source at 86%, and the final 14% crossfades to card
 content. Closing before primary admission uses the opening-reversal path.
+The workspace Dock reads the accepted return from parent preparation through
+travel completion, so the outgoing Harness mark can flip as the editor folds.
 A deleted/archived source supplies no stale return target. Route/generation
 identity fences all preparation and completion callbacks.
-
-[Chief history](../app/macos/Sources/Host/MokuScene/README.md) uses the same
-settled card frame. Its live reader and bottom input capsule share one native
-overlay that fades and moves at a fixed layout. The document uses the Agent
-reader’s scoped loading skeleton and one-time 200ms text entrance. Its return can reverse while
-retaining the same reading visit.
 
 The reading parent uses the window's existing material, without capturing the
 Overview bitmap. It keeps the native Overview owner and hides its host after
@@ -139,7 +135,10 @@ Report commits folded layout, matching HTML query revision and WebKit main-frame
 completion before related-card admission. Primary travel and layout must also
 finish; a cancellable 200ms admission interval starts after readiness. WebKit
 `didFinish` does not certify all later scripts/assets. Covering, replacing or
-closing retires that visit. The stable Report route remains exempt from composer
+closing retires that visit. A body edit within an admitted visit uses the same
+WebKit view. The previous page stays readable while the matching revision is
+fetched. WebKit reloads the document at its existing address and the active
+sidecard keeps its layout. The stable Report route remains exempt from composer
 suppression during selected-execution handoff.
 
 List state uses a 3:7 Sidecard-to-Report ratio; exact execution detail uses 5:5,
@@ -158,16 +157,21 @@ pending. Back reuses ready text even when the list rows remount. Preparation is
 cancellable on source changes, folding, coverage and exit. Unchanged source text
 is reused within the visit, and a source with no eligible excerpt needs no parse.
 
-Report continuation keeps the Report, shell, column and resident composer in
-place. Sending from a finished or historical execution immediately shows the
-source Harness's connection label over the reader. The submitted request and
-current selection own that label while awaiting the receipt. An accepted
-successor visit retains it until its reader is ready. Rejection, folding,
-switching the reading target or leaving the Report retires the local feedback.
-Only an observed runtime cancellation target enables Stop.
+Sending from a finished or historical execution immediately turns the Report
+sidecard to the submitted page. The old viewport moves up as the new one enters
+from below. The new page shows the submitted heading and the source Harness's
+inline connection status. The receipt binds the accepted execution to this same
+page. Its prepared reader takes over in place after landing. A same-execution
+steer keeps the reader and scroll position.
 
-A successor execution enters from below as the old viewport moves up;
-same-execution steer keeps reader and scroll. The Back button stays outside the
+The Report, sidecard column and open composer stay in place throughout the
+handoff. The source draft accepts typing while the request is pending. The
+destination owns actions only after its reader, exact input and column are ready.
+Only an observed runtime cancellation target enables Stop. Rejection restores
+the source run and draft. Folding, changing selection or leaving the Report
+retires the submitted page's authority to navigate.
+
+The Back button stays outside the
 carrier and returns to the list. Exact forks and uncertain receipts retain the
 [Runtime](../internal/core/runtime/README.md) and [client](../app/macos/Sources/Core/README.md)
 authority boundaries. No guessed resend follows an uncertain outcome.

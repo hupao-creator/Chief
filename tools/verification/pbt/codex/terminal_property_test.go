@@ -3,6 +3,7 @@ package codex_test
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/hupao-creator/Chief/internal/plugins/harness/codex"
@@ -45,6 +46,30 @@ func TestCodexTerminalProperties(t *testing.T) {
 				event := codex.Map{"type": kind, "at": at, "itemId": "answer", "delta": message.Draw(t, "delta"), "text": message.Draw(t, "text"), "label": "working", "message": "native error", "outcome": rapid.SampledFrom([]string{"completed", "failed", "interrupted"}).Draw(t, "outcome")}
 				state = codex.ReduceEvent(state, id, event)
 				at++
+			},
+			"command-completion": func(t *rapid.T) {
+				turn := codex.LatestTurn(state)
+				if turn == nil || turn["status"] != "running" {
+					t.Skip("no running execution")
+				}
+				parts := rapid.SliceOfN(message, 2, 5).Draw(t, "output parts")
+				exitCode := rapid.IntRange(0, 1).Draw(t, "exit code")
+				event := codex.CompletedActivity(codex.Map{
+					"type": "commandExecution", "id": fmt.Sprintf("command-%d", at), "command": "fixture",
+					"aggregatedOutput": strings.Join(parts, "\x00"), "exitCode": exitCode,
+				})
+				event["at"] = at
+				state = codex.ReduceEvent(state, turn["executionId"].(string), event)
+				at++
+				activities := codex.LatestTurn(state)["activities"].([]any)
+				activity := activities[len(activities)-1].(codex.Map)
+				wantStatus := "completed"
+				if exitCode != 0 {
+					wantStatus = "failed"
+				}
+				if activity["id"] != event["activityId"] || activity["status"] != wantStatus || activity["detail"] != strings.Join(parts, "␀") {
+					t.Fatal("command completion lost its identity, exit status or printable output")
+				}
 			},
 			"follow-up": func(t *rapid.T) {
 				if len(ids) == 0 {

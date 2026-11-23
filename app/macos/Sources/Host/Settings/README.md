@@ -111,8 +111,7 @@ disconnection. The coordinating Harness form labels its model selector Chief Mod
 Native tab semantics, a selected underline and roving keyboard
 focus are shared at every width; the header scrolls when its tabs no longer fit.
 Switching sections scrolls the whole padded form to its top, retaining the same
-18-point content inset whether the selected form fits or overflows. At extreme
-zoom the outer shell scrolls back to its top as well. Form width follows the
+18-point content inset whether the selected form fits or overflows. In short viewports the outer shell scrolls back to its top as well. Form width follows the
 panel rather than SwiftUI's overflow-dependent scroller proposal, keeping its
 form and illustration columns centered on the same axis with or without overflow.
 Horizontal padding keeps controls clear of the native gutter. Chief starts with
@@ -134,8 +133,7 @@ Reduce Transparency. The resident eyes adapt to the expanded surface as they
 travel into the reserved leading 30-point header column, and return to the
 composer with the shell. A single
 Close button replaces the full-page traffic-light/back capsule and its 74-point
-safe area; the main window retains its own native controls. When extreme zoom
-leaves less than 220 logical points of page height, the entire settings shell
+safe area; the main window retains its own native controls. When the page has less than 220 logical points of page height, the entire settings shell
 also scrolls so its chrome cannot make form controls unreachable. The resident
 eyes scroll with the header so they stay with their seat above the form.
 
@@ -157,8 +155,7 @@ explicit settling retire the current animation without leaving the modal gate
 stuck. Opening and return both report transitioning to semantic callers.
 
 The application menu and Cmd+, are enabled only for a loaded Overview. Direct
-presentation and semantic requests enforce the same boundary; reading, Moku
-history and initial connection/recovery pages cannot open Settings or implicitly
+presentation and semantic requests enforce the same boundary; reading and initial connection/recovery pages cannot open Settings or implicitly
 navigate to Overview. A previously loaded Overview can open Settings while
 disconnected.
 
@@ -273,6 +270,9 @@ or unmounting one editor releases only that editor's composition; unrelated
 text-field notifications cannot clear another editor's close/save gate.
 
 Saves carry expected settings revision. Success adopts the normalized response as the new base while retaining later local edits. Conflicts reconcile against the returned latest state; an obsolete failed save does not discard or block a newer ready draft. Current failures remain visible.
+During [first-run setup](../Onboarding/README.md), a stale draft can reconcile
+automatically when applying the local and remote changes in either order gives
+the same settings. Overlapping edits use the ordinary conflict controls.
 
 Moku displays its concrete saved execution profile. Background editors select inherited Moku configuration or an independent snapshot; switching back to inheritance retains the independent choice for later reuse. Moku, Super Thread Agent and Tag Agent use their built-in system instructions; settings do not expose full system-prompt replacement. Chief's “Task Orchestration Preferences” (任务编排偏好) offers Economy, Balanced,
 Performance and Custom separate capsule buttons after its basic execution fields
@@ -341,9 +341,7 @@ or disconnect. These reads never change the settings draft.
 
 Workspace-owned settings prefetch revalidates retained editors every five minutes
 without forcing native cache invalidation; this refreshes capabilities even when
-installation paths stay unchanged. OpenCode can return a native catalog before
-optional account checks complete: it labels that uncertainty and rereads without
-forcing another probe. No settings navigation or Map layout is changed.
+installation paths stay unchanged. OpenCode execution editors await model availability filtering on the original read or an explicit retry. Ordinary Thread settings can present the early native list and reread while filtering finishes. The shared Agent configuration loading notice uses the compact skillet beside its localized text for every Harness and the Chief roster. Reduce Motion holds the same still artwork as workspace loading.
 
 AppKit owns the system select's menu tracking, keyboard navigation and cancellation.
 Settings keeps its existing page Escape handler; embedded model popovers retain
@@ -368,14 +366,19 @@ Settings starts with a 900-point preferred height and grows to the active tab's
 natural document height (including header and form insets). The shared Dock shell
 keeps its 780-point preferred width and caps both dimensions to the workspace
 viewport with 24-point margins. Chief Agent, Auto-Categorization and Super Thread use this same sizing,
-including inherited and independent Harness forms. Smaller windows, app zoom,
-expanded editors and notices retain native scrolling; extreme zoom also scrolls
+including inherited and independent Harness forms. Smaller windows,
+expanded editors and notices retain native scrolling; short viewports also scroll
 the whole shell so navigation remains accessible. No scrollbar is hidden to fit
 content.
 
 The **Super Thread** tab configures Super Thread Agent through the
 `report.settings` identity. Its mode choices are Agent off, Use Chief and
 Configure separately.
+
+An independent editor opens its selected Harness in the role's own workspace,
+including before its mode is saved. The settings admission gate checks local
+draft readiness. The Runtime save checks shape and revision and commits the
+profiles together. Native catalog acquisition belongs to the editor resource.
 
 All Harness advanced-options headers retain the native disclosure, with a
 full-width label and 32-point minimum hit height. Title, chevron and trailing space toggle the same

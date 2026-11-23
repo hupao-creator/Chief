@@ -13,7 +13,7 @@ Manifest 声明 collections、settings、queries、commands、threadTypes 和 ba
 
 Register 只注册纯定义。创建网络客户端、原生 Handle、定时器或后台进程应放到 participant 的生命周期中。宿主仍注册禁用模块的声明以保留 settings schema，但固定的启动期 Enabled 决策控制调用、catalog 和后台 agent。保存启停偏好后重启生效。
 
-每次注册会复制声明中的可变数据（schema、默认值、能力清单）；manifest 的输入和查询结果也独立持有贡献清单。Register 返回后立即关闭该 Registry，保留的引用不能再改变已验证的定义或增加能力。
+每次注册会复制声明中的可变数据（schema、默认值、能力清单）；宿主保存的 manifest 也独立持有各项贡献的 ID 列表。Register 返回后立即关闭该 Registry，保留的引用不能再改变已验证的定义或增加能力。
 
 启动时，宿主按当前注册的 settings 声明补充默认配置，并移除已不再注册的配置项，避免已删除插件的残留项阻断整份设置保存。仍已注册但被禁用的模块保留用户配置；保存请求仍严格拒绝未知配置项。
 

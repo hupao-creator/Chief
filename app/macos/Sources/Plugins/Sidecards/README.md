@@ -33,9 +33,11 @@ the editor mounted and open. Dragging/resizing settles directly; stacked layout
 uses the panels' shared full column width. Choosing Browser or another
 non-owning activity centers and fits input below main, including for a completed
 Thread; its send target remains that Thread. Browser annotation mode uses its
-own column and description route as specified below. Folding, suppression, losing
-selected-card eligibility or promoting a completed execution returns input to
-the workspace center. No composer mounts
+own column and description route as specified below. Reader travel suspends
+controls while the selected card keeps its destination. Reopening the same
+reader mid-fold expands input in that column. Folding the card, covering the
+reader with Settings or Chief input, losing selected-card eligibility, or
+promoting a completed execution returns input to the workspace center. No composer mounts
 inside a Sidecard and no plugin input ownership changes. See the
 [Reading-panel Dock contract](../../Host/MokuScene/README.md#reading-panel-dock)
 for fit and editor lifetime.

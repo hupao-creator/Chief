@@ -62,11 +62,11 @@ private struct CollectionCase: Codable {
         let estimate = Double(random.integer(0...300))
         let threshold = max(5, min(45, estimate * 0.25))
         let now = 200_000.0
-        let age = 86_400.0 + Double(Int(seed % 3) - 1)
+        let age = 1_800.0 + Double(Int(seed % 3) - 1)
         var evidence = ApplicationCollectionReading()
         var visit = NativeOverviewCollectionVisit(reference: .init(threadID: "report", typeID: "report.document"),
             openedAt: now, estimate: estimate, createdAt: now - age, evidence: &evidence)
-        guard evidence.staysCollected == (age >= 86_400) else { return "incorrect unread age boundary" }
+        guard evidence.staysCollected == (age >= 1_800) else { return "incorrect unread age boundary" }
         let reading = max(0, threshold + Double(Int((seed / 3) % 3) - 1))
         visit.advance(visible: true, uptime: 0)
         visit.advance(visible: false, uptime: reading / 2)
@@ -76,15 +76,18 @@ private struct CollectionCase: Codable {
         if visit.qualified { visit.promote(&evidence) }
         visit.close(at: now + 200, evidence: &evidence)
         let persistedIdle = evidence.isIdle(createdAt: 0, now: now + 201)
-        guard persistedIdle == (age >= 86_400 && reading < threshold),
+        guard persistedIdle == (age >= 1_800 && reading < threshold),
               (evidence.lastQualifiedAt != nil) == visit.qualified else { return "incorrect default on return" }
-        let next = now + 200 + age
+        let afterClose = evidence.isIdle(createdAt: 0, now: now + 200 + age)
+        guard afterClose == (persistedIdle || age >= 1_800) else { return "incorrect age since close" }
+        let revisitAge = 86_400.0 + Double(Int((seed / 9) % 3) - 1)
+        let next = now + 200 + revisitAge
         var revisit = NativeOverviewCollectionVisit(reference: visit.reference, openedAt: next, estimate: estimate,
             createdAt: 0, evidence: &evidence)
         revisit.advance(visible: true, uptime: 500)
         guard !revisit.qualified else { return "unseen revisit qualified" }
         revisit.advance(visible: false, uptime: 501)
-        guard revisit.qualified == (age < 86_400) else { return "incorrect short revisit window" }
+        guard revisit.qualified == (revisitAge < 86_400) else { return "incorrect short revisit window" }
         return nil
     }
 

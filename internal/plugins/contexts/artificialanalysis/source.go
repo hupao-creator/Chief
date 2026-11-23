@@ -276,19 +276,24 @@ func (s *Source) refreshGeneration(identities []AcquisitionIdentity) error {
 	if response.status != "ok" {
 		return errors.New("Artificial Analysis model index is unavailable")
 	}
-	version, err := readIndexVersion(response.body)
-	if err != nil {
-		return fmt.Errorf("%w: %v", invalidDocument, err)
-	}
-	upgrading := previous != nil && previous.IntelligenceIndexVersion != version
+	version := readIndexVersion(response.body)
+	upgrading := previous != nil && version != "" && previous.RosterVersion != "" && version != previous.RosterVersion
 	index := parseIndex(response.body)
 	if len(index) == 0 {
 		return fmt.Errorf("%w: model index has no configurations", invalidDocument)
 	}
+	releasePages := map[string]bool{}
+	for _, entry := range index {
+		if entry.ReleasePage {
+			releasePages[entry.ReleaseSlug] = true
+		}
+	}
 	all := append([]target{}, index...)
 	for _, entry := range previousConfigurations {
-		configuration := entry.Configuration
-		all = append(all, target{entry.Slug, entry.ReleaseSlug, entry.ReleaseName, &configuration})
+		if !releasePages[entry.ReleaseSlug] {
+			configuration := entry.Configuration
+			all = append(all, target{Slug: entry.Slug, ReleaseSlug: entry.ReleaseSlug, ReleaseName: entry.ReleaseName, Configuration: &configuration})
+		}
 	}
 	roster := []Release{}
 	seenReleases := map[string]bool{}
@@ -311,18 +316,20 @@ func (s *Source) refreshGeneration(identities []AcquisitionIdentity) error {
 		}
 	}
 	prior := map[string]persistedConfiguration{}
+	cachedReleases := map[string]bool{}
 	for _, entry := range previousConfigurations {
 		prior[entry.Slug] = entry
+		cachedReleases[entry.ReleaseSlug] = true
 	}
 	targets := []target{}
 	seen := map[string]bool{}
 	for _, entry := range all {
-		if (matched[entry.ReleaseSlug] || (upgrading && prior[entry.Slug].Slug != "")) && !seen[entry.Slug] {
+		if (matched[entry.ReleaseSlug] || (upgrading && cachedReleases[entry.ReleaseSlug])) && !seen[entry.Slug] {
 			seen[entry.Slug] = true
 			targets = append(targets, entry)
 		}
 	}
-	results := make([]*persistedConfiguration, len(targets))
+	results := make([][]persistedConfiguration, len(targets))
 	failures := make([]error, len(targets))
 	jobs := make(chan int)
 	var workers sync.WaitGroup
@@ -334,11 +341,13 @@ func (s *Source) refreshGeneration(identities []AcquisitionIdentity) error {
 				if s.ctx.Err() != nil {
 					return
 				}
-				var previous *persistedConfiguration
-				if value, ok := prior[targets[index].Slug]; ok && !upgrading {
-					previous = &value
+				request := targets[index]
+				etag := ""
+				row := prior[request.Slug]
+				if !upgrading && !request.ReleasePage && row.Facts != nil && row.ReleaseSlug == request.ReleaseSlug && (request.Configuration == nil || *request.Configuration == row.Configuration) {
+					etag = row.ETag
 				}
-				results[index], failures[index] = s.refreshConfiguration(targets[index], previous, version)
+				results[index], failures[index] = s.refreshDetail(request, row, etag)
 			}
 		}()
 	}
@@ -367,15 +376,33 @@ dispatch:
 			}
 		}
 	}
+	// A release comparison can show a subset of its configurations. Absence
+	// from that sample does not invalidate a previous observation.
+	goneReleases := map[string]bool{}
+	replacedRows := map[string]bool{}
 	configurations := []persistedConfiguration{}
-	for _, entry := range previousConfigurations {
-		if !seen[entry.Slug] {
-			configurations = append(configurations, entry)
+	for i, request := range targets {
+		if failures[i] != nil {
+			continue
+		}
+		if len(results[i]) == 0 {
+			if request.ReleasePage {
+				goneReleases[request.ReleaseSlug] = true
+			} else {
+				replacedRows[request.Slug] = true
+			}
+		}
+		for _, row := range results[i] {
+			replacedRows[row.Slug] = true
+			configurations = append(configurations, row)
 		}
 	}
-	for _, entry := range results {
-		if entry != nil {
-			configurations = append(configurations, *entry)
+	if len(targets) > 0 && len(replacedRows)+len(goneReleases) == 0 {
+		return failures[0]
+	}
+	for _, entry := range previousConfigurations {
+		if !goneReleases[entry.ReleaseSlug] && !replacedRows[entry.Slug] {
+			configurations = append(configurations, entry)
 		}
 	}
 	sort.Slice(configurations, func(i, j int) bool { return configurations[i].Slug < configurations[j].Slug })
@@ -383,7 +410,7 @@ dispatch:
 		return errors.New("Artificial Analysis configuration cache is too large")
 	}
 	now := isoNow(s.options.Now())
-	next := persistedSnapshot{SchemaVersion: cacheSchemaVersion, IntelligenceIndexVersion: version, Source: SourceID, ObservedAt: now, FetchedAt: now, Configurations: configurations}
+	next := persistedSnapshot{SchemaVersion: cacheSchemaVersion, RosterVersion: version, IntelligenceIndexVersion: commonVersion(configurations), Source: SourceID, ObservedAt: now, FetchedAt: now, Configurations: configurations}
 	data, err := json.Marshal(next)
 	if err != nil {
 		return err
@@ -413,52 +440,31 @@ dispatch:
 	}
 	return nil
 }
-func (s *Source) refreshConfiguration(target target, previous *persistedConfiguration, version string) (*persistedConfiguration, error) {
-	observed := isoNow(s.options.Now())
-	fallback := func() *persistedConfiguration {
-		if previous != nil {
-			copy := *previous
-			copy.ObservedAt = observed
-			return &copy
-		}
-		if target.Configuration != nil {
-			return &persistedConfiguration{Slug: target.Slug, ReleaseSlug: target.ReleaseSlug, ReleaseName: target.ReleaseName, Configuration: *target.Configuration, ObservedAt: observed}
-		}
-		return nil
-	}
-	etag := ""
-	if previous != nil {
-		etag = previous.ETag
-	}
+func (s *Source) refreshDetail(target target, previous persistedConfiguration, etag string) ([]persistedConfiguration, error) {
 	response, err := s.fetch(indexURL+url.PathEscape(target.Slug), etag)
-	if err == nil {
-		switch response.status {
-		case "gone":
-			return nil, nil
-		case "not-modified":
-			entry := fallback()
-			if entry != nil && response.etag != "" {
-				entry.ETag = response.etag
-			}
-			if previous == nil {
-				return entry, fmt.Errorf("%w: unsolicited 304", invalidDocument)
-			}
-			return entry, nil
-		}
+	if err != nil {
+		return nil, err
 	}
-	if err == nil {
-		identity, facts, parseErr := parsePage(response.body, target.Slug, version)
-		if parseErr != nil {
-			err = fmt.Errorf("%w: %v", invalidDocument, parseErr)
+	switch response.status {
+	case "gone":
+		return nil, nil
+	case "not-modified":
+		if etag == "" {
+			return nil, fmt.Errorf("%w: unsolicited 304", invalidDocument)
 		}
-		if err == nil && (identity.Slug != target.Slug || identity.ReleaseSlug != target.ReleaseSlug) {
-			err = errors.New("AA detail page does not match requested configuration")
-		}
-		if err == nil {
-			return &persistedConfiguration{Slug: identity.Slug, ReleaseSlug: identity.ReleaseSlug, ReleaseName: identity.ReleaseName, Configuration: *identity.Configuration, ObservedAt: observed, ETag: response.etag, Facts: &facts}, nil
-		}
+		previous.ObservedAt = isoNow(s.options.Now())
+		previous.ETag = response.etag
+		return []persistedConfiguration{previous}, nil
 	}
-	return fallback(), err
+	if target.ReleasePage {
+		// The validator belongs to the whole page, never to an individual row.
+		response.etag = ""
+	}
+	rows, err := parsePage(response.body, target, isoNow(s.options.Now()), response.etag)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", invalidDocument, err)
+	}
+	return rows, nil
 }
 
 type document struct{ status, body, etag string }
@@ -480,8 +486,13 @@ func (s *Source) fetch(address, etag string) (document, error) {
 		}
 		response, err := s.options.HTTPClient.Do(request)
 		if err == nil {
+			if response.Request != nil && (response.Request.URL.Scheme != request.URL.Scheme || response.Request.URL.Host != request.URL.Host) {
+				response.Body.Close()
+				cancel()
+				return document{}, fmt.Errorf("%w: AA response origin differs from request", invalidDocument)
+			}
 			responseETag := response.Header.Get("ETag")
-			if responseETag == "" {
+			if responseETag == "" && response.StatusCode == http.StatusNotModified {
 				responseETag = etag
 			}
 			switch response.StatusCode {

@@ -70,8 +70,6 @@ type Repository struct {
 	pending    sync.Map
 }
 
-func New(root string) *Repository { return &Repository{root: root} }
-
 // Native clients and the daemon share one local profile. Draft references are
 // read from their atomic client records, rather than copied into another index.
 func NewWithClientStorage(root, clientRoot string) *Repository {

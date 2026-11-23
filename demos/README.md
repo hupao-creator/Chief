@@ -1,7 +1,7 @@
 # 演示能力清单
 
 本目录包含当前源码可定位的独立预览。可构建状态来自 build.py 的输入、参数和
-生产模块检查，本次没有重新构建/启动这些 App，不宣称 GUI 或编译全部通过。
+生产模块检查。各 App 的实际构建和窗口回放证据见对应目录。
 内存 fixture 只能展示其状态，不能认证 Runtime 持久化、模型、语音、真实输入和回执。
 截图或 headless 数据导出不等于 e2e 验收；已有证据只覆盖其记录的源码/制品身份。
 
@@ -11,13 +11,13 @@
 | [execution-handoff](execution-handoff/README.md) | 独立交互/材质方案 fixture；生产行为见所属模块 |
 | [landing-setup](landing-setup/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-gradient-material](moku-gradient-material/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
-| [moku-history-theme](moku-history-theme/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-landing](moku-landing/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-mention-transition](moku-mention-transition/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-note-transition](moku-note-transition/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-panel-transition](moku-panel-transition/README.md) | 隔离回放 Agent/Report Dock 动画、AppKit 输入和待确认草稿；本地 Host 回放通过 Go transport 核对回执，使用 fixture 命令结果 |
 | [moku-thinking-orbit](moku-thinking-orbit/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [report-thread](report-thread/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
+| [running-emoji-badge](running-emoji-badge/README.md) | 正式微孔徽章的四种 Harness 配色与运行、空闲、完成态，可切换其他点阵或材质候选，复用原尺寸 Agent Thread 卡片并附窗口录像 |
 | [settings-navigation](settings-navigation/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [settings-tabs](settings-tabs/README.md) | 独立交互/材质方案 fixture；生产行为见所属模块 |
 | [super-thread-carousel](super-thread-carousel/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |

@@ -119,6 +119,20 @@ export default {
         ...value?.metadata, ...value?.configuration };
       const headers = { ...provider.headers, ...model?.headers, ...variant?.headers };
       if (Object.keys(headers).some(name => /^(authorization|x-api-key|api-key)$/i.test(name))) return {};
+      if (!input.modelID && input.providerID === 'opencode-go') {
+        if (provider.id !== input.providerID || !['opencode', 'opencode-go'].includes(provider.integrationID)) return {};
+        if (Object.keys(headers).some(name => /^proxy-authorization$/i.test(name))) return {};
+        // A key configured on the provider or connection must agree with the resolved binding.
+        for (const layer of [provider.settings, value?.metadata, value?.configuration]) {
+          if (layer?.headers || (layer?.apiKey !== undefined && connection &&
+              (value?.type !== 'key' || layer.apiKey !== value.key))) return {};
+        }
+        const active = await ctx.integration.connection.active(provider.integrationID);
+        if (active?.type !== connection?.type || active?.id !== connection?.id ||
+            active?.method !== connection?.method || active?.name !== connection?.name) {
+          throw new Error('Chief native Go account changed');
+        }
+      }
       const baseUrl = settings.baseURL;
       const apiKey = oauth ? undefined : value ? (value.type === 'key' ? value.key : undefined) : settings.apiKey;
       return { ...(typeof baseUrl === 'string' ? { baseUrl } : {}), ...(typeof apiKey === 'string' ? { apiKey } : {}),

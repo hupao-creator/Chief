@@ -8,28 +8,20 @@ import SwiftUI
 public final class NativeReadingPageMotion {
     private final class WeakMotion { weak var value: NativeReadingPageMotion?; init(_ value: NativeReadingPageMotion) { self.value = value } }
     private static var registry: [WeakMotion] = []
-    public fileprivate(set) var active = false
+    fileprivate enum Phase { case idle, opening, replacing, preparingClose, closing }
+    fileprivate var phase = Phase.idle
+    public var active: Bool { phase != .idle }
+    /// The outgoing reader still owns its draft while its parent prepares and returns.
+    public var isReturning: Bool { phase == .preparingClose || phase == .closing }
     fileprivate var replacementDirection: CGFloat = 1
     @ObservationIgnored fileprivate var closeAction: (() -> Void)?
     @ObservationIgnored fileprivate var cancelAction: ((Bool) -> Void)?
-    @ObservationIgnored fileprivate var reopenAction: (() -> Bool)?
     public init() { Self.registry.removeAll { $0.value == nil }; Self.registry.append(WeakMotion(self)) }
     public func close() { closeAction?() }
-    public func reopenIfClosing() -> Bool { reopenAction?() ?? false }
     public func cancel(finishingClose: Bool = false) { cancelAction?(finishingClose) }
     public static func cancelAll(finishingClose: Bool = false) {
         registry.forEach { $0.value?.cancel(finishingClose: finishingClose) }
     }
-}
-
-public enum NativeReadingPanelPresentation {
-    case card
-    case workspaceOverlay
-}
-
-public extension EnvironmentValues {
-    /// The shared card's height within a workspace overlay that extends below it.
-    @Entry var nativeReadingPanelHeight: CGFloat? = nil
 }
 
 public struct NativeReadingPageStack<Parent: View, Front: View>: View {
@@ -40,7 +32,6 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     public var focusBlur: Bool
     public var stationaryParent: Bool
     public var panel: Bool
-    private let panelPresentation: NativeReadingPanelPresentation
     private let panelUsesGlass: Bool
     public var isolatesParent: Bool
     public var panelSource: CGRect?
@@ -60,10 +51,8 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     private let parent: Parent
     private let front: Front
 
-    private var workspaceOverlay: Bool { panel && panelPresentation == .workspaceOverlay }
     private var animatesTravel: Bool {
         enabled && (!requiresPanelSource || panelSource != nil)
-            && (!workspaceOverlay || scenePhase == .active)
     }
 
     @Environment(\.scenePhase) private var scenePhase
@@ -73,10 +62,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     @State private var panelTransition: NativeReadingPanelTransition?
     @State private var panelContentReady = false
     @State private var panelReaderPreloading = false
-    @State private var closing = false
-    @State private var preparingClose = false
     @State private var reportReturnStartedAt: TimeInterval?
-    @State private var replacing = false
     @State private var generation = 0
     @State private var mountedIdentity: JSONText?
     @State private var animationTask: Task<Void, Never>?
@@ -86,7 +72,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     public init(open: Bool, identity: JSONText, motion: NativeReadingPageMotion,
                 enabled: Bool = true, focusBlur: Bool = false, stationaryParent: Bool = false,
                 emphasizedOpening: Bool = false, panel: Bool = false,
-                panelPresentation: NativeReadingPanelPresentation = .card, panelUsesGlass: Bool = false,
+                panelUsesGlass: Bool = false,
                 isolatesParent: Bool = false, panelSource: CGRect? = nil,
                 panelIdentity: NativeThreadIdentityVisit? = nil, panelFrontIdentity: JSONText? = nil, threadPanelMotion: Bool = false, reportPanelMotion: Bool = false,
                 requiresPanelSource: Bool = false,
@@ -101,7 +87,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         self.open = open; self.identity = identity; self.motion = motion; self.enabled = enabled
         self.focusBlur = focusBlur; self.stationaryParent = stationaryParent
         self.emphasizedOpening = emphasizedOpening; self.duration = duration
-        self.panel = panel; self.panelPresentation = panelPresentation; self.panelSource = panelSource
+        self.panel = panel; self.panelSource = panelSource
         self.panelUsesGlass = panelUsesGlass
         self.isolatesParent = isolatesParent
         self.panelIdentity = panelIdentity; self.panelFrontIdentity = panelFrontIdentity
@@ -119,7 +105,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             let geometryContext = NativeReadingPageGeometry.Context(identity: identity, axis: axis,
                 direction: direction, size: bounds.size)
             // Observe replacement state even while motion is idle.
-            let openingOrClosing = !replacing && motion.active
+            let openingOrClosing = motion.phase != .replacing && motion.active
             let panelBounds = NativeReadingPanelGeometry.frame(in: bounds.size)
             Group {
                 if axis == .vertical && !panel {
@@ -188,7 +174,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         }
         .onDisappear {
             settle()
-            motion.closeAction = nil; motion.cancelAction = nil; motion.reopenAction = nil
+            motion.closeAction = nil; motion.cancelAction = nil
         }
     }
 
@@ -219,7 +205,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             }
             if open && panel {
                 NativeReadingPanelViewport(target: panelBounds, source: panelSource,
-                    overlayHeight: workspaceOverlay ? size.height - panelBounds.minY : nil, usesGlass: panelUsesGlass,
+                    usesGlass: panelUsesGlass,
                     open: panelContentReady || panelTransition != nil,
                     transition: panelTransition, contentReady: panelContentReady,
                     readerPreloading: panelReaderPreloading,
@@ -229,23 +215,19 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
                     // A host retaining routes supplies a stable container identity;
                     // it still owns each document's route identity inside.
                     content: front.id(panelFrontIdentity ?? identity)
-                        .environment(\.nativeReadingPanelHeight, workspaceOverlay ? panelBounds.height : nil)
-                        // Card flights gate secondary layout through their
-                        // identity handoff. An admitted overlay keeps its
-                        // editor and scroll layout through return and reversal.
                         .environment(\.nativeReadingEntranceReady,
                             parentEntranceReady && panelContentReady
-                                && (workspaceOverlay || !motion.active && !closing && !preparingClose)
+                                && !motion.active
                                 && (panelIdentity?.pending != true))
                         .environment(\.nativeThreadIdentityVisit, panelIdentity)
-                        .environment(\.nativeReadingPanelClosing, closing && !workspaceOverlay)
-                        .environment(\.nativeReportPanelReturn, reportPanelMotion && panelContentReady && (closing || preparingClose)
+                        .environment(\.nativeReadingPanelClosing, motion.phase == .closing)
+                        .environment(\.nativeReportPanelReturn, reportPanelMotion && panelContentReady && motion.isReturning
                             ? NativeReportPanelReturn(source: (panelSource ?? panelBounds.insetBy(dx: 24, dy: 24))
                                 .offsetBy(dx: -panelBounds.minX, dy: -panelBounds.minY),
-                                startedAt: closing ? reportReturnStartedAt : nil, duration: duration) : nil))
+                                startedAt: reportReturnStartedAt, duration: duration) : nil))
             } else if open {
                 front.id(identity)
-                    .environment(\.nativeReadingEntranceReady, parentEntranceReady && !motion.active && !closing && !preparingClose)
+                    .environment(\.nativeReadingEntranceReady, parentEntranceReady && !motion.active)
                     .frame(width: size.width, height: size.height)
                     .background {
                         NativeReadingPageAnchor(geometry: geometry, role: .front, geometryContext: geometryContext)
@@ -263,7 +245,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             ZStack {
                 ForEach([identity], id: \.self) { _ in
                     front
-                        .environment(\.nativeReadingEntranceReady, parentEntranceReady && !motion.active && !closing && !preparingClose)
+                        .environment(\.nativeReadingEntranceReady, parentEntranceReady && !motion.active)
                         .transition(.asymmetric(
                             insertion: .modifier(
                                 active: ReadingPageReplacementOffset(travel: height, motion: motion),
@@ -281,20 +263,10 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     private func bindActions() {
         motion.closeAction = { requestClose() }
         motion.cancelAction = { settle(finishingClose: $0) }
-        motion.reopenAction = workspaceOverlay ? { reopenIfClosing() } : nil
-    }
-
-    private func reopenIfClosing() -> Bool {
-        guard open, closing || preparingClose else { return false }
-        // Parent preparation has not moved the panel. An in-flight return
-        // instead reverses from the compositor's current pose on this visit.
-        if closing && animatesTravel { animate(closing: false, retainingPanel: true) }
-        else { settle() }
-        return true
     }
 
     private func requestClose() {
-        guard open, !closing, !preparingClose else { return }
+        guard open, !motion.isReturning else { return }
         // Reversing an opening uses the already participating parent immediately.
         // Only a settled detail needs to refresh its retained, paused backdrop.
         guard let prepareParent, !motion.active else {
@@ -306,17 +278,14 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         frames.stop()
         generation += 1
         let token = generation
-        preparingClose = true
-        motion.active = true
+        motion.phase = .preparingClose
         onParentPresentationChange?(true)
         animationTask = Task { @MainActor in
             guard !Task.isCancelled, generation == token else { return }
             await prepareParent()
             guard !Task.isCancelled, generation == token else { return }
-            preparingClose = false
-            motion.active = false
             if animatesTravel { animate(closing: true) }
-            else { onClose() }
+            else { motion.phase = .idle; onClose() }
         }
     }
 
@@ -325,7 +294,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         // Layout/activation can interrupt the animation after Close was accepted.
         // Complete that visit's intent, but never close a replacement route or
         // turn an explicit cancellation into navigation.
-        let finishClose = finishingClose && (closing || preparingClose) && open && mountedIdentity == identity
+        let finishClose = finishingClose && motion.isReturning && open && mountedIdentity == identity
         animationTask?.cancel(); animationTask = nil
         frames.stop()
         generation += 1
@@ -337,11 +306,8 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             historyTravel = nil
             panelContentReady = open
             panelReaderPreloading = false
-            closing = false
-            preparingClose = false
             reportReturnStartedAt = nil
-            replacing = false
-            motion.active = false
+            motion.phase = .idle
         }
         onParentPresentationChange?(!open || finishClose)
         if finishClose { onClose() }
@@ -350,14 +316,12 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     private var curve: Animation { .timingCurve(0.42, 0, 0.58, 1, duration: duration) }
 
     private func trackReplacement() {
-        replacing = true
-        motion.active = true
+        motion.phase = .replacing
         let token = generation
         animationTask = Task { @MainActor in
             do { try await Task.sleep(for: .seconds(duration + 2.0 / 60)) } catch { return }
             guard generation == token else { return }
-            replacing = false
-            motion.active = false
+            motion.phase = .idle
             animationTask = nil
         }
     }
@@ -372,8 +336,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         guard generation == command.generation, historyTravel == command else { return }
         progress = command.closing ? 0 : 1
         historyTravel = nil
-        motion.active = false
-        closing = false
+        motion.phase = .idle
         if command.closing { onClose() }
         else { onParentPresentationChange?(false) }
     }
@@ -382,8 +345,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         guard generation == token, panelTransition?.generation == token else { return }
         panelTransition = nil
         reportReturnStartedAt = nil
-        motion.active = false
-        closing = false
+        motion.phase = .idle
         if wasClosing { onClose() }
         else {
             panelContentReady = true
@@ -391,7 +353,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         }
     }
 
-    private func animate(closing: Bool, retainingPanel: Bool = false) {
+    private func animate(closing: Bool) {
         // Freeze Overview's display projection before mounting a panel. Its
         // authoritative catalog still receives updates, and return preparation
         // refreshes the retained canvas before closing begins.
@@ -401,15 +363,14 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             if closing { onClose() }
             return
         }
+        let returningDuringOpening = closing && motion.phase == .opening
+        motion.phase = closing ? .closing : .opening
         if panel {
             animationTask?.cancel(); animationTask = nil
             frames.stop()
             generation += 1
-            replacing = false
-            self.closing = closing
             reportReturnStartedAt = closing && reportPanelMotion && panelContentReady ? CACurrentMediaTime() : nil
-            motion.active = true
-            if !closing && !retainingPanel { panelContentReady = false; panelReaderPreloading = false }
+            if !closing { panelContentReady = false; panelReaderPreloading = false }
             panelTransition = NativeReadingPanelTransition(generation: generation, closing: closing,
                 duration: duration, emphasized: !closing && emphasizedOpening, thread: threadPanelMotion, report: reportPanelMotion && panelContentReady)
             // The backdrop uses SwiftUI progress. Report surfaces share the
@@ -424,14 +385,10 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         if axis == .vertical {
             animationTask?.cancel(); animationTask = nil
             generation += 1
-            self.closing = closing
-            replacing = false
-            motion.active = true
             historyTravel = HistoryPageTravel(generation: generation, closing: closing,
                 duration: duration, emphasized: emphasizedOpening && !closing)
             return
         }
-        let returningDuringOpening = closing && motion.active && !self.closing && !replacing
         animationTask?.cancel(); animationTask = nil
         let frameGeneration = frames.begin()
         generation += 1
@@ -446,9 +403,6 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             withTransaction(transaction) { progress = displayed }
             initialProgress = displayed
         } else { initialProgress = progress }
-        replacing = false
-        self.closing = closing
-        motion.active = true
         // Horizontal travel shares progress with the parent blur and page
         // shadow. Explicit samples let cancellation settle all three together.
         let controlPoints: (x1: Double, x2: Double) = !closing && emphasizedOpening
@@ -476,8 +430,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
                 withTransaction(transaction) { progress = initialProgress + (targetProgress - initialProgress) * eased }
                 guard generation == token, time >= 1 else { return }
                 frames.stop()
-                motion.active = false
-                self.closing = false
+                motion.phase = .idle
                 if !closing { onParentPresentationChange?(false) }
                 // Keep destination, navigation and selection until return ends.
                 if closing { onClose() }

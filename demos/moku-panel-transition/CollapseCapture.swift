@@ -134,33 +134,35 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
     private let recording: SCRecordingOutput
     private let delegate: CollapseRecordingDelegate
 
-    init(window: NSWindow, folder: String) async throws {
+    init(window: NSWindow, folder: String, pixels: CGSize? = nil, codec: AVVideoCodecType = .h264) async throws {
         directory = Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent(folder)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
         delegate = CollapseRecordingDelegate()
         (stream, recording) = try await Self.prepareRecording(
-            windowID: CGWindowID(window.windowNumber), size: window.frame.size,
-            url: directory.appendingPathComponent("window.mp4"), delegate: delegate)
+            windowID: CGWindowID(window.windowNumber),
+            pixels: pixels ?? CGSize(width: window.frame.width * 2, height: window.frame.height * 2),
+            url: directory.appendingPathComponent("window.mp4"), codec: codec, delegate: delegate)
         try await stream.startCapture()
     }
 
     // ScreenCaptureKit can synchronously evaluate trust while attaching the movie output.
     @concurrent nonisolated private static func prepareRecording(
-        windowID: CGWindowID, size: CGSize, url: URL, delegate: CollapseRecordingDelegate
+        windowID: CGWindowID, pixels: CGSize, url: URL, codec: AVVideoCodecType, delegate: CollapseRecordingDelegate
     ) async throws -> sending (SCStream, SCRecordingOutput) {
         let shareable = try await SCShareableContent.currentProcess
         guard let ownWindow = shareable.windows.first(where: { $0.windowID == windowID }) else {
             throw CollapseCaptureError(description: "Replay window unavailable")
         }
         let config = SCStreamConfiguration()
-        config.width = Int(size.width * 2)
-        config.height = Int(size.height * 2)
+        config.width = Int(pixels.width)
+        config.height = Int(pixels.height)
         config.minimumFrameInterval = CMTime(value: 1, timescale: 60)
         config.showsCursor = false
         config.ignoreShadowsSingleWindow = true
         let stream = SCStream(filter: SCContentFilter(desktopIndependentWindow: ownWindow), configuration: config, delegate: nil)
         let output = SCRecordingOutputConfiguration()
         output.outputURL = url
+        output.videoCodecType = codec
         let recording = SCRecordingOutput(configuration: output, delegate: delegate)
         try stream.addRecordingOutput(recording)
         return (stream, recording)

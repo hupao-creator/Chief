@@ -1,0 +1,2011 @@
+{
+  "os": "macOS 26.5.1 (25F80), arm64",
+  "reference": {
+    "name": "录屏2026-11-23 10.02.34.mov",
+    "sha256": "7468309c9774023323d4abf05f38d5d7fef6123bc302869d5eb074415fd89a73"
+  },
+  "tools": {
+    "record": {
+      "path": "/private/tmp/chief-dock-independent.c4V6Eu/record",
+      "sha256": "a3db02bee6e6869b8ca58180c769030aae363f711fe18003967d7ed6633d4b2b"
+    },
+    "Record.swift": {
+      "path": "/private/tmp/chief-dock-independent.c4V6Eu/Record.swift",
+      "sha256": "3a3af3551ae6b8300c37ab81329a879512d698311fde7d568b7e8473687b51b6"
+    },
+    "input": {
+      "path": "/private/tmp/chief-dock-independent.c4V6Eu/input",
+      "sha256": "55e07eafdf2a688022b06c7643098f5e55a7fe7d89256cc5e122c9db69d07fe9"
+    },
+    "Input.swift": {
+      "path": "/private/tmp/chief-dock-independent.c4V6Eu/Input.swift",
+      "sha256": "cc388c71c7ea43c357b8bbc8c6cfc7edbcd5525f5ae44513c72ffe1c03fdb491"
+    },
+    "collector": {
+      "path": "/private/tmp/chief-lazy-probe/optical-tools/collector",
+      "sha256": "f77f3c69e0d591e6f60a8e6578090eb6d8e49d17e8e46705a463b8946d8f57d7"
+    },
+    "measure.py": {
+      "path": "demos/moku-panel-transition/evidence/dock-identity/measure.py",
+      "sha256": "ae7f0c04d13a97d3cb40f8dd0a89fe956bb8d8be8432225f881bb72790b75cb9"
+    }
+  },
+  "runs": {
+    "before": {
+      "source": "3ccd87359ce4ae3fd11dbb2e1a1bf7fb33249e68",
+      "productionSourcesSha256": "9ce00f09069190273d258d484299532713fbb72340feae17536c8fe3a8b66741",
+      "buildCommands": {
+        "app": [
+          "xcrun",
+          "swift",
+          "build",
+          "--package-path",
+          "app/macos",
+          "-Xswiftc",
+          "-warnings-as-errors"
+        ],
+        "runtime": [
+          "./scripts/go.sh",
+          "build",
+          "-o",
+          "/Users/felixwang/Desktop/.Chief-chief-worktrees/astra-dock-e2e/.build/e2e/chief-runtime",
+          "./cmd/chief-runtime"
+        ]
+      },
+      "executable": {
+        "birthUS": 1795401345424019,
+        "cpuNS": 1321738375,
+        "footprintBytes": 49660960,
+        "identity": "9902:1795401345424019",
+        "path": "/private/tmp/me2e-fguljj7f/ChiefE2E.app/Contents/MacOS/ChiefE2E",
+        "pid": 9902,
+        "ppid": 9818
+      },
+      "bundle": "/private/tmp/me2e-fguljj7f/ChiefE2E.app",
+      "appSHA256": "9c82592f069dd311fc16ee3a869a6de5df0a972df63cf7e1ebc57ff723d7411b",
+      "runtimeSHA256": "2bcbaa4607830d16209347657f2d2fbb421b945788a8c7f5a98335ffd8ed5ed7",
+      "cli": {
+        "available": true,
+        "executable": "/Users/felixwang/.npm-global/bin/codex",
+        "version": "codex-cli 0.171.0",
+        "sha256": "0e0c66f50074965a40cbd12f625b0a35963baf41bbd8c201a93e32fddbe2e073",
+        "verifiedVersion": "codex-cli 0.171.0"
+      },
+      "isolatedState": "/private/tmp/me2e-fguljj7f/profile",
+      "recording": {
+        "height": 2250,
+        "window": 99250,
+        "width": 3770,
+        "pid": 9902,
+        "scale": 2
+      },
+      "videoSHA256": "2bb6df18bc8d968d0f0a31068b40c0b0a85b95fde8a10785bdeed3f30213bd8b",
+      "systemBounds": {
+        "height": 1125,
+        "width": 1885,
+        "x": 100,
+        "y": 26
+      },
+      "AX": {
+        "dispatch-before": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 58,
+              "width": 400,
+              "x": 842.5,
+              "y": 1057
+            }
+          },
+          {
+            "AXDescription": "打开 Chief 输入框",
+            "AXIdentifier": "moku-open-input",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 58,
+              "width": 46,
+              "x": 851.5,
+              "y": 1057
+            }
+          },
+          {
+            "AXIdentifier": "moku-dispatch-status",
+            "AXRole": "AXStaticText",
+            "AXValue": "Thread 已启动",
+            "bounds": {
+              "height": 16,
+              "width": 86.5,
+              "x": 929.5,
+              "y": 1078
+            }
+          },
+          {
+            "AXDescription": "gpt-6.2-sol · low",
+            "AXIdentifier": "moku-dispatch-configuration",
+            "AXRole": "AXUnknown",
+            "bounds": {
+              "height": 14,
+              "width": 95.5,
+              "x": 1028,
+              "y": 1079
+            }
+          },
+          {
+            "AXDescription": "E2E review fefd85e079184e06972d3c773ffb0514",
+            "AXIdentifier": "overview-card-d8ed99c6-eb73-41ef-b751-0468bb2ea168",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 714.5,
+              "y": 490.5
+            }
+          },
+          {
+            "AXDescription": "E2E review fefd85e079184e06972d3c773ffb0514",
+            "AXIdentifier": "overview-card-5bc74009-24b2-4110-bb4c-0fd124f0c570",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 1050.5,
+              "y": 490.5
+            }
+          }
+        ],
+        "dispatch-reader": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 58,
+              "width": 560,
+              "x": 762.5,
+              "y": 1073
+            }
+          },
+          {
+            "AXRole": "AXTextArea",
+            "AXValue": "",
+            "bounds": {
+              "height": 58,
+              "width": 438,
+              "x": 839.5,
+              "y": 1073
+            }
+          },
+          {
+            "AXDescription": "停止此 Thread",
+            "AXIdentifier": "moku-stop",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 32,
+              "width": 32,
+              "x": 1277.5,
+              "y": 1086
+            }
+          },
+          {
+            "AXDescription": "关闭 Thread",
+            "AXIdentifier": "agent-reading-panel",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 38,
+              "width": 38,
+              "x": 187,
+              "y": 95
+            }
+          }
+        ]
+      },
+      "operatorCommand": "python3 /private/tmp/chief-dock-independent.c4V6Eu/dispatch.py toast1",
+      "operatorSHA256": "8fc5e786740184efdbf5cb3b60fd634e64255a9831150b8f3b142f8b8c0f913a",
+      "events": [
+        {
+          "event": "process-start",
+          "t": 1082182.795372666,
+          "name": "runtime",
+          "pid": 9837
+        },
+        {
+          "event": "runtime-ready",
+          "t": 1082182.901867958,
+          "pid": 9837,
+          "epoch": "fd7e176f-015a-4f2c-aa00-74c5a601de7b"
+        },
+        {
+          "event": "process-start",
+          "t": 1082183.496717,
+          "name": "app",
+          "pid": 9902
+        },
+        {
+          "event": "observed",
+          "t": 1082186.157963333,
+          "label": "initial",
+          "page": "overview",
+          "inputOpen": true
+        },
+        {
+          "event": "observed",
+          "t": 1082190.57499375,
+          "label": "prepared-state",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "record-ready",
+          "t": 1082191.213750625,
+          "clip": "dispatch"
+        },
+        {
+          "event": "click",
+          "t": 1082191.569104208,
+          "identifier": "overview-card-5bc74009-24b2-4110-bb4c-0fd124f0c570",
+          "x": 1210.5,
+          "y": 588.5,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1082193.217850333,
+          "label": "dispatch-open",
+          "page": "thread",
+          "inputOpen": true
+        },
+        {
+          "event": "click",
+          "t": 1082194.037679833,
+          "identifier": "agent-reading-panel",
+          "x": 206.0,
+          "y": 114.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1082194.978916958,
+          "label": "dispatch-return",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "process-stop",
+          "t": 1082196.107433166,
+          "name": "app",
+          "pid": 9902,
+          "returncode": -15
+        },
+        {
+          "event": "process-stop",
+          "t": 1082196.328842166,
+          "name": "runtime",
+          "pid": 9837,
+          "returncode": 0
+        }
+      ],
+      "snapshotReads": 28,
+      "mutatingUIRequests": 0,
+      "cleanup": {
+        "ok": true,
+        "errors": [],
+        "privateDirectory": "/private/tmp/me2e-fguljj7f",
+        "retention": "local only; never uploaded"
+      },
+      "leaseReleased": true,
+      "rawDirectory": "/private/tmp/chief-dock-independent.c4V6Eu/toast1",
+      "latestExecution": "running",
+      "optical": {
+        "frames": 246,
+        "unresolved": [
+          223
+        ],
+        "missingGlass": 0,
+        "worstClearance": -179.89,
+        "outsideByOverTwo": 17
+      }
+    },
+    "handoff": {
+      "source": "73fb5444520f67c6bc2c86f6335d0e95b5563b62",
+      "productionSourcesSha256": "74a1d808c2dc5fd17a7708047e96bb608acc0233eea0614e3de77a5b1514e3f3",
+      "buildCommands": {
+        "app": [
+          "xcrun",
+          "swift",
+          "build",
+          "--package-path",
+          "app/macos",
+          "-Xswiftc",
+          "-warnings-as-errors"
+        ],
+        "runtime": [
+          "./scripts/go.sh",
+          "build",
+          "-o",
+          "/Users/felixwang/Desktop/.Chief-chief-worktrees/astra-dock-e2e/.build/e2e/chief-runtime",
+          "./cmd/chief-runtime"
+        ]
+      },
+      "executable": {
+        "birthUS": 1795401773083488,
+        "cpuNS": 1406838957,
+        "footprintBytes": 46531664,
+        "identity": "28697:1795401773083488",
+        "path": "/private/tmp/me2e-zq2gwc_2/ChiefE2E.app/Contents/MacOS/ChiefE2E",
+        "pid": 28697,
+        "ppid": 28631
+      },
+      "bundle": "/private/tmp/me2e-zq2gwc_2/ChiefE2E.app",
+      "appSHA256": "747243b26ce576f6bb6be5a3e49e3cbbbe85de4a1a5f6fdfb416fcda0691ba7b",
+      "runtimeSHA256": "9722ce4f034a6ddf28cc72f13ae1562c5a8d7c86c610e08c8565bd0ca9a4a28c",
+      "cli": {
+        "available": true,
+        "executable": "/Users/felixwang/.npm-global/bin/codex",
+        "version": "codex-cli 0.171.0",
+        "sha256": "0e0c66f50074965a40cbd12f625b0a35963baf41bbd8c201a93e32fddbe2e073",
+        "verifiedVersion": "codex-cli 0.171.0"
+      },
+      "isolatedState": "/private/tmp/me2e-zq2gwc_2/profile",
+      "recording": {
+        "scale": 2,
+        "pid": 28697,
+        "height": 2250,
+        "window": 99306,
+        "width": 3770
+      },
+      "videoSHA256": "168247df2130f918d0201e95fee0ec5cc19ce65ba7fac5ec01472f9501934ef1",
+      "systemBounds": {
+        "height": 1125,
+        "width": 1885,
+        "x": 100,
+        "y": 26
+      },
+      "AX": {
+        "dispatch-before": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 58,
+              "width": 400,
+              "x": 842.5,
+              "y": 1057
+            }
+          },
+          {
+            "AXDescription": "打开 Chief 输入框",
+            "AXIdentifier": "moku-open-input",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 58,
+              "width": 46,
+              "x": 851.5,
+              "y": 1057
+            }
+          },
+          {
+            "AXIdentifier": "moku-dispatch-status",
+            "AXRole": "AXStaticText",
+            "AXValue": "Thread 已启动",
+            "bounds": {
+              "height": 16,
+              "width": 86.5,
+              "x": 929.5,
+              "y": 1078
+            }
+          },
+          {
+            "AXDescription": "gpt-6.2-sol · low",
+            "AXIdentifier": "moku-dispatch-configuration",
+            "AXRole": "AXUnknown",
+            "bounds": {
+              "height": 14,
+              "width": 95.5,
+              "x": 1028,
+              "y": 1079
+            }
+          },
+          {
+            "AXDescription": "E2E review fd36d46f88b44e7d8bb0fd73c32ab81d",
+            "AXIdentifier": "overview-card-d1dc6bcb-c4a9-4796-9a9b-5c0f0967a99f",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 714.5,
+              "y": 490.5
+            }
+          },
+          {
+            "AXDescription": "E2E review fd36d46f88b44e7d8bb0fd73c32ab81d",
+            "AXIdentifier": "overview-card-79a50b90-2b9a-40ff-b9d0-a665a1e39a52",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 1050.5,
+              "y": 490.5
+            }
+          }
+        ],
+        "dispatch-reader": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 58,
+              "width": 560,
+              "x": 762.5,
+              "y": 1073
+            }
+          },
+          {
+            "AXRole": "AXTextArea",
+            "AXValue": "",
+            "bounds": {
+              "height": 58,
+              "width": 438,
+              "x": 839.5,
+              "y": 1073
+            }
+          },
+          {
+            "AXDescription": "停止此 Thread",
+            "AXIdentifier": "moku-stop",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 32,
+              "width": 32,
+              "x": 1277.5,
+              "y": 1086
+            }
+          },
+          {
+            "AXDescription": "关闭 Thread",
+            "AXIdentifier": "agent-reading-panel",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 38,
+              "width": 38,
+              "x": 187,
+              "y": 95
+            }
+          }
+        ]
+      },
+      "operatorCommand": "python3 /private/tmp/chief-dock-independent.c4V6Eu/dispatch.py fixed-dispatch",
+      "operatorSHA256": "8fc5e786740184efdbf5cb3b60fd634e64255a9831150b8f3b142f8b8c0f913a",
+      "events": [
+        {
+          "event": "process-start",
+          "t": 1082609.789903708,
+          "name": "runtime",
+          "pid": 28635
+        },
+        {
+          "event": "runtime-ready",
+          "t": 1082610.520892041,
+          "pid": 28635,
+          "epoch": "23248a71-5670-4e59-aee0-69fcd56859d3"
+        },
+        {
+          "event": "process-start",
+          "t": 1082611.160212833,
+          "name": "app",
+          "pid": 28697
+        },
+        {
+          "event": "observed",
+          "t": 1082613.714112458,
+          "label": "initial",
+          "page": "overview",
+          "inputOpen": true
+        },
+        {
+          "event": "observed",
+          "t": 1082618.270597208,
+          "label": "prepared-state",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "record-ready",
+          "t": 1082618.90037,
+          "clip": "dispatch"
+        },
+        {
+          "event": "click",
+          "t": 1082619.255905958,
+          "identifier": "overview-card-79a50b90-2b9a-40ff-b9d0-a665a1e39a52",
+          "x": 1210.5,
+          "y": 588.5,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1082620.875989375,
+          "label": "dispatch-open",
+          "page": "thread",
+          "inputOpen": true
+        },
+        {
+          "event": "click",
+          "t": 1082621.71244175,
+          "identifier": "agent-reading-panel",
+          "x": 206.0,
+          "y": 114.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1082622.672246083,
+          "label": "dispatch-return",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "process-stop",
+          "t": 1082623.693658375,
+          "name": "app",
+          "pid": 28697,
+          "returncode": -15
+        },
+        {
+          "event": "process-stop",
+          "t": 1082623.904459791,
+          "name": "runtime",
+          "pid": 28635,
+          "returncode": 0
+        }
+      ],
+      "snapshotReads": 29,
+      "mutatingUIRequests": 0,
+      "cleanup": {
+        "ok": true,
+        "errors": [],
+        "privateDirectory": "/private/tmp/me2e-zq2gwc_2",
+        "retention": "local only; never uploaded"
+      },
+      "leaseReleased": true,
+      "rawDirectory": "/private/tmp/chief-dock-independent.c4V6Eu/fixed-dispatch",
+      "latestExecution": "running",
+      "optical": {
+        "frames": 247,
+        "unresolved": [
+          67,
+          222
+        ],
+        "missingGlass": 0,
+        "worstClearance": -55.26,
+        "outsideByOverTwo": 8
+      }
+    },
+    "dispatch": {
+      "source": "edf07339d8baea52087b7cca0559f18bd03b4bc9",
+      "productionSourcesSha256": "00b7a8437dc8829092213300f83d22507ae116e7548a0291d4e0150ce48284f4",
+      "buildCommands": {
+        "app": [
+          "xcrun",
+          "swift",
+          "build",
+          "--package-path",
+          "app/macos",
+          "-Xswiftc",
+          "-warnings-as-errors"
+        ],
+        "runtime": [
+          "./scripts/go.sh",
+          "build",
+          "-o",
+          "/Users/felixwang/Desktop/.Chief-chief-worktrees/astra-dock-e2e/.build/e2e/chief-runtime",
+          "./cmd/chief-runtime"
+        ]
+      },
+      "executable": {
+        "birthUS": 1795402142771240,
+        "cpuNS": 1620221500,
+        "footprintBytes": 53953592,
+        "identity": "45128:1795402142771240",
+        "path": "/private/tmp/me2e-a2ongaco/ChiefE2E.app/Contents/MacOS/ChiefE2E",
+        "pid": 45128,
+        "ppid": 45048
+      },
+      "bundle": "/private/tmp/me2e-a2ongaco/ChiefE2E.app",
+      "appSHA256": "4b2409231ff9fbcde184dfbf120b2d87cc1e983e55696c2254a92c851480a077",
+      "runtimeSHA256": "7f3f0348aa6e6959f3c49354e48d2f44ecec61a72035279e3ff2d4d16aa4b7fd",
+      "cli": {
+        "available": true,
+        "executable": "/Users/felixwang/.npm-global/bin/codex",
+        "version": "codex-cli 0.171.0",
+        "sha256": "0e0c66f50074965a40cbd12f625b0a35963baf41bbd8c201a93e32fddbe2e073",
+        "verifiedVersion": "codex-cli 0.171.0"
+      },
+      "isolatedState": "/private/tmp/me2e-a2ongaco/profile",
+      "recording": {
+        "window": 99468,
+        "width": 3770,
+        "height": 2250,
+        "scale": 2,
+        "pid": 45128
+      },
+      "videoSHA256": "6b171a44015e6a9052ae61e932e9d289f49bb597a3e0474ec125e6bd97563dc4",
+      "systemBounds": {
+        "height": 1125,
+        "width": 1885,
+        "x": 100,
+        "y": 26
+      },
+      "AX": {
+        "dispatch-before": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 58,
+              "width": 400,
+              "x": 842.5,
+              "y": 1057
+            }
+          },
+          {
+            "AXDescription": "打开 Chief 输入框",
+            "AXIdentifier": "moku-open-input",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 58,
+              "width": 46,
+              "x": 851.5,
+              "y": 1057
+            }
+          },
+          {
+            "AXIdentifier": "moku-dispatch-status",
+            "AXRole": "AXStaticText",
+            "AXValue": "Thread 已启动",
+            "bounds": {
+              "height": 16,
+              "width": 86.5,
+              "x": 929.5,
+              "y": 1078
+            }
+          },
+          {
+            "AXDescription": "gpt-6.2-sol · low",
+            "AXIdentifier": "moku-dispatch-configuration",
+            "AXRole": "AXUnknown",
+            "bounds": {
+              "height": 14,
+              "width": 95.5,
+              "x": 1028,
+              "y": 1079
+            }
+          },
+          {
+            "AXDescription": "E2E review 62deeb86c2bc417dad40583a53f2d51e",
+            "AXIdentifier": "overview-card-7d59e882-556a-4872-beed-811dd481a829",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 714.5,
+              "y": 490.5
+            }
+          },
+          {
+            "AXDescription": "E2E review 62deeb86c2bc417dad40583a53f2d51e",
+            "AXIdentifier": "overview-card-aa394688-f56b-41fe-b586-7462897ee101",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 1050.5,
+              "y": 490.5
+            }
+          }
+        ],
+        "dispatch-reader": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 58,
+              "width": 560,
+              "x": 762.5,
+              "y": 1073
+            }
+          },
+          {
+            "AXRole": "AXTextArea",
+            "AXValue": "",
+            "bounds": {
+              "height": 58,
+              "width": 438,
+              "x": 839.5,
+              "y": 1073
+            }
+          },
+          {
+            "AXDescription": "停止此 Thread",
+            "AXIdentifier": "moku-stop",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 32,
+              "width": 32,
+              "x": 1277.5,
+              "y": 1086
+            }
+          },
+          {
+            "AXDescription": "关闭 Thread",
+            "AXIdentifier": "agent-reading-panel",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 38,
+              "width": 38,
+              "x": 187,
+              "y": 95
+            }
+          }
+        ]
+      },
+      "operatorCommand": "python3 /private/tmp/chief-dock-independent.c4V6Eu/dispatch.py final-dispatch",
+      "operatorSHA256": "8fc5e786740184efdbf5cb3b60fd634e64255a9831150b8f3b142f8b8c0f913a",
+      "events": [
+        {
+          "event": "process-start",
+          "t": 1082979.559564666,
+          "name": "runtime",
+          "pid": 45055
+        },
+        {
+          "event": "runtime-ready",
+          "t": 1082980.288786791,
+          "pid": 45055,
+          "epoch": "abe76ce0-e519-4695-827f-53a89faf4e4d"
+        },
+        {
+          "event": "process-start",
+          "t": 1082980.85321275,
+          "name": "app",
+          "pid": 45128
+        },
+        {
+          "event": "observed",
+          "t": 1082984.032071166,
+          "label": "initial",
+          "page": "overview",
+          "inputOpen": true
+        },
+        {
+          "event": "observed",
+          "t": 1082988.404578791,
+          "label": "prepared-state",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "record-ready",
+          "t": 1082989.037345958,
+          "clip": "dispatch"
+        },
+        {
+          "event": "click",
+          "t": 1082989.3926335,
+          "identifier": "overview-card-aa394688-f56b-41fe-b586-7462897ee101",
+          "x": 1210.5,
+          "y": 588.5,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1082991.167107583,
+          "label": "dispatch-open",
+          "page": "thread",
+          "inputOpen": true
+        },
+        {
+          "event": "click",
+          "t": 1082991.995528625,
+          "identifier": "agent-reading-panel",
+          "x": 206.0,
+          "y": 114.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1082992.92297425,
+          "label": "dispatch-return",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "process-stop",
+          "t": 1082993.805333666,
+          "name": "app",
+          "pid": 45128,
+          "returncode": -15
+        },
+        {
+          "event": "process-stop",
+          "t": 1082994.028635875,
+          "name": "runtime",
+          "pid": 45055,
+          "returncode": 0
+        }
+      ],
+      "snapshotReads": 28,
+      "mutatingUIRequests": 0,
+      "cleanup": {
+        "ok": true,
+        "errors": [],
+        "privateDirectory": "/private/tmp/me2e-a2ongaco",
+        "retention": "local only; never uploaded"
+      },
+      "leaseReleased": true,
+      "rawDirectory": "/private/tmp/chief-dock-independent.c4V6Eu/final-dispatch",
+      "latestExecution": "running",
+      "optical": {
+        "frames": 251,
+        "unresolved": [
+          39,
+          225
+        ],
+        "missingGlass": 0,
+        "worstClearance": 7.0,
+        "outsideByOverTwo": 0
+      }
+    },
+    "repeat": {
+      "source": "edf07339d8baea52087b7cca0559f18bd03b4bc9",
+      "productionSourcesSha256": "00b7a8437dc8829092213300f83d22507ae116e7548a0291d4e0150ce48284f4",
+      "buildCommands": {
+        "app": [
+          "xcrun",
+          "swift",
+          "build",
+          "--package-path",
+          "app/macos",
+          "-Xswiftc",
+          "-warnings-as-errors"
+        ],
+        "runtime": [
+          "./scripts/go.sh",
+          "build",
+          "-o",
+          "/Users/felixwang/Desktop/.Chief-chief-worktrees/astra-dock-e2e/.build/e2e/chief-runtime",
+          "./cmd/chief-runtime"
+        ]
+      },
+      "executable": {
+        "birthUS": 1795402300280058,
+        "cpuNS": 1479546375,
+        "footprintBytes": 48432160,
+        "identity": "52583:1795402300280058",
+        "path": "/private/tmp/me2e-3acmqugi/ChiefE2E.app/Contents/MacOS/ChiefE2E",
+        "pid": 52583,
+        "ppid": 52504
+      },
+      "bundle": "/private/tmp/me2e-3acmqugi/ChiefE2E.app",
+      "appSHA256": "4b2409231ff9fbcde184dfbf120b2d87cc1e983e55696c2254a92c851480a077",
+      "runtimeSHA256": "7f3f0348aa6e6959f3c49354e48d2f44ecec61a72035279e3ff2d4d16aa4b7fd",
+      "cli": {
+        "available": true,
+        "executable": "/Users/felixwang/.npm-global/bin/codex",
+        "version": "codex-cli 0.171.0",
+        "sha256": "0e0c66f50074965a40cbd12f625b0a35963baf41bbd8c201a93e32fddbe2e073",
+        "verifiedVersion": "codex-cli 0.171.0"
+      },
+      "isolatedState": "/private/tmp/me2e-3acmqugi/profile",
+      "recording": {
+        "pid": 52583,
+        "width": 3770,
+        "window": 99580,
+        "height": 2250,
+        "scale": 2
+      },
+      "videoSHA256": "c25804534cdccc1627b831e7e737bc30bb25f96ef0fe327459e147ee89e9a6d7",
+      "systemBounds": {
+        "height": 1125,
+        "width": 1885,
+        "x": 100,
+        "y": 26
+      },
+      "AX": {
+        "dispatch-before": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 58,
+              "width": 400,
+              "x": 842.5,
+              "y": 1057
+            }
+          },
+          {
+            "AXDescription": "打开 Chief 输入框",
+            "AXIdentifier": "moku-open-input",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 58,
+              "width": 46,
+              "x": 851.5,
+              "y": 1057
+            }
+          },
+          {
+            "AXIdentifier": "moku-dispatch-status",
+            "AXRole": "AXStaticText",
+            "AXValue": "Thread 已启动",
+            "bounds": {
+              "height": 16,
+              "width": 86.5,
+              "x": 929.5,
+              "y": 1078
+            }
+          },
+          {
+            "AXDescription": "gpt-6.2-sol · low",
+            "AXIdentifier": "moku-dispatch-configuration",
+            "AXRole": "AXUnknown",
+            "bounds": {
+              "height": 14,
+              "width": 95.5,
+              "x": 1028,
+              "y": 1079
+            }
+          },
+          {
+            "AXDescription": "E2E review 26345fce19fe4197ad3498e4ce775b1b",
+            "AXIdentifier": "overview-card-01f8561c-8827-4258-96b4-630c1e699c56",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 714.5,
+              "y": 490.5
+            }
+          },
+          {
+            "AXDescription": "E2E review 26345fce19fe4197ad3498e4ce775b1b",
+            "AXIdentifier": "overview-card-d0b5a2d7-05d3-488d-a22c-1531b0611eac",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 1050.5,
+              "y": 490.5
+            }
+          }
+        ],
+        "dispatch-reader": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 58,
+              "width": 560,
+              "x": 762.5,
+              "y": 1073
+            }
+          },
+          {
+            "AXRole": "AXTextArea",
+            "AXValue": "",
+            "bounds": {
+              "height": 58,
+              "width": 438,
+              "x": 839.5,
+              "y": 1073
+            }
+          },
+          {
+            "AXDescription": "停止此 Thread",
+            "AXIdentifier": "moku-stop",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 32,
+              "width": 32,
+              "x": 1277.5,
+              "y": 1086
+            }
+          },
+          {
+            "AXDescription": "关闭 Thread",
+            "AXIdentifier": "agent-reading-panel",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 38,
+              "width": 38,
+              "x": 187,
+              "y": 95
+            }
+          }
+        ]
+      },
+      "operatorCommand": "python3 /private/tmp/chief-dock-independent.c4V6Eu/dispatch-b.py final-repeat",
+      "operatorSHA256": "0f36f748a36646485dea2680e53e2e32567a1e73eace0f17135cdd3891a85317",
+      "events": [
+        {
+          "event": "process-start",
+          "t": 1083136.736605625,
+          "name": "runtime",
+          "pid": 52516
+        },
+        {
+          "event": "runtime-ready",
+          "t": 1083136.7451945,
+          "pid": 52516,
+          "epoch": "9a89f96d-cdb6-49ca-b574-f0cf109f057c"
+        },
+        {
+          "event": "process-start",
+          "t": 1083138.482963458,
+          "name": "app",
+          "pid": 52583
+        },
+        {
+          "event": "observed",
+          "t": 1083141.104829291,
+          "label": "initial",
+          "page": "overview",
+          "inputOpen": true
+        },
+        {
+          "event": "observed",
+          "t": 1083149.703690083,
+          "label": "prepared-state",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "record-ready",
+          "t": 1083150.730501125,
+          "clip": "dispatch"
+        },
+        {
+          "event": "click",
+          "t": 1083151.086161583,
+          "identifier": "overview-card-d0b5a2d7-05d3-488d-a22c-1531b0611eac",
+          "x": 1210.5,
+          "y": 588.5,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083152.978262041,
+          "label": "dispatch-open",
+          "page": "thread",
+          "inputOpen": true
+        },
+        {
+          "event": "click",
+          "t": 1083153.849613291,
+          "identifier": "agent-reading-panel",
+          "x": 206.0,
+          "y": 114.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083154.818424625,
+          "label": "dispatch-return",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "process-stop",
+          "t": 1083156.284437208,
+          "name": "app",
+          "pid": 52583,
+          "returncode": -15
+        },
+        {
+          "event": "process-stop",
+          "t": 1083156.533337291,
+          "name": "runtime",
+          "pid": 52516,
+          "returncode": 0
+        }
+      ],
+      "snapshotReads": 30,
+      "mutatingUIRequests": 0,
+      "cleanup": {
+        "ok": true,
+        "errors": [],
+        "privateDirectory": "/private/tmp/me2e-3acmqugi",
+        "retention": "local only; never uploaded"
+      },
+      "leaseReleased": true,
+      "rawDirectory": "/private/tmp/chief-dock-independent.c4V6Eu/final-repeat",
+      "latestExecution": "running",
+      "optical": {
+        "frames": 270,
+        "unresolved": [
+          111
+        ],
+        "missingGlass": 0,
+        "worstClearance": 6.0,
+        "outsideByOverTwo": 0
+      }
+    },
+    "completed": {
+      "source": "edf07339d8baea52087b7cca0559f18bd03b4bc9",
+      "productionSourcesSha256": "00b7a8437dc8829092213300f83d22507ae116e7548a0291d4e0150ce48284f4",
+      "buildCommands": {
+        "app": [
+          "xcrun",
+          "swift",
+          "build",
+          "--package-path",
+          "app/macos",
+          "-Xswiftc",
+          "-warnings-as-errors"
+        ],
+        "runtime": [
+          "./scripts/go.sh",
+          "build",
+          "-o",
+          "/Users/felixwang/Desktop/.Chief-chief-worktrees/astra-dock-e2e/.build/e2e/chief-runtime",
+          "./cmd/chief-runtime"
+        ]
+      },
+      "executable": {
+        "birthUS": 1795402275339175,
+        "cpuNS": 1354000291,
+        "footprintBytes": 61129760,
+        "identity": "51853:1795402275339175",
+        "path": "/private/tmp/me2e-7wxwe5lf/ChiefE2E.app/Contents/MacOS/ChiefE2E",
+        "pid": 51853,
+        "ppid": 51525
+      },
+      "bundle": "/private/tmp/me2e-7wxwe5lf/ChiefE2E.app",
+      "appSHA256": "4b2409231ff9fbcde184dfbf120b2d87cc1e983e55696c2254a92c851480a077",
+      "runtimeSHA256": "7f3f0348aa6e6959f3c49354e48d2f44ecec61a72035279e3ff2d4d16aa4b7fd",
+      "cli": {
+        "available": true,
+        "executable": "/Users/felixwang/.npm-global/bin/codex",
+        "version": "codex-cli 0.171.0",
+        "sha256": "0e0c66f50074965a40cbd12f625b0a35963baf41bbd8c201a93e32fddbe2e073",
+        "verifiedVersion": "codex-cli 0.171.0"
+      },
+      "isolatedState": "/private/tmp/me2e-7wxwe5lf/profile",
+      "recording": {
+        "width": 3770,
+        "window": 99544,
+        "pid": 51853,
+        "height": 2250,
+        "scale": 2
+      },
+      "videoSHA256": "8202bfb55b04a7681ca493673ad55e890ef5c2d2cbe4774ae32219f1b0cfd5ff",
+      "systemBounds": {
+        "height": 1125,
+        "width": 1885,
+        "x": 100,
+        "y": 26
+      },
+      "AX": {
+        "completed-before": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 44,
+              "width": 168,
+              "x": 958.5,
+              "y": 1071
+            }
+          },
+          {
+            "AXDescription": "打开 Chief 输入框",
+            "AXIdentifier": "moku-open-input",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 44,
+              "width": 168,
+              "x": 958.5,
+              "y": 1071
+            }
+          },
+          {
+            "AXDescription": "E2E review f217c077600449988d99fdd0841a2443",
+            "AXIdentifier": "overview-card-5057564e-63d8-43cd-8b7f-936c72a8aa1d",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 714.5,
+              "y": 490.5
+            }
+          },
+          {
+            "AXDescription": "E2E review f217c077600449988d99fdd0841a2443",
+            "AXIdentifier": "overview-card-72c993c9-cb95-4a7e-9291-552763643914",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 1050.5,
+              "y": 490.5
+            }
+          }
+        ],
+        "completed-reader": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 58,
+              "width": 560,
+              "x": 762.5,
+              "y": 1073
+            }
+          },
+          {
+            "AXRole": "AXTextArea",
+            "AXValue": "",
+            "bounds": {
+              "height": 58,
+              "width": 438,
+              "x": 839.5,
+              "y": 1073
+            }
+          },
+          {
+            "AXDescription": "关闭 Thread",
+            "AXIdentifier": "agent-reading-panel",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 38,
+              "width": 38,
+              "x": 187,
+              "y": 95
+            }
+          }
+        ]
+      },
+      "operatorCommand": "python3 /private/tmp/chief-dock-independent.c4V6Eu/fast-b.py final-fast2",
+      "operatorSHA256": "be9886dab1b8fdc4ccaf9aad7d4dc7f814d4c2ae7e002f1e00e92431b13f6d08",
+      "events": [
+        {
+          "event": "process-start",
+          "t": 1083107.642488041,
+          "name": "runtime",
+          "pid": 51588
+        },
+        {
+          "event": "runtime-ready",
+          "t": 1083107.648055208,
+          "pid": 51588,
+          "epoch": "e99ccfd4-fcaa-42f8-bd5a-630f75d8c713"
+        },
+        {
+          "event": "process-start",
+          "t": 1083113.472114916,
+          "name": "app",
+          "pid": 51853
+        },
+        {
+          "event": "observed",
+          "t": 1083115.856116125,
+          "label": "initial",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "observed",
+          "t": 1083117.168445333,
+          "label": "prepared-state",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "record-ready",
+          "t": 1083118.382602166,
+          "clip": "completed"
+        },
+        {
+          "event": "click",
+          "t": 1083118.740111708,
+          "identifier": "overview-card-72c993c9-cb95-4a7e-9291-552763643914",
+          "x": 1210.5,
+          "y": 588.5,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083120.451452708,
+          "label": "completed-open",
+          "page": "thread",
+          "inputOpen": true
+        },
+        {
+          "event": "click",
+          "t": 1083121.359694875,
+          "identifier": "agent-reading-panel",
+          "x": 206.0,
+          "y": 114.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083122.359067083,
+          "label": "completed-return",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "record-ready",
+          "t": 1083124.362468708,
+          "clip": "reverse"
+        },
+        {
+          "event": "click",
+          "t": 1083124.719599041,
+          "identifier": "overview-card-72c993c9-cb95-4a7e-9291-552763643914",
+          "x": 1210.5,
+          "y": 588.5,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "input-admitted",
+          "t": 1083126.205664916
+        },
+        {
+          "event": "click",
+          "t": 1083126.206173291,
+          "identifier": "agent-reading-panel",
+          "x": 206.0,
+          "y": 114.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083127.21591425,
+          "label": "reverse-return",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "click",
+          "t": 1083127.867614958,
+          "identifier": "overview-card-72c993c9-cb95-4a7e-9291-552763643914",
+          "x": 1210.5,
+          "y": 588.5,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083129.4725225,
+          "label": "reverse-reopen",
+          "page": "thread",
+          "inputOpen": true
+        },
+        {
+          "event": "click",
+          "t": 1083130.087718,
+          "identifier": "agent-reading-panel",
+          "x": 206.0,
+          "y": 114.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083131.218243833,
+          "label": "reverse-end",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "compose-twice",
+          "t": 1083131.881844541,
+          "gapMs": 150,
+          "input": "Cmd-Shift-B"
+        },
+        {
+          "event": "observed",
+          "t": 1083132.731028291,
+          "label": "compose-reverse-end",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "process-stop",
+          "t": 1083134.545842333,
+          "name": "app",
+          "pid": 51853,
+          "returncode": -15
+        },
+        {
+          "event": "process-stop",
+          "t": 1083135.20262525,
+          "name": "runtime",
+          "pid": 51588,
+          "returncode": 0
+        }
+      ],
+      "snapshotReads": 61,
+      "mutatingUIRequests": 0,
+      "cleanup": {
+        "ok": true,
+        "errors": [],
+        "privateDirectory": "/private/tmp/me2e-7wxwe5lf",
+        "retention": "local only; never uploaded"
+      },
+      "leaseReleased": true,
+      "rawDirectory": "/private/tmp/chief-dock-independent.c4V6Eu/final-fast2",
+      "optical": {
+        "frames": 262,
+        "unresolved": [
+          95,
+          238
+        ],
+        "missingGlass": 0,
+        "worstClearance": 7.0,
+        "outsideByOverTwo": 0
+      }
+    },
+    "reverse": {
+      "source": "edf07339d8baea52087b7cca0559f18bd03b4bc9",
+      "productionSourcesSha256": "00b7a8437dc8829092213300f83d22507ae116e7548a0291d4e0150ce48284f4",
+      "buildCommands": {
+        "app": [
+          "xcrun",
+          "swift",
+          "build",
+          "--package-path",
+          "app/macos",
+          "-Xswiftc",
+          "-warnings-as-errors"
+        ],
+        "runtime": [
+          "./scripts/go.sh",
+          "build",
+          "-o",
+          "/Users/felixwang/Desktop/.Chief-chief-worktrees/astra-dock-e2e/.build/e2e/chief-runtime",
+          "./cmd/chief-runtime"
+        ]
+      },
+      "executable": {
+        "birthUS": 1795402275339175,
+        "cpuNS": 1354000291,
+        "footprintBytes": 61129760,
+        "identity": "51853:1795402275339175",
+        "path": "/private/tmp/me2e-7wxwe5lf/ChiefE2E.app/Contents/MacOS/ChiefE2E",
+        "pid": 51853,
+        "ppid": 51525
+      },
+      "bundle": "/private/tmp/me2e-7wxwe5lf/ChiefE2E.app",
+      "appSHA256": "4b2409231ff9fbcde184dfbf120b2d87cc1e983e55696c2254a92c851480a077",
+      "runtimeSHA256": "7f3f0348aa6e6959f3c49354e48d2f44ecec61a72035279e3ff2d4d16aa4b7fd",
+      "cli": {
+        "available": true,
+        "executable": "/Users/felixwang/.npm-global/bin/codex",
+        "version": "codex-cli 0.171.0",
+        "sha256": "0e0c66f50074965a40cbd12f625b0a35963baf41bbd8c201a93e32fddbe2e073",
+        "verifiedVersion": "codex-cli 0.171.0"
+      },
+      "isolatedState": "/private/tmp/me2e-7wxwe5lf/profile",
+      "recording": {
+        "pid": 51853,
+        "width": 3770,
+        "scale": 2,
+        "height": 2250,
+        "window": 99544
+      },
+      "videoSHA256": "dfd264200ddc98eab9ac029bc4b957b90677faece8d62615de8b854b94b73898",
+      "systemBounds": {
+        "height": 1125,
+        "width": 1885,
+        "x": 100,
+        "y": 26
+      },
+      "AX": {
+        "reverse-before": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 44,
+              "width": 168,
+              "x": 958.5,
+              "y": 1071
+            }
+          },
+          {
+            "AXDescription": "打开 Chief 输入框",
+            "AXIdentifier": "moku-open-input",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 44,
+              "width": 168,
+              "x": 958.5,
+              "y": 1071
+            }
+          },
+          {
+            "AXDescription": "E2E review f217c077600449988d99fdd0841a2443",
+            "AXIdentifier": "overview-card-5057564e-63d8-43cd-8b7f-936c72a8aa1d",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 714.5,
+              "y": 490.5
+            }
+          },
+          {
+            "AXDescription": "E2E review f217c077600449988d99fdd0841a2443",
+            "AXIdentifier": "overview-card-72c993c9-cb95-4a7e-9291-552763643914",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 1050.5,
+              "y": 490.5
+            }
+          }
+        ]
+      },
+      "operatorCommand": "python3 /private/tmp/chief-dock-independent.c4V6Eu/fast-b.py final-fast2",
+      "operatorSHA256": "be9886dab1b8fdc4ccaf9aad7d4dc7f814d4c2ae7e002f1e00e92431b13f6d08",
+      "events": [
+        {
+          "event": "process-start",
+          "t": 1083107.642488041,
+          "name": "runtime",
+          "pid": 51588
+        },
+        {
+          "event": "runtime-ready",
+          "t": 1083107.648055208,
+          "pid": 51588,
+          "epoch": "e99ccfd4-fcaa-42f8-bd5a-630f75d8c713"
+        },
+        {
+          "event": "process-start",
+          "t": 1083113.472114916,
+          "name": "app",
+          "pid": 51853
+        },
+        {
+          "event": "observed",
+          "t": 1083115.856116125,
+          "label": "initial",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "observed",
+          "t": 1083117.168445333,
+          "label": "prepared-state",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "record-ready",
+          "t": 1083118.382602166,
+          "clip": "completed"
+        },
+        {
+          "event": "click",
+          "t": 1083118.740111708,
+          "identifier": "overview-card-72c993c9-cb95-4a7e-9291-552763643914",
+          "x": 1210.5,
+          "y": 588.5,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083120.451452708,
+          "label": "completed-open",
+          "page": "thread",
+          "inputOpen": true
+        },
+        {
+          "event": "click",
+          "t": 1083121.359694875,
+          "identifier": "agent-reading-panel",
+          "x": 206.0,
+          "y": 114.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083122.359067083,
+          "label": "completed-return",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "record-ready",
+          "t": 1083124.362468708,
+          "clip": "reverse"
+        },
+        {
+          "event": "click",
+          "t": 1083124.719599041,
+          "identifier": "overview-card-72c993c9-cb95-4a7e-9291-552763643914",
+          "x": 1210.5,
+          "y": 588.5,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "input-admitted",
+          "t": 1083126.205664916
+        },
+        {
+          "event": "click",
+          "t": 1083126.206173291,
+          "identifier": "agent-reading-panel",
+          "x": 206.0,
+          "y": 114.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083127.21591425,
+          "label": "reverse-return",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "click",
+          "t": 1083127.867614958,
+          "identifier": "overview-card-72c993c9-cb95-4a7e-9291-552763643914",
+          "x": 1210.5,
+          "y": 588.5,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083129.4725225,
+          "label": "reverse-reopen",
+          "page": "thread",
+          "inputOpen": true
+        },
+        {
+          "event": "click",
+          "t": 1083130.087718,
+          "identifier": "agent-reading-panel",
+          "x": 206.0,
+          "y": 114.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083131.218243833,
+          "label": "reverse-end",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "compose-twice",
+          "t": 1083131.881844541,
+          "gapMs": 150,
+          "input": "Cmd-Shift-B"
+        },
+        {
+          "event": "observed",
+          "t": 1083132.731028291,
+          "label": "compose-reverse-end",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "process-stop",
+          "t": 1083134.545842333,
+          "name": "app",
+          "pid": 51853,
+          "returncode": -15
+        },
+        {
+          "event": "process-stop",
+          "t": 1083135.20262525,
+          "name": "runtime",
+          "pid": 51588,
+          "returncode": 0
+        }
+      ],
+      "snapshotReads": 61,
+      "mutatingUIRequests": 0,
+      "cleanup": {
+        "ok": true,
+        "errors": [],
+        "privateDirectory": "/private/tmp/me2e-7wxwe5lf",
+        "retention": "local only; never uploaded"
+      },
+      "leaseReleased": true,
+      "rawDirectory": "/private/tmp/chief-dock-independent.c4V6Eu/final-fast2",
+      "optical": {
+        "frames": 511,
+        "unresolved": [
+          2,
+          3,
+          180,
+          232,
+          233,
+          239,
+          240,
+          274,
+          275,
+          400,
+          463,
+          464,
+          468,
+          470,
+          471
+        ],
+        "missingGlass": 0,
+        "worstClearance": 6.0,
+        "outsideByOverTwo": 0
+      }
+    },
+    "overview": {
+      "source": "edf07339d8baea52087b7cca0559f18bd03b4bc9",
+      "productionSourcesSha256": "00b7a8437dc8829092213300f83d22507ae116e7548a0291d4e0150ce48284f4",
+      "buildCommands": {
+        "app": [
+          "xcrun",
+          "swift",
+          "build",
+          "--package-path",
+          "app/macos",
+          "-Xswiftc",
+          "-warnings-as-errors"
+        ],
+        "runtime": [
+          "./scripts/go.sh",
+          "build",
+          "-o",
+          "/Users/felixwang/Desktop/.Chief-chief-worktrees/astra-dock-e2e/.build/e2e/chief-runtime",
+          "./cmd/chief-runtime"
+        ]
+      },
+      "executable": {
+        "birthUS": 1795402322980995,
+        "cpuNS": 873654625,
+        "footprintBytes": 63226888,
+        "identity": "53401:1795402322980995",
+        "path": "/private/tmp/me2e-69vnxrwc/ChiefE2E.app/Contents/MacOS/ChiefE2E",
+        "pid": 53401,
+        "ppid": 53118
+      },
+      "bundle": "/private/tmp/me2e-69vnxrwc/ChiefE2E.app",
+      "appSHA256": "4b2409231ff9fbcde184dfbf120b2d87cc1e983e55696c2254a92c851480a077",
+      "runtimeSHA256": "7f3f0348aa6e6959f3c49354e48d2f44ecec61a72035279e3ff2d4d16aa4b7fd",
+      "cli": {
+        "available": true,
+        "executable": "/Users/felixwang/.npm-global/bin/codex",
+        "version": "codex-cli 0.171.0",
+        "sha256": "0e0c66f50074965a40cbd12f625b0a35963baf41bbd8c201a93e32fddbe2e073",
+        "verifiedVersion": "codex-cli 0.171.0"
+      },
+      "isolatedState": "/private/tmp/me2e-69vnxrwc/profile",
+      "recording": {
+        "width": 3770,
+        "scale": 2,
+        "height": 2250,
+        "window": 99604,
+        "pid": 53401
+      },
+      "videoSHA256": "0f9f0a34d3ac35ba83ce973c6ea822b0a7d036be379c9fb0f8e02a165cbb48ed",
+      "systemBounds": {
+        "height": 1125,
+        "width": 1885,
+        "x": 100,
+        "y": 26
+      },
+      "AX": {
+        "overview-before": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 44,
+              "width": 168,
+              "x": 958.5,
+              "y": 1071
+            }
+          },
+          {
+            "AXDescription": "打开 Chief 输入框",
+            "AXIdentifier": "moku-open-input",
+            "AXRole": "AXButton",
+            "bounds": {
+              "height": 44,
+              "width": 168,
+              "x": 958.5,
+              "y": 1071
+            }
+          },
+          {
+            "AXDescription": "E2E review fa3c2e8656f148b7a5ca38061ce8c37c",
+            "AXIdentifier": "overview-card-39be2e56-bbe8-4068-bf4a-9e24cc63c3df",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 714.5,
+              "y": 490.5
+            }
+          },
+          {
+            "AXDescription": "E2E review fa3c2e8656f148b7a5ca38061ce8c37c",
+            "AXIdentifier": "overview-card-e9fee10b-54f7-4890-9329-cf39b7d88b1f",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 1050.5,
+              "y": 490.5
+            }
+          }
+        ],
+        "overview-expanded": [
+          {
+            "AXDescription": "Chief",
+            "AXIdentifier": "moku-capsule",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 58,
+              "width": 560,
+              "x": 762.5,
+              "y": 1057
+            }
+          },
+          {
+            "AXRole": "AXTextArea",
+            "AXValue": "",
+            "bounds": {
+              "height": 58,
+              "width": 438,
+              "x": 839.5,
+              "y": 1057
+            }
+          },
+          {
+            "AXDescription": "E2E review fa3c2e8656f148b7a5ca38061ce8c37c",
+            "AXIdentifier": "overview-card-39be2e56-bbe8-4068-bf4a-9e24cc63c3df",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 714.5,
+              "y": 490.5
+            }
+          },
+          {
+            "AXDescription": "E2E review fa3c2e8656f148b7a5ca38061ce8c37c",
+            "AXIdentifier": "overview-card-e9fee10b-54f7-4890-9329-cf39b7d88b1f",
+            "AXRole": "AXGroup",
+            "bounds": {
+              "height": 196,
+              "width": 320,
+              "x": 1050.5,
+              "y": 490.5
+            }
+          }
+        ]
+      },
+      "operatorCommand": "python3 /private/tmp/chief-dock-independent.c4V6Eu/overview-b.py final-overview",
+      "operatorSHA256": "a273f425c13eb4447caa8906112fa8b5170d457f257f1864aa99fd85b271abe7",
+      "events": [
+        {
+          "event": "process-start",
+          "t": 1083157.194245833,
+          "name": "runtime",
+          "pid": 53128
+        },
+        {
+          "event": "runtime-ready",
+          "t": 1083157.30278925,
+          "pid": 53128,
+          "epoch": "9c222ae6-9b05-411e-9d52-280f24e0125e"
+        },
+        {
+          "event": "process-start",
+          "t": 1083161.080216916,
+          "name": "app",
+          "pid": 53401
+        },
+        {
+          "event": "observed",
+          "t": 1083163.090669166,
+          "label": "initial",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "observed",
+          "t": 1083164.133349833,
+          "label": "prepared-state",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "record-ready",
+          "t": 1083164.907765916,
+          "clip": "overview-input"
+        },
+        {
+          "event": "click",
+          "t": 1083165.439345791,
+          "identifier": "moku-open-input",
+          "x": 1042.5,
+          "y": 1093.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083165.975725541,
+          "label": "explicit-open",
+          "page": "overview",
+          "inputOpen": true
+        },
+        {
+          "event": "click",
+          "t": 1083166.946157583,
+          "identifier": "blank Overview canvas",
+          "x": 650.0,
+          "y": 850.0,
+          "escapeAfterMs": []
+        },
+        {
+          "event": "observed",
+          "t": 1083167.3403135,
+          "label": "explicit-close",
+          "page": "overview",
+          "inputOpen": false
+        },
+        {
+          "event": "process-stop",
+          "t": 1083168.3588615,
+          "name": "app",
+          "pid": 53401,
+          "returncode": -15
+        },
+        {
+          "event": "process-stop",
+          "t": 1083168.598559,
+          "name": "runtime",
+          "pid": 53128,
+          "returncode": 0
+        }
+      ],
+      "snapshotReads": 11,
+      "mutatingUIRequests": 0,
+      "cleanup": {
+        "ok": true,
+        "errors": [],
+        "privateDirectory": "/private/tmp/me2e-69vnxrwc",
+        "retention": "local only; never uploaded"
+      },
+      "leaseReleased": true,
+      "rawDirectory": "/private/tmp/chief-dock-independent.c4V6Eu/final-overview",
+      "optical": {
+        "frames": 177,
+        "unresolved": [
+          72,
+          75,
+          80
+        ],
+        "missingGlass": 0,
+        "worstClearance": 10.0,
+        "outsideByOverTwo": 0
+      }
+    }
+  }
+}

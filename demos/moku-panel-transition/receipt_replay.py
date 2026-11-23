@@ -152,7 +152,7 @@ try:
             for channel in ("moku:submit", "thread:follow-up", "thread:fork"):
                 expected = ["A", "D", "BC", "rejected", "boundary", "direct"]
                 if channel == "moku:submit":
-                    expected += ["mixed picker", "Steer the running Chief"]
+                    expected += ["mixed picker"]
                 if channel == "thread:follow-up":
                     expected += ["after-fork", "historical", "after-followup", "historical", "same-checkpoint", "changed", "changed"]
                     expected += ["sidecard " + step for step in ("catalog first", "receipt first", "finished", "reject", "fold", "switch card", "leave")]

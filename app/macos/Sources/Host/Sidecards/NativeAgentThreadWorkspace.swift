@@ -97,7 +97,8 @@ private struct NativeThreadWorkspaceBody: View {
 
     private var configuration: NativeSidecardWorkspaceConfiguration {
         NativeSidecardWorkspaceConfiguration(input: HarnessThreadInput(thread: thread, readingTarget: readingTarget),
-            executionDisabled: executionDisabled, suppressed: sidecardsSuppressed, enabledIDs: enabledSidecardIDs,
+            executionDisabled: executionDisabled, suppressed: sidecardsSuppressed || !primaryEntranceReady,
+            enabledIDs: enabledSidecardIDs,
             locale: locale, executionReveal: executionReveal, mainReadingHistory: hasNestedNavigation,
             entranceReady: auxiliaryStageReady)
     }
@@ -105,7 +106,8 @@ private struct NativeThreadWorkspaceBody: View {
     var body: some View {
         Group {
             if let model, let snapshot = model.snapshot {
-                NativeSidecardWorkspaceLayout(model: model, snapshot: snapshot, onContentStatusChange: { status in
+                NativeSidecardWorkspaceLayout(model: model, snapshot: snapshot,
+                    dockCovered: sidecardsSuppressed, onContentStatusChange: { status in
                     guard self.model === model else { return }
                     mainContentReady = status.ready
                 }, onDockSettled: {
@@ -148,6 +150,7 @@ struct NativeSidecardWorkspaceLayout: View {
     @Environment(\.nativeThreadPreparing) private var preparing
     let model: NativeSidecardWorkspaceModel
     let snapshot: NativeSidecardWorkspaceSnapshot
+    let dockCovered: Bool
     /// Previews/replays can supply the same policy without changing OS settings.
     var onContentStatusChange: (NativeReadingContentStatus) -> Void = { _ in }
     var onDockSettled: () -> Void = {}
@@ -307,7 +310,9 @@ struct NativeSidecardWorkspaceLayout: View {
     }
 
     private func dockFrame(in layout: NativeSidecardWorkspaceGeometry) -> CGRect? {
-        guard !preparing, !snapshot.suppressed, snapshot.handoff == nil,
+        // A returning reader suppresses its controls while the column still belongs
+        // to the visit. The native marker gates publication on reading readiness.
+        guard !preparing, !dockCovered, snapshot.handoff == nil,
               let card = snapshot.cards.first(where: { $0.id == snapshot.selected && $0.view.available }) else { return nil }
         // Activity-specific input belongs to that card's column. Otherwise the
         // Thread input follows execution ownership, with other activities in main.

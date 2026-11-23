@@ -1,0 +1,146 @@
+{
+  "sourceCommit": "a59d4b1b8ebc6f9cd7b9264afa54122ffaa62bc1",
+  "platform": "macOS-26.5.1-arm64-arm-64bit",
+  "appSHA256": "a47b399fcf898e5c0cb120567ac838aa317c906c14809393ed66dec58c379bb6",
+  "runtimeSHA256": "bbe505fe32da4c122f03b99194c29cc9ed57ff7f25a61e0e5cb12ede0b7444cd",
+  "productionSourceSHA256": "22809be9bf07991bb8fe904a0c23b6314ecfe4fb44c846a94dc109615609e639",
+  "nativeCLI": "codex-cli 0.171.0",
+  "input": "macOS system keyboard events and pointer clicks on moku-send",
+  "modelService": "loopback deterministic Responses peer with active text deltas",
+  "capture": {
+    "collector": "ScreenCaptureKit, desktopIndependentWindow",
+    "sha256": "5e3e4aba6ba91ddbe81ab56ee5730cc933985f85c10da726b380b813fc7a94a7",
+    "dimensions": [
+      1280,
+      760
+    ],
+    "decodedFrames": 538
+  },
+  "visible": {
+    "thread": "f2b19366-694d-46ee-98b3-4b36ab9b7ccb",
+    "execution": "bb8ea54a-0c6c-472a-a993-f884d63b5d62",
+    "appPID": 50533,
+    "runtimePID": 50295,
+    "executionStatus": [
+      "running",
+      "running",
+      "running"
+    ],
+    "persistedFollowUps": [
+      {
+        "id": "bac6f05b-d259-4d91-8402-efc583e0145f",
+        "kind": "follow-up",
+        "content": "Check the north station first."
+      },
+      {
+        "id": "1530554f-e2e1-4ba6-813b-1682c2e66ba7",
+        "kind": "follow-up",
+        "content": "Include the sampling times."
+      }
+    ],
+    "sendControls": [
+      {
+        "event": "send-1",
+        "ax": "13 (1375.0, 755.0, 32.0, 32.0) AXButton | 发送 |  | moku-send |  | 1",
+        "click": "downUptime 1085681.9218028751"
+      },
+      {
+        "event": "send-2",
+        "ax": "13 (1375.0, 755.0, 32.0, 32.0) AXButton | 发送 |  | moku-send |  | 1",
+        "click": "downUptime 1085685.810206375"
+      }
+    ],
+    "cleanup": true
+  },
+  "entrances": [
+    {
+      "text": "Check the north station first.",
+      "clickSeconds": 2.9639,
+      "intermediateGlyphLevels": 11
+    },
+    {
+      "text": "Include the sampling times.",
+      "clickSeconds": 6.8523,
+      "intermediateGlyphLevels": 13
+    }
+  ],
+  "earlierRowDuringSecondSend": {
+    "startSeconds": 6.4523,
+    "endSeconds": 7.8523,
+    "frames": 78,
+    "rect": [
+      692,
+      357,
+      176,
+      16
+    ],
+    "minGlyphCorrelation": 1.0,
+    "minRelativeContrast": 0.9999
+  },
+  "scrolled": {
+    "thread": "9f046ba5-481f-4920-90fd-cc8498942eae",
+    "execution": "b08ed634-2950-4bfa-b70c-2291677eb9f5",
+    "appPID": 49170,
+    "runtimePID": 48451,
+    "executionStatus": [
+      "running",
+      "running",
+      "running"
+    ],
+    "persistedFollowUps": [
+      {
+        "id": "937abe93-6154-4655-b763-fdb074496ae0",
+        "kind": "follow-up",
+        "content": "Check the north station first."
+      },
+      {
+        "id": "01f72c99-083b-49b1-8c7b-a9696a16aace",
+        "kind": "follow-up",
+        "content": "Include the sampling times."
+      }
+    ],
+    "sendControls": [
+      {
+        "event": "send-1",
+        "ax": "13 (1375.0, 755.0, 32.0, 32.0) AXButton | 发送 |  | moku-send |  | 1",
+        "click": "downUptime 1085660.3975377085"
+      },
+      {
+        "event": "send-2",
+        "ax": "13 (1375.0, 755.0, 32.0, 32.0) AXButton | 发送 |  | moku-send |  | 1",
+        "click": "downUptime 1085664.7480118333"
+      }
+    ],
+    "cleanup": true
+  },
+  "manualScroll": {
+    "sampleCount": 124,
+    "topRange": [
+      230,
+      230
+    ],
+    "following": [
+      false
+    ],
+    "observations": [
+      {
+        "viewport": 614,
+        "top": 230,
+        "height": 2353,
+        "following": false
+      },
+      {
+        "viewport": 614,
+        "top": 230,
+        "height": 4634,
+        "following": false
+      },
+      {
+        "viewport": 614,
+        "top": 230,
+        "height": 6866,
+        "following": false
+      }
+    ]
+  }
+}

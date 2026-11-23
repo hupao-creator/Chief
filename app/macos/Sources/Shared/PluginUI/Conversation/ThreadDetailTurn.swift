@@ -60,7 +60,7 @@ public extension EnvironmentValues {
     /// execution work; active references use the live process summary.
     @Entry var threadRelatedExecution = false
 
-    /// The default execution reader for Agent Threads and current or archived Chief sessions.
+    /// Uses the execution detail layout for Agent Threads.
     var threadAgentDetail: Bool {
         get { self[ThreadAgentDetailKey.self] }
         set { self[ThreadAgentDetailKey.self] = newValue }
@@ -275,8 +275,11 @@ private struct ExecutionResultAnchor: ViewModifier {
     let id: JSONText
     let enabled: Bool
     func body(content: Content) -> some View {
-        if enabled { content.threadReadingAnchor(threadExecutionResultAnchor(id)) }
-        else { content }
+        // Moving the result anchor to a newly appended row must preserve
+        // the old row's parsed Markdown, selection and measured height.
+        content.background {
+            if enabled { Color.clear.threadReadingAnchor(threadExecutionResultAnchor(id)) }
+        }
     }
 }
 

@@ -18,8 +18,8 @@ Its current scenario and policy definitions are [UX](UX.md) and the
   It preserves raw pairs, propagates optical intervals and evaluates both orders,
   noise and bootstrap intervals. Invalid/incomplete/incomparable is never passed.
 - `capabilities.py` records installed tools and existing permissions without
-  changing authorization. Physical frame presentation, App GPU/energy and real
-  automated pinch remain unsupported on the current collector boundary.
+  changing authorization. Physical frame presentation and App GPU/energy
+  remain unsupported on the current collector boundary.
 - Synthetic CLI PBT/e2e validates gate mechanics. Actual product observations are
   separate artifacts, identified by product/collector/policy/runner/session.
 
@@ -29,7 +29,7 @@ The system does not change main, publish branches, configure remote required
 checks, infer performance from production logs or automatically promote baselines.
 
 The supplementary PBT domain is the judgment mechanism: scale/direction and
-interval invariants, evidence rejection, GPU interval ownership/union and explicit
+interval invariants, admission of full horizontal round trips across bounded scroll ranges, evidence rejection, GPU interval ownership/union and explicit
 baseline state transitions. These mathematical/state invariants justify the
 limited use of PBT outside Moku runtime. They do not replace interaction e2e or
 measure product UX, and ordinary example unit-test suites are not introduced.

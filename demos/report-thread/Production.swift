@@ -146,7 +146,7 @@ private struct ProductionReportRoute: View {
     let fixture: ProductionReportFixture
     var body: some View {
         NativeReportDetail(props: fixture.props)
-            .modifier(NativeApplicationReadingPanel(enabled: true, identifier: "report-reading-panel", onClose: { fixture.motion.close() }))
+            .modifier(NativeApplicationReadingPanel(enabled: true, onClose: { fixture.motion.close() }))
             .environment(\.nativeReportSidecards, fixture.sidecards)
             .environment(\.nativeApplicationReadingPanel, true)
     }

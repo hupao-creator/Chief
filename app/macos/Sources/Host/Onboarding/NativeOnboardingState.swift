@@ -29,6 +29,11 @@ enum NativeOnboardingStep: Int, CaseIterable {
     var mounted = false
     var mountDock = false
     var dockVisible = false
+    enum HandoffPhase: String { case saved, fade, contract, reveal, finished }
+    // Read once by the interaction client after AX observes the focused editor.
+    @ObservationIgnored private(set) var handoffTimes: [HandoffPhase: UInt64] = [:]
+    func markHandoff(_ phase: HandoffPhase) { handoffTimes[phase] = DispatchTime.now().uptimeNanoseconds }
+
     var panelFrame = CGRect.zero
     var blocksWorkspace: Bool { !finished }
     var settings: NativeSettingsModel { workspace.settingsModel }
@@ -112,7 +117,13 @@ enum NativeOnboardingStep: Int, CaseIterable {
         guard !finished, !admitted, workspace.hasInitialContent else { return }
         do {
             let catalog = workspace.catalog
-            let previousActivity = catalog.threads.contains { $0.id != catalog.moku?.id }
+            // Switching the default Harness can archive the empty Chief shell
+            // before the first catalog arrives. Only history with activity
+            // should cause an otherwise fresh desktop to skip setup.
+            let previousActivity = catalog.threads.contains {
+                !$0.mokuHistory || $0.observation.latestExecution != nil || $0.pendingInput
+                    || $0.transcript?.arrayValue?.isEmpty == false
+            }
                 || !catalog.applicationThreads.isEmpty
                 || catalog.moku?.observation.latestExecution != nil || catalog.moku?.pendingInput == true
             if !workspace.preferences.onboardingPending, previousActivity {
@@ -123,6 +134,7 @@ enum NativeOnboardingStep: Int, CaseIterable {
             // Store pending before any normal preference save can make a fresh
             // profile look like an established desktop on its next launch.
             try workspace.preferences.setOnboardingCompleted(false)
+            settings.draft.reconcileFirstRunDiscovery = true
             admitted = true; error = nil
         } catch { self.error = error.localizedDescription }
     }
@@ -146,7 +158,11 @@ enum NativeOnboardingStep: Int, CaseIterable {
             }
             try Task.checkCancellation()
             guard workspace.runtimeAvailable else { throw RuntimeError("UNAVAILABLE", locale.text("连接恢复后再继续。", "Reconnect before continuing.")) }
-            if step == .report { try workspace.preferences.setOnboardingCompleted(true) }
+            if step == .report {
+                try workspace.preferences.setOnboardingCompleted(true)
+                markHandoff(.saved)
+                settings.draft.reconcileFirstRunDiscovery = false
+            }
             step = NativeOnboardingStep(rawValue: step.rawValue + 1)!
             editors[step] = NativeSettingsReadiness()
         } catch { self.error = error.localizedDescription }

@@ -24,8 +24,8 @@ For a new Codex setup, Chief checks whether Codex supports its default **approve
 ## Choose who does what
 
 1. On the **Chief** page, choose the agent that will talk to you and coordinate your work. Below it, choose at least one agent it may assign tasks to. Complete any required model choices and click **Continue**.
-2. On the next two pages, choose how to run **Tag Agent** and **Super Thread Agent**. For either role, choose **Agent off**, **Use Chief**, or **Configure separately**. [What each option does](settings.md#set-up-tag-agent-and-super-thread-agent)
-3. Click **Start using Chief**. The setup panel shrinks into Chief's input box. If the window stays active and visible, Chief's eyes blink once as the box appears. You can start typing as soon as setup closes.
+2. Choose how to run **Tag Agent**, then click **Continue**. Each role offers **Agent off**, **Use Chief**, or **Configure separately**. If you configure a role separately, wait for the agent choices to load and complete the required fields. [What each option does](settings.md#set-up-tag-agent-and-super-thread-agent)
+3. Choose how to run **Super Thread Agent**, then click **Start using Chief**. The setup panel shrinks into Chief's input box. If the window stays active and visible, Chief's eyes blink once as the box appears. You can start typing as soon as setup closes.
 
 If you see a load or save error, use **Retry** next to it. If you quit partway through setup, Chief returns to the agent check and keeps the choices you've already saved.
 

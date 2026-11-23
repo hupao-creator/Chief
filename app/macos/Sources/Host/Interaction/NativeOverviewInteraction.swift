@@ -147,9 +147,6 @@ extension NativeWorkspacePresentation {
             if canToggleMokuNote { result.append("moku.note.toggle") }
         }
         if scene.dockRouteVisible, !scene.disabled, !scene.dockCovered { result.append("moku.input.toggle") }
-        if !scene.disabled, scene.dockRouteVisible || interactionPage == "moku" {
-            result.append("moku.history.toggle")
-        }
         return result
     }
 
@@ -157,7 +154,7 @@ extension NativeWorkspacePresentation {
         func filter(_ item: NativeOverviewFilter) -> JSONValue {
             .object(["id": .text(item.id), "label": .text(item.displayTag), "tag": .text(item.tag),
                 "kind": .text(item.isDirectory ? "directory" : "semantic"), "scope": .text(item.scope),
-                "count": .integer(item.count), "aliases": .array(item.aliases.map(JSONValue.text)),
+                "count": .integer(item.count), "unreadCount": .integer(item.unreadCount), "aliases": .array(item.aliases.map(JSONValue.text)),
                 "children": .array(item.children.filter { $0.count > 0 }.map(filter))])
         }
         let camera = canvas.camera
@@ -221,7 +218,7 @@ extension NativeWorkspacePresentation {
             ]),
             "dock": .object(["inputOpen": .bool(scene.inputOpen), "inputLeaving": .bool(scene.inputLeaving),
                 "noteExecutionPhase": scene.noteReadingOrigin.map { .text($0.phase.rawValue) } ?? .null,
-                "historyOpen": .bool(scene.mokuOpen), "noteOpen": .bool(scene.notePanelOpen), "covered": .bool(scene.dockCovered)])
+                "noteOpen": .bool(scene.notePanelOpen), "covered": .bool(scene.dockCovered)])
         ])
     }
 
@@ -234,7 +231,6 @@ extension NativeWorkspacePresentation {
         case .overviewDirectorySelect(let id, let filter): try overview.chromeInteractions.perform(directory: id, operation: "select", child: filter)
         case .overviewScrollFilter(let id): try overview.chromeInteractions.scrollTo(id)
         case .toggleMokuInput: scene.toggleInput(focusOnOpening: true)
-        case .toggleMokuHistory: scene.toggleMoku()
         case .toggleMokuNote: toggleMokuNote()
         default: throw NativeInteractionError("invalid_request", "Not an Overview action")
         }

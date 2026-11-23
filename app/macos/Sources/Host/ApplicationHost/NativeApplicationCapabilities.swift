@@ -236,7 +236,7 @@ private struct NativeApplicationReferencedExecution: View {
     var body: some View {
         Group {
             let _ = catalogRevision
-            if let thread = host.workspace.catalog.thread(reference.thread.threadID), thread.moku != true, !thread.mokuHistory {
+            if let thread = host.workspace.catalog.thread(reference.thread.threadID), thread.isOrdinaryAgent {
                 if let sidecards {
                     reportConversation(thread, sidecards: sidecards)
                 } else {
@@ -270,7 +270,8 @@ private struct NativeApplicationReferencedExecution: View {
                 .onPreferenceChange(ThreadConversationInputTargetKey.self) { target in
                     if let target, target.threadID != reference.thread.threadID || target.requestID != request.requestID { return }
                     let displayed = target?.executionID.map { ApplicationExecutionRef(thread: reference.thread, executionID: $0) }
-                    sidecards.updateInput(displayed, ready: target?.ready == true, visit: visit)
+                    sidecards.updateInput(displayed, ready: target?.ready == true,
+                                          displayedExecutionID: target?.displayedExecutionID, visit: visit)
                 }
         }
     }

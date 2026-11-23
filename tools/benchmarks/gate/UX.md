@@ -17,15 +17,18 @@ an otherwise idle, unlocked Mac and an agreed exclusive desktop slot are require
 
 | Suite ID | Scenario IDs | Fixed workload |
 | --- | --- | --- |
-| ux-startup | first-render | 5 prepared cards; 8s formal; 1280×950 window |
-| ux-overview | pan, body.pan | 10 prepared cards; 8s formal; 1280×950; sparse output |
+| ux-startup | first-render | 10 prepared cards; 8s formal; 1280×820 launch window |
+| ux-overview | pan, body.pan | 10 prepared cards; 8s formal; 1280×820; sparse output |
 | ux-reading | reading.first-open, reading.reopen | 8 KiB settled Markdown reply; 10s formal; existing reading input schedule |
-| ux-zoom | zoom, body.zoom | Unsupported: no validated real system pinch injector |
 
 Overview scroll probes use two opposing horizontal pixel-wheel sequences.
 Their optical bounds require horizontal card travel and stable vertical
 positions. Preflight records the available range; fitting content provides
-no latency sample. Matching input is required on both sides of a pair.
+no latency sample. Both signed workloads require 120 points of input travel each
+way and matching directions, phases, deltas and deadlines across each pair. OCR
+checks the resulting displacement against the trajectory tolerance. The fixed
+size matches the production benchmark launch placement. Startup checks the
+reopened window size against its preparation.
 Control windows check horizontal motion and deliberately incorrect vertical
 travel. Physical trackpad inertia and device-specific timing need separate evidence.
 
@@ -36,7 +39,7 @@ larger of that relative amount and the absolute tolerance below.
 | Metric ID | Units / exact observation | Absolute tolerance | Suite |
 | --- | --- | --- | --- |
 | firstContentSeconds | source/input to recognizable body, lower/upper capture bounds | 200ms startup; 100ms reading | ux-startup, ux-reading |
-| responseSeconds | posted drag/scroll to visible displacement, bounded; worst scheduled reader segment | 100ms | ux-overview, ux-reading |
+| responseSeconds | posted scroll to visible displacement, bounded; worst scheduled reader segment | 100ms | ux-overview, ux-reading |
 | noProgressSeconds | longest observed input progress gap, bounded; worst reader segment | 100ms | ux-overview, ux-reading |
 | appCPUSeconds | App cumulative user+system CPU at formal end since new process birth | 100ms CPU | ux-startup |
 | appCPUPercent | identified App CPU delta / sampled interval, one-core scale | 2 percentage points | ux-overview, ux-reading |
@@ -120,7 +123,7 @@ they require existing signing artifacts, capture/input permissions and desktop
 coordination. `overview-release` is the separate hosted foreground resource gate,
 with six pairs of R0/S4/A4; it does not establish optical responsiveness.
 
-## FPS, GPU, energy and zoom
+## FPS, GPU and energy
 
 Run `performance.py capabilities --output NEW_DIRECTORY` for raw command receipts
 and `capabilities.json`. Missing capabilities return exit 2; installed template
@@ -133,7 +136,6 @@ names alone never certify that recording, attribution or calibration works.
 | traceOwnedGPUActiveSeconds | union of target PID Active depth-zero GPU intervals in Xcode 26 Metal trace | diagnostic only; independently exercised with offscreen blit/idle controls |
 | energyJoules | physical energy attributable to the product over the defined interval | unsupported: no physical attribution measurement |
 | systemEstimatedGPUPower | powermetrics SoC GPU estimated mW | diagnostic only when already permitted; whole-system, not App energy |
-| overviewPinchInjection | real macOS magnification input accepted by SwiftUI | unsupported: no validated public injector; modified wheel is ignored by current canvas routing |
 
 Capability receipts identify the actual host, toolchain, templates and devices.
 Sandboxed enumeration can hide templates/devices and is not authoritative for

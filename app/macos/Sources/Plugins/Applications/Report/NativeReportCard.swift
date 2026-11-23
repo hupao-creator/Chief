@@ -17,6 +17,7 @@ import SwiftUI
     var showsArchiveAction = false
     var allowsActions: () -> Bool = { true }
     var memberSource: NativeCollectionPanelSource?
+    @Environment(\.isApplicationCardUnread) private var isUnread
     @Environment(\.nativeCollectionPanel) private var collectionPanel
     @State private var references: [ApplicationExecutionPresentation] = []
     @State private var requestedReferences: [ApplicationExecutionRef] = []
@@ -118,6 +119,7 @@ import SwiftUI
             .threadCardBadge {
                 ThreadCardProviderStatus(label: props.entry.title.string, brandKey: "", emoji: props.entry.view.emoji.string,
                                          completedBackground: true, usesRegularGlass: usesGlassBadge)
+                    .environment(\.threadCardUnread, isUnread?(props.entry.ref, props.entry.view.contentRevision) == true)
             }.contentShape(Rectangle())
     }
 

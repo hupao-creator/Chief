@@ -28,7 +28,7 @@ creation validation.
 
 ## Settings, tools and execution
 
-[settings.go](settings.go) requires explicit model, thinking and service-tier choices for ordinary task creation. `default` is the standard tier; other tiers must be advertised by the selected model. A missing/null/boolean tier is not inheritance. Native replies confirm the effective tier; explicit null means known standard, while absence is unreported. [presentation.go](presentation.go) uses reported execution facts for Fast status before falling back to requested settings.
+[settings.go](settings.go) requires explicit model, thinking and service-tier choices for ordinary task creation. `default` is the standard tier; other tiers must be advertised by the selected model. During initial import, CLI 0.171.0 can return `service_tier = "fast"` in `config/read`. An exact tier ID takes precedence. Otherwise Chief pins `priority` for that setting only when the selected model advertises it. Display names do not establish support. Pinned profiles and explicit task settings use catalog IDs. A missing/null/boolean tier in a task request is not inheritance. Native replies confirm the effective tier; explicit null means known standard, while absence is unreported. [presentation.go](presentation.go) uses reported execution facts for Fast status before falling back to requested settings.
 
 [tools.go](tools.go) exposes injected tools through an authenticated local MCP bridge with a schema budget sized for the supplied definitions. Tool execution is bound to the admitted native thread/turn and cancellation context. Exclusive injection disables unrelated native/MCP tools. Stock resource-helper names do not confer authority: the bridge returns no resources/templates and has no resource-read implementation.
 
@@ -206,8 +206,10 @@ before encoding and copying them to native clients. Canonical, overview, context
 and full/execution projections retain those facts. Empty required plan arrays
 preserve native decoding, and surviving timeline identities/order remain intact. Deferred turn projections retain failed activity labels and details so errors
 remain readable without loading or showing ordinary execution work. Failed tools
-retain bounded completion diagnostics as well as command output. Diagnostics
-take priority over large partial results within the retained bound. Completion
+retain bounded completion diagnostics as well as command output. Foreground
+and background command completions render NUL as `␀` before clipping the output
+for display and persistence. Diagnostics take priority over large partial
+results within the retained bound. Completion
 classification uses explicit native failure/cancellation, command exit codes and
 tool-result `isError`; output text is never a status heuristic. A completion-only
 frame carries enough activity identity to survive recovery without a start frame,
@@ -297,6 +299,9 @@ its public execution result. `DecodeState` validates the durable state and
 generates start/event/follow-up/rejection/settle action sequences with up to 100
 retained executions, Unicode text from `a`, `中`, `🙂`, newline (0–32 runes),
 text-delta/text-final/status/done/error events and all three terminal outcomes.
+Command completions include two to five generated text fragments separated by
+NUL and exit codes 0 or 1. Each activity must retain its identity, the status
+for that exit code and the fragments separated by visible `␀` characters.
 After every step the durable state must decode; once terminal, the public execution
 must remain deeply equal through later actions. Each rejected follow-up adds
 exactly one notice. The oracle reads production state/projections, not a second

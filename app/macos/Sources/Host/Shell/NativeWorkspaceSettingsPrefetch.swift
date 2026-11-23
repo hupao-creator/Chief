@@ -8,6 +8,7 @@ import ChiefPluginAPI
 final class NativeWorkspaceSettingsPrefetch {
     private let host: NativeHarnessHost
     private var configurations: [NativeHarnessSettingsConfiguration] = []
+    private var availablePreviews: [NativeHarnessSettingsConfiguration] = []
     private var refreshSequences: [String: Int] = [:]
     private var authority: UUID?
     private var task: Task<Void, Never>?
@@ -32,6 +33,7 @@ final class NativeWorkspaceSettingsPrefetch {
             .flatMap(\.settings)
             .filter { $0.requires.contains(ApplicationCapabilities.backgroundConfigurationUI.requirement) }
         var next: [NativeHarnessSettingsConfiguration] = []
+        var previews: [NativeHarnessSettingsConfiguration] = []
         for harness in harnesses {
             let id = harness.descriptor.id
             let defaults = NativeHarnessSettingsConfiguration(harnessID: id, cwd: cwd, source: settings["harnesses"]?[id.string] ?? .null)
@@ -40,25 +42,26 @@ final class NativeWorkspaceSettingsPrefetch {
             next.append(.init(harnessID: id, cwd: cwd, source: execution, scope: .global(executionOwner: .moku)))
             for definition in backgroundSettings {
                 guard let entry = settings["pluginSettings"]?.arrayValue?.first(where: { $0["id"] == .string(definition.id) }),
-                      let value = entry["value"], let saved = try? ApplicationBackgroundExecutionSettings(json: value), saved.enabled else { continue }
-                // Inherited editors already consume the Moku surface above.
-                // Only independent modes introduce another native workspace.
-                guard case .override(let overrides) = saved.mode else { continue }
-                next.append(.background(harnessID: id, cwd: cwd, settingID: definition.id,
-                                        inherited: false, source: overrides.harnesses[id] ?? .null))
+                      let value = entry["value"], let saved = try? ApplicationBackgroundExecutionSettings(json: value) else { continue }
+                let configuration = NativeHarnessSettingsConfiguration.background(harnessID: id, cwd: cwd, settingID: definition.id,
+                                                                                 saved: saved, chiefSource: execution)
+                // Allow an editor to open an independent draft on demand.
+                // Discovery waits only for enabled, committed role scopes.
+                if case .override = saved.mode, saved.enabled { next.append(configuration) }
+                else { previews.append(configuration) }
             }
             // Prioritize execution admission without holding defaults behind
             // execution retry backoff; all scopes share the bounded read queue.
             next.append(defaults)
         }
         let sequences = model.detailRefreshSequences
-        guard next != configurations || sequences != refreshSequences || authority != workspace.snapshotAuthority else { return }
+        guard next != configurations || previews != availablePreviews || sequences != refreshSequences || authority != workspace.snapshotAuthority else { return }
         task?.cancel()
         for (id, sequence) in sequences where sequence != refreshSequences[id, default: 0] {
             host.releaseGlobalSettings(harnessID: JSONText(id))
         }
-        configurations = next; refreshSequences = sequences; authority = workspace.snapshotAuthority
-        host.retainGlobalSettings(configurations: next)
+        configurations = next; availablePreviews = previews; refreshSequences = sequences; authority = workspace.snapshotAuthority
+        host.retainGlobalSettings(configurations: next, availablePreviews: previews)
         task = Task { [host] in
             await host.prefetchSettings(configurations: next)
             // Model capabilities change independently of installation paths.
@@ -72,7 +75,7 @@ final class NativeWorkspaceSettingsPrefetch {
     }
 
     func stop() {
-        task?.cancel(); task = nil; configurations = []; refreshSequences = [:]; authority = nil
+        task?.cancel(); task = nil; configurations = []; availablePreviews = []; refreshSequences = [:]; authority = nil
         host.setSettingsAvailable(false)
     }
 }

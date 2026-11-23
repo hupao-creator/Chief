@@ -247,7 +247,7 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 		}
 		switch object["scope"] {
 		case "global":
-			allowed = []string{"scope", "harnessId", "refresh", "executionOwner", "applicationSettings"}
+			allowed = []string{"scope", "harnessId", "refresh", "executionOwner", "applicationSettings", "previewIndependent"}
 			required = []string{"scope", "harnessId"}
 		case "thread":
 			allowed = []string{"scope", "threadId", "refresh"}
@@ -302,6 +302,14 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 	if refresh, exists := object["refresh"]; exists {
 		if err = checkBoolean(refresh); err != nil {
 			return err
+		}
+	}
+	if preview, exists := object["previewIndependent"]; exists {
+		if err = checkBoolean(preview); err != nil {
+			return err
+		}
+		if preview == true && (object["applicationSettings"] == nil || object["executionOwner"] != nil) {
+			return errors.New("independent preview requires an application settings binding")
 		}
 	}
 	if owner, exists := object["executionOwner"]; exists && owner != "moku" {

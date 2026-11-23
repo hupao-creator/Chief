@@ -36,6 +36,7 @@ private final class WheelSample: NSEvent {
     override var locationInWindow: CGPoint { point }
     override var type: NSEvent.EventType { .scrollWheel }
     override var hasPreciseScrollingDeltas: Bool { precise }
+    override var isDirectionInvertedFromDevice: Bool { true }
     override var scrollingDeltaX: CGFloat { x }
     override var scrollingDeltaY: CGFloat { y }
     override var phase: NSEvent.Phase { direct }
@@ -44,19 +45,31 @@ private final class WheelSample: NSEvent {
     override var timestamp: TimeInterval { ProcessInfo.processInfo.systemUptime }
 }
 
+@MainActor private final class ReminderReplayPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
+@MainActor private final class SilentReminderBell: NativeMokuTimerPlaying {
+    func startLoop() throws {}
+    func stop() {}
+}
+
 @main @MainActor private struct NestedHeaderReplay: App {
-    @State private var zoom = 5.0
+    @State private var collectionViewport: CGSize?
     private let workspace: NativeWorkspaceModel
     private let presentation: NativeWorkspacePresentation
 
-    init() {
+    init() { self.init(profile: nil) }
+
+    private init(profile: URL?) {
         do {
-            try prepareIsolatedNativeReplay()
-            let directory = URL(filePath: FileManager.default.currentDirectoryPath)
+            if profile == nil { try prepareIsolatedNativeReplay() }
+            let directory = profile ?? URL(filePath: FileManager.default.currentDirectoryPath)
             let preferences = DesktopPreferences(directory: directory)
             try preferences.setOnboardingCompleted(true)
             workspace = NativeWorkspaceModel(client: RuntimeClient(profile: try RuntimeProfile(dataDirectory: directory)),
-                preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())], sidecards: [], applications: NativeApplicationModules.make()))
+                preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())], sidecards: [], applications: NativeApplicationModules.make()),
+                timer: NativeMokuTimerController(player: SilentReminderBell()))
             presentation = NativeWorkspacePresentation(workspace: workspace)
         } catch { fatalError(String(describing: error)) }
     }
@@ -65,9 +78,8 @@ private final class WheelSample: NSEvent {
         Window("Overview header replay", id: "header-replay") {
             GeometryReader { geometry in
                 NativeWorkspaceView(model: workspace, presentation: presentation)
-                    .frame(width: geometry.size.width / zoom, height: geometry.size.height / zoom)
-                    .environment(\.nativeWindowContentScale, zoom)
-                    .scaleEffect(zoom, anchor: .topLeading)
+                    .frame(width: collectionViewport?.width ?? geometry.size.width,
+                           height: collectionViewport?.height ?? geometry.size.height)
             }
             .modifier(NativeWorkspaceWindowSurface())
             .task {
@@ -80,25 +92,29 @@ private final class WheelSample: NSEvent {
     }
 
     private func installTasks(_ count: Int, revision: Int, authority: UUID, firstDirectoryCount: Int? = nil,
-                              reports: [JSONValue] = []) async throws {
+                              manyDirectories: Bool = false, reports: [JSONValue] = [], extraThreads: [JSONValue] = []) async throws {
         let ids = (0..<count).map { "task-\($0)" } + ["moku"]
+        let note = try ThreadNote(id: "fixture-note", text: JSONText(String(repeating: "A note paragraph.\n\n", count: 55)),
+                                  revision: 1, updatedAt: 2)
         let threads = try ids.enumerated().map { index, id in
             let other = firstDirectoryCount.map { index >= $0 && id != "moku" } ?? false
-            let scope: JSONText = other ? "/other" : "/fixture"
+            let directory: JSONText = manyDirectories ? JSONText("Project \(index)") : (other ? "Other" : "Fixture")
+            let scope: JSONText = manyDirectories ? JSONText("/fixture/\(index)") : (other ? "/other" : "/fixture")
             return try HarnessThread(id: JSONText(id), harnessID: "codex", revision: 0, sessionState: .null,
                 observation: .init(), cwd: scope, settings: .object([:]), createdAt: 1, updatedAt: 2,
-                title: JSONText(id), tags: [], moku: id == "moku" ? true : nil, transcript: id == "moku" ? .array([]) : nil,
-                directoryTag: other ? "Other" : "Fixture", directoryScope: scope).json
+                title: JSONText(id), tags: [], moku: id == "moku" ? true : nil, note: manyDirectories && id == "moku" ? note : nil, transcript: id == "moku" ? .array([]) : nil,
+                directoryTag: directory, directoryScope: scope).json
         }
         let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
-            "defaultCwd": .text("/fixture"), "settings": .object([:]), "threads": .array(threads),
+            "defaultCwd": .text("/fixture"), "settings": .object([:]), "threads": .array(threads + extraThreads),
             "executions": .array([]), "applicationThreads": .array(reports)])
         await workspace.installPrepared(snapshot, event: .snapshot(snapshot, authority: authority))
     }
 
     private func replay() async throws {
         let authority = UUID()
-        try await installTasks(18, revision: 1, authority: authority)
+        let noteSwipeReplay = CommandLine.arguments.contains("--note-swipe")
+        try await installTasks(18, revision: 1, authority: authority, manyDirectories: noteSwipeReplay)
         guard workspace.hasInitialContent, let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "header-replay" }),
               let screen = NSScreen.screens.first else { throw ReplayError("Workspace did not mount") }
         window.collectionBehavior = [.auxiliary, .canJoinAllSpaces]
@@ -107,20 +123,44 @@ private final class WheelSample: NSEvent {
 
         let directory = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        if noteSwipeReplay {
+            window.setContentSize(CGSize(width: 900, height: 680))
+            window.center()
+            try await focusReplayWindow(window)
+            try await Task.sleep(for: .seconds(1))
+            try await noteSwipes(window, directory: directory)
+            let reminderFixture = Self(profile: directory.appending(path: "reminder-profile"))
+            try await reminderFixture.reminderSwipe(directory: directory)
+            try await focusReplayWindow(window)
+            try await cardInteraction(window, directory: directory, authority: authority)
+            try await fittingCards(window, directory: directory, authority: authority)
+            try await statusFilters(window, directory: directory, authority: authority)
+            try await installTasks(0, revision: 12, authority: authority)
+            try await Task.sleep(for: .milliseconds(800))
+            guard presentation.moku.landing else { throw ReplayError("Empty Overview did not enter landing") }
+            presentation.scene.setInputOpen(false)
+            try await Task.sleep(for: .milliseconds(650))
+            try await postScroll(window, CGPoint(x: 80, y: 120), y: 40, phase: .began)
+            try await postScroll(window, CGPoint(x: 80, y: 120), y: 0, phase: .ended)
+            guard !presentation.scene.notePanelOpen, let content = window.contentView,
+                  let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else {
+                throw ReplayError("Empty Overview background opened Note")
+            }
+            let bar = presentation.scene.capsuleFrame
+            let eyes = monitor.windowPoint(CGPoint(x: bar.midX, y: bar.midY))
+            try await postScroll(window, eyes, y: 40, phase: .began)
+            try await postScroll(window, eyes, y: 0, phase: .ended)
+            guard presentation.scene.notePanelOpen else { throw ReplayError("Empty Overview Chief Bar missed the Note swipe") }
+            try Data("true".utf8).write(to: directory.appending(path: "landing-note-swipe.json"))
+            return
+        }
         var records: [[String: Any]] = []
-        // Filter tops are logical points. Settings probes use actual-size window points.
-        let cases: [(size: CGSize, scale: CGFloat, filterTop: CGFloat, settingsProbe: CGPoint?, captureName: String?)] = [
-            (CGSize(width: 860, height: 640), 5, 76, nil, "maximum"),
-            (CGSize(width: 1100, height: 760), 1, 16, CGPoint(x: 1061, y: 22), "wide"),
-            (CGSize(width: 600, height: 480), 1, 76, CGPoint(x: 565, y: 16), "narrow"),
-            (CGSize(width: 1100, height: 760), 1.44, 16, nil, "menu"),
-            (CGSize(width: 860, height: 640), 2.5, 76, nil, nil),
-            (CGSize(width: 860, height: 640), 5, 76, nil, nil),
-            (CGSize(width: 860, height: 600), 5, 68, nil, nil),
+        let cases: [(CGSize, CGFloat, CGPoint, String)] = [
+            (CGSize(width: 1100, height: 760), 16, CGPoint(x: 1061, y: 22), "wide"),
+            (CGSize(width: 600, height: 480), 76, CGPoint(x: 565, y: 16), "narrow"),
         ]
         var previousOffset = 0.0
-        for (size, scale, filterTop, settingsProbe, captureName) in cases {
-            zoom = scale
+        for (size, filterTop, settingsProbe, captureName) in cases {
             window.setContentSize(size)
             window.setFrameTopLeftPoint(CGPoint(x: screen.visibleFrame.midX - size.width / 2, y: screen.visibleFrame.midY + size.height / 2))
             try await Task.sleep(for: .seconds(2))
@@ -131,18 +171,16 @@ private final class WheelSample: NSEvent {
             }
             let camera = presentation.canvas.camera
             let retained = camera.scrollOffset == min(previousOffset, camera.maximumOffset)
-            var result = try inspect(window, scale: scale, filterTop: filterTop)
+            var result = try inspect(window, filterTop: filterTop)
             result["retainedOffsetOnResize"] = retained
             result["passed"] = retained && result["passed"] as? Bool == true
-            if CommandLine.arguments.contains("--capture"), let captureName {
+            if CommandLine.arguments.contains("--capture") {
                 try await capture(window, to: directory.appending(path: captureName + ".png"))
             }
-            if let settingsProbe {
-                let opened = try await clickSettings(window, at: settingsProbe)
-                result["settingsProbeFromTopLeft"] = [settingsProbe.x, settingsProbe.y]
-                result["settingsOpened"] = opened
-                result["passed"] = opened && result["passed"] as? Bool == true
-            }
+            let opened = try await clickSettings(window, at: settingsProbe)
+            result["settingsProbeFromTopLeft"] = [settingsProbe.x, settingsProbe.y]
+            result["settingsOpened"] = opened
+            result["passed"] = opened && result["passed"] as? Bool == true
             previousOffset = camera.scrollOffset
             records.append(result)
             if result["passed"] as? Bool != true { print("Failed geometry: \(result)") }
@@ -150,12 +188,32 @@ private final class WheelSample: NSEvent {
         try JSONSerialization.data(withJSONObject: records, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "nested-header.json"))
         guard records.allSatisfy({ $0["passed"] as? Bool == true }) else { throw ReplayError("Nested header replay failed") }
-        zoom = 1
         window.setContentSize(CGSize(width: 900, height: 680))
         try await Task.sleep(for: .seconds(1))
+        try await focusReplayWindow(window)
         try await cardInteraction(window, directory: directory, authority: authority)
         try await fittingCards(window, directory: directory, authority: authority)
-        try await fittingCollection(window, directory: directory, authority: authority)
+        try await fittingCollection(directory: directory, authority: authority)
+    }
+
+    private func focusReplayWindow(_ window: NSWindow) async throws {
+        guard !window.isKeyWindow else { return }
+        // LaunchServices may leave the user's existing workspace in front
+        // during a replay. Reopen only this unique replay bundle.
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        configuration.createsNewApplicationInstance = false
+        configuration.addsToRecentItems = false
+        let app = try await NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration)
+        guard app.processIdentifier == getpid() else { throw ReplayError("Unexpected replay activation target") }
+        window.makeKeyAndOrderFront(nil)
+        let deadline = ContinuousClock.now + .seconds(3)
+        while !window.isKeyWindow {
+            guard ContinuousClock.now < deadline else {
+                throw ReplayError("Replay window could not acquire focus, policy=\(NSApp.activationPolicy().rawValue), frontmost=\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "none")")
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
     }
 
     private func capture(_ window: NSWindow, to url: URL) async throws {
@@ -219,6 +277,235 @@ private final class WheelSample: NSEvent {
         return blocked && camera.transform == before
     }
 
+    private func postScroll(_ window: NSWindow, _ point: CGPoint, y: Int32, phase: CGScrollPhase?,
+                            momentum: CGMomentumScrollPhase = .none, x: Int32 = 0,
+                            flags: CGEventFlags = []) async throws {
+        if !window.isKeyWindow && NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) {
+            try await focusReplayWindow(window)
+        }
+        // A window-addressed AppKit event supplies the native window identity.
+        // Reuse its CGEvent envelope to enqueue a real phased pixel scroll.
+        guard let event = NSEvent.mouseEvent(with: .mouseMoved, location: point, modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                context: nil, eventNumber: 0, clickCount: 0, pressure: 0)?.cgEvent else {
+            throw ReplayError("Cannot address the replay window")
+        }
+        event.type = .scrollWheel
+        event.flags = flags
+        event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        event.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: Int64(y))
+        event.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: Int64(x))
+        event.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase?.rawValue ?? 0))
+        event.setIntegerValueField(.scrollWheelEventMomentumPhase, value: Int64(momentum.rawValue))
+        guard let sample = NSEvent(cgEvent: event), sample.window === window, sample.locationInWindow == point,
+              sample.hasPreciseScrollingDeltas else { throw ReplayError("Pixel scroll lost its window target") }
+        NSApp.postEvent(sample, atStart: false)
+        try await Task.sleep(for: .milliseconds(55))
+    }
+
+    /// Post pixel scrolls to this replay process. AppKit chooses the responder
+    /// and invokes the installed monitors, including over the nested tag scroller.
+    private func noteSwipes(_ window: NSWindow, directory: URL) async throws {
+        guard let content = window.contentView,
+              let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content),
+              let parent = descendant(NativeReadingParentView.self, in: content),
+              let tags = descendant(NSScrollView.self, in: parent),
+              let card = presentation.canvas.presentedPlacements.compactMap({
+                  presentation.canvas.visibleFrame(for: $0.id)
+              }).first(where: { CGRect(origin: .zero, size: monitor.configuration.size).contains($0) }) else {
+            throw ReplayError("Missing Overview swipe targets")
+        }
+        let scene = presentation.scene
+        let camera = presentation.canvas.camera
+        let center: (CGRect) -> CGPoint = { CGPoint(x: $0.midX, y: $0.midY) }
+        let background = monitor.windowPoint(CGPoint(x: 8, y: monitor.configuration.size.height - 8))
+        let barPoint = monitor.windowPoint(center(scene.capsuleFrame))
+        let targets = [("background", background), ("card", monitor.windowPoint(center(card))),
+                       ("tag scroller", tags.convert(center(tags.bounds), to: nil)),
+                       ("Chief Bar", barPoint)]
+        let startOffset = camera.scrollOffset
+        let model = presentation.overview
+        try await postScroll(window, background, y: 9, phase: .began)
+        try await postScroll(window, background, y: 0, phase: .cancelled)
+        try await postScroll(window, background, y: 60, phase: nil, momentum: .begin)
+        try await postScroll(window, background, y: 0, phase: nil, momentum: .end)
+        guard model.statusFilter == .all, !scene.notePanelOpen else { throw ReplayError("Orphan momentum took action") }
+        for (region, point) in targets {
+            let generation = scene.noteOpenGeneration
+            let bar = region == "Chief Bar"
+            try await postScroll(window, point, y: 10, phase: .began)
+            guard !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Subthreshold swipe at " + region) }
+            try await postScroll(window, point, y: 17, phase: .changed)
+            guard scene.notePanelOpen == bar, scene.noteOpenGeneration == generation + (bar ? 1 : 0),
+                  model.statusFilter == (bar ? .all : .running) else { throw ReplayError("Wrong swipe owner at " + region) }
+            if bar { presentation.toggleMokuNote() }
+            // Reverse before lift, cross into the other surface and add inertia.
+            let other = bar ? background : barPoint
+            try await postScroll(window, other, y: -60, phase: .changed)
+            try await postScroll(window, other, y: 0, phase: .ended)
+            try await postScroll(window, other, y: -60, phase: nil, momentum: .begin, x: -20)
+            try await postScroll(window, other, y: 0, phase: nil, momentum: .end)
+            guard !scene.notePanelOpen, model.statusFilter == (bar ? .all : .running),
+                  camera.scrollOffset == startOffset else { throw ReplayError("Swipe tail escaped at " + region) }
+            if !bar {
+                try await postScroll(window, background, y: -40, phase: .began)
+                try await postScroll(window, background, y: 0, phase: .ended)
+            }
+            try await Task.sleep(for: .milliseconds(600))
+        }
+        let inverted = WheelSample(window: window, point: background, x: 0, y: -25)
+        guard monitor.handle(inverted) == nil, !scene.notePanelOpen, model.statusFilter == .running else {
+            throw ReplayError("Natural Scrolling changed the physical filter gesture")
+        }
+        _ = monitor.handle(WheelSample(window: window, point: background, x: 0, y: 0, phase: .ended))
+        try await postScroll(window, background, y: -40, phase: .began)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        try await Task.sleep(for: .milliseconds(650))
+        let tagPoint = tags.convert(center(tags.bounds), to: nil)
+        let tagOffset = tags.contentView.bounds.minX
+        try await postScroll(window, tagPoint, y: 0, phase: .began, x: tagOffset > 0 ? 40 : -40)
+        try await postScroll(window, tagPoint, y: 0, phase: .ended)
+        guard tags.contentView.bounds.minX != tagOffset, camera.scrollOffset == startOffset,
+              !scene.notePanelOpen else { throw ReplayError("The overflowing tags lost horizontal scrolling") }
+
+        try await postScroll(window, barPoint, y: 40, phase: .began)
+        try await postScroll(window, barPoint, y: 0, phase: .ended)
+        try await Task.sleep(for: .milliseconds(850))
+        let notePoint = monitor.windowPoint(center(scene.capsuleFrame))
+        let hit = content.hitTest(content.superview?.convert(notePoint, from: nil) ?? notePoint)
+        guard let scroller = hit?.enclosingScrollView, let document = scroller.documentView,
+              document.bounds.height > scroller.contentView.bounds.height + 80 else {
+            throw ReplayError("Note swipe fixture missed the overflowing Note body")
+        }
+        if CommandLine.arguments.contains("--capture") {
+            try await capture(window, to: directory.appending(path: "chief-note.png"))
+        }
+        let generation = scene.noteOpenGeneration
+        let original = scroller.contentView.bounds.minY
+        try await postScroll(window, notePoint, y: -70, phase: .began)
+        try await postScroll(window, notePoint, y: 0, phase: .ended)
+        let scrolled = scroller.contentView.bounds.minY
+        try await postScroll(window, notePoint, y: 40, phase: .began)
+        try await postScroll(window, notePoint, y: 0, phase: .ended)
+        guard scrolled > original, scroller.contentView.bounds.minY < scrolled,
+              scene.notePanelOpen, scene.noteOpenGeneration == generation else {
+            throw ReplayError("The open Note lost native scrolling or opened twice")
+        }
+        presentation.toggleMokuNote()
+        try await Task.sleep(for: .milliseconds(650))
+        try await postScroll(window, barPoint, y: -40, phase: .began)
+        try await postScroll(window, barPoint, y: 0, phase: .ended)
+        try await postScroll(window, background, y: 40, phase: .began, flags: .maskShift)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        guard !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Downward Bar or modified canvas input took action") }
+        // The Note and the restored 18-card layout share a motion coordinator.
+        // Test a fresh pan once the production camera admits a new contact.
+        let panDeadline = ContinuousClock.now + .seconds(6)
+        while !monitor.enabled() {
+            guard ContinuousClock.now < panDeadline else {
+                throw ReplayError("Camera did not resume after Note: stage=\(String(describing: presentation.canvas.motionStages.activeOwner)), layout=\(presentation.canvas.isLayingOut)")
+            }
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        let panStart = camera.scrollOffset
+        try await postScroll(window, background, y: 3, phase: .began, x: panStart > 0 ? 40 : -40)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        guard !scene.notePanelOpen, camera.scrollOffset != panStart else {
+            throw ReplayError("Horizontal window scroll did not reach the camera: offset=\(panStart)->\(camera.scrollOffset)/\(camera.maximumOffset), point=\(background), phase=\(monitor.sequence.stage), owner=\(String(describing: monitor.sequence.owner)), pause=\(presentation.canvas.interactionPauseReasons), layingOut=\(presentation.canvas.isLayingOut), input=\(scene.inputOpen)")
+        }
+        scene.setInputOpen(true)
+        try await postScroll(window, background, y: 40, phase: .began)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        guard scene.inputOpen, !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Swipe displaced the composer") }
+        scene.setInputOpen(false)
+        presentation.openSettings()
+        try await postScroll(window, background, y: 40, phase: .began)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        guard scene.settingsOpen, !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Swipe escaped Settings") }
+        scene.closeSettings()
+        let deadline = ContinuousClock.now + .seconds(4)
+        while scene.settingsOpen || !monitor.enabled() {
+            guard ContinuousClock.now < deadline else { throw ReplayError("Overview did not resume after Settings") }
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        try JSONSerialization.data(withJSONObject: ["regions": targets.map { $0.0 },
+            "singleOpenThroughMomentum": true, "horizontalScroll": true, "composerExcluded": true, "settingsExcluded": true,
+            "tagOffsets": [tagOffset, tags.contentView.bounds.minX], "noteOffsets": [original, scrolled],
+            "naturalScrolling": true])
+            .write(to: directory.appending(path: "overview-note-swipe.json"))
+    }
+
+    /// Exercise both event owners in the same production workspace, entirely offscreen.
+    private func reminderSwipe(directory: URL) async throws {
+        guard let edge = NSScreen.screens.map({ $0.frame.maxX }).max() else { throw ReplayError("Missing screen") }
+        // Keep WindowServer composing the panel while the controls stay offscreen.
+        let frame = CGRect(x: edge - 2, y: 200, width: 900, height: 680)
+        let window = ReminderReplayPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let root = NSHostingView(rootView: NativeWorkspaceView(model: workspace, presentation: presentation)
+            .environment(\.scenePhase, .active))
+        window.contentView = root
+        window.setFrameOrigin(frame.origin)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        guard NSScreen.screens.allSatisfy({ window.frame.intersection($0.frame).width <= 2 }) else {
+            throw ReplayError("Reminder interaction must run offscreen")
+        }
+        try await installTasks(18, revision: 1, authority: UUID(), manyDirectories: true)
+        try await Task.sleep(for: .seconds(1))
+        let timer = workspace.timer, scene = presentation.scene
+        timer.receive(nil)
+        let message = String(repeating: "Check this.\n", count: 10)
+        let row: JSONValue = .object(["type": .text("tool-operation"), "name": .text("timer"),
+            "id": .text("reminder"), "executionId": .text("fixture"), "completedAt": .integer(1),
+            "result": .object(["ok": .bool(true)]), "arguments": .object(["text": .text(message)])])
+        timer.receive(try HarnessThread(id: "moku", harnessID: "codex", revision: 1,
+            sessionState: .null, observation: .init(), cwd: "/fixture", settings: .object([:]),
+            createdAt: 1, updatedAt: 2, title: "Chief", tags: [], moku: true, transcript: .array([row])))
+        try await Task.sleep(for: .milliseconds(800))
+        guard let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: root),
+              let alert = timer.current else { throw ReplayError("Missing reminder or scroll monitor: pending=\(timer.pending.count)") }
+        func messageScroller(in view: NSView) -> NSScrollView? {
+            if let scroller = view as? NSScrollView, scroller.contentView.bounds.height > 0,
+               scroller.contentView.bounds.height <= 41, let document = scroller.documentView,
+               document.bounds.height > scroller.contentView.bounds.height + 80,
+               monitor.reminderScrollRegions?.contains(scroller.convert(CGPoint(x: scroller.bounds.midX,
+                    y: scroller.bounds.midY), to: nil), in: window) == true { return scroller }
+            return view.subviews.lazy.compactMap { messageScroller(in: $0) }.first
+        }
+        guard let scroller = messageScroller(in: root) else { throw ReplayError("Missing long reminder viewport") }
+        let clip = scroller.contentView
+        let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
+        let bodyOnScreen = window.convertToScreen(clip.convert(clip.bounds, to: nil))
+        guard NSScreen.screens.allSatisfy({ !$0.frame.intersects(bodyOnScreen) }) else {
+            throw ReplayError("Reminder viewport must stay outside all screens")
+        }
+        let generation = scene.noteOpenGeneration, camera = presentation.canvas.camera.scrollOffset
+        try await postScroll(window, point, y: -70, phase: .began)
+        try await postScroll(window, point, y: 0, phase: .ended)
+        let down = clip.bounds.minY
+        try await postScroll(window, point, y: 40, phase: .began)
+        try await postScroll(window, point, y: 0, phase: .ended)
+        let up = clip.bounds.minY
+        guard down > 0, up < down, presentation.overview.statusFilter == .all, scene.noteOpenGeneration == generation, !scene.notePanelOpen,
+              timer.current?.id == alert.id, presentation.canvas.camera.scrollOffset == camera else {
+            throw ReplayError("Long reminder lost native scroll or Note took its gesture: \(down), \(up)")
+        }
+        let background = monitor.windowPoint(CGPoint(x: 8, y: monitor.configuration.size.height - 8))
+        try await postScroll(window, background, y: 36, phase: .began)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        guard !scene.notePanelOpen, scene.noteOpenGeneration == generation, presentation.overview.statusFilter == .running, timer.current?.id == alert.id else {
+            throw ReplayError("Exposed Overview lost its status gesture while a reminder was pending")
+        }
+        try await Task.sleep(for: .milliseconds(700))
+        guard let receipt = descendant(NativeMokuTimerReceiptButton.ReceiptButton.self, in: root),
+              receipt.accessibilityPerformPress(), timer.current == nil else { throw ReplayError("Missing explicit receipt") }
+        try JSONSerialization.data(withJSONObject: ["offscreen": true, "scrollOffsets": [down, up],
+            "backgroundFilter": presentation.overview.statusFilter.rawValue, "explicitReceipt": true])
+            .write(to: directory.appending(path: "reminder-note-ownership.json"))
+    }
+
     private func cardInteraction(_ window: NSWindow, directory: URL, authority: UUID) async throws {
         guard window.isKeyWindow, let content = window.contentView,
               let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else {
@@ -244,7 +531,7 @@ private final class WheelSample: NSEvent {
         let atEnd = camera.scrollOffset
         try await Task.sleep(for: .milliseconds(200))
         guard atEnd == camera.maximumOffset, atEnd > 0, !initiallyOffscreen.isEmpty else {
-            throw ReplayError("Dense fixture did not reach its trailing boundary")
+            throw ReplayError("Dense fixture did not reach its trailing boundary: offset=\(atEnd)/\(camera.maximumOffset), offscreen=\(initiallyOffscreen.count), enabled=\(monitor.enabled()), canvasStart=\(monitor.canStart(at: monitor.canvasPoint(point))), owner=\(String(describing: monitor.sequence.owner)), buttons=\(NSEvent.pressedMouseButtons)")
         }
         let envelope = canvas.presentedPlacements.compactMap { canvas.displayedFrame(for: $0.id) }
             .reduce(CGRect.null) { $0.union($1) }
@@ -283,6 +570,11 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Click missed \(target.id), selected=\(String(describing: presentation.selected)), "
                 + "viewport=\(size), frame=\(frame), windowPoint=\(windowPoint), hit=\(String(describing: clickedView)), "
                 + "active=\(canvas.allowsActivation(cardID: target.id)), key=\(window.isKeyWindow)")
+        }
+        try await postScroll(window, windowPoint, y: 40, phase: .began)
+        try await postScroll(window, windowPoint, y: 0, phase: .ended)
+        guard !presentation.scene.notePanelOpen, presentation.overview.statusFilter == .all, presentation.selected?.threadID.string == target.id else {
+            throw ReplayError("A swipe in the reader activated Overview")
         }
         presentation.showOverview()
         try await Task.sleep(for: .seconds(1))
@@ -381,11 +673,121 @@ private final class WheelSample: NSEvent {
             .write(to: directory.appending(path: "overview-fit.json"))
     }
 
-    private func fittingCollection(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+    private func statusFilters(_ window: NSWindow, directory: URL, authority: UUID) async throws {
         let model = presentation.overview, canvas = presentation.canvas
-        let ids = (0..<8).map { JSONText("report-\($0)") }
+        let running = ["Executing", "Permission", "Background", "Submitting"]
+        let ordinary = running + ["Delivered", "Stopped", "Idle"]
+        let reportIDs = (1...8).map { "Report-\($0)" }
+        let permission = PublicInteraction(id: "permission", kind: .permission, title: "Review request",
+            actions: [.init(id: "allow", intent: .allow, label: "Allow")], questions: [])
+        func thread(_ name: String, _ status: PublicExecution.Status?, revision: Int = 1) throws -> JSONValue {
+            let execution = try status.map { status in
+                try PublicExecution(executionID: JSONText("run-" + name), status: status, startedAt: 1,
+                    finishedAt: [.completed, .interrupted, .failed].contains(status) ? 2 : nil,
+                    interactions: status == .waitingForUser ? [permission] : [])
+            }
+            let observation = ThreadPublicObservation(latestExecution: execution, backgroundWork: name == "Background" ? .init() : nil)
+            let tag: JSONText = name == "Delivered" ? "Shipping" : "Development"
+            let thread = try HarnessThread(id: JSONText(name), harnessID: "codex", revision: revision, sessionState: .null,
+                observation: observation, cwd: "/fixture", settings: .object([:]), createdAt: 1, updatedAt: 2,
+                title: JSONText(name), tags: [tag], tagEmojis: [tag: name == "Delivered" ? "📦" : "🔧"],
+                directoryTag: "Fixture", directoryScope: "/fixture")
+            var fields = thread.json.objectValue!
+            fields["pendingInput"] = .bool(name == "Submitting")
+            return .object(fields)
+        }
+        let fixtures = try [thread("Executing", .running), thread("Permission", .waitingForUser),
+            thread("Background", .completed), thread("Submitting", nil), thread("Delivered", .completed),
+            thread("Stopped", .interrupted), thread("Idle", nil), thread("Failed", .failed)]
+        window.setContentSize(CGSize(width: 1024, height: 704))
+        model.selectTag(nil)
+        try await installTasks(0, revision: 8, authority: authority,
+            reports: reportFixtures(reportIDs.map { JSONText($0) }), extraThreads: fixtures)
+        guard let monitor = window.contentView.flatMap({ descendant(NativeOverviewScrollInput.MonitorView.self, in: $0) }) else {
+            throw ReplayError("Status replay has no window scroll router")
+        }
+        let tags = model.visibleFilters
+        let tagIDs = tags.flatMap { [$0.id] + $0.children.map(\.id) }
+        var samples = [[String: Any]]()
+        func check(_ name: String, _ mode: NativeOverviewStatusFilter, _ expected: [String],
+                   selected: String = "", needsBothReportCards: Bool = false) async throws {
+            let deadline = ContinuousClock.now + .seconds(5)
+            while Set(model.items.map(\.id)) != canvas.mountedCardIDs || canvas.isLayingOut {
+                guard ContinuousClock.now < deadline else { throw ReplayError("Cards did not settle at " + name) }
+                try await Task.sleep(for: .milliseconds(30))
+            }
+            var agents = [String](), documents = [String](), collected = [String]()
+            for item in model.items {
+                switch model.snapshot(for: item) {
+                case .harness(let card): agents.append(card.input.thread.id.string)
+                case .application(_, let card): documents.append(card.entry.ref.threadID.string)
+                case .collection(_, let members): collected += members.map(\.entry.ref.threadID.string)
+                case nil: throw ReplayError("Missing mounted snapshot at " + name)
+                }
+            }
+            let visibleTags = model.visibleFilters.flatMap { [$0.id] + $0.children.map(\.id) }
+            guard model.statusFilter == mode, model.selectedTag == selected, visibleTags == tagIDs,
+                  (agents + documents + collected).sorted() == expected.sorted(),
+                  !needsBothReportCards || (!documents.isEmpty && !collected.isEmpty),
+                  !presentation.scene.notePanelOpen else {
+                throw ReplayError("Unexpected \(name): mode=\(model.statusFilter), agents=\(agents), reports=\(documents), grouped=\(collected), tags=\(visibleTags), selected=\(model.selectedTag)")
+            }
+            samples.append(["step": name, "status": mode.rawValue, "selectedTag": selected, "visibleTags": visibleTags,
+                "agents": agents, "individualReports": documents, "collectionMembers": collected,
+                "mountedCardCount": canvas.mountedCardIDs.count, "noteOpen": presentation.scene.notePanelOpen])
+            if CommandLine.arguments.contains("--capture") {
+                try await capture(window, to: directory.appending(path: "status-" + name + ".png"))
+            }
+        }
+        func swipe(_ y: Int32) async throws {
+            let point = monitor.windowPoint(CGPoint(x: 12, y: 220))
+            try await postScroll(window, point, y: y, phase: .began)
+            try await postScroll(window, point, y: y * 2, phase: .changed)
+            try await postScroll(window, point, y: 0, phase: .ended)
+            try await postScroll(window, point, y: y, phase: nil, momentum: .begin)
+            try await postScroll(window, point, y: 0, phase: nil, momentum: .end)
+        }
+        func updateDelivered(_ status: PublicExecution.Status, revision: Int) async throws {
+            let updated = try thread("Delivered", status, revision: revision)
+            let patch: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(revision - 1),
+                "revision": .integer(revision), "threads": .object(["upserts": .array([updated]), "removedIds": .array([])])])
+            let next = try RuntimeState.applying(patch, to: workspace.state!)
+            await workspace.installPrepared(next, event: .mutation(patch, state: next, authority: authority))
+        }
+        try await check("all", .all, ordinary + reportIDs)
+        try await swipe(40)
+        try await check("up", .running, running)
+        try await swipe(40)
+        try await check("upper-limit", .running, running)
+        try await swipe(-40)
+        try await check("back-from-running", .all, ordinary + reportIDs)
+        try await swipe(-40)
+        try await check("down", .completed, ["Delivered"] + reportIDs, needsBothReportCards: true)
+        try await swipe(-40)
+        try await check("lower-limit", .completed, ["Delivered"] + reportIDs)
+        try await swipe(40)
+        try await check("back-from-completed", .all, ordinary + reportIDs)
+        guard let parent = tags.first(where: { $0.scope == "/fixture" }),
+              let child = parent.children.first(where: { $0.tag == "Shipping" }) else { throw ReplayError("Missing Shipping chip") }
+        try presentation.performOverviewInteraction(.overviewDirectoryOpen(parent.id))
+        try await Task.sleep(for: .milliseconds(400))
+        try presentation.performOverviewInteraction(.overviewDirectorySelect(directory: parent.id, filter: child.id))
+        try await check("tag", .all, ["Delivered"], selected: "Shipping")
+        try await swipe(40)
+        try await check("empty-tag", .running, [], selected: "Shipping")
+        try await updateDelivered(.running, revision: 9)
+        try await check("live-admit", .running, ["Delivered"], selected: "Shipping")
+        try await updateDelivered(.completed, revision: 10)
+        try await check("live-remove", .running, [], selected: "Shipping")
+        try await swipe(-40)
+        try await check("tag-restored", .all, ["Delivered"], selected: "Shipping")
+        try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "overview-status.json"))
+    }
+
+    private func reportFixtures(_ ids: [JSONText]) -> [JSONValue] {
         let now = Date().timeIntervalSince1970 * 1000
-        let reports = ids.enumerated().map { index, id -> JSONValue in
+        return ids.enumerated().map { index, id -> JSONValue in
             let ref = ApplicationThreadRef(threadID: id, typeID: "report.document")
             let created = now - Double(ids.count - index)
             return .object(["id": .string(id), "ref": ref.json, "revision": .integer(1),
@@ -396,12 +798,18 @@ private final class WheelSample: NSEvent {
                     "readingSeconds": .integer(20), "shortDescription": .text("Report"), "previewText": .text("Report"),
                     "relatedExecutions": .array([])])])
         }
+    }
+
+    private func fittingCollection(directory: URL, authority: UUID) async throws {
+        let model = presentation.overview, canvas = presentation.canvas
+        let ids = (0..<8).map { JSONText("report-\($0)") }
+        let reports = reportFixtures(ids)
         model.selectTag(nil)
         var samples = [[String: Any]]()
         func check(_ width: Int, _ height: Int, tasks: Int, grouped: Int, scrolls: Bool = false) async throws {
-            // Fit the recording-sized logical viewport on a smaller desktop.
-            zoom = 0.5
-            window.setContentSize(CGSize(width: Double(width) * zoom, height: Double(height) * zoom))
+            // Collection membership depends on the proposed layout size, including
+            // viewports wider than the display. Keep the native window in place.
+            collectionViewport = CGSize(width: width, height: height)
             let expected = ids.prefix(grouped).map(\.string)
             let deadline = ContinuousClock.now + .seconds(5)
             while true {
@@ -477,7 +885,7 @@ private final class WheelSample: NSEvent {
             .write(to: directory.appending(path: "overview-keyboard.json"))
     }
 
-    private func inspect(_ window: NSWindow, scale: CGFloat, filterTop: CGFloat) throws -> [String: Any] {
+    private func inspect(_ window: NSWindow, filterTop: CGFloat) throws -> [String: Any] {
         guard let content = window.contentView, let frame = content.superview,
               let host = descendant(NativeReadingParentView.self, in: content),
               let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: host),
@@ -526,16 +934,16 @@ private final class WheelSample: NSEvent {
             abs(center.x - x) <= 0.5 && abs(center.y - 38) <= 0.5
         }
         let renderedFilterTop = window.frame.height - filterFrame.maxY
-        let filterPositioned = abs(renderedFilterTop - filterTop * scale) <= 0.5
+        let filterPositioned = abs(renderedFilterTop - filterTop) <= 0.5
         let filterBottom = window.frame.height - filterFrame.minY
         let filterInside = filterFrame.minY >= 0 && filterFrame.maxY <= window.frame.height
-        let filterExcluded = filterBottom <= boundary * scale
+        let filterExcluded = filterBottom <= boundary
         let strip = size.height - boundary
         let inputPoint = monitor.windowPoint(below)
         let pointInside = CGRect(origin: .zero, size: window.frame.size).contains(inputPoint)
-        return ["windowSize": [window.frame.width, window.frame.height], "scale": scale,
+        return ["windowSize": [window.frame.width, window.frame.height],
                 "logicalViewport": [size.width, size.height], "filterTopInWindow": renderedFilterTop,
-                "expectedFilterTopInWindow": filterTop * scale, "filterBottomInWindow": filterBottom,
+                "expectedFilterTopInWindow": filterTop, "filterBottomInWindow": filterBottom,
                 "buttonCentersFromTopLeft": buttonCenters.map { [$0.x, $0.y] }, "buttonHits": hits,
                 "headerInputBottom": boundary, "canvasStripHeight": strip, "inputPointInWindow": [inputPoint.x, inputPoint.y],
                 "rejectsHeader": rejectsHeader, "wheelAndTrackpad": scrolled, "diagonal": diagonal, "vertical": vertical,

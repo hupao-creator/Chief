@@ -156,14 +156,6 @@ func (h *Host) application(id string) error {
 	}
 	return nil
 }
-func (h *Host) Manifests() []plugin.ApplicationManifest {
-	ids := sortedKeys(h.manifests)
-	out := make([]plugin.ApplicationManifest, 0, len(ids))
-	for _, id := range ids {
-		out = append(out, detachedManifest(h.manifests[id]))
-	}
-	return out
-}
 func detachedManifest(manifest plugin.ApplicationManifest) plugin.ApplicationManifest {
 	manifest.Contributes.BackgroundAgents = slices.Clone(manifest.Contributes.BackgroundAgents)
 	manifest.Contributes.ThreadTypes = slices.Clone(manifest.Contributes.ThreadTypes)

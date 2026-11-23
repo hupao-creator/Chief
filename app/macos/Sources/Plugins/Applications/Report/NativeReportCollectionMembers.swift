@@ -31,7 +31,7 @@ struct NativeReportCollectionMembers: View {
         let members = displayedMembers ?? props.map(Member.init)
         let nextExitDeadline = members.compactMap(\.exitDeadline).min()
         GeometryReader { geometry in
-            // At high window zoom the panel can be narrower than a single
+            // The panel can be narrower than a single
             // Overview card. Fit the card layout and its hit targets together.
             let layoutWidth = max(geometry.size.width, NativeGeometry.overviewCard.width)
             let scale = max(1, geometry.size.width) / layoutWidth

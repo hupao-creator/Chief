@@ -19,6 +19,7 @@ for line in sys.stdin:
                 time.sleep(.005)
         value = {"models": [{"value": "fixture-model", "supportsEffort": False}]}
     elif kind == "get_settings":
+        time.sleep(float(os.environ.get("CHIEF_ONBOARDING_FIXTURE_DELAY", "0")))
         if (root / "hold").exists():
             (root / "entered").touch()
             time.sleep(1.25)

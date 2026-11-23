@@ -22,11 +22,8 @@ public struct OpenCodeHarnessPlugin: HarnessPlugin {
         if presentation.raw["cli"]?["status"] != .text("ready") {
             return presentation.raw["cli"]?["message"]?.stringValue ?? "OpenCode CLI is unavailable."
         }
-        // This phase can still filter selectable models. Wait for it here,
-        // rather than letting the first mounted editor change its catalog.
-        if presentation.raw["accountCheckPending"] == .bool(true) { return "OpenCode model availability is not confirmed yet. Retry shortly." }
         if !presentation.models.contains(where: { $0["unavailableReason"]?.stringValue?.isEmpty != false }) {
-            return "OpenCode returned no available models. Configure a provider and retry."
+            return presentation.raw["cli"]?["message"]?.stringValue ?? "OpenCode returned no available models. Configure a provider and retry."
         }
         if !presentation.agents.contains(where: { $0["id"] == .text("build") }) { return "OpenCode's build agent is unavailable." }
         return nil

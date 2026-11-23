@@ -2,27 +2,30 @@ import AppKit
 import QuartzCore
 import SwiftUI
 
-/// Send advances only this viewport. Keep the outgoing reader at its actual
-/// scroll position until the accepted execution's scoped content is ready.
+/// Only the execution viewport turns. A submitted page can land before its
+/// receipt, while the accepted reader still owns content and input readiness.
 public struct NativeReportExecutionScroll<Content: View>: NSViewRepresentable {
     private let visit: UUID
     private let continuing: Bool
     private let active: Bool
     private let onReady: () -> Void
+    private let connection: NativeReportSidecardPresentation.Connection?
     private let content: Content
     @Environment(\.scenePhase) private var scenePhase
 
-    public init(visit: UUID, continuing: Bool, active: Bool, onReady: @escaping () -> Void,
+    public init(visit: UUID, continuing: Bool, active: Bool, connection: NativeReportSidecardPresentation.Connection? = nil,
+                onReady: @escaping () -> Void,
                 @ViewBuilder content: () -> Content) {
         self.visit = visit; self.continuing = continuing; self.active = active
-        self.onReady = onReady; self.content = content()
+        self.connection = connection; self.onReady = onReady; self.content = content()
     }
 
     public func makeNSView(context: Context) -> NSView { ReportExecutionScrollView() }
     public func updateNSView(_ nsView: NSView, context: Context) {
         guard let view = nsView as? ReportExecutionScrollView else { return }
         view.update(content: AnyView(content), environment: context.environment, visit: visit,
-            continuing: continuing, animated: active && scenePhase == .active,
+            continuing: continuing, animated: active && scenePhase == .active && !context.environment.accessibilityReduceMotion,
+            connection: connection,
             onReady: onReady)
     }
     public func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSView, context: Context) -> CGSize? {
@@ -54,7 +57,7 @@ public struct NativeReportExecutionScroll<Content: View>: NSViewRepresentable {
     required init?(coder: NSCoder) { nil }
 
     func update(content: AnyView, environment: EnvironmentValues, visit: UUID,
-                continuing: Bool, animated: Bool, onReady: @escaping () -> Void) {
+                continuing: Bool, animated: Bool, connection: NativeReportSidecardPresentation.Connection?, onReady: @escaping () -> Void) {
         if self.visit != visit {
             discardOutgoing()
             resized = false
@@ -68,10 +71,10 @@ public struct NativeReportExecutionScroll<Content: View>: NSViewRepresentable {
             self.visit = visit
         }
         self.animated = animated && !resized; self.onReady = onReady
-        current.update(content: content, environment: environment, active: outgoing == nil) { [weak self, weak current] in
+        current.update(content: content, environment: environment, connection: connection, active: outgoing == nil) { [weak self, weak current] in
             guard let self, let current, self.current === current, self.visit == visit else { return }
             current.ready = true
-            scheduleLanding()
+            if current.landed { publishContent() } else { scheduleLanding() }
         }
         layoutSeats()
         if travelling && !self.animated { finish() }
@@ -100,14 +103,14 @@ public struct NativeReportExecutionScroll<Content: View>: NSViewRepresentable {
     }
 
     private func scheduleLanding() {
-        guard current.ready, !current.published, !travelling, !scheduled,
+        guard current.hasPage, !current.landed, !travelling, !scheduled,
               bounds.width > 0, bounds.height > 0 else { return }
         scheduled = true
         let token = visit
         DispatchQueue.main.async { [weak self] in
             guard let self, visit == token else { return }
             scheduled = false
-            guard current.ready, !current.published, !travelling,
+            guard current.hasPage, !current.landed, !travelling,
                   bounds.width > 0, bounds.height > 0 else { return }
             current.layoutSubtreeIfNeeded()
             // Readiness may have queued before a resize. Reconcile its geometry
@@ -146,7 +149,12 @@ public struct NativeReportExecutionScroll<Content: View>: NSViewRepresentable {
         discardOutgoing()
         current.setActive(true)
         layoutSeats()
-        guard !current.published else { return }
+        current.landed = true
+        publishContent()
+    }
+
+    private func publishContent() {
+        guard current.ready, current.landed, !current.published else { return }
         current.published = true
         let token = visit
         DispatchQueue.main.async { [weak self] in
@@ -173,8 +181,11 @@ public struct NativeReportExecutionScroll<Content: View>: NSViewRepresentable {
 @MainActor private final class ReportExecutionScrollSeat: NSView {
     let host = NSHostingView(rootView: AnyView(EmptyView()))
     var ready = false
+    var landed = false
     var published = false
+    var hasPage: Bool { ready || connection != nil }
     var fades = true
+    private var connection: NativeReportSidecardPresentation.Connection?
     private var content = AnyView(EmptyView())
     private var environment = EnvironmentValues()
     private var onReady: () -> Void = {}
@@ -186,16 +197,42 @@ public struct NativeReportExecutionScroll<Content: View>: NSViewRepresentable {
         addSubview(host)
     }
     required init?(coder: NSCoder) { nil }
-    func update(content: AnyView, environment: EnvironmentValues, active: Bool, onReady: @escaping () -> Void) {
-        self.content = content; self.environment = environment; self.onReady = onReady
+    func update(content: AnyView, environment: EnvironmentValues, connection: NativeReportSidecardPresentation.Connection?, active: Bool, onReady: @escaping () -> Void) {
+        self.connection = connection; self.content = content; self.environment = environment; self.onReady = onReady
         setActive(active)
     }
     func setActive(_ active: Bool) {
         var environment = environment
         environment.nativeReadingInteractionActive = environment.nativeReadingInteractionActive && active
-        host.rootView = AnyView(NativeRelatedExecutionEntrance(fades: fades, onReady: onReady) { content }
+        host.rootView = AnyView(ZStack {
+            NativeRelatedExecutionEntrance(fades: fades, onReady: onReady) { content }
+                .opacity(connection == nil ? 1 : 0)
+                .accessibilityHidden(connection != nil)
+                .allowsHitTesting(connection == nil)
+            if let connection {
+                ReportConnectingPage(connection: connection)
+            }
+        }
             .allowsHitTesting(active).disabled(!active).accessibilityHidden(!active)
             .environment(\.self, environment))
     }
     override func layout() { super.layout(); host.frame = bounds }
+}
+
+/// Use the reader's own heading, author slot, margins and inline loading text.
+private struct ReportConnectingPage: View {
+    let connection: NativeReportSidecardPresentation.Connection
+    var body: some View {
+        GeometryReader { geometry in
+            VStack(alignment: .leading, spacing: 12) {
+                NativeThreadHeading(title: connection.title.text ?? "", emoji: connection.title.emoji)
+                ThreadAuthorLabel(author: nil, resolved: false)
+                ThreadConnectionLabel(harness: connection.harness)
+            }
+            .frame(maxWidth: NativeGeometry.readingWidth, alignment: .leading)
+            .nativeThreadDocumentMargins(standard: geometry.size.width <= 540 ? 18 : 32, viewportWidth: geometry.size.width)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 32)
+        }
+    }
 }

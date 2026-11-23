@@ -28,7 +28,7 @@ Chief coordinates work performed by native agent runtimes.
 
 **Moku Thread**: The conversation in which Moku communicates with the user and coordinates ordinary Agent Threads.
 
-**Moku conversation history**: A previous Moku Thread retained for reading after
+**Moku conversation history**: A read-only record of a previous Moku Thread retained after
 changing its coordinating Harness. It remains Moku-owned history, with no
 authority to resume execution or become an ordinary Agent Thread.
 

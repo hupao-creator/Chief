@@ -1,3 +1,4 @@
+import ChiefCore
 import ChiefPluginAPI
 import Observation
 import SwiftUI
@@ -51,28 +52,35 @@ public final class NativeReportSidecardPresentation {
         let text: String?
         let emoji: String
     }
-    private enum Connection {
-        case submitted(request: UUID, selection: UUID, harness: String)
-        case arriving(visit: UUID, harness: String)
+    public struct Connection {
+        let request: UUID
+        let selection: UUID
+        public let source: ApplicationExecutionRef
+        let harness: String
+        let title: SendTitle
+        public fileprivate(set) var destination: ApplicationExecutionRef?
     }
-    private var connection: Connection?
-    public var connectingHarness: String? {
-        guard active == .relatedExecutions, !retainingForReturn else { return nil }
-        switch connection {
-        case let .submitted(_, selection, harness) where selection == selectionID: return harness
-        case let .arriving(visit, harness) where visit == executionVisit && !executionReady: return harness
-        default: return nil
-        }
-    }
+    public private(set) var connection: Connection?
+    // The submitted page and its accepted reader share one native scroll seat.
+    // The previous execution still owns its draft until the new input is admitted.
+    public private(set) var pageVisit = UUID()
+    public var composerExecution: ApplicationExecutionRef? { connection?.source ?? inputExecution }
 
-    public func beginConnection(request: UUID, from source: ApplicationExecutionRef, harness: String) {
+    public func beginConnection(request: UUID, from source: ApplicationExecutionRef, harness: String, text: String) {
         guard inputExecution == source, inputReady, executionReady, active == .relatedExecutions,
-              !retainingForReturn else { return }
-        connection = .submitted(request: request, selection: selectionID, harness: harness)
+              !retainingForReturn, connection == nil else { return }
+        connection = Connection(request: request, selection: selectionID, source: source,
+            harness: harness, title: sendTitle(text))
+        pageVisit = request
     }
 
     public func endConnection(request: UUID) {
-        if case let .submitted(owner, _, _) = connection, owner == request { connection = nil }
+        guard let connection, connection.request == request, connection.destination == nil else { return }
+        // A rejected historical follow-up returns to the exact run that owned the draft.
+        self.connection = nil
+        selectedExecution = connection.source
+        executionVisit = UUID(); pageVisit = executionVisit
+        continuedExecution = false
     }
 
     public enum Card { case relatedExecutions, browser }
@@ -84,6 +92,7 @@ public final class NativeReportSidecardPresentation {
     // The entry stays mounted as the TOC changes the execution that owns input.
     public private(set) var inputExecution: ApplicationExecutionRef?
     public private(set) var inputReady = false
+    public private(set) var displayedExecutionID: JSONText?
     public private(set) var entryPosition: HarnessReadingTarget.Position = .start
     public private(set) var executionVisit = UUID()
     public private(set) var continuedExecution = false
@@ -101,47 +110,68 @@ public final class NativeReportSidecardPresentation {
     public func selectExecution(_ reference: ApplicationExecutionRef?, position: HarnessReadingTarget.Position = .start) {
         guard !retainingForReturn else { return }
         connection = nil
-        selectionID = UUID(); executionVisit = UUID()
-        selectedExecution = reference; inputExecution = nil; inputReady = false; entryPosition = position
+        selectionID = UUID(); executionVisit = UUID(); pageVisit = executionVisit
+        selectedExecution = reference; inputExecution = nil; inputReady = false; displayedExecutionID = nil; entryPosition = position
         continuedExecution = false; executionReady = false
     }
 
-    public func updateInput(_ reference: ApplicationExecutionRef?, ready: Bool, visit: UUID) {
+    public func updateInput(_ reference: ApplicationExecutionRef?, ready: Bool, displayedExecutionID: JSONText? = nil, visit: UUID) {
         guard executionVisit == visit, !retainingForReturn else { return }
+        if let connection {
+            guard let destination = connection.destination, reference == destination else { return }
+        }
+        self.displayedExecutionID = displayedExecutionID
         if inputReady != ready { inputReady = ready }
         if inputExecution != reference {
             inputExecution = reference
             selectionID = UUID()
         }
+        releaseComposerWhenReady()
     }
 
     public func continueExecution(_ reference: ApplicationExecutionRef, from source: ApplicationExecutionRef, selection: UUID, text: String, request: UUID? = nil) {
         guard !retainingForReturn, !suppressed, active == .relatedExecutions,
               selectionID == selection, inputExecution == source else { return }
-        let text = NativeComposerSubmissionPolicy.trimmedText(text).split(whereSeparator: \.isWhitespace).joined(separator: " ")
-        // A receipt can steer the same execution. Keep its emoji while updating
-        // only the accepted text; catalog refreshes never generate another one.
-        let emoji = sendTitles[reference]?.emoji
-            ?? ["🌿", "🪐", "🧩", "🎨", "🦊", "🌊", "🍋", "🪁", "💡", "🌻", "🐳", "🏕️"].randomElement()!
-        sendTitles[reference] = SendTitle(text: text.isEmpty ? nil : text, emoji: emoji)
-        guard reference != source else { return }
-        let submission = connection
-        selectExecution(reference)
-        if case let .submitted(owner, origin, harness) = submission, owner == request, origin == selection {
-            connection = .arriving(visit: executionVisit, harness: harness)
+        if var connection, connection.request == request, connection.selection == selection, reference != source {
+            connection.destination = reference
+            self.connection = connection
+            sendTitles[reference] = connection.title
+            executionVisit = UUID(); selectionID = UUID()
+            selectedExecution = reference; inputExecution = nil; inputReady = false
+            displayedExecutionID = nil; entryPosition = .start
+        } else {
+            sendTitles[reference] = sendTitle(text, emoji: sendTitles[reference]?.emoji)
+            guard reference != source else { return }
+            selectExecution(reference)
         }
-        continuedExecution = true
+        continuedExecution = true; executionReady = false
+    }
+
+    private func sendTitle(_ text: String, emoji: String? = nil) -> SendTitle {
+        let title = NativeComposerSubmissionPolicy.trimmedText(text).split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return SendTitle(text: title.isEmpty ? nil : title, emoji: emoji
+            ?? ["🌿", "🪐", "🧩", "🎨", "🦊", "🌊", "🍋", "🪁", "💡", "🌻", "🐳", "🏕️"].randomElement()!)
     }
 
     public func admitExecution(visit: UUID) {
         guard executionVisit == visit, selectedExecution != nil else { return }
-        if case .arriving = connection { connection = nil }
         executionReady = true
+        releaseComposerWhenReady()
+    }
+
+    private func releaseComposerWhenReady() {
+        if let destination = connection?.destination, executionReady, inputReady, inputExecution == destination {
+            connection = nil
+        }
     }
 
     public func updateDocument(_ next: NativeApplicationHTMLReadiness?) {
         guard !retainingForReturn, document != next else { return }
+        let previous = document
         document = next
+        // A successful in-place refresh keeps the current card and its input owner.
+        if admitted, let next, next.ready, next.thread == previous?.thread,
+           next.generation == previous?.generation { return }
         invalidateAdmission()
         admitWhenReady()
     }

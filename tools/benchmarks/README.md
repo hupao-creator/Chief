@@ -4,8 +4,7 @@ The [UX gate](gate/UX.md) defines current paired startup, response, progress and
 App resource budgets. [The common runner](gate/README.md) owns policy, identities,
 confidence intervals, evidence and nonzero regression/blocked exits. The commands
 below collect the wider standalone measurement scope; they do not certify a gate.
-Scenario IDs `zoom` and `body.zoom` are explicit unsupported capabilities because
-no validated public system pinch injector is available.
+The [production canvas](../../app/macos/Sources/Host/Overview/README.md) fits cards to the window and scrolls horizontally when they overflow. Manual workspace zoom has no benchmark scenario.
 
 
 This Python CLI runs against a **built, signed production Release `.app`**. It
@@ -98,25 +97,39 @@ fully fitting layout must stay still and supplies no scroll latency sample.
 The collector records the actual input and original frames. The measured
 interval contains no semantic polling. The AppKit horizontal and wrong-axis
 controls check that measurement; the SwiftUI and AppKit drag controls exercise
-the separate free-pan gesture.
+the drag collector used by older artifacts. On the product Overview, a physical two-finger
+vertical swipe changes the status filter on the canvas. Keep pan and tail probes horizontal. The
+wrong-axis control exercises the collector against the control app. The
+[workspace replay](../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
+covers the product gesture.
 
 ## Scenarios and metrics
 
 | Scenario | Work and evidence |
 | --- | --- |
-| `first-render` | Construct existing fixture outside measurement, join shutdown, launch a new App process; first recognizable title **and body**, then a scheduled interaction probe. Probe time is an upper bound on usability, not the exact earliest usable instant. |
+| `first-render` | Construct existing fixture outside measurement, join shutdown, launch a new App process; first recognizable title **and body**, then a scheduled interaction probe. An observed scroll response bounds usability when the layout has travel. |
 | `idle.completed` | Completed tasks, no formal text/input traffic; tail navigation probes continued responsiveness. |
 | `idle.active` | All tasks running at a gated local provider, no formal body packets; terminal reply and tail probe follow. |
 | `pan` | Two phased OS horizontal pixel-scroll sequences at a fixed pointer position. Track title displacement through travel, reversal and settling. |
 | `body` | Fixed active count, scripted reasoning chunks and completed progress messages through the native Harness; tail pan probe. |
 | `body.pan` | Same source schedule during horizontal scrolling. |
-| `zoom`, `body.zoom` | Declared but **unsupported** until a public system magnification injector is validated. Command-wheel is not silently substituted for a macOS pinch. |
 
 Workspaces advertising the free-pan action use the mouse-drag probe. A measured
 input change prevents pairing those results with horizontal-scroll results.
 
-The default run selects the six supported scenarios. Unsupported zoom cases
-are reported only when explicitly requested.
+The default run selects all six scenarios. The signed startup and navigation gates require a scrolling layout and a full 120-point round trip. Standalone fitting layouts check for zero displacement and report no interaction time.
+
+### Coverage by production path
+
+| Overview task | Measurement and limits |
+| --- | --- |
+| Navigate the canvas or follow live Agent output | The [signed workloads](gate/UX.md) compare captured title displacement, response bounds and App resource samples. Standalone runs also cover idle and fitting layouts. Wheel injection has no trackpad momentum. |
+| Resize a mixed grid | The [CPU probe](../verification/overview-performance/README.md) times the production window-size solver with tall, wide and single-cell footprints. It has no mounted-frame latency budget. |
+| Switch directories with Super Thread covers | The [tag-space probe](../verification/tag-space/README.md) times selection, placement, activation and live cover readiness independently. Its recent Report fixtures stay outside idle grouping. |
+| Render four running Agent cards among forty threads | The [foreground Release probe](../verification/overview-ci-performance/README.md) measures UI and Core CPU with fixed camera, visibility and source receipts. It sends no navigation input. |
+| Group idle Super Threads or acknowledge unread results | The [collection properties](../verification/pbt/README.md) and [product interactions](../e2e/README.md) cover their respective state and reading contracts. The Agent-only optical workload does not isolate their latency. |
+
+The [fixed-count observations](baselines/2026-11-13.md) and [badge material comparison](baselines/2026-11-14-emoji-badge-glass.md) retain their original collector, workload and failed drag trajectories. A horizontal-scroll comparison requires matched new samples from both artifacts.
 
 Resource reports contain cumulative CPU deltas, single-core CPU percent,
 **sampled** physical-footprint peaks and final samples for warmup, formal, tail
@@ -166,13 +179,13 @@ not a statistical regression gate or a claim of complete benchmark capability.
 python3 tools/benchmarks/benchmark.py compare-badge \
   --app /absolute/path/Chief.app --tools /private/tmp/overview-tools \
   --capabilities /private/tmp/overview-controls --output /private/tmp/badge-comparison \
-  --count 10 --window-bounds 50 60 1280 950
+  --count 10 --window-bounds 50 60 1280 820
 ```
 
 The artifact must support `--benchmark-agent-emoji-badge flat|liquid-glass`
 inside the isolated Overview scenario. Ordinary launches stay flat. The glass
 variant changes only the 44pt Agent emoji backdrop to untinted regular Liquid
-Glass; emoji size, terminal symbol, body, clouds, card shell, Report/collection
+Glass; emoji size, terminal symbol, running perforations, body, card shell, Report/collection
 badges and other controls retain their current policy. Missing/empty emoji does
 not acquire this experiment. Reduce Transparency is respected by the product;
 the external comparison rejects that fallback instead of measuring two flat
@@ -184,8 +197,7 @@ This is configuration evidence, not a frame-rate measurement.
 `run --agent-emoji-badge` selects a single material. `--warmup-seconds` controls
 steady-state settling; startup retains its separate timing. `--window-bounds`
 requests explicit OS coordinates outside timing and requires exact observed
-bounds. The comparison defaults to 1280×950 because the current production
-window minimum exceeds 820pt; choose coordinates that fit the intended display.
+bounds. The badge comparison defaults to 1280×820 to exercise scrolling with ten cards.
 First rendering retains the App's launch placement and is not in this comparison.
 
 The JSON/Markdown summary retains each run's status and source path. Descriptive

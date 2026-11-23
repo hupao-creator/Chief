@@ -119,10 +119,12 @@ func CompletedActivity(i Map) Map {
 		obj(i["result"])["isError"] == true {
 		status = "failed"
 	}
-	detail := compact(i)
+	var detail string
 	switch i["type"] {
 	case "commandExecution":
-		detail = tail(str(i["aggregatedOutput"]), 32*1024)
+		// A command can print binary separators. Keep them visible in the
+		// bounded text used by both foreground and background completions.
+		detail = tail(strings.ReplaceAll(str(i["aggregatedOutput"]), "\x00", "␀"), 32*1024)
 		if status == "failed" && detail == "" {
 			detail = compact(present(i, "exitCode", "error"))
 		} else if i["error"] != nil {
@@ -140,6 +142,8 @@ func CompletedActivity(i Map) Map {
 			// evict it from the bounded persisted detail.
 			detail = tail(detail+"\n"+compact(i["error"]), 32*1024)
 		}
+	default:
+		detail = compact(i)
 	}
 	event := Map{"type": "activity-end", "activityId": str(i["id"]), "status": status, "detail": detail, "activity": activity}
 	if i["type"] == "fileChange" {
