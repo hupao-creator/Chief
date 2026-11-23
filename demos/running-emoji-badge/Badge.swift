@@ -26,6 +26,7 @@ enum BadgeStyle: String {
 struct CandidateBadge: View {
     let style: BadgeStyle
     let running: Bool
+    let brand: ThreadCardHarnessBrand
     @Environment(\.threadCardProviderColor) private var ink
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let emoji = "🧭"
@@ -43,11 +44,11 @@ struct CandidateBadge: View {
         }
         .frame(width: ThreadCardProviderStatus.diameter, height: ThreadCardProviderStatus.diameter)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(running ? "Codex · 运行中" : "Codex · 空闲")
+        .accessibilityLabel(brand.label + (running ? " · 运行中" : " · 空闲"))
     }
 
     private var original: some View {
-        ThreadCardProviderStatus(label: "Codex", brandKey: "codex", emoji: emoji)
+        ThreadCardProviderStatus(label: brand.label, brandKey: brand.brandKey, emoji: emoji)
     }
 
     private var glyph: some View { Text(emoji).font(.system(size: 21)).fixedSize() }

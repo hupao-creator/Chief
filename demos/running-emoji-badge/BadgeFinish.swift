@@ -78,7 +78,7 @@ struct BadgeFinish: View {
     private func matrix(_ c: GraphicsContext, _ disk: Path) {
         let ceramic = face.mix(with: graphite, by: scheme == .dark ? 0.20 : 0.08)
         c.fill(disk, with: .color(ceramic))
-        let lit = accent.mix(with: scheme == .dark ? .white : graphite, by: 0.24)
+        let unlit = ceramic.mix(with: NativePalette.overview.ink.swiftUI, by: 0.18)
         for row in 0..<7 {
             for column in 0..<7 {
                 let x = 22 + Double(column - 3) * 5.1, y = 22 + Double(row - 3) * 5.1
@@ -86,7 +86,7 @@ struct BadgeFinish: View {
                 guard radius < 20, radius > 11.5 else { continue }
                 let intensity = dotLight(row: row, column: column)
                 let dot = Path(ellipseIn: .init(x: x - 1, y: y - 1, width: 2, height: 2))
-                c.fill(dot, with: .color(ceramic.mix(with: lit, by: 0.19 + 0.80 * intensity)))
+                c.fill(dot, with: .color(unlit.mix(with: accent, by: intensity)))
             }
         }
     }

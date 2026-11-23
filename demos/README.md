@@ -17,7 +17,7 @@
 | [moku-panel-transition](moku-panel-transition/README.md) | 隔离回放 Agent/Report Dock 动画、AppKit 输入和待确认草稿；本地 Host 回放通过 Go transport 核对回执，使用 fixture 命令结果 |
 | [moku-thinking-orbit](moku-thinking-orbit/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [report-thread](report-thread/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
-| [running-emoji-badge](running-emoji-badge/README.md) | 四种微孔点阵同屏比较，另可切换游弧与材质对照，复用原尺寸 Agent Thread 卡片并附窗口录像 |
+| [running-emoji-badge](running-emoji-badge/README.md) | 四种 Harness 强调色同屏比较，可切换点阵节奏、游弧与材质对照，复用原尺寸 Agent Thread 卡片并附窗口录像 |
 | [settings-navigation](settings-navigation/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [settings-tabs](settings-tabs/README.md) | 独立交互/材质方案 fixture；生产行为见所属模块 |
 | [super-thread-carousel](super-thread-carousel/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
