@@ -1,6 +1,6 @@
 # Chief logo 加载动效
 
-各段动效取自同一张[应用图标原画](../../design/chief-logo.webp)。表中以原生[启动加载标记](../../app/macos/Sources/Shared/PluginUI/Design/NativeStartupLoadingMark.swift)的 96 pt 布局尺寸并排展示。点开名称可查看 384 × 384 的透明循环 WebP。动画按 25 fps 采样，象牙白底板和外圈透明区域随图保留。
+各段动效取自同一张[应用图标原画](../../design/chief-logo.webp)。表中以原生[启动加载标记](../../app/macos/Sources/Shared/PluginUI/Design/NativeSurfaceLoading.swift)的 96 pt 布局尺寸并排展示。点开名称可查看 384 × 384 的透明循环 WebP。动画按 25 fps 采样，象牙白底板和外圈透明区域随图保留。
 
 | [颠勺](toss.webp) | [三拍接力](relay.webp) | [锅底余火](ember.webp) |
 | :---: | :---: | :---: |

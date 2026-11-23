@@ -33,7 +33,7 @@ public struct ClaudeThreadView: View {
                     let failure = claudeFailurePresentation(preparedInput, decodeError: error)
                     ThreadTranscriptFailure(message: failure.message, detail: failure.detail)
                 }
-            } else { NativeThreadLoadingIndicator() }
+            } else { NativeHarnessLoadingIndicator(content: context.content) }
         }.task(id: HarnessReadingRequest(input: input, raw: input.thread.sessionState)) {
             if providedState == nil { await stateCache.load(input: input, raw: input.thread.sessionState) }
         }

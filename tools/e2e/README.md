@@ -65,7 +65,7 @@ work and settings. Record the OS, fixture, observed pages and cleanup.
 Downloaded-file Gatekeeper and permission prompts require a quarantined copy
 on a clean Mac. A local launch cannot establish those outcomes.
 
-### Startup loading mark
+### Full-surface loading mark
 
 Open the native app with a disposable returning profile. Delay the start of its
 background service long enough to see a complete 3.2-second loop. At the center
@@ -75,6 +75,14 @@ mark as soon as initial content arrives. With Reduce Motion enabled, the same
 96 pt mark should remain still while waiting. Record the source revision,
 runtime delay, captured window frames and the first ready workspace frame.
 [Startup surface](../../app/macos/README.md#system-appearance-and-language)
+
+From a finished result, send a follow-up and hold execution admission. Inspect
+the Execution sidecard for the same toss above **Opening conversation…** and
+release the pending execution to check that its reader takes over. For a delayed
+Report body or related execution list, check the mark in the corresponding
+column. In an ordinary Agent reader, check the 180ms placeholder grace period,
+the title/emoji handoff and the centered mark within the reader's viewport.
+[Reader placeholders](../../app/macos/Sources/Shared/PluginUI/README.md#reading-placeholders)
 
 ### First-run handoff
 

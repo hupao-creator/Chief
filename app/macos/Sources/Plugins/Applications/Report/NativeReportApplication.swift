@@ -152,8 +152,8 @@ struct NativeReportDetail: View {
                             .disabled(!listVisible)
                             .accessibilityHidden(!listVisible)
                             .overlay {
-                                if !excerptsReady {
-                                    ProgressView().controlSize(.small)
+                                if expanded && !suppressed && !excerptsReady {
+                                    NativeSurfaceLoading()
                                 }
                             }
                     }

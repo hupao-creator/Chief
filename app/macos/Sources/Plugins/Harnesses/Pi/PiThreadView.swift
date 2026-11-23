@@ -17,7 +17,7 @@ struct PiThreadView: View {
                 case .success(let state): PiPreparedThreadView(input: preparedInput, actions: actions, context: context, state: state)
                 case .failure(let failure): ThreadTranscriptFailure(message: piLocalized("Pi 状态不可用", locale) + " · " + failure.localizedDescription)
                 }
-            } else { NativeThreadLoadingIndicator() }
+            } else { NativeHarnessLoadingIndicator(content: context.content) }
         }.task(id: HarnessReadingRequest(input: input, raw: input.thread.sessionState)) {
             await decoder.load(input: input, raw: input.thread.sessionState)
         }

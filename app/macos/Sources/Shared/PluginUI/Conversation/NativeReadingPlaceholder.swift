@@ -1,3 +1,4 @@
+import ChiefPluginAPI
 import SwiftUI
 
 public extension EnvironmentValues {
@@ -7,7 +8,11 @@ public extension EnvironmentValues {
 
 /// Presentation only: the owner still decides whether content is loading.
 public struct NativeReadingPlaceholder: View {
-    public enum Placement { case surface, inline }
+    public enum Placement {
+        case surface, inline
+        /// Whole reader, already inside ThreadConversation; never rebuild its heading here.
+        case admission
+    }
 
     private let placement: Placement
     @Environment(\.nativeThreadUsesLoadingSkeleton) private var usesLoadingSkeleton
@@ -19,22 +24,30 @@ public struct NativeReadingPlaceholder: View {
         self.placement = placement
     }
 
+    private var loadingText: String {
+        locale.language.languageCode?.identifier == "zh" ? "正在读取…" : "Loading…"
+    }
+
     public var body: some View {
         Group {
             if usesLoadingSkeleton && placement == .surface && identityVisit != nil {
                 NativeThreadOpeningContent(showsLoading: visible)
+            } else if placement != .inline {
+                if visible {
+                    NativeSurfaceLoading(usesLoadingSkeleton ? nil : loadingText)
+                } else {
+                    Color.clear
+                }
             } else if usesLoadingSkeleton {
                 NativeThreadLoadingSkeleton().frame(maxWidth: NativeGeometry.readingWidth)
-                    .nativeThreadDocumentMargins(standard: placement == .surface ? 32 : 0)
+                    .nativeThreadDocumentMargins()
             } else {
-                Text(locale.language.languageCode?.identifier == "zh" ? "正在读取…" : "Loading…")
-            .font(NativeTypography.inter(size: 13))
-            .foregroundStyle(NativePalette.thread.muted.swiftUI)
-            .multilineTextAlignment(placement == .surface ? .center : .leading)
-            .padding(.vertical, 16)
-            .nativeThreadDocumentMargins(standard: placement == .surface ? 18 : 0)
-            .frame(maxWidth: .infinity, maxHeight: placement == .surface ? .infinity : nil,
-                   alignment: placement == .surface ? .center : .leading)
+                Text(loadingText)
+                    .font(NativeTypography.inter(size: 13))
+                    .foregroundStyle(NativePalette.thread.muted.swiftUI)
+                    .padding(.vertical, 16)
+                    .nativeThreadDocumentMargins()
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
             .transformPreference(NativeReadingContentStatusKey.self) { status in
@@ -59,7 +72,17 @@ public struct NativeReadingPlaceholder: View {
     }
 }
 
-/// Keep each Harness's compact spinner outside the main Agent reader.
+/// Initial Harness decoding can own the viewport or a single materialized row.
+public struct NativeHarnessLoadingIndicator: View {
+    private let content: HarnessContentMode
+    public init(content: HarnessContentMode) { self.content = content }
+    public var body: some View {
+        if case .row = content { NativeThreadLoadingIndicator() }
+        else { NativeReadingPlaceholder() }
+    }
+}
+
+/// Keep each scoped row's compact spinner outside the main Agent reader.
 public struct NativeThreadLoadingIndicator: View {
     @Environment(\.nativeThreadUsesLoadingSkeleton) private var usesLoadingSkeleton
     private let alignedLeading: Bool

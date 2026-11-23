@@ -56,6 +56,8 @@ retains the selected Sidecard/nested-history close order before leaving the Thre
 Launcher toggles, browser address/annotation cancellation and non-Escape exit
 commands retain their own routes. Covered/disabled cards cannot close a replacement.
 
+While awaiting a new execution, the Execution pane centers the shared skillet above its localized opening message.
+
 Agent Sidecards have no independent Close icon. The corresponding right-side
 launcher toggles open/closed and selecting another launcher switches activity.
 The main Thread's Close remains separate. Conversation and Browser retain

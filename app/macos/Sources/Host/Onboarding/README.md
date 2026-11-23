@@ -125,3 +125,5 @@ native Harness execution.
 The Overview benchmark entry also requests a fixed 1280 × 820 initial window
 and disables scene restoration for that explicit scenario. This removes saved
 window geometry as a startup variable; the OS bounds remain externally verified.
+
+While the setup panel is waiting for admission, the shared skillet loading mark is centered in its content area. Setup errors retain their recovery controls.
