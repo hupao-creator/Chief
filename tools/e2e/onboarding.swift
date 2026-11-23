@@ -2,7 +2,6 @@ import AppKit
 import ApplicationServices
 import Foundation
 
-let budget: UInt64 = 1_000_000_000
 let preparation: UInt64 = 45_000_000_000
 func now() -> UInt64 { DispatchTime.now().uptimeNanoseconds }
 
@@ -127,6 +126,8 @@ for (index, step) in steps.enumerated() {
     }
     requireForeground(window)
     let destination = index + 1 < steps.count ? steps[index + 1] : "dock"
+    // The Dock handoff adds 560ms of authored motion to the confirmation.
+    let budget: UInt64 = destination == "dock" ? 1_560_000_000 : 1_000_000_000
     let start = now()
     let press = AXUIElementPerformAction(button, kAXPressAction as CFString)
     let dispatched = now()

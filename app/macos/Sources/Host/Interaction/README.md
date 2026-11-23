@@ -66,7 +66,9 @@ Back and Overview remain available.
 
 First-run setup reports `page: "onboarding"` and an `onboarding` object containing
 step (0–4), admission, editor readiness, continuation availability, save/error
-and persisted completion state. Only its mounted `settings.control` actions are
+and persisted completion state. Its window-local `handoffUptimeNS` records
+monotonic timestamps at persistence, the starts of fade, contraction and reveal,
+and reveal completion. The confirmation replay reads them after observing AX focus. Only its mounted `settings.control` actions are
 admitted, using an independent visit/step registry. The handoff reports
 `transitioning` until the real Dock is revealed; workspace navigation remains
 blocked throughout setup and the morph.
