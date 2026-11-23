@@ -10,7 +10,7 @@ public struct NativeSurfaceLoading: View {
 
     public var body: some View {
         VStack(spacing: 6) {
-            TossImage().frame(width: 96, height: 96)
+            TossImage()
             if let caption {
                 Text(caption).font(.callout).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -24,12 +24,24 @@ public struct NativeSurfaceLoading: View {
 }
 
 private struct TossImage: NSViewRepresentable {
+    private static let size = CGSize(width: 96, height: 96)
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSImageView, context: Context) -> CGSize? {
+        Self.size
+    }
+
     func makeNSView(context: Context) -> NSImageView {
         let view = NSImageView()
         view.imageScaling = .scaleProportionallyUpOrDown
         // AppKit owns the GIF clock. Each mount gets its own playback state.
         let url = NativeResources.bundle.url(forResource: "ChiefStartupToss", withExtension: "gif")
-        view.image = url.flatMap { NSImage(contentsOf: $0) } ?? NSApp.applicationIconImage
+        if let image = url.flatMap({ NSImage(contentsOf: $0) }) {
+            // The bitmap is 2×. NSImage otherwise treats each GIF pixel as a point.
+            image.size = Self.size
+            view.image = image
+        } else {
+            view.image = NSApp.applicationIconImage
+        }
         return view
     }
 
