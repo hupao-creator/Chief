@@ -303,9 +303,7 @@ mounted face and sets its next idle blink one full period later. App activation,
 scene state and the face's AppKit visibility govern that first blink.
 Losing eligibility clears it immediately, including
 while the display link sleeps. The next idle blink keeps its scheduled time.
-Hidden or inactive faces remove the blink animation. A visible face rejoins its scheduled phase. Role transitions, loading, visible reasoning and retiring ink keep their
-frames through the final paint. Resuming starts a fresh wall-time interval, so
-sleep cannot advance a new transition. No eye-only correctness suite is configured here.
+Hidden or inactive faces remove the blink animation. A visible face rejoins its scheduled phase. A compact unread reply or intervention can submit the outline, position and tilt to those same layers between blinks. The logical clock samples the submitted leg when the destination changes. Overlapping blinks, coordinated shell or decoration movement, and changes of direction that require distinct component velocities use the display link through the final paint. Resuming starts a fresh wall-time interval. The native replay compares rendered phases, interrupted playback and the original responder in a window. [Chief Bar replay](../../../../../demos/moku-panel-transition/remaining/README.md)
 
 Talk and live transcript prose use semibold, centered layout.
 Symmetric 64-point insets reserve the eye seat without shifting text

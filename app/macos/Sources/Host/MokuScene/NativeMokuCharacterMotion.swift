@@ -16,6 +16,15 @@ struct NativeMokuCharacterInput: Equatable {
     var motion: Bool
     var dark: Bool
     var immediateOrbit = false
+
+    func changesOnlyCompactExpression(from previous: Self?) -> Bool {
+        guard let previous, previous.expression != expression, focus == 0, !running, !presentsReasoning,
+              [.idle, .curious, .happy].contains(previous.expression),
+              [.idle, .curious, .happy].contains(expression) else { return false }
+        var sameExpression = self
+        sameExpression.expression = previous.expression
+        return previous == sameExpression
+    }
 }
 
 struct NativeMokuCharacterPose {
@@ -34,13 +43,20 @@ struct NativeMokuCharacterPose {
     }
 }
 
-/// One native display clock owns both seats. The eyes are never cross-faded or
-/// replaced when a role changes; redirection inherits their current derivative.
+/// The face and decorations share one logical clock. An eye-only transition
+/// can run on the resident layers until a new role needs the display link.
 @MainActor final class NativeMokuCharacterMotion: NSObject {
     private(set) var input: NativeMokuCharacterInput?
     private(set) var reasoningAnimation = MokuReasoningAnimation()
-    private(set) var clock = 0.0
-    private(set) var pose = NativeMokuCharacterPose(values: [:])
+    private var frameClock = 0.0
+    private var expressionPlayback: (start: CFTimeInterval, bounds: CGRect)?
+    var clock: Double {
+        guard let playback = expressionPlayback else { return frameClock }
+        // Time spent settled must not become motion on the next handoff.
+        return min(transitionAt + duration, frameClock + max(0, CACurrentMediaTime() - playback.start) * 1000)
+    }
+    private var framePose = NativeMokuCharacterPose(values: [:])
+    var pose: NativeMokuCharacterPose { expressionPlayback == nil ? framePose : sample(at: clock) }
     private(set) var frameCount = 0
     private(set) var retiredGlyphs: [MokuReasoningGlyph] = []
     private var arcSize = CGSize.zero
@@ -77,11 +93,11 @@ struct NativeMokuCharacterPose {
     }
 
     func attach(_ view: NativeMokuCharacterCanvas) {
-        if view.seat == .face { face = view } else { decorations = view }
+        if view.seat == .face { stopExpression(); face = view } else { decorations = view }
         visibilityChanged()
     }
     func detach(_ view: NativeMokuCharacterCanvas) {
-        if face === view { face = nil }
+        if face === view { stopExpression(); face = nil }
         if decorations === view { decorations = nil }
         visibilityChanged()
     }
@@ -89,6 +105,8 @@ struct NativeMokuCharacterPose {
     func configure(_ next: NativeMokuCharacterInput) {
         guard input != next else { return }
         let previous = input
+        let eyesAlone = expressionPlayback != nil || !isTransitioning
+        stopExpression()
         let previousPose = previous == nil ? nil : sample(at: clock)
         let previousVelocity = previousPose.map { before in
             let after = sample(at: clock + 0.01)
@@ -138,9 +156,43 @@ struct NativeMokuCharacterPose {
             duration = previous == nil ? 0
                 : (previous?.running != next.running || wasThinking != isThinking ? 550 : 420)
         }
-        pose = sample(at: clock)
+        framePose = sample(at: clock)
+        // Compact reminders and interventions change only the two resident
+        // eyes. A moving shell, orbit or retiring decoration keeps the shared
+        // display clock, including when it interrupts one of these expressions.
+        if eyesAlone, orbitVisibility == 0, next.changesOnlyCompactExpression(from: previous), !retirementPending, replacementGlyphs.isEmpty,
+           next.motion, let face, face.motionVisible, !face.bounds.isEmpty, let slope = expressionSlope() {
+            if let start = face.blinkLayers?.playExpression(in: face.bounds,
+                ink: (next.dark ? NSColor.white : NSColor.black).cgColor,
+                firstBlink: onboardingBlinkStart ?? firstIdleBlink, duration: duration / 1000, slope: slope, pose: {
+                    sample(at: transitionAt + duration * $0)
+                }) {
+                expressionPlayback = (start, face.bounds)
+            }
+        }
         decorations?.needsDisplay = true
         visibilityChanged()
+    }
+
+    /// A common cubic can carry both eyes when their incoming velocity lies
+    /// along the new path. A three-way interruption can turn each component
+    /// differently and continues on the shared display clock.
+    private func expressionSlope() -> Double? {
+        let destination = target(at: transitionAt + duration)
+        let keys = destination.values.keys.filter { $0.hasPrefix("l") || $0.hasPrefix("r") }
+        guard let key = keys.max(by: { abs(destination[$0] - from[$0]) < abs(destination[$1] - from[$1]) }),
+              abs(destination[key] - from[key]) > 0.000001 else { return nil }
+        let slope = duration * velocity[key] / (destination[key] - from[key])
+        return keys.allSatisfy { abs(duration * velocity[$0] - slope * (destination[$0] - from[$0])) < 0.000001 }
+            ? slope : nil
+    }
+
+    private func stopExpression() {
+        guard expressionPlayback != nil else { return }
+        frameClock = clock
+        expressionPlayback = nil
+        framePose = sample(at: frameClock)
+        face?.blinkLayers?.stopExpression()
     }
 
     private var canPlayOnboardingBlink: Bool {
@@ -149,6 +201,7 @@ struct NativeMokuCharacterPose {
 
     func scheduleOnboardingBlink(at start: Date) {
         guard firstIdleBlink == nil, canPlayOnboardingBlink else { return }
+        stopExpression()
         onboardingBlinkStart = start
         firstIdleBlink = start.addingTimeInterval(NativeMokuCapsuleBlinkTiming.interval)
         visibilityChanged()
@@ -169,7 +222,10 @@ struct NativeMokuCharacterPose {
             onboardingBlinkStart = nil
         }
         let active = visible
-        if let input, let face {
+        if let playback = expressionPlayback, !active || face?.motionVisible != true || face?.bounds != playback.bounds {
+            stopExpression()
+        }
+        if expressionPlayback == nil, let input, let face {
             face.blinkLayers?.update(left: pose.eye("l"), right: pose.eye("r"), bounds: face.bounds,
                                     ink: (input.dark ? NSColor.white : NSColor.black).cgColor,
                                     active: active && face.motionVisible, first: onboardingBlinkStart ?? firstIdleBlink)
@@ -194,7 +250,7 @@ struct NativeMokuCharacterPose {
             linkView = anchor
             link?.add(to: .main, forMode: .common)
         }
-        let moving = input?.running == true || orbitVisibility > 0 || isTransitioning
+        let moving = input?.running == true || orbitVisibility > 0 || (expressionPlayback == nil && isTransitioning)
             || (input?.presentsReasoning == true && reasoningAnimation.needsFrames)
             || retirementPending || (!replacementGlyphs.isEmpty && clock - replacementAt < 220)
         // Sleeping between role changes must not advance the next transition.
@@ -204,13 +260,14 @@ struct NativeMokuCharacterPose {
 
     @objc private func displayFrame(_ displayLink: CADisplayLink) {
         guard visible else { visibilityChanged(); return }
+        guard expressionPlayback == nil else { return }
         let now = ProcessInfo.processInfo.systemUptime
         let dt = max(0, min(64, (now - lastWall) * 1000)); lastWall = now
         advanceFrame(milliseconds: dt)
     }
 
     func advanceFrame(milliseconds dt: Double) {
-        clock += dt
+        frameClock += dt
         if let orbitGeometry {
             // A reversal retraces the fade from its presented opacity. The
             // decoration clock belongs to visible ink, even after execution ends.
@@ -226,7 +283,7 @@ struct NativeMokuCharacterPose {
         }
         if input?.running == true { runningElapsed += dt }
         if input?.presentsReasoning == true { reasoningAnimation.advance(milliseconds: dt) }
-        pose = sample(at: clock)
+        framePose = sample(at: clock)
         if !isTransitioning && input?.presentsReasoning != true {
             retiredGlyphs = []; finishRetirement()
         }
@@ -280,6 +337,7 @@ struct NativeMokuCharacterPose {
 
     func paintDecorations(in context: CGContext, bounds: CGRect) {
         guard let input else { return }
+        let pose = self.pose
         context.saveGState(); defer { context.restoreGState() }
         context.saveGState()
         context.setAlpha(orbitOpacity)

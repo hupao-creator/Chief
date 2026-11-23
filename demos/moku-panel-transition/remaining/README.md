@@ -18,8 +18,8 @@ collector and executable fingerprints.
   and running Docks. A failed bell exposes Retry bell and keeps the same pending receipt through retry.
   A pending head also moves to a route without a Dock and
   back. The fixture injects a silent bell and records its start/stop lifetime.
-- The compositor expression experiment (`eyes`) uses the native modules at
-  `3e355741`. Its phase and main-thread-hold checks target that layer renderer.
+- `eyes` compares the compact expression layers with the original renderer at matched phases
+  and during main-thread holds. Running or retiring orbit dots keep the shared display clock.
 - `routes` and `routes-reduced` mount a reply, permission and questionnaire
   controls and two completed Timer operations. An external AX client restricted
   to the fixture's own PID presses the controls. The visits check first-key
