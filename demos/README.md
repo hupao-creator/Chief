@@ -7,6 +7,7 @@
 
 | 目录 | 当前边界 |
 | --- | --- |
+| [chief-logo-loading](chief-logo-loading/README.md) | Chief 图标的三种透明循环 WebP，按启动标记的 96 pt 尺寸并排比较 |
 | [execution-handoff](execution-handoff/README.md) | 独立交互/材质方案 fixture；生产行为见所属模块 |
 | [landing-setup](landing-setup/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-gradient-material](moku-gradient-material/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
