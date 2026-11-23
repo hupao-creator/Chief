@@ -25,7 +25,7 @@ public struct NativeSurfaceLoading: View {
 }
 
 private struct TossImage: NSViewRepresentable {
-    private static let size = CGSize(width: 96, height: 96)
+    private static let size = CGSize(width: 120, height: 120)
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSImageView, context: Context) -> CGSize? {
         Self.size

@@ -181,7 +181,7 @@ the same locale to Runtime profile metadata before connection and execution
 commands, and updates it when the language changes during a session.
 The app bundle declares English and Simplified Chinese for system-owned menus
 and panels. The Help menu opens the English product guide. While the startup surface waits for initial content, a
-96 pt skillet tosses three agent marks directly over the workspace background in a 3.2-second loop. Reduce Motion shows a still mark.
+120 pt skillet tosses three agent marks directly over the workspace background in a 3.2-second loop. Reduce Motion shows a still mark.
 Initial content replaces the mark as soon as it is ready. A connection failure
 identifies Chief's background service
 and offers Reconnect. Provider discovery starts after that connection succeeds.
