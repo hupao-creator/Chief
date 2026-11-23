@@ -153,11 +153,7 @@ extension NSView {
 
 @main @MainActor enum Replay {
     static func main() throws {
-        if let action = CommandLine.arguments.dropFirst().first, ["--read", "--press"].contains(action), let id = CommandLine.arguments.last {
-            let matches = parentButton(id, press: CommandLine.arguments[1] == "--press")
-            FileHandle.standardOutput.write(try JSONEncoder().encode(matches))
-            return
-        }
+        if try serveReplayButtonQuery() { return }
         try prepareIsolatedNativeReplay()
         NativeTypography.registerFonts()
         let app = NSApplication.shared

@@ -537,6 +537,7 @@ private struct Controls: View {
 
 @main private struct App {
     @MainActor static func main() throws {
+        if try serveReplayButtonQuery() { return }
         try prepareIsolatedNativeReplay()
         NativeTypography.registerFonts()
         let app = NSApplication.shared

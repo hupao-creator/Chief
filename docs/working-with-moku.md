@@ -8,6 +8,8 @@ Typing or pressing Delete in the open bar plays a keyboard click when your Mac h
 
 In a task conversation, the same input box shows the agent's icon and sends to that conversation. In a Super Thread, open a source conversation in **Related executions** before sending a follow-up. [Agent conversations](task-conversations.md) · [Super Threads](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 
+The button at the right of the input box shows **Send** when your message is ready, even while Chief is working. Click it or press **Return** to send. When Chief is idle, an empty or whitespace-only draft leaves **Send** disabled. A ready file or a selected folder can be sent on its own.
+
 When Chief's input is at the bottom of Overview, click outside it or press **Esc** to close it. Your unsent draft is there when you reopen the box.
 
 When the bar is folded, three dots fade in and circle its edge while Chief thinks or uses tools such as updating its note. They keep circling as Chief switches tools and fade out when the work ends. If Chief needs your permission or an answer, a request appears above the bar.
@@ -50,7 +52,7 @@ After a successful removal, the checkout folder is gone. The task conversation s
 
 ## Stop work or acknowledge an alert
 
-To stop Chief's current response, hover over its eyes at the bottom of Overview and click the square **Stop Chief** button on the right. The button stays on the right when you open the input box. To stop one or more delegated tasks, name them in a message to Chief. Chief tries each request separately. You can also stop a task yourself from its conversation. [Stop a run](task-conversations.md#respond-to-a-request-or-stop-a-run)
+To stop Chief's current response, hover over its eyes at the bottom of Overview and click the square **Stop Chief** button on the right. With the input box open, **Stop Chief** appears in the same spot whenever the draft cannot be sent. If you want to stop Chief while keeping a ready draft, fold the bar with **⌘⇧B**, then hover over the eyes. To stop one or more delegated tasks, name them in a message to Chief. Chief tries each request separately. You can also stop a task yourself from its conversation. [Stop a run](task-conversations.md#respond-to-a-request-or-stop-a-run)
 
 When Chief sends an alert, read it in the compact bar at the bottom of the workspace. Scroll inside a longer message to read the rest. To open Chief Note while an alert is visible, start your upward swipe elsewhere in Overview. Click **Received** to confirm just that alert. If more are waiting, the bar shows how many and brings up the next one.
 

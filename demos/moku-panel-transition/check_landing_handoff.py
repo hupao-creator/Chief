@@ -163,13 +163,13 @@ def check(movie, pending, started, output):
         ("offCenter", [f for f in frames if abs(f.get("rimCenterPt", (f["shell"][0] + f["shell"][2]) / 2) - 942) > 2]),
         ("escapedOrDuplicateEyes", [f for f in frames if len(f["eyes"]) > 1 or any(v < -2 for v in f["eyeMargins"])]),
         ("misplacedOrDuplicateStop", [f for f in frames if len(f["stopInsets"]) > 1 or
-                                     any(not 20 <= v <= 63 for v in f["stopInsets"])]),
+                                     any(not 20 <= v <= 31 for v in f["stopInsets"])]),
         ("superimposedStatus", [f for f in frames if min(f["pending"], f["started"]) > .12 and f["fit"] > .90]),
     ):
         if offending:
             errors[message] = [f["frame"] for f in offending]
     # The running replay must visibly exercise each Stop seat and both labels.
-    if not stops or min(stops) > 24 or max(stops) < 56:
+    if not stops or min(stops) > 24 or max(stops) < 27:
         errors["missingStopSeat"] = True
     if any(sum(f[label] > .75 and f["fit"] > .90 for f in frames) < 3 for label in ("pending", "started")):
         errors["missingStatus"] = True

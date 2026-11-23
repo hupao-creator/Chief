@@ -281,8 +281,18 @@ public struct NativeMokuDock: View {
             && !state.dockCovered && !state.settingsOpen && !state.notePanelOpen && !noteMounted
             && state.noteReadingOrigin == nil && interaction == nil && displayedMessage == nil
     }
+    private var overviewComposerAction: NativeOverviewComposerAction? {
+        guard state.overviewVisible, !state.readingPanelVisible, threadID == nil, sidecardComposer == nil else { return nil }
+        guard running, !draft.canSubmit else { return .send }
+        return ordinaryOverviewDock ? .dockStop : .stop
+    }
     private var stopControlPresent: Bool {
-        running && (ordinaryOverviewDock || !inputPresent) && !state.settingsOpen
+        running && !state.settingsOpen && (!inputPresent || overviewComposerAction == .dockStop)
+    }
+    private func stopCurrentRun() {
+        // Text or an import can become ready before the old Stop target is removed.
+        guard !inputPresent || overviewComposerAction != .send else { return }
+        onCancel()
     }
     private var stopVisible: Bool {
         (ordinaryOverviewDock && composerVisible) || hovered || stopFocused || stopAccessibilityFocused
@@ -967,11 +977,10 @@ public struct NativeMokuDock: View {
         }
         .overlay(alignment: .bottomTrailing) {
             // Keep the footer layout alive across insertion and retirement.
-            // The expanded seat is 61pt from the trailing edge, 29pt from the bottom.
-            // Measuring the editor during insertion would animate the endpoint itself.
+            // Match the open editor’s trailing action, including multiline and two-row layouts.
             HStackLayout(spacing: 4) {
                 if stopControlPresent {
-                    Button(action: onCancel) {
+                    Button(action: stopCurrentRun) {
                         // Keep the Button in accessibility while hiding its ink.
                         RoundedRectangle(cornerRadius: 1).fill(.foreground).frame(width: 10, height: 10)
                             // The hover fade owns only ink. The moving button's
@@ -994,8 +1003,8 @@ public struct NativeMokuDock: View {
                         .accessibilityIdentifier("moku-stop")
                 }
             }
-            .padding(.trailing, composerStop ? 45 : (stopControlPresent ? 7 : 3))
-            .frame(height: composerStop ? 58 : rowHeight)
+            .padding(.trailing, composerStop ? NativeMokuComposerInput.actionTrailingInset : (stopControlPresent ? 7 : 3))
+            .frame(height: composerStop ? 2 * editorBottomInset : rowHeight)
         }
         .background {
             ZStack {
@@ -1072,8 +1081,8 @@ public struct NativeMokuDock: View {
             retainedText: retaining ? state.retainedText : nil,
             retainedAttachments: retaining ? state.retainedAttachments : nil,
             retainedDirectories: retaining ? state.retainedDirectories : nil,
-            running: running, onCancel: onCancel,
-            reservesDockStopSeat: ordinaryOverviewDock,
+            running: running, onCancel: stopCurrentRun,
+            overviewAction: overviewComposerAction,
             selectionRequest: mentions?.selectionRequest,
             initialSelection: state.selectionForReopening(text: retaining ? state.retainedText : draft.text),
             onEditorStateChange: { editor in

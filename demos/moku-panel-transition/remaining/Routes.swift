@@ -7,48 +7,6 @@ import ScreenCaptureKit
 import SwiftUI
 @testable import ChiefUI
 
-// Read or press named public AX elements in this executable's own replay
-// parent. Calling into SwiftUI's AX tree from its main actor can reenter layout.
-func parentButton(_ id: String, press: Bool) -> [[String: String]] {
-    guard ProcessInfo.processInfo.environment["CHIEF_REPLAY_PARENT"] == String(getppid()), AXIsProcessTrusted()
-    else { return [["error": "Missing parent or AX permission"]] }
-    let app = AXUIElementCreateApplication(getppid())
-    AXUIElementSetMessagingTimeout(app, 0.5)
-    var windows: CFTypeRef?
-    guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windows) == .success,
-          var pending = windows as? [AXUIElement] else { return [["error": "No replay window"]] }
-    var seen = Set<CFHashCode>()
-    var matches = [[String: String]]()
-    while let node = pending.popLast(), seen.count < 6000 {
-        guard seen.insert(CFHash(node)).inserted else { continue }
-        func attribute(_ key: String) -> CFTypeRef? {
-            var value: CFTypeRef?
-            _ = AXUIElementCopyAttributeValue(node, key as CFString, &value)
-            return value
-        }
-        if attribute(kAXIdentifierAttribute) as? String == id ||
-            (attribute(kAXRoleAttribute) as? String == "AXButton" &&
-             [attribute(kAXDescriptionAttribute), attribute(kAXTitleAttribute)].contains { $0 as? String == id }) {
-            var match = ["id": id, "enabled": String(attribute(kAXEnabledAttribute) as? Bool ?? false)]
-            if press { match["press"] = String(AXUIElementPerformAction(node, kAXPressAction as CFString).rawValue) }
-            matches.append(match)
-        }
-        pending += attribute(kAXChildrenAttribute) as? [AXUIElement] ?? []
-    }
-    return matches
-}
-
-@MainActor func button(_ id: String, press: Bool = false) async throws -> [[String: String]] {
-    let child = Process(), pipe = Pipe()
-    child.executableURL = Bundle.main.executableURL
-    child.environment = ProcessInfo.processInfo.environment.merging(["CHIEF_REPLAY_PARENT": String(getpid())]) { _, value in value }
-    child.arguments = [press ? "--press" : "--read", id]
-    child.standardOutput = pipe
-    try child.run()
-    while child.isRunning { try await pause(5) }
-    return try JSONDecoder().decode([[String: String]].self, from: pipe.fileHandleForReading.readDataToEndOfFile())
-}
-
 @MainActor private final class Bell: NativeMokuTimerPlaying {
     var starts = 0, stops = 0
     func startLoop() { starts += 1 }

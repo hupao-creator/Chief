@@ -87,7 +87,7 @@ def main():
                         "--only-use-versions-from-resolved-file"], cwd=ROOT, check=True)
         replay = NativeReplay(ROOT, "ChiefBarRemainingReplay", "dev.chief.replay.bar-remaining")
         try:
-            sources = sorted(HERE.glob("*.swift")) + reference(replay)
+            sources = sorted(HERE.glob("*.swift")) + [HERE.parent / "ReplayButtons.swift"] + reference(replay)
             replay.compile(sources)
             meta = {"revision": git("rev-parse", "HEAD").decode().strip(),
                     "baseline": git("rev-parse", BASE).decode().strip(), "os": platform.mac_ver()[0],

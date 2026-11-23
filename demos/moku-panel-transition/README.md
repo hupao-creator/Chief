@@ -136,7 +136,7 @@ python3 demos/moku-panel-transition/check_landing_handoff.py running.mp4 PENDING
 The reference indices select glyphs. The checker searches **every encoded
 frame** for both labels at the same origin, and independently searches the
 whole window for eye pairs. It checks signed eye clearance, a centered shell,
-and the 22–61pt trailing Stop seats with 2pt optical tolerance. It requires
+and the 22–29pt trailing Stop seats with 2pt optical tolerance. It requires
 the Landing descent and observations of both Stop positions and both labels.
 The JSON lists every frame, including unresolved eye pairs. Review these
 frames for blinks or occlusion before reporting containment. Use the smaller
@@ -350,6 +350,12 @@ Close during expansion, reopen the card and check the mark on both legs.
 Keep the executable digest, revision, displayed layout, input backend and movie.
 
 ## Chief input replay
+
+Add `--verify-actions` to `--replay-chief-input` to check the single 32pt Send/Stop seat in the mounted
+Overview editor, including control labels, enabled state, mouse clicks, AXPress
+and Return with whitespace, text and attachments. This option needs
+macOS Accessibility permission. A child process reads and presses only the
+buttons in its own replay parent.
 
 Run `--replay-chief-input` under the same shared desktop verification lease to
 check the [Chief composer contract](../../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer).

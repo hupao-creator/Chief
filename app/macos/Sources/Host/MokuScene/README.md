@@ -128,11 +128,12 @@ From the empty Landing through the first Thread card and ordinary Overview
 folds, the eyes occupy one fixed-size seat inside the shell. Moving or scaling
 the shell carries that seat with it.
 
-The running Chief's Stop button and visible square share one trailing seat.
-Its center moves between 22 points from the compact edge and 61 points from
-the editor edge. The expanded button center sits 29 points above the bottom. The editor
-reserves space for the Dock button throughout the transition. Stop is visible while editing
-and on hover or focus in the compact capsule. The editor uses its final
+The Overview editor reserves one 32-point trailing action seat. A submittable
+draft shows Send, including ready attachments or directory references alone.
+Otherwise a running Chief shows Stop and an idle Chief shows disabled Send.
+Return in the editor only attempts submission. The ordinary Dock carries Stop
+from 22 points inside the compact edge to the center of the editor’s action seat,
+29 points inside the expanded edge. Hover or focus reveals it when folded. The editor uses its final
 width throughout the 420ms motion. Its ink fades in during the last tenth
 of expansion and fades out over the same part of the return. Closing ends
 editing immediately. See the [Overview Dock replay](../../../../../demos/moku-panel-transition/README.md#overview-dock-replay).
@@ -330,8 +331,7 @@ keeping text and dispatch content clear of the 30-point Stop target and its
 7-point edge inset. Revealing the square therefore does not rewrap the message.
 See the [mounted Stop replay](../../../../../demos/moku-panel-transition/README.md#overview-dock-replay).
 This is cancellation (`moku:cancel`), with no pause/resume action. Composer Stop
-shares the Send seat for an active Thread execution; other composer routes retain
-their separate Stop item. Blink/cloud clock pauses are animation lifecycle state,
+shares the Send seat in Overview and for an active Thread execution. Blink/cloud clock pauses are animation lifecycle state,
 not message-bar controls.
 
 Dispatch notifications (pending, started or failed) expire 10 seconds after their

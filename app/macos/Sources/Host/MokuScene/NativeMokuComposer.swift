@@ -73,8 +73,14 @@ private struct NativeMokuComposerRowLayout: Layout {
     }
 }
 
+enum NativeOverviewComposerAction {
+    case send, stop, dockStop
+}
+
 /// The scene supplies the Dock input row with its draft and send authority.
 struct NativeMokuComposerInput: View {
+    static let actionTrailingInset: CGFloat = 13
+
     let draft: NativeComposerDraft
     var cwd: JSONText = ""
     var disabled = false
@@ -96,7 +102,7 @@ struct NativeMokuComposerInput: View {
     var retainedDirectories: [NativeComposerDirectory]?
     var running = false
     var onCancel: () -> Void = {}
-    var reservesDockStopSeat = false
+    var overviewAction: NativeOverviewComposerAction?
     var showsEyes = false
     var selectionRequest: NativeComposerSelectionRequest?
     var initialSelection: NSRange?
@@ -108,7 +114,7 @@ struct NativeMokuComposerInput: View {
     @Environment(\.locale) private var locale
     @Environment(\.nativeOfflineDraftEditing) private var offlineDraftEditing
     @State private var editorRowHeight: CGFloat = 58
-    @State private var errorHeight: CGFloat = 0
+    @State private var footerHeight: CGFloat = 0
     @State private var editorID = UUID()
     @State private var composingDraft: NativeComposerDraft?
     @State private var hostPicker: NativeComposerHostFilePicker.Mode?
@@ -153,8 +159,19 @@ struct NativeMokuComposerInput: View {
                 } else { attachmentButton }
                 editor
                 HStack(spacing: 0) { actions }
-            }.padding(.leading, 6).padding(.trailing, 13)
+            }.padding(.leading, 6).padding(.trailing, Self.actionTrailingInset)
                 .onGeometryChange(for: CGFloat.self) { compact ? 34 : $0.size.height } action: { editorRowHeight = $0 }
+            footer.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
+        }.foregroundStyle(.primary).disabled(editingUnavailable || readOnly)
+            // Sizes are local to the row. Resolving an editor anchor through
+            // an animating ancestor also includes its transient translation,
+            // which must not be fed back into the face's bottom inset.
+            .onChange(of: editorRowHeight / 2 + footerHeight + (compact ? 6 : 0), initial: true) { _, inset in
+                onEditorSeatChange(inset)
+            }
+    }
+    private var footer: some View {
+        VStack(spacing: 0) {
             if let previous = draft.interruptedInput {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(draft.requiresForkReview
@@ -183,16 +200,8 @@ struct NativeMokuComposerInput: View {
                 Text(sidecardComposer == nil ? composerLocalized(error, locale: locale)
                     : NativePluginLocalization.localize(error, locale: locale))
                     .font(.system(size: 11)).foregroundStyle(.red).padding(.bottom, 10)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { errorHeight = $0 }
-                    .onDisappear { errorHeight = 0 }
             }
-        }.foregroundStyle(.primary).disabled(editingUnavailable || readOnly)
-            // Sizes are local to the row. Resolving an editor anchor through
-            // an animating ancestor also includes its transient translation,
-            // which must not be fed back into the face's bottom inset.
-            .onChange(of: editorRowHeight / 2 + errorHeight + (compact ? 6 : 0), initial: true) { _, inset in
-                onEditorSeatChange(inset)
-            }
+        }
     }
     // At high zoom/narrow widths the editor gets its own line. Fixed action
     // seats must never consume its entire width or compress native text to zero.
@@ -252,15 +261,11 @@ struct NativeMokuComposerInput: View {
             : localize("输入内容将发送给 Chief", "Input is sent to Chief")
     }
     @ViewBuilder private var actions: some View {
-        if running && !targetsThread {
-            if reservesDockStopSeat {
-                Color.clear.frame(width: 32, height: 32)
-                    .allowsHitTesting(false).accessibilityHidden(true)
-            } else { stopButton }
-        }
-        // Retain the editor's width as the draft and its action change.
+        if overviewAction == nil && running && !targetsThread { stopButton }
+        // The ordinary Overview Dock carries Stop through the fold. Its hit
+        // target occupies this same seat when the editor is open.
         ZStack {
-            if hasInput {
+            if overviewAction == .send || (overviewAction == nil && hasInput) {
                 let label = sidecardComposer == nil ? localize("发送", "Send") : localize("发送批注", "Send annotation")
                 NativeIcon(name: "ArrowUp", size: 16).frame(width: 32, height: 32)
                     .background(Color.primary.opacity(0.18), in: Circle())
@@ -270,7 +275,7 @@ struct NativeMokuComposerInput: View {
                             .disabled(actionsUnavailable || !draft.canSubmit || readOnly || !(sidecardComposer?.ready ?? true))
                     }
                     .opacity(!actionsUnavailable && draft.canSubmit && (sidecardComposer?.ready ?? true) ? 1 : 0.3)
-            } else if running && targetsThread {
+            } else if overviewAction == .stop || (overviewAction == nil && running && targetsThread) {
                 stopButton
             }
         }.frame(width: 32, height: 32)

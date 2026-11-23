@@ -62,13 +62,18 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
     let send: (NativeComposerSubmission) async throws -> Void = {
         sent.append($0.input(knownDirectoryReferencesAsText: true))
     }
-    let dock = NativeMokuScene(state: scene) { Color.clear } dock: {
-        NativeMokuDock(state: scene, draft: draft, cwd: "/fixture", loadMentionDirectories: {
-            catalogLoads += 1
-            return [.init(name: "Fixture", path: "/fixture/Fixture")]
-        }, onSend: send, onCancel: {})
-    } settings: { EmptyView() }
-    panel.contentView = NSHostingView(rootView: dock.environment(\.scenePhase, .active).environment(\.locale, Locale(identifier: "en")))
+    var stops = 0
+    func dock(running: Bool) -> some View {
+        NativeMokuScene(state: scene) { Color.clear } dock: {
+            NativeMokuDock(state: scene, draft: draft, cwd: "/fixture", running: running, loadMentionDirectories: {
+                catalogLoads += 1
+                return [.init(name: "Fixture", path: "/fixture/Fixture")]
+            }, onSend: send, onCancel: { stops += 1 })
+        } settings: { EmptyView() }
+            .environment(\.scenePhase, .active).environment(\.locale, Locale(identifier: "en"))
+    }
+    let host = NSHostingView(rootView: dock(running: false))
+    panel.contentView = host
     guard let edge = NSScreen.screens.map({ $0.frame.maxX }).max() else {
         throw ChiefInputReplayFailure(description: "Missing screen for offscreen fixture")
     }
@@ -88,6 +93,80 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
         }
         throw ChiefInputReplayFailure(description: "\(surface) did not mount its native editor")
     }
+    func click(_ point: NSPoint) {
+        func mouse(_ kind: NSEvent.EventType) -> NSEvent {
+            NSEvent.mouseEvent(with: kind, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: panel.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
+        }
+        let up = mouse(.leftMouseUp)
+        NSApp.postEvent(up, atStart: true)
+        panel.sendEvent(mouse(.leftMouseDown))
+        if NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: false) === up {
+            _ = NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true)
+            panel.sendEvent(up)
+        }
+    }
+
+    func action(_ id: String, label: String, enabled: Bool) async throws -> CGRect {
+        let deadline = ContinuousClock.now + .seconds(5)
+        var observed = [[String: String]]()
+        repeat {
+            observed = try await button("moku-send", "moku-stop")
+            if observed.count == 1, let control = observed.first, control["id"] == id,
+               control["role"] == "AXButton", control["label"] == label, control["enabled"] == String(enabled),
+               let frame = control["frame"] {
+                let rect = NSRectFromString(frame)
+                if rect.size == CGSize(width: 32, height: 32) { return rect }
+            }
+            try await Task.sleep(for: .milliseconds(30))
+        } while ContinuousClock.now < deadline
+        throw ChiefInputReplayFailure(description: "Expected one \(label) button enabled=\(enabled), found \(observed)")
+    }
+    func press(_ id: String) async throws {
+        let controls = try await button(id, press: true)
+        try require(controls.count == 1 && controls[0]["press"] == "0", "AXPress failed: \(controls)")
+    }
+    func checkOverviewActions() async throws {
+        let editor = try await focusEditor()
+        try await Task.sleep(for: .milliseconds(500))
+        let seat = try await action("moku-send", label: "Send", enabled: false)
+        func checkSeat(_ control: CGRect) throws {
+            try require(abs(control.midX - seat.midX) <= 0.5 && abs(control.midY - seat.midY) <= 0.5,
+                "Overview action moved from \(seat) to \(control)")
+        }
+        guard let nativeSend = find(content, NSButton.self, matching: { $0.identifier?.rawValue == "moku-send" }) else {
+            throw ChiefInputReplayFailure(description: "Missing native Send hit target")
+        }
+        let center = nativeSend.convert(NSPoint(x: nativeSend.bounds.midX, y: nativeSend.bounds.midY), to: nil)
+        click(center)
+        host.rootView = dock(running: true)
+        editor.insertText(" \u{FEFF}", replacementRange: editor.selectedRange())
+        editor.keyDown(with: key("\r", code: 36, panel: panel))
+        let stop = try await action("moku-stop", label: "Stop Chief", enabled: true)
+        try checkSeat(stop)
+        try require(sent.isEmpty && stops == 0, "Empty Return or disabled Send performed an action")
+        try await press("moku-stop")
+        try require(stops == 1, "Stop Chief AXPress missed its cancellation")
+        click(center)
+        let deadline = ContinuousClock.now + .seconds(2)
+        while stops == 1 && ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(10)) }
+        try require(stops == 2 && sent.isEmpty, "Clicking the shared seat did not stop Chief (count \(stops))")
+        editor.keyDown(with: key("\r", code: 36, modifiers: .command, panel: panel))
+        try require(editor.string.hasSuffix("\n") && stops == 2 && sent.isEmpty, "Command-Return did not insert a newline")
+        editor.selectAll(nil)
+        editor.insertText("Follow up", replacementRange: editor.selectedRange())
+        try checkSeat(try await action("moku-send", label: "Send", enabled: true))
+        click(center)
+        try require(sent == [textInput("Follow up")] && stops == 2, "Clicking the shared seat did not send the running follow-up")
+        sent.removeAll()
+        scene.setInputOpen(true)
+        _ = try await focusEditor()
+        try await Task.sleep(for: .milliseconds(500))
+        try checkSeat(try await action("moku-stop", label: "Stop Chief", enabled: true))
+        print("Passed Overview action at \(seat): disabled Send, whitespace Return, Stop AXPress and click, running Send click.")
+    }
+    let verifyActions = CommandLine.arguments.contains("--verify-actions")
+    if verifyActions { try await checkOverviewActions() }
     let editor = try await focusEditor()
     try replayTypingFeedback(editor, draft: draft, panel: panel)
     editor.keyDown(with: key("@", code: 19, modifiers: .shift, unmodified: "2", panel: panel))
@@ -124,27 +203,20 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
     func pick(_ urls: [URL]) async throws {
         selection = urls
         let previous = pickerVisits
-        let editor = try await focusEditor()
         // The capsule can still be travelling after Return or a chip-strip resize.
         // Deliver the window-local click after its 420ms transition settles.
         try await Task.sleep(for: .milliseconds(500))
+        let editor = try await focusEditor()
         let deadline = ContinuousClock.now + .seconds(4)
         guard let seat = editor.enclosingScrollView else { throw ChiefInputReplayFailure(description: "Missing editor seat") }
         let bounds = seat.convert(seat.bounds, to: nil)
         let point = NSPoint(x: bounds.minX - 14, y: bounds.midY)
-        func mouse(_ kind: NSEvent.EventType) -> NSEvent {
-            NSEvent.mouseEvent(with: kind, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
-                windowNumber: panel.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
-        }
-        let up = mouse(.leftMouseUp)
-        NSApp.postEvent(up, atStart: true)
-        panel.sendEvent(mouse(.leftMouseDown))
-        if NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: false) === up {
-            _ = NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true)
-            panel.sendEvent(up)
-        }
+        click(point)
         while previous == pickerVisits || draft.importing {
-            try require(ContinuousClock.now < deadline, "Picker did not finish in \(surface) at \(point), editor \(bounds), visits \(pickerVisits)/\(previous)")
+            if ContinuousClock.now >= deadline {
+                let hit = content.hitTest(content.superview!.convert(point, from: nil))
+                throw ChiefInputReplayFailure(description: "Picker did not finish at \(point), editor \(bounds), visits \(pickerVisits)/\(previous), open \(scene.inputOpen), submitting \(draft.submitting), hit \(String(describing: hit))")
+            }
             try await Task.sleep(for: .milliseconds(10))
         }
         try require(draft.error == nil, draft.error ?? "Picker failed")
@@ -154,9 +226,27 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
     try await pick([])
     try require(draft.directories.map(\.path) == [JSONText(folder.path)] && draft.attachments.isEmpty
         && draft.canSubmit && staged.isEmpty, "Cancel changed the folder-only draft")
+    if verifyActions { _ = try await action("moku-send", label: "Send", enabled: true) }
     pickerEditor.keyDown(with: key("\r", code: 36, panel: panel))
     try require(sent.last == .object(["parts": .array([mention])]), "Folder-only submission lost its path")
     scene.setInputOpen(true)
+    if verifyActions {
+        _ = try await focusEditor()
+        try await pick([files[0]])
+        _ = try await action("moku-send", label: "Send", enabled: true)
+        try await press("moku-send")
+        try require(sent.last == .object(["parts": .array([fileParts[0]])]),
+            "A file alone did not send through AXPress")
+        // AXPress is served on another event loop. Reopen through the real
+        // capsule after the submitted editor has retired.
+        let deadline = ContinuousClock.now + .seconds(5)
+        while scene.inputLeaving && ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(10)) }
+        try require(!scene.inputOpen && !scene.inputLeaving, "File-only send did not fold the editor")
+        try await press("moku-open-input")
+        _ = try await action("moku-stop", label: "Stop Chief", enabled: true)
+        print("Passed file-only AXPress, folder-only Return and reopening the empty running editor through AXPress.")
+        staged = []
+    }
     let mixedEditor = try await focusEditor()
     try await pick([files[0], folder, files[1]])
     try await pick([folder])

@@ -22,8 +22,8 @@ the Harness identity flip. It suppresses closed-input running/submission orbit
 ink throughout that ownership. Current active Thread input uses one trailing
 action seat: Stop for an empty draft, Send for sendable text/attachments/directory
 mentions. Import/submission/unavailable gates still apply. Historical input has
-no authority to stop a newer execution. Other Moku composer routes keep their
-own Stop/Send arrangement. Stop is cancellation, without pause/resume semantics.
+no authority to stop a newer execution. The Overview editor gives Send priority whenever its draft can submit. Its single
+trailing seat otherwise shows Stop for a running Chief or disabled Send when idle. Stop is cancellation, without pause/resume semantics.
 
 Escape and outside click do not fold a pinned Agent editor. Escape first lets
 IME, completion, menus/sheets/popovers and explicit control cancellation act;

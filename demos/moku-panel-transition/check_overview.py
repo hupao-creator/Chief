@@ -156,10 +156,10 @@ def check(folder):
             raise ValueError("Running Chief never displayed Stop")
         nearest = min(stops, key=lambda f: f["stopInset"])
         farthest = max(stops, key=lambda f: f["stopInset"])
-        # The centers are 22pt and 61pt from the trailing edge. Allow two
+        # The centers are 22pt and 29pt from the trailing edge. Allow two
         # points for the optical silhouette and rounding of the square.
         errors = []
-        if nearest["stopInset"] < 20 or farthest["stopInset"] > 63:
+        if nearest["stopInset"] < 20 or farthest["stopInset"] > 31:
             errors.append("Stop left its trailing seats")
         try:
             result.update(check_rows(frames, bands))
@@ -177,7 +177,7 @@ def check(folder):
         return sorted(values)[len(values) // 2]
     compact = settled_inset(0, 168)
     expanded = settled_inset(2, 560)
-    if not (0 < compact < expanded < 84):
+    if not (abs(compact - 22) <= 2 and abs(expanded - 29) <= 2):
         raise ValueError(f"Stop outside its trailing seats: {compact}, {expanded}")
     for index, (kind, group) in enumerate(phases):
         if kind != "travel":
