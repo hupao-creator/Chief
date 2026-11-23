@@ -320,6 +320,22 @@ updated text and focus across the change. Keep the source commits, capture
 conditions and movies with the results.
 [Reader contract](../../design/reading.md#report-and-execution-sidecards)
 
+### Live follow-up in a related execution
+
+Open a Super Thread in an isolated app and select a source conversation from
+**Related executions** while its latest execution is running. With the external
+model stream still active, type two follow-ups in the sidecard composer and
+send each through its mounted Send control. Capture the window across both
+submissions and a subsequent content update. Inspect the text, timestamp and
+background together in the intermediate frames. Each new row rises and fades
+in once. Compare the position of an earlier visible row across sends, check
+that the report and execution stay open, and check the exact inputs and
+execution ID through Runtime. Repeat with a settled reply taller than the
+viewport. Scroll partway up before sending and compare the timeline's offset
+and following state before and after each steer. Repeat with Reduce Motion
+enabled to check the immediate final placement. Record the build, capture settings, input method
+and which cases were exercised. [Reading contract](../../design/reading.md#content-and-execution-identity)
+
 ### Super Thread reading regression
 
 The [Markdown layout contract](../../design/markdown.md) also applies to the

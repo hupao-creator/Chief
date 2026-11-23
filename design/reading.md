@@ -19,8 +19,13 @@ Running/waiting executions retain settled replies; terminal executions retain th
 last non-error reply and an explicitly targeted reply outside work summaries.
 Intermediate replies and failed tools remain execution work. The Agent reader shows reasoning and tool counts when work is visible.
 The window shows a manual steer in the running execution as soon as the composer
-captures it. Its stable row identity and presentation survive both receipt and
-transcript updates. [Send identity and ownership](composer.md#send-identity-and-ownership)
+captures it. Each local steer reserves its final row height and enters from
+18pt below with the 420ms reading replacement curve. The capture time belongs
+to the command, so subsequent steers can enter independently and transcript
+refreshes retain each row's progress. Reduce Motion shows the settled row
+immediately. The entrance leaves scrolling to the reader's existing follow or
+manual position. When the result anchor moves to a new tail row, the preceding
+reply stays mounted at its measured height. [Send identity and ownership](composer.md#send-identity-and-ownership)
 
 Empty no-output bookkeeping does not create a visible execution summary.
 

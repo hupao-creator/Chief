@@ -1,5 +1,6 @@
 import ChiefCore
 import ChiefPluginAPI
+import QuartzCore
 import SwiftUI
 
 /// Window-owned reading ink for the lifetime of a running execution. Only the
@@ -18,8 +19,9 @@ package final class ThreadLocalSteers {
             part["text"]?.stringValue ?? part["name"]?.stringValue.map { "@" + $0 }
         }.joined(separator: "\n")
         let attachments = submission.attachments.map { ThreadMessageAttachment(id: $0.id, label: $0.name.string) }
-        let input = ThreadTranscriptInput(text, followUp: true, createdAt: Date().timeIntervalSince1970 * 1000,
+        var input = ThreadTranscriptInput(text, followUp: true, createdAt: Date().timeIntervalSince1970 * 1000,
                                          attachments: attachments)
+        input.localCaptureTime = CACurrentMediaTime()
         entries[execution, default: []].append(.init(id, .user(input)))
     }
 

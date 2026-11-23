@@ -260,11 +260,15 @@ successor draft, folding, Browser selection and replacing the reading target. Th
 drives the native presentation and selection model without measuring screen timing.
 
 The live steer scenario holds the HTTP handler and reads pixels from a mounted
-Codex turn. It checks the ordinary message before release, both receipt/content
-orders, identical consecutive inputs, first-run and sidecard ownership, direct
+Codex turn. It compares the settled row across receipt and content updates.
+The receipt-first case takes the initial sample with Reduce Motion enabled.
+The replay covers both receipt/content orders, identical consecutive inputs,
+first-run and sidecard ownership, direct
 rejection, explicit retry, switching Threads with the same execution ID and
-receipt recovery after disconnect. The navigation checks restore saved current and archived Chief identifiers to Overview and reject their execution links from an ordinary reader. The peer supplies the Codex transcript and
-controls event timing. The run measures neither model processing nor latency.
+receipt recovery after disconnect. The navigation checks restore saved current
+and archived Chief identifiers to Overview and reject their execution links
+from an ordinary reader. The peer supplies the Codex transcript and controls
+event timing. The run measures neither model processing nor latency.
 
 The Chief case begins with a saved send that carried a structured catalog
 mention and checks the receipt under its original command ID.

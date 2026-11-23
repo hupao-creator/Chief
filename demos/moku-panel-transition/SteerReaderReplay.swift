@@ -14,6 +14,7 @@ private struct ReplayError: Error, CustomStringConvertible { let description: St
 @MainActor @Observable private final class SteerReaderFixture {
     var thread: HarnessThread
     var includesLocalInput = true
+    var reduceMotion = false
     let steers: ThreadLocalSteers
     init(thread: HarnessThread, steers: ThreadLocalSteers) { self.thread = thread; self.steers = steers }
 }
@@ -28,6 +29,7 @@ private struct SteerReader: View {
                 contentResource: { _ in fatalError("Unexpected resource request") }, onIndexChange: { _ in }))
             .environment(\.threadLocalSteers, fixture.includesLocalInput ? fixture.steers : nil)
             .environment(\.steerThreadID, fixture.thread.id)
+            .environment(\._accessibilityReduceMotion, fixture.reduceMotion)
             .environment(\.locale, Locale(identifier: "en-US"))
             .frame(width: 620, height: 440)
     }
@@ -138,6 +140,7 @@ private struct ReaderFrame: Equatable {
     }
 
     for (index, step) in ["event first", "receipt first", "reject", "retry after switch"].enumerated() {
+        fixture.reduceMotion = step == "receipt first"
         cards.receiveIndex(.init(executionIDs: index == 0 ? ["E"] : ["earlier", "E"], hasInheritedHistory: false))
         await Task.yield()
         let draft = presentation.dockDraft
@@ -154,6 +157,11 @@ private struct ReaderFrame: Equatable {
                   cards.snapshot?.excludedExecutionIDs == (inMain ? [] : ["E"]),
                   "Steer replaced the current reader with an empty sidecard")
         let count = min(index + 1, 3)
+        // With normal motion, compare receipt/content pixels at the settled pose.
+        // Reduced motion must present that pose on the initial capture.
+        if !fixture.reduceMotion {
+            try await Task.sleep(for: .seconds(NativeReadingPageTiming.duration))
+        }
         let local = try await rendered(count)
         let times = local.labels.filter { $0 != text }
         try check(times.count == count && times.allSatisfy { $0.contains(":") && $0.first?.isNumber == true },

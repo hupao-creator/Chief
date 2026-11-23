@@ -275,8 +275,11 @@ private struct ExecutionResultAnchor: ViewModifier {
     let id: JSONText
     let enabled: Bool
     func body(content: Content) -> some View {
-        if enabled { content.threadReadingAnchor(threadExecutionResultAnchor(id)) }
-        else { content }
+        // Moving the result anchor to a newly appended row must preserve
+        // the old row's parsed Markdown, selection and measured height.
+        content.background {
+            if enabled { Color.clear.threadReadingAnchor(threadExecutionResultAnchor(id)) }
+        }
     }
 }
 

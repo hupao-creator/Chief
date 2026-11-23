@@ -12,11 +12,18 @@ public enum NativeReadingPageTiming {
     /// The vertical history replacement curve (see NativeReadingPageStack).
     /// Page-level streaming reuses it so a flushed page enters like a history
     /// page, without driving the full-viewport page stack inline.
+    private static let replacementX1 = 0.42
+    private static let replacementX2 = 0.58
+
+    static func replacementProgress(at time: Double) -> Double {
+        sample(x1: replacementX1, x2: replacementX2, at: time)
+    }
+
     public static var replacementAnimation: Animation {
-        .timingCurve(0.42, 0, 0.58, 1, duration: duration)
+        .timingCurve(replacementX1, 0, replacementX2, 1, duration: duration)
     }
     public static var replacementTimingFunction: CAMediaTimingFunction {
-        CAMediaTimingFunction(controlPoints: 0.42, 0, 0.58, 1)
+        CAMediaTimingFunction(controlPoints: Float(replacementX1), 0, Float(replacementX2), 1)
     }
     public static var emphasizedOpening: CAMediaTimingFunction {
         CAMediaTimingFunction(controlPoints: Float(x1), 0, Float(x2), 1)

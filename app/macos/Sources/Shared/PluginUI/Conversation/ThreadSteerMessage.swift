@@ -1,3 +1,4 @@
+import QuartzCore
 import SwiftUI
 
 /// A retained follow-up is a reading entry, not proof of native admission or model processing.
@@ -59,4 +60,38 @@ public struct ThreadSteerMessage: View {
     }
 
     private func localize(_ text: String) -> String { NativePluginLocalization.localize(text, locale: locale) }
+}
+
+/// Capture, receipt and retained chronology can each remount the row. Drawing
+/// from the original capture instant preserves one entrance across those updates.
+struct ThreadSteerEntrance: ViewModifier {
+    let capturedAt: TimeInterval?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var settledCapture: TimeInterval?
+
+    func body(content: Content) -> some View {
+        if let capturedAt {
+            let duration = NativeReadingPageTiming.duration
+            let end = capturedAt + duration
+            let settled = settledCapture == capturedAt || reduceMotion || CACurrentMediaTime() >= end
+            TimelineView(.animation(paused: settled)) { _ in
+                let elapsed = CACurrentMediaTime() - capturedAt
+                let progress = settled ? 1 : NativeReadingPageTiming.replacementProgress(at: elapsed / duration)
+                content
+                    .opacity(progress)
+                    .offset(y: NativeStreamingPageMetrics.entranceTravel * (1 - progress))
+            }
+            .onChange(of: reduceMotion, initial: true) { _, reduced in
+                if reduced { settledCapture = capturedAt }
+            }
+            .task(id: capturedAt) {
+                guard !settled else { return }
+                let remaining = end - CACurrentMediaTime()
+                if remaining > 0 { try? await Task.sleep(for: .seconds(remaining)) }
+                if !Task.isCancelled { settledCapture = capturedAt }
+            }
+        } else {
+            content
+        }
+    }
 }

@@ -16,7 +16,7 @@ To stop the current run, click **Stop this thread**. The button shares the **Sen
 
 ## Send a follow-up or attachment
 
-Type your follow-up in **Type a message…** and click **Send** or press Return. Use Shift+Return for a new line. When you send to a running agent, your message appears immediately in the conversation, alongside the agent’s work. If the run has ended, sending starts a new run in the same conversation. Answer any pending question or permission request first.
+Type your follow-up in **Type a message…** and click **Send** or press Return. Use Shift+Return for a new line. When you send to a running agent, your message fades into place alongside the agent’s work. With Reduce Motion on, it appears in place immediately. If the run has ended, sending starts a new run in the same conversation. Answer any pending question or permission request first.
 
 Click **+** to attach files or point the agent to a folder on your Mac. Command-click to select several items together. Their names or image previews appear above your draft. Supported attachments vary by agent. If the agent rejects an attachment, remove it and try a supported type or describe it in text. You can return to finish an unsent draft after opening a different conversation.
 
