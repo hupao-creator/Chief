@@ -1,5 +1,12 @@
+import ChiefCore
+import ChiefPluginAPI
 import ImageIO
 import SwiftUI
+
+public extension EnvironmentValues {
+    @Entry var threadCardUnread = false
+    @Entry var isApplicationCardUnread: (@MainActor (ApplicationThreadRef, JSONText) -> Bool)? = nil
+}
 
 public struct ThreadCardProviderStatus: View {
     public static let diameter: CGFloat = 44
@@ -11,6 +18,8 @@ public struct ThreadCardProviderStatus: View {
     public let completedBackground: Bool
     public let usesRegularGlass: Bool
     public let emojiUsesLiquidGlass: Bool
+    @Environment(\.locale) private var locale
+    @Environment(\.threadCardUnread) private var unread
     @Environment(\.threadCardProviderColor) private var providerColor
     public init(label: String, brandKey: String, emoji: String? = nil,
                 terminal: ThreadCardTerminalStatus? = nil, completedBackground: Bool = false, usesRegularGlass: Bool = false,
@@ -32,8 +41,20 @@ public struct ThreadCardProviderStatus: View {
         .modifier(ThreadCardBadgeMaterial(hasEmoji: emoji?.isEmpty == false,
             completed: terminal == .completed || completedBackground, usesRegularGlass: usesRegularGlass,
             emojiUsesLiquidGlass: emojiUsesLiquidGlass))
+        .overlay(alignment: .topLeading) {
+            if unread {
+                Image(systemName: "bookmark.fill")
+                    .resizable().aspectRatio(contentMode: .fit)
+                    .frame(width: 12, height: 16)
+                    .foregroundStyle(Color(nsColor: .systemBlue))
+                    .shadow(color: .black.opacity(0.15), radius: 0.8, y: 0.8)
+                    .rotationEffect(.degrees(-10)).offset(x: 3, y: -2)
+                    .allowsHitTesting(false).accessibilityHidden(true)
+            }
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
+        .accessibilityValue(unread ? (locale.language.languageCode?.identifier == "zh" ? "未读" : "Unread") : "")
         .help(label)
     }
     private var tone: Color {

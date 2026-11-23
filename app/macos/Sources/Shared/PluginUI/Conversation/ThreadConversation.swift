@@ -81,6 +81,17 @@ public struct ThreadConversationInputTarget: Equatable, Sendable {
     public let executionID: JSONText?
     public let followsLatest: Bool
     public let ready: Bool
+    public let displayedExecutionID: JSONText?
+
+    init(threadID: JSONText, requestID: JSONText?, executionID: JSONText?, followsLatest: Bool,
+         ready: Bool, displayedExecutionID: JSONText? = nil) {
+        self.threadID = threadID
+        self.requestID = requestID
+        self.executionID = executionID
+        self.followsLatest = followsLatest
+        self.ready = ready
+        self.displayedExecutionID = displayedExecutionID
+    }
 }
 
 public struct ThreadConversationInputTargetKey: PreferenceKey {
@@ -134,6 +145,8 @@ public struct ThreadConversation: View {
     @State private var pageDirection: CGFloat = -1
     @State private var navigationToken: UUID?
     @State private var initializedThread: JSONText?
+    @Environment(\.nativeReadingInteractionActive) private var readerActive
+    @State private var contentStatus = NativeReadingContentStatus()
     @State private var hasMountedCurrentDocument = false
 
     public init(threadId: JSONText, title: String, icon: String? = nil, rows: [ThreadConversationRow],
@@ -257,7 +270,10 @@ public struct ThreadConversation: View {
         let selectedExecution = selectedRow?.execution
         let executionID = sidecardEntry ?? (relatedExecution && selectedExecution?.readable == false ? nil : selectedExecution?.id)
         return ThreadConversationInputTarget(threadID: threadId, requestID: readingTarget?.requestId, executionID: followsLatest ? nil : executionID,
-            followsLatest: followsLatest, ready: initializedThread == threadId && !pageMotion.active)
+            followsLatest: followsLatest, ready: initializedThread == threadId && !pageMotion.active,
+            displayedExecutionID: selectedExecution.flatMap {
+                readerActive && contentStatus.ready && contentStatus.settledExecutions.contains($0.id) ? $0.id : nil
+            })
     }
     public var body: some View {
         Group {
@@ -277,6 +293,7 @@ public struct ThreadConversation: View {
                 NativeReadingPlaceholder(placement: .admission)
             } else {
                 readingLayout.nativeReadingScope(interactionScope)
+                    .onPreferenceChange(NativeReadingContentStatusKey.self) { contentStatus = $0 }
             }
         }
         .font(NativeTypography.inter(size: 16))

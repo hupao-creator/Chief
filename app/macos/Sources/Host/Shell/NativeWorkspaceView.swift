@@ -30,6 +30,7 @@ public final class NativeWorkspacePresentation {
     public private(set) var reportExecution: ApplicationExecutionRef?
     public private(set) var agentInputTarget: ThreadConversationInputTarget?
     @ObservationIgnored private var agentInputOwner: UUID?
+    @ObservationIgnored private var visibleReportDocument: NativeApplicationHTMLReadiness?
     private var reportInputReady = false
     @ObservationIgnored private var executionDrafts: [ApplicationExecutionRef: NativeComposerDraft] = [:]
     private let executionContinuation: NativeExecutionContinuation
@@ -442,6 +443,7 @@ public final class NativeWorkspacePresentation {
     private func resetNavigation() {
         scene.noteReadingOrigin = nil
         clearSidecardComposer()
+        visibleReportDocument = nil
         reportSidecards = NativeReportSidecardPresentation()
         reportExecution = nil; reportInputReady = false; reportInputBack = nil; executionSendNavigation = nil
         agentInputTarget = nil; agentInputOwner = nil
@@ -495,6 +497,37 @@ public final class NativeWorkspacePresentation {
         // Catalog changes also reconcile association ownership while reading.
         overview.recordReadingRoute(selected)
         overview.updateApplicationReading(visible: readingForeground)
+        recordVisibleBookmarks()
+    }
+
+    fileprivate func updateReportDocument(_ document: NativeApplicationHTMLReadiness?, route: UUID) {
+        guard navigationRouteID == route else { return }
+        visibleReportDocument = document
+        recordVisibleBookmarks()
+    }
+
+    fileprivate func recordVisibleBookmarks() {
+        guard started, !workspace.stopping, readingForeground, !messageMotion.active,
+              !onboarding.blocksWorkspace, let selected else { return }
+        let history = workspace.preferences.threadReadHistory
+        do {
+            if selected.typeID == "report.document", let document = visibleReportDocument,
+               document.ready, document.thread == selected {
+                try history.markRead(selected, version: document.source.contentRevision)
+            }
+            let shown: ApplicationExecutionRef?
+            if selected.typeID == "agent", let target = agentInputTarget, target.ready,
+               target.threadID == selected.threadID, target.requestID == readingTarget?.requestID,
+               let id = target.displayedExecutionID {
+                shown = .init(thread: selected, executionID: id)
+            } else if selected.typeID == "report.document", let reportExecution, dockInputAvailable,
+                      reportSidecards.displayedExecutionID == reportExecution.executionID {
+                shown = reportExecution
+            } else { shown = nil }
+            if let shown, workspace.catalog.thread(shown.thread.threadID)?.bookmarkVersion == shown.executionID {
+                try history.markRead(shown.thread, version: shown.executionID)
+            }
+        } catch { workspace.report(error) }
     }
 
     var mokuSubmissionSource: JSONValue {
@@ -575,6 +608,7 @@ public final class NativeWorkspacePresentation {
         agentInputOwner = target == nil ? nil : owner
         guard agentInputTarget != target else { return }
         agentInputTarget = target
+        recordVisibleBookmarks()
         // TOC navigation changes the draft without taking keyboard focus from
         // the history rail or the document the user just selected.
         configureDockInput(in: scene, autofocus: !readingEntranceAdmitted,
@@ -587,6 +621,7 @@ public final class NativeWorkspacePresentation {
         if reportExecution == reference, reportInputReady == ready { return }
         let switchingExecution = reportExecution?.thread == reference?.thread && reference != nil
         reportExecution = reference; reportInputReady = ready
+        recordVisibleBookmarks()
         configureDockInput(in: scene, autofocus: !switchingExecution, retainingOpenInput: switchingExecution)
         if reference != nil, ready { scene.setInputOpen(true) }
     }
@@ -1083,6 +1118,7 @@ public struct NativeWorkspaceView: View {
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen
                         && !presentation.onboarding.blocksWorkspace),
                         presentation: presentation.collectionPanel)
+                    .environment(\.isApplicationCardUnread, model.preferences.threadReadHistory.isUnread)
             } front: {
                 readingFront.id(routeID)
                     .environment(\.nativeExecutionDockRoute, routeID)
@@ -1115,6 +1151,12 @@ public struct NativeWorkspaceView: View {
                         if presentation.navigationRouteID == routeID { presentation.showOverview() }
                     } : nil,
                     onClose: { if presentation.navigationRouteID == routeID { presentation.backFromReader() } }))
+                .onPreferenceChange(NativeApplicationHTMLReadinessKey.self) { document in
+                    presentation.updateReportDocument(document, route: routeID)
+                }
+                .onChange(of: presentation.reportSidecards.displayedExecutionID) {
+                    if presentation.navigationRouteID == routeID { presentation.recordVisibleBookmarks() }
+                }
                 .environment(\.nativeReportSidecards, presentation.reportSidecards)
                 .environment(\.nativeApplicationReadingPanel, presentation.usesReadingPanel)
                 .environment(\.nativeReportExecutionInputChanged, { reference, ready, onBack in

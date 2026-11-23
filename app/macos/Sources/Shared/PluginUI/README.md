@@ -80,6 +80,8 @@ entry temporarily excluded into the active Sidecard. Row-only renders and
 execution Sidecards do not publish another input owner. Unavailable or aggregate
 history without an execution identity cannot silently become current input.
 
+The target also identifies the displayed result when the active page has finished preparing and its selected execution has a mounted, settled Harness body. This identity can be present when input follows the latest run.
+
 The resident Dock captures the submitted draft and its route
 together. The shared draft persists each pending send under its initial
 command ID. Settlement writes the editable successor and its cleanup marker

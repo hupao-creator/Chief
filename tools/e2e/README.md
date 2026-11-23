@@ -422,6 +422,19 @@ cited runs and that a late completion from a closed visit does not change a new
 visit. The [production component preview](../../demos/report-thread/README.md)
 can exercise this visually with synthetic data and a window recording.
 
+### Overview unread bookmarks
+
+Use a private profile with an individual Super Thread and an ordinary completed
+Agent Thread. In the native window, capture the two emoji badges, open each
+reader, wait for its content in the key window and return to Overview. The blue
+bookmark disappears on the visited card. For the background case, open the
+reader while the test window is inactive. Check that no receipt appears until
+the reader comes to the foreground. Restart Chief with the same profile and
+check both badges again. Provide a new HTML revision and another completed
+execution for the same IDs. Each badge should show its bookmark again until
+that version is displayed. Keep the window captures and profile receipt set
+for each step. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)
+
 ### Agent reader alignment
 
 At a fixed main Agent panel width, show one short reply, extend that same reply

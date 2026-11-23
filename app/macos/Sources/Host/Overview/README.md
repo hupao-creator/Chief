@@ -416,6 +416,22 @@ than guessing from terminal status or local UI actions.
 
 Ordinary browsing ignores retired agent-authored visibility markers. Archive, execution eligibility and Report coverage retain their own selection rules. Detail reading sends no per-thread visit or foreground-time receipts to Runtime; application collection reading remains independently owned by the desktop.
 
+## Unread bookmarks
+
+The emoji badge shows a system-blue bookmark for each unseen Report content revision
+and for an ordinary Agent Thread whose latest execution completed and has no read
+receipt. Collection members use their own document revisions. An open route,
+preview, loading placeholder or related-execution list cannot acknowledge content.
+The key, foreground reader acknowledges the revision reported ready by WebKit or
+the selected settled execution body on its active page after entrance. Reading
+a completed execution in the Report's open sidecard can acknowledge that execution.
+
+[Profile-local read receipts](NativeThreadReadHistory.swift) live in the desktop
+profile's `thread-reading/` directory. The client creates one immutable file
+per type, Thread ID and version. Revisiting that version is idempotent. A new
+revision or completed execution starts unread. The collection visit timer and
+ranking keep their independent rules.
+
 ## Viewed application collections
 
 Report opts into one two-cell collection per selected space. The Host first applies

@@ -1,3 +1,4 @@
+import ChiefCore
 import ChiefPluginAPI
 import Observation
 import SwiftUI
@@ -84,6 +85,7 @@ public final class NativeReportSidecardPresentation {
     // The entry stays mounted as the TOC changes the execution that owns input.
     public private(set) var inputExecution: ApplicationExecutionRef?
     public private(set) var inputReady = false
+    public private(set) var displayedExecutionID: JSONText?
     public private(set) var entryPosition: HarnessReadingTarget.Position = .start
     public private(set) var executionVisit = UUID()
     public private(set) var continuedExecution = false
@@ -102,12 +104,13 @@ public final class NativeReportSidecardPresentation {
         guard !retainingForReturn else { return }
         connection = nil
         selectionID = UUID(); executionVisit = UUID()
-        selectedExecution = reference; inputExecution = nil; inputReady = false; entryPosition = position
+        selectedExecution = reference; inputExecution = nil; inputReady = false; displayedExecutionID = nil; entryPosition = position
         continuedExecution = false; executionReady = false
     }
 
-    public func updateInput(_ reference: ApplicationExecutionRef?, ready: Bool, visit: UUID) {
+    public func updateInput(_ reference: ApplicationExecutionRef?, ready: Bool, displayedExecutionID: JSONText? = nil, visit: UUID) {
         guard executionVisit == visit, !retainingForReturn else { return }
+        self.displayedExecutionID = displayedExecutionID
         if inputReady != ready { inputReady = ready }
         if inputExecution != reference {
             inputExecution = reference

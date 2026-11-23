@@ -197,6 +197,9 @@ private struct NativeOverviewWorkspaceCard: View {
             case .harness(let snapshot):
                 let thread = snapshot.input.thread
                 snapshot.card(respond: { try await respond($0, thread: thread) }, openThread: { open(thread.id) })
+                    .environment(\.threadCardUnread, thread.bookmarkVersion.map {
+                        model.workspace.preferences.threadReadHistory.isUnread(.init(threadID: thread.id, typeID: "agent"), version: $0)
+                    } ?? false)
                     .environment(\.threadCardArchiveAction, archiveAction(for: thread))
                     .environment(\.threadCardArchivePending, archivePending)
                     .environment(\.nativeThreadIdentityKey, thread.id.string)

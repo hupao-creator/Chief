@@ -22,6 +22,8 @@ If the cards in your current view would extend past the window, Overview can gro
 
 Click a task card to open its conversation. Cards show statuses such as **Running**, **Completed**, and **Interrupted**. If a card shows a question or permission request, respond on the card or open the conversation for context. **Background work is still running** means work continues after the agent has replied.
 
+A blue bookmark on the upper-left edge of the emoji badge means there’s a completed result or Super Thread document you haven’t viewed. Open the card and let the result or document appear in the foreground. When you return to Overview, the bookmark is gone. Chief remembers this after you quit. A newly completed run or a new version of the document brings the bookmark back.
+
 Overview hides a task conversation if its latest run failed or Chief stopped it. You may still reach it from an existing link in a Chief note or Super Thread. To send a follow-up, open the conversation and use its input box.
 
 ## Archive a conversation
