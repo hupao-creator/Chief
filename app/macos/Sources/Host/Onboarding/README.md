@@ -84,7 +84,9 @@ The Tag SpriteKit and Report SwiftUI sequences are abstract capability examples,
 shared with Settings through `NativeRoleConfigurationPanel` and with the visual
 demo. Role titles and subtitles are shown during onboarding. Each mounted Tag
 or Super Thread page plays once with the discovered Harness logos and retains
-its completed composition. Settings uses the same behavior
+its completed composition. When OpenCode is available, the Tag animation uses its
+plugin logo for Improve search, Update dev docs and Explore shortcuts in both
+the scattered and grouped cards. Settings uses the same behavior
 without onboarding step admission. Leaving the page cancels playback; entering
 it again creates a new playback visit. Hiding or deactivating the window during
 playback settles to the completed composition without replaying on activation.
