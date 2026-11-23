@@ -458,6 +458,7 @@ public struct NativeMokuDock: View {
                 }
                     .mokuInk(value: reminder != nil)
                     .nativeCanvasNavigationRegion()
+                    .nativeCanvasNavigationRegion(in: state.swipeRegions.bar)
                     .geometryGroup()
                     // Seat the native editor on the bottom edge. Animating a
                     // centre position as well as the shell height applies the
@@ -1019,6 +1020,7 @@ public struct NativeMokuDock: View {
                                 .help(threadID == nil ? localize("停止 Chief", "Stop Chief") : localize("停止此 Thread", "Stop this thread"))
                                 .accessibilityLabel(threadID == nil ? localize("停止 Chief", "Stop Chief") : localize("停止此 Thread", "Stop this thread"))
                                 .accessibilityIdentifier("moku-stop")
+                                .nativeCanvasNavigationRegion(in: state.swipeRegions.controls)
                                 .transition(.identity)
                         }
                     }
@@ -1051,6 +1053,17 @@ public struct NativeMokuDock: View {
         .animation(reduceMotion ? nil : .mokuInk) {
             $0.shadow(color: .black.opacity(0.13), radius: hovered ? 17 : 13, y: 6)
         }
+        .background(alignment: .leading) {
+            if rowControlAvailable && !noteMounted {
+                if displayedMessage?.dispatch != nil {
+                    Color.clear.frame(width: 46, height: 36)
+                        .nativeCanvasNavigationRegion(in: state.swipeRegions.note)
+                        .position(faceCenter)
+                } else {
+                    Color.clear.nativeCanvasNavigationRegion(in: state.swipeRegions.note)
+                }
+            }
+        }
         .nativeCanvasNavigationRegion()
         // In detail, only Dock focus may use this close route. A window-sized
         // fallback would race the reader's nested history/Sidecard cancellation.
@@ -1060,8 +1073,8 @@ public struct NativeMokuDock: View {
         .accessibilityElement(children: .contain).accessibilityLabel(state.settingsOpen ? localize("设置", "Settings") : "Chief")
         .accessibilityHint(state.settingsOpen || !state.inputInteractionReady ? "" :
             state.overviewVisible && rowControlAvailable && !state.notePanelOpen
-                ? localize("点击打开输入框，或在俯瞰中的任意位置双指上滑打开笔记",
-                           "Click to type, or swipe up with two fingers anywhere in Overview for Chief Note")
+                ? localize("点击打开输入框，或在 Chief Bar 上双指上滑打开笔记",
+                           "Click to type, or swipe up with two fingers on Chief Bar for Chief Note")
                 : localize("点击打开输入框", "Click to type"))
         .accessibilityValue(state.noteUnread(note) ? localize("笔记有尚未完整浏览的更新", "Note update not yet fully browsed") : "")
         .accessibilityIdentifier("moku-capsule")

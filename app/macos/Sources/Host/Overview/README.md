@@ -232,10 +232,9 @@ live.
 ### Overview scroll input
 
 [NativeOverviewScrollInput](NativeOverviewScrollInput.swift) routes window-local AppKit wheel events.
-An overflowing reminder body owns gestures starting in its viewport, including their inertia. Elsewhere it checks a [physical upward swipe](../MokuScene/NativeMokuSwipe.swift) before canvas and native scroll dispatch.
-In the exposed Overview the background, cards (including the carousel cover), filter scrollers and Dock share this gesture.
-A precise, unmodified contact opens Chief Note once at 24 points of upward travel with more than 1.5 times the horizontal travel, under either Natural Scrolling setting. Its remaining samples and inertia are consumed.
-Open Note, active or leaving input, an intervention, onboarding, Settings, a collection member panel and a reader keep their own input.
+On a fresh, precise, unmodified contact, the [vertical gesture router](NativeOverviewVerticalSwipe.swift) takes a physical swipe with at least 24 points of vertical travel and more than 1.5 times its horizontal travel. It accounts for either Natural Scrolling setting and consumes the remaining contact and its momentum. Horizontal starts retain their original owner through reversals. The background, cards, carousel cover and tag bar step between Running, All (initial) and Completed. Up moves toward Running, down toward Completed, stopping at either end. The [Chief Bar](../MokuScene/README.md) reserves its own Note target. Vertically overflowing native viewports keep scrolling at either limit. Open Note, editing, interventions, onboarding, Settings, readers and collection panels keep their input.
+
+Status filters apply to the selected tag's eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and visible interruptions with no ongoing work appear only in All. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
 
 A trackpad contributes its horizontal delta, including native momentum. A line
 wheel uses its horizontal delta when available and otherwise its vertical delta,
@@ -246,7 +245,7 @@ Settings, readers and active text entry gate canvas scrolling. Card focus keeps
 horizontal arrow navigation and Return available. Opening the Chief input
 explicitly hands focus to its editor.
 
-Geometry reuse applies when the current membership and viewport are unchanged; a structural slot refresh then updates content without invoking the solver. Recovery from an interrupted entry, resize or exit samples the current poses and starts the latest presentation, so transparent entrants and retired snapshots are released. No reading-position edge seat is retained.
+A superseded layout worker cannot pause input after a newer layout has settled or reused its geometry. Geometry reuse applies when the current membership and viewport are unchanged; a structural slot refresh then updates content without invoking the solver. Recovery from an interrupted entry, resize or exit samples the current poses and starts the latest presentation, so transparent entrants and retired snapshots are released. No reading-position edge seat is retained.
 
 ## Tags and filter transitions
 

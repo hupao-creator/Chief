@@ -42,6 +42,18 @@ public enum NativeOverviewCardSnapshot {
     case collection(AnyApplicationThreadPlugin, [ApplicationOverviewSnapshot])
 }
 
+enum NativeOverviewStatusFilter: String {
+    case running, all, completed
+
+    func includes(_ thread: HarnessThread) -> Bool {
+        switch self {
+        case .all: true
+        case .running: thread.pendingInput || thread.observation.isExecutionActive || thread.observation.backgroundWork != nil
+        case .completed: !thread.pendingInput && thread.observation.backgroundWork == nil && thread.observation.latestExecution?.status == .completed
+        }
+    }
+}
+
 /// Owns public catalog selection and the committed presentation session. Call receive
 /// synchronously after EACH runtime transaction has been installed in the workspace;
 /// observing SwiftUI renders instead would lose A → B → A structural transitions.
@@ -53,6 +65,9 @@ public final class NativeOverviewWorkspaceModel {
     public let applicationFactories: NativeOverviewApplicationFactories
     public let chromeInteractions = NativeOverviewChromeInteractions()
     public private(set) var tagSelection: NativeOverviewTagSelection?
+    private(set) var statusFilter = NativeOverviewStatusFilter.all
+    // The delta path must also detect a selected tag member becoming visible.
+    @ObservationIgnored private var statusHiddenThreads = Set<JSONText>()
     public private(set) var selectedTag = ""
     public private(set) var selectedScope = ""
     public private(set) var selectedFilter: NativeOverviewFilter?
@@ -235,6 +250,17 @@ public final class NativeOverviewWorkspaceModel {
         appendAction(["kind": .text("filter"), "tag": tag.isEmpty ? .null : .text(tag)])
         selectTagValue(tag, scope: filter?.scope ?? "",
                        kind: filter.map { $0.isDirectory ? .directory : .semantic })
+    }
+
+    func stepStatusFilter(up: Bool) {
+        let next: NativeOverviewStatusFilter = switch (statusFilter, up) {
+        case (.completed, true), (.running, false): .all
+        case (_, true): .running
+        case (_, false): .completed
+        }
+        guard next != statusFilter else { return }
+        statusFilter = next
+        reconcile(captureMutation: false, refreshSelection: false)
     }
 
     private var browseSceneKey: String {
@@ -511,7 +537,7 @@ public final class NativeOverviewWorkspaceModel {
             let selectedTags = selectedFilter.map { [$0.tag] + $0.aliases } ?? (selectedTag.isEmpty ? [] : [selectedTag])
             let selected = selectedFilter.flatMap { filterMembers[$0.selectionKey] }.map(resolve)
                 ?? (selectedTags.isEmpty ? resolve(allMembership()) : collection(tags: selectedTags, kind: tagSelection?.kind, scope: selectedScope))
-            let nextItems = try project(selected)
+            let nextItems = try project(filterByStatus(selected))
             if sceneKey != previousScene { revisions.removeAll() }
             if captureMutation, facts.overviewVisible, previousScene == sceneKey,
                previousItems.map(\.structuralIdentity) != nextItems.map(\.structuralIdentity) {
@@ -633,6 +659,12 @@ public final class NativeOverviewWorkspaceModel {
             selectedFilter = current
             publishContext()
         }
+        if statusFilter != .all, changedThreads.contains(where: { thread in
+            statusFilter.includes(thread) ? statusHiddenThreads.contains(thread.id) : content.activeIDs.contains(thread.id.string)
+        }) {
+            reconcile(captureMutation: captureMutation, refreshSelection: false)
+            return true
+        }
         if changedApplications.contains(where: { change in
             collectionSources.keys.contains(where: { $0.threadID == change.id })
         }) {
@@ -654,6 +686,17 @@ public final class NativeOverviewWorkspaceModel {
         }
         error = nil
         return true
+    }
+
+    private func filterByStatus(_ selected: NativeOverviewCollection) -> NativeOverviewCollection {
+        statusHiddenThreads.removeAll(keepingCapacity: true)
+        guard statusFilter != .all else { return selected }
+        let threads = selected.threads.filter { thread in
+            if statusFilter.includes(thread) { return true }
+            statusHiddenThreads.insert(thread.id)
+            return false
+        }
+        return .init(threads: threads, applications: statusFilter == .completed ? selected.applications : [])
     }
 
     private func refreshMokuOperations() {
@@ -769,7 +812,7 @@ public final class NativeOverviewWorkspaceModel {
             else { projection = try workspace.harnessHost.overview(input: input, availableColumns: HarnessOverviewCapacity.maximumColumns); harnessCache[thread.id] = projection }
             let token = "agent:\(thread.id.string):\(ObjectIdentifier(projection))"
             snapshots[token] = .harness(projection)
-            let completed = !thread.pendingInput && thread.observation.backgroundWork == nil && thread.observation.latestExecution?.status == .completed
+            let completed = NativeOverviewStatusFilter.completed.includes(thread)
             entries.append((thread.createdAt, entries.count, .init(id: thread.id.string,
                 columns: projection.envelope.footprint.columns, rows: projection.envelope.footprint.rows,
                 structureKey: projection.envelope.structureKey.string,
@@ -791,7 +834,7 @@ public final class NativeOverviewWorkspaceModel {
             snapshots[token] = .application(plugin, projection)
             entries.append((entry.createdAt, entries.count, .init(id: entry.ref.threadID.string,
                 columns: projection.envelope.footprint.columns, rows: projection.envelope.footprint.rows,
-                structureKey: projection.envelope.structureKey.string, presentationID: token)))
+                structureKey: projection.envelope.structureKey.string, presentationID: token, completed: true)))
         }
         entries.sort { a, b in
             return a.created == b.created ? a.index < b.index : a.created < b.created
@@ -844,7 +887,7 @@ public final class NativeOverviewWorkspaceModel {
             for member in members { collectionSources[member.entry.ref] = card.id }
             let origin = entries.firstIndex { ids.contains($0.item.id) }!
             entries[origin].item = .init(id: card.id, columns: card.columns, rows: card.rows,
-                structureKey: "application-collection", presentationID: token,
+                structureKey: "application-collection", presentationID: token, completed: true,
                 providesCardSurface: plan.providesCardSurface)
             entries.removeAll { ids.contains($0.item.id) }
         }
@@ -932,6 +975,7 @@ public final class NativeOverviewWorkspaceModel {
         content.stop()
         snapshots.removeAll(); revisions.removeAll(); harnessCache.removeAll(); applicationCache.removeAll(); directoryTags.removeAll()
         membershipFacts = nil; membershipIndex = .init(); allMembers = .init(); allMembersDirty = false; applicationsByRef.removeAll()
+        statusHiddenThreads.removeAll()
         unreadVersions.removeAll(); activeThreadIDs.removeAll(); allHasActiveTasks = false
         globalThreadIDs.removeAll(); globalConversationCount = nil; hasEstablishedConversation = false
         applicationRecords = .init(); catalogIDs.removeAll()

@@ -845,8 +845,9 @@ public final class NativeWorkspacePresentation {
             && !onboarding.blocksWorkspace
             && workspace.catalog.hasMoku
     }
-    fileprivate var canSwipeOpenMokuNote: Bool {
-        canToggleMokuNote && scene.windowVisible && scene.inputInteractionReady
+    fileprivate var overviewSwipeAvailable: Bool {
+        started && scene.overviewVisible && !workspace.stopping && !scene.dockCovered
+            && !onboarding.blocksWorkspace && scene.windowVisible && scene.inputInteractionReady
             && !scene.inputOpen && !scene.inputLeaving && !scene.notePanelOpen
             && !scene.dockInteractionVisible && moku.interaction == nil
             && !browsingCollection && !messageMotion.active
@@ -1122,9 +1123,12 @@ public struct NativeWorkspaceView: View {
                     interactionPaused: presentation.scene.interactionPaused || presentation.messageMotion.active,
                     landing: presentation.moku.landing,
                     chromeVisible: presentation.selected == nil)
-                    .environment(\.overviewNoteAction, NativeOverviewNoteAction(
-                        available: { presentation.canSwipeOpenMokuNote },
-                        open: { presentation.scene.openNotePanelFromUser() }))
+                    .environment(\.overviewSwipeActions, NativeOverviewSwipeActions(
+                        regions: presentation.scene.swipeRegions,
+                        available: { presentation.overviewSwipeAvailable },
+                        canFilter: { !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
+                        openNote: { if presentation.canToggleMokuNote { presentation.scene.openNotePanelFromUser() } },
+                        stepFilter: { presentation.overview.stepStatusFilter(up: $0) }))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen
                         && !presentation.onboarding.blocksWorkspace),
                         presentation: presentation.collectionPanel)
