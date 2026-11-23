@@ -21,6 +21,13 @@ collector and executable fingerprints.
   reversal and retirement. The fixture supplies the projected requests and
   records bell callbacks.
 
+- `tool-feedback` mounts the production Dock and delivers Codex catalog fixtures
+  to its workspace presentation. The check observes painted dots, the mounted
+  character and its animation input across consecutive named calls and reasoning.
+  It checks the foreground call IDs and names, retirement on completion, failure and interruption, both
+  intervention panels and the pending dispatch notification. Results are in
+  `tool-feedback/tool-feedback.json`; no model or external tool runs.
+
 The [transition study](../../../design/research/chief-bar-remaining.md) records
 the separate onboarding, route lifetime, mask, Talk, Collection and identity
 experiments and their limitations. Their collectors and rejected candidates are

@@ -263,9 +263,12 @@ interaction/overlay ownership.
 
 ## Thinking feedback
 
-Moku temporarily hides its live reasoning text Arc. Deep thinking uses the same
-three-dot running choreography described above. Live reasoning takes priority over a queued generic tool expression; source
-appends do not restart the running clock. Completion, failure,
+The compact Chief Bar uses one three-dot running animation across reasoning,
+ordinary tool calls and assistant text in the same execution. A new call or
+return to reasoning keeps the current animation clock. The Dock reads the live
+execution state and reserves operation-specific presentation for the active
+Overview operation. Harness activity and tool audit records keep their original
+names, call IDs and results. Completion, failure,
 interruption, waiting for input and runtime disconnect retire loading through
 the existing execution and surface ownership state.
 

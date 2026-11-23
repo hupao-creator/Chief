@@ -114,6 +114,7 @@ extension NSView {
                 try FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
                 switch CommandLine.arguments.last {
                 case "--eyes": try await eyeVisit()
+                case "--tool-feedback": try await toolFeedbackVisit()
                 case "--routes", "--routes-reduced": try await routesVisit(reduced: CommandLine.arguments.last == "--routes-reduced")
                 default: throw ReplayFailure("Unknown visit")
                 }

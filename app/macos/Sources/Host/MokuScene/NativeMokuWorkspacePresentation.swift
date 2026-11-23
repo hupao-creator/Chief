@@ -23,13 +23,18 @@ public struct NativeMokuDockIntervention: Equatable, Sendable {
 
 /// The production MokuDock projection boundary. Receive every installed runtime
 /// transaction synchronously, after the overview has projected its operations.
-/// The host alone decodes Harness state; this adapter consumes public facts and
-/// the ordered, transient activity deliveries carried by a runtime mutation.
+/// The host decodes Harness state. The Dock follows the current execution
+/// and its audited operations.
 @MainActor @Observable
 public final class NativeMokuWorkspacePresentation {
     public let workspace: NativeWorkspaceModel
     public let overview: NativeOverviewWorkspaceModel
-    public private(set) var dockMode: MokuCharacterMode = .idle
+    public var dockMode: MokuCharacterMode {
+        if let activeOperation {
+            return .operation(activity: activeOperation.kind.rawValue, phase: activeOperation.phase.rawValue)
+        }
+        return running ? .running : .idle
+    }
     public private(set) var running = false
     public private(set) var sessionIdle = true
     public private(set) var landing = false
@@ -42,16 +47,14 @@ public final class NativeMokuWorkspacePresentation {
     public private(set) var intervention: NativeMokuDockIntervention?
     public private(set) var activeOperation: NativeOverviewMokuOperation?
     public private(set) var activity: HarnessActivity?
-    public private(set) var displayToken: UInt64 = 0
     public private(set) var error: String?
     public var interactionIsQuestion: Bool { intervention?.isQuestion == true }
     public var executionKey: String? {
         guard let thread = workspace.catalog.moku, let execution = thread.observation.latestExecution else { return nil }
         return nativeMokuPresentationTuple([.string(thread.id), .string(thread.harnessID), .string(execution.executionID)])
     }
-    /// Foreground reasoning is live execution content, separate from the FIFO
-    /// role leases. A tool, answer, terminal state or disconnect retires it now;
-    /// the animation host alone may finish painting an already visible snapshot.
+    /// Foreground reasoning is live execution content. A tool, answer,
+    /// terminal state or disconnect retires it immediately.
     public var reasoning: MokuReasoningContent? {
         workspace.runtimeAvailable && activeOperation == nil ? reasoningContent : nil
     }
@@ -68,50 +71,30 @@ public final class NativeMokuWorkspacePresentation {
 
     @ObservationIgnored private var previousThread: HarnessThread?
     @ObservationIgnored private var harnessPresentation: HarnessMokuPresentation?
-    @ObservationIgnored private var requestedPresenting = false
-    @ObservationIgnored private var queue = NativeMokuDisplayQueue()
     @ObservationIgnored private var landingInitialized = false
 
     public init(workspace: NativeWorkspaceModel, overview: NativeOverviewWorkspaceModel) {
         self.workspace = workspace; self.overview = overview
-        queue.onChange = { [weak self] in self?.publishDisplay() }
-        reconcile(mutation: nil)
+        reconcile(refreshHarness: true)
     }
 
     public func receive(_ event: RuntimeClientEvent) {
         switch event {
-        case .snapshot: reconcile(mutation: nil)
-        case .mutation(let mutation, _, _): reconcile(mutation: mutation)
-        case .connection, .synchronizing: updatePresenting()
-        case .failure, .overviewFilter, .threadContent: break
+        case .snapshot: reconcile(refreshHarness: true)
+        case .mutation: reconcile(refreshHarness: false)
+        case .connection, .synchronizing, .failure, .overviewFilter, .threadContent: break
         }
     }
 
     /// Hydration and recovery catch up to the latest snapshot without replaying
     /// events that were never presented by this window.
-    public func refresh() { reconcile(mutation: nil) }
+    public func refresh() { reconcile(refreshHarness: true) }
 
-    /// The mounted Dock supplies actual visibility, including its window,
-    /// composer, camera and launch ownership. Hidden history is discarded.
-    public func setPresenting(_ active: Bool) {
-        requestedPresenting = active
-        updatePresenting()
-    }
-
-    /// A lease starts its minimum display interval only after it was rendered.
-    public func presented(_ token: UInt64) { queue.presented(token) }
-    public func stop() { requestedPresenting = false; queue.setPresenting(false) }
-
-    private func reconcile(mutation: JSONValue?) {
+    private func reconcile(refreshHarness: Bool) {
         let moku = workspace.catalog.moku
         let execution = moku?.observation.latestExecution
-        let events = (mutation?["activities"]?.arrayValue ?? []).compactMap { value -> HarnessActivity? in
-            guard let moku, value["threadId"] == .string(moku.id), value["harnessId"] == .string(moku.harnessID),
-                  let activity = Self.activity(value["activity"]), activity.executionID == execution?.executionID else { return nil }
-            return activity
-        }
         // Unrelated agent transactions do not repeatedly decode Moku history.
-        if moku != previousThread || mutation == nil {
+        if moku != previousThread || refreshHarness {
             previousThread = moku
             do {
                 harnessPresentation = try moku.flatMap { try workspace.harnessHost.mokuPresentation(input: .init(thread: $0)) }
@@ -160,30 +143,6 @@ public final class NativeMokuWorkspacePresentation {
             return JSONText(nativeMokuPresentationTuple([.string(thread.id), .string(thread.harnessID), .string(value.id)]))
         } }
         intervention = moku.flatMap(Self.intervention)
-        queue.minimumDisplayMilliseconds = sessionIdle ? 800 : 2_000
-        updatePresenting()
-        // The live Arc above owns reasoning immediately. It does not wait for
-        // queued generic tool roles, nor does reading backlog delay a new role.
-        let latest: NativeMokuDisplayItem
-        if let value = harnessPresentation?.activity, value.executionID == execution?.executionID,
-           let item = Self.displayItem(value) {
-            latest = item
-        } else { latest = execution?.status == .running ? .running : .idle }
-        let scope = NativeMokuDisplayScope(thread: moku?.id, harness: moku?.harnessID, execution: execution?.executionID)
-        var items = events
-        if let takeover = events.lastIndex(where: { event in
-            if case .toolCall(_, let name) = event.body { return Self.dedicatedTool(name.string) }
-            return false
-        }) {
-            // A route that starts and finishes within one batch is still an
-            // explicit catch-up boundary for the generic role queue.
-            queue.receive(scope: scope, status: .running,
-                latest: .init(sequence: events[takeover].sequence, mode: .idle), items: [], reset: true)
-            items = Array(events.dropFirst(takeover + 1))
-        }
-        queue.receive(scope: scope, status: execution?.status, latest: latest,
-            items: items.compactMap(Self.displayItem), reset: mutation == nil)
-        publishDisplay()
     }
 
     private func reconcileLanding(transcript: [JSONValue], executionActive: Bool) {
@@ -216,16 +175,6 @@ public final class NativeMokuWorkspacePresentation {
         }
     }
 
-    private func updatePresenting() {
-        queue.setPresenting(requestedPresenting && workspace.connection == .connected && intervention == nil && activeOperation == nil)
-    }
-
-    private func publishDisplay() {
-        displayToken = queue.token
-        if let operation = activeOperation { dockMode = .operation(activity: operation.kind.rawValue, phase: operation.phase.rawValue) }
-        else { dockMode = queue.current.mode == .idle && running ? .running : queue.current.mode }
-    }
-
     private func respond(to intervention: NativeMokuDockIntervention, with response: HarnessRespondRequest) async throws {
         do {
             guard let thread = workspace.catalog.moku, thread.id == intervention.threadID,
@@ -251,37 +200,6 @@ public final class NativeMokuWorkspacePresentation {
         return nil
     }
 
-    private static func activity(_ value: JSONValue?) -> HarnessActivity? {
-        guard let value, case .string(let executionID) = value["executionId"],
-              let sequence = value["sequence"]?.intValue, sequence >= 0 else { return nil }
-        let body: HarnessActivityBody
-        switch value["kind"]?.stringValue {
-        case "reasoning":
-            guard case .string(let text) = value["text"] else { return nil }
-            body = .reasoning(text: text, textOffset: value["textOffset"]?.intValue)
-        case "assistant-text": body = .assistantText
-        case "tool-call":
-            guard case .string(let callID) = value["callId"], case .string(let toolName) = value["toolName"] else { return nil }
-            body = .toolCall(callID: callID, toolName: toolName)
-        default: return nil
-        }
-        return HarnessActivity(executionID: executionID, sequence: sequence, body: body)
-    }
-
-    private static func displayItem(_ activity: HarnessActivity) -> NativeMokuDisplayItem? {
-        let mode: MokuCharacterMode
-        switch activity.body {
-        case .reasoning: mode = .running
-        case .toolCall(_, let name): mode = dedicatedTool(name.string) || name == "talk" || name == "timer" ? .running : .namedTool(name.string)
-        case .assistantText: mode = .running
-        }
-        return .init(sequence: activity.sequence, mode: mode)
-    }
-
-    private static func dedicatedTool(_ name: String) -> Bool {
-        ["list_threads", "create_thread", "send_to_thread", "get_thread_status", "interrupt_thread"].contains(name)
-    }
-
     private static func normalizeWhitespace(_ text: String) -> String {
         // ECMAScript \s includes FEFF, but excludes Foundation's NEL (0085).
         var result = "", pendingSpace = false
@@ -297,107 +215,6 @@ public final class NativeMokuWorkspacePresentation {
         }
         return result
     }
-}
-
-private struct NativeMokuDisplayScope: Equatable {
-    let thread: JSONText?
-    let harness: JSONText?
-    let execution: JSONText?
-}
-private struct NativeMokuDisplayItem: Equatable {
-    let sequence: Int
-    let mode: MokuCharacterMode
-    static let idle = Self(sequence: -1, mode: .idle)
-    static let running = Self(sequence: 0, mode: .running)
-}
-
-/// FIFO semantic role leases, independent of SwiftUI coalescing.
-/// Mirrors the renderer's MokuDisplayQueue.
-@MainActor private final class NativeMokuDisplayQueue {
-    var onChange: (() -> Void)?
-    var minimumDisplayMilliseconds: Double = 2_000 { didSet { if oldValue != minimumDisplayMilliseconds { schedule() } } }
-    private(set) var current: NativeMokuDisplayItem = .idle
-    private(set) var token: UInt64 = 0
-    private var scope: NativeMokuDisplayScope?
-    private var status: PublicExecution.Status?
-    private var pending: [NativeMokuDisplayItem] = []
-    private var latest: NativeMokuDisplayItem = .idle
-    private var highSequence = -1
-    private var presenting = false
-    private var shownAt: Double?
-    private var timer: Task<Void, Never>?
-    private var generation: UInt64 = 0
-
-    func receive(scope: NativeMokuDisplayScope, status: PublicExecution.Status?,
-                 latest: NativeMokuDisplayItem, items: [NativeMokuDisplayItem], reset: Bool = false) {
-        let changed = self.scope != scope
-        if changed || reset {
-            cancel(); self.scope = scope; pending.removeAll(); highSequence = -1
-            self.latest = .idle; self.status = nil; select(.idle)
-        }
-        if reset {
-            self.status = status; self.latest = status == .running ? latest : .idle
-            highSequence = latest.sequence; select(self.latest); return
-        }
-        if !changed && (self.status == .completed || self.status == .failed || self.status == .interrupted) { return }
-        if status != .running && status != .completed {
-            self.status = status; highSequence = max(highSequence, latest.sequence, items.map(\.sequence).max() ?? -1)
-            if !pending.isEmpty || current != .idle { synchronize(.idle) }
-            self.latest = .idle; return
-        }
-        self.status = status
-        for item in items { accept(item) }
-        if status == .running { accept(latest) }
-        if current.mode == .idle && status == .running { self.latest = .running; select(.running) }
-        if status == .completed {
-            self.latest = .idle
-            if current.sequence <= 0 && pending.isEmpty { select(.idle) }
-        }
-        if !presenting && (!pending.isEmpty || current != self.latest) { synchronize(self.latest) }
-        schedule()
-    }
-
-    func setPresenting(_ value: Bool) {
-        guard value != presenting else { return }
-        presenting = value; synchronize(latest)
-    }
-    func presented(_ token: UInt64) {
-        guard presenting, token == self.token, shownAt == nil else { return }
-        shownAt = ProcessInfo.processInfo.systemUptime * 1_000; schedule()
-    }
-    private func synchronize(_ item: NativeMokuDisplayItem) {
-        pending.removeAll(); latest = item; highSequence = max(highSequence, item.sequence); select(item)
-    }
-    private func accept(_ item: NativeMokuDisplayItem) {
-        guard item.sequence >= highSequence, item.mode != .idle else { return }
-        if item.sequence == highSequence {
-            if current.sequence == item.sequence {
-                if current != item { latest = item; current = item; onChange?() }
-            } else if let index = pending.firstIndex(where: { $0.sequence == item.sequence }) {
-                latest = item; pending[index] = item
-            }
-            return
-        }
-        highSequence = item.sequence; latest = item
-        if !presenting || ((current.mode == .idle || current.sequence <= 0) && pending.isEmpty) { select(item) }
-        else { pending.append(item) }
-    }
-    private func select(_ item: NativeMokuDisplayItem) {
-        cancel(); shownAt = nil; token &+= 1; current = item; onChange?()
-    }
-    private func schedule() {
-        cancel()
-        guard presenting, let shownAt, (!pending.isEmpty || status == .completed), current.mode != .idle else { return }
-        let delay = max(0, minimumDisplayMilliseconds - (ProcessInfo.processInfo.systemUptime * 1_000 - shownAt))
-        let generation = generation
-        timer = Task { [weak self] in
-            do { try await Task.sleep(for: .milliseconds(delay)) } catch { return }
-            guard let self, self.generation == generation else { return }
-            if !self.pending.isEmpty { self.select(self.pending.removeFirst()) }
-            else if self.status == .completed { self.select(.idle) }
-        }
-    }
-    private func cancel() { generation &+= 1; timer?.cancel(); timer = nil }
 }
 
 struct NativeMokuDockInteractionPanel: View {

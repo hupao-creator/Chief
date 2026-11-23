@@ -304,10 +304,6 @@ public struct NativeMokuDock: View {
             trailingInset: NativeMokuTalkTypography.centeredInset - NativeMokuTalkTypography.scrollbarGutter(for: talkScrollbarStyle),
             maximumHeight: maximumHeight, scrollbarStyle: talkScrollbarStyle))
     }
-    private var residentPresenting: Bool {
-        threadID == nil && !state.dockCovered && state.dockRouteVisible && state.windowVisible && !state.inputOpen &&
-        !draft.submitting && interaction == nil && displayedMessage == nil
-    }
     // The workspace retains the selected Agent while its reader returns to
     // Overview. Input is already closed to interaction during that motion.
     private var composerVisible: Bool { inputPresent && state.inputOpen && state.inputInteractionReady }
@@ -660,10 +656,6 @@ public struct NativeMokuDock: View {
         .onChange(of: state.inputOpen) { _, open in
             if open, state.overviewVisible, let replyKey { state.markReplyRead(replyKey) }
         }
-        .onChange(of: residentPresenting, initial: true) { _, active in
-            presentation?.setPresenting(active); acknowledgePresentation()
-        }
-        .onChange(of: presentation?.displayToken, initial: true) { _, _ in acknowledgePresentation() }
         .onDisappear {
             if state.dockCharacter === character { state.dockCharacter = nil }
             character.cancelOnboardingBlink()
@@ -675,7 +667,6 @@ public struct NativeMokuDock: View {
             state.dockHitRects = []
             state.dockMentionHitRect = nil
             if state.dockInteractionVisible { state.setDockInteractionVisible(false, question: false) }
-            presentation?.setPresenting(false)
             hoverTask?.cancel(); hoverTask = nil
             state.cancelComposerFocusRequest()
             focusGeneration = nil
@@ -1109,15 +1100,6 @@ public struct NativeMokuDock: View {
             if state.composerGeneration == generation, sendingDraft.error != nil {
                 state.setInputOpen(true)
             }
-        }
-    }
-    private func acknowledgePresentation() {
-        guard residentPresenting, let presentation else { return }
-        let token = presentation.displayToken
-        Task { @MainActor in
-            await Task.yield()
-            guard residentPresenting, token == presentation.displayToken else { return }
-            presentation.presented(token)
         }
     }
     private func updateHover(_ active: Bool) {
