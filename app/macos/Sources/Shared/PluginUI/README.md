@@ -941,6 +941,9 @@ once per caret height/backing scale and its opacity is animated by Core Animatio
 no per-frame SwiftUI rendering or timer is needed. Emphasized editors place their
 existing padding inside the native text viewport, preserving glyph positions while
 leaving room for the glow before native scroll clipping.
+On its first paint with an empty selection, the focused composer can place
+the mark at AppKit's insertion rectangle before the first on-phase blink
+callback. Subsequent native callbacks track the insertion point.
 The core breathes at 20–100% opacity while both halos fade fully.
 Core Animation breathes over 2.4 seconds; native blink callbacks do not hide it
 or restart the cycle. Same-line movement interpolates over 120ms from the current
