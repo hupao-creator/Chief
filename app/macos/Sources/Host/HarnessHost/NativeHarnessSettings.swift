@@ -48,16 +48,26 @@ public struct NativeHarnessSettingsConfiguration: Hashable, Sendable {
               scope: .thread(thread.id))
     }
     public static func background(harnessID: JSONText, cwd: JSONText, settingID: JSONText,
-                                  inherited: Bool, source: JSONValue) -> Self {
-        // Inheritance uses Moku's exact execution workspace and saved profile.
-        // Canonicalize before cache admission so role readers join that flight.
-        if inherited {
-            return .init(harnessID: harnessID, cwd: cwd, source: source, scope: .global(executionOwner: .moku))
+                                  saved: ApplicationBackgroundExecutionSettings, chiefSource: JSONValue) -> Self {
+        let source: JSONValue
+        let previewIndependent: Bool
+        switch saved.mode {
+        case .inherit(let retained):
+            source = retained.map { $0.harnesses[harnessID] ?? .null } ?? chiefSource
+            previewIndependent = true
+        case .override(let overrides):
+            source = overrides.harnesses[harnessID] ?? .null
+            // Reuse a preview when its profile becomes the saved choice. Only
+            // a missing slot or automatic host needs an initialization read.
+            previewIndependent = !saved.enabled || (overrides.harnessPreference != "auto" && source != .null && source != .object([:]))
         }
-        // Independent roles retain their own workspace, even for equal profiles.
         return .init(harnessID: harnessID, cwd: cwd,
-              source: .object(["inherited": .bool(inherited), "settings": source]),
+              source: .object(["previewIndependent": .bool(previewIndependent), "settings": source]),
               scope: .global(applicationSettings: settingID))
+    }
+    var isIndependentPreview: Bool {
+        guard case .global(let application, _) = scope, application != nil else { return false }
+        return source["previewIndependent"] == .bool(true)
     }
     /// Saved settings can change on another device while this editor has a draft.
     /// Only changing its workspace or owner replaces the editor's state.
@@ -76,6 +86,9 @@ public struct NativeHarnessSettingsConfiguration: Hashable, Sendable {
             object = ["scope": .text("global"), "harnessId": .string(harnessID)]
             object["applicationSettings"] = applicationSettings.map(JSONValue.string)
             object["executionOwner"] = executionOwner.map { .text($0.rawValue) }
+            if isIndependentPreview {
+                object["previewIndependent"] = .bool(true)
+            }
         }
         if refresh { object["refresh"] = .bool(true) }
         return .object(object)
@@ -111,6 +124,9 @@ public final class NativeHarnessSettingsSurface {
     var preparationError: String? {
         if let error = executionSnapshotError?.string ?? session.preparationError { return error }
         guard session.isReady else { return nil }
+        // Independent drafts can fill missing choices once their catalog is
+        // ready. The mounted editor still requires a complete draft to advance.
+        if configuration.isIndependentPreview { return nil }
         let snapshot: JSONValue
         switch configuration.scope {
         case .global(let application, let owner) where application != nil || owner != nil:

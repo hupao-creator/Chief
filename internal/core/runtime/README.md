@@ -153,7 +153,7 @@ interruption with no pending input or background work, using the existing
 
 ## Settings
 
-[settings.go](settings.go) separates saved settings revision from streaming thread revisions. `app:update-settings` normalizes through the owning Harness and compares `expectedSettingsRevision` in the store transaction. A conflict returns the latest settings; invalid writes leave state unchanged. An unchanged save does not advance the revision.
+[settings.go](settings.go) separates saved settings revision from streaming thread revisions. `app:update-settings` checks the DTO, application schema and local Harness settings shapes, preserves retained execution profiles and compares `expectedSettingsRevision` in the store transaction. The save performs no native snapshot or catalog acquisition. A conflict returns the latest settings; invalid writes leave state unchanged. An unchanged save does not advance the revision.
 
 The [Settings DTO](../model/state.go) contains ordinary Harness defaults, Moku's separate concrete execution profiles, plugin settings and desired plugin enablement. Ordinary thread settings are saved session configuration, not a live reference to global defaults. Thread configuration has its own CAS revision. Moku and background agents retain the configuration of already admitted work; newer saved settings apply at their next admission boundary.
 
@@ -205,9 +205,17 @@ reply differs; captures of different Harnesses retain both profiles. A changed
 source with no saved execution profile still invalidates discovery. Prompt,
 plugin enablement and retained independent edits remain authoritative. An
 initialized presentation preserves the stored application JSON when no execution field changes; reordering
-JSON keys must not advance the settings CAS revision. User settings saves still
-use their original CAS revision and real execution
-admission keeps the gate until native acknowledgment.
+JSON keys must not advance the settings CAS revision. User settings saves
+use their original CAS revision and real execution admission keeps the gate
+until native acknowledgment.
+
+An independent role editor may request `previewIndependent` with its global
+application binding. It loads the selected Harness in the role's own workspace
+using the retained independent profile or, on first use, Chief's saved profile.
+The preview is read-only with respect to saved configuration. A missing profile
+can be filled in the editor, and cold execution can capture a missing slot when
+it needs one. A preview rechecks its source and workspace after the native read.
+Each actual execution continues to resolve its saved configuration at admission.
 
 [configuration.go](configuration.go) initializes missing internal execution profiles from actual native facts. It persists complete choices before use and fences late discovery against newer saves. Background settings select inheritance from Moku or an independent profile. Native credentials and context budgets remain Harness-owned. Moku and background agents use their built-in system instructions; execution profiles do not contain a system-prompt replacement.
 
@@ -340,11 +348,14 @@ general routing priorities and instruction generation.
 
 ## Property boundaries
 
-**PBT-RUNTIME-SETTINGS** overlaps a pinned execution or ordinary defaults
-presentation with a save awaiting native validation. Generated completions before
-commit, after commit or through cancellation check which source may be returned
-and which operation may advance the revision. The [property](../../../tools/verification/pbt/runtime/settings_property_test.go)
-uses a real Runtime and isolated SQLite with a controlled native peer.
+**PBT-RUNTIME-SETTINGS** orders a pinned execution or ordinary defaults
+presentation around a settings save. Completions before commit, after commit or
+through cancellation check which source may be returned and which operation may
+advance the revision. **PBT-RUNTIME-ROLE-SETTINGS** checks read-only independent
+previews, conflicting saves and retention across retry. It also checks that cold
+initialization captures only the missing slot. The
+[properties](../../../tools/verification/pbt/runtime/settings_property_test.go)
+use a real Runtime and isolated SQLite with controlled Harness adapters.
 
 **PBT-MOKU-OUTBOX** drives the production delivery queue and attempt/admission
 transactions against SQLite. Generated lazy/waking deliveries, repeated IDs,

@@ -1,6 +1,40 @@
 # Settings HTTP latency
 
-The [measurement report](RESULTS.md) includes source revisions, raw samples and limits.
+## First independent-role save
+
+[onboarding.py](onboarding.py) uses the production HTTP command and the four
+production Harness adapters. Point it at a baseline or candidate runtime built
+with `./scripts/go.sh build -trimpath -o <binary> ./cmd/chief-runtime`.
+
+```sh
+python3 -B tools/verification/local-http/onboarding.py <binary> --revision <revision> \
+  --mode candidate --cli-dir <harness-bin> --cli-dir <node-bin>
+```
+
+Run the same command with `--mode baseline` for a revision whose save performs
+native snapshots. The driver uses private homes, profiles and fixture keys. It
+requires macOS loopback listeners and an available shared performance and
+desktop lease. A child sandbox confines writes to the temporary directory and
+network traffic to loopback. Codex, Pi and OpenCode use installed executables.
+Claude uses a deterministic native-control peer unless `--native-claude` is
+supplied. `--claude-delay` injects a stated delay into each fixture
+`get_settings` reply for a separate sensitivity run.
+
+The driver hydrates all four Chief profiles, then saves Tag and Super Thread in
+that order with their first independent copies. It returns both roles to
+inheritance, restarts the Runtime and repeats from retained independent settings.
+Each save must advance the revision once and return the same selected Harness
+and profile map that an independent read observes. The candidate times its
+selected role's entry preview separately. Save durations run from HTTP dispatch
+through receipt of the entire response. There is no calibrated latency budget
+for this workload. The [comparison](ONBOARDING-SAVE.md) records raw samples,
+source and binary identities, and the limits of the headless timing.
+
+## Pinned presentation under contention
+
+The [contention report](RESULTS.md) includes source revisions, raw samples and
+limits. The workload below depends on the historical revisions identified
+there, whose save command still enters a native snapshot.
 
 This headless macOS benchmark measures authenticated commands against a production
 `chief-runtime serve` on loopback. A new profile, private home and deterministic

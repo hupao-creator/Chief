@@ -63,6 +63,13 @@ and resource status. It waits for resource readiness rather than treating the
 presence of a saved profile as sufficient. Switching back to independent mode
 restores its own retained configuration.
 
+Opening the independent editor loads the selected Harness catalog in the role's
+workspace. Its read-only preview uses retained settings when available and
+Chief's saved profiles on first use. Inherited discovery still joins Chief's
+resource. Confirming waits for the revision-checked save of the complete draft.
+The save does not reacquire native snapshots for the copied profiles or recheck
+the selected Harness's native catalog.
+
 Tag and Super Thread share Settings' Agent off, Use Chief and Configure separately
 choices. Turning a role off keeps its source mode and retained independent
 profile, and bypasses that role's resource/availability gate. Selecting either

@@ -274,8 +274,9 @@ public final class NativeHarnessHost {
     }
 
     /// Evict removed workspaces/scopes, without retaining every previous cwd.
-    public func retainGlobalSettings(configurations: [NativeHarnessSettingsConfiguration]) {
-        let identities = Set(configurations.map(\.editorIdentity))
+    public func retainGlobalSettings(configurations: [NativeHarnessSettingsConfiguration],
+                                     availablePreviews: [NativeHarnessSettingsConfiguration] = []) {
+        let identities = Set((configurations + availablePreviews).map(\.editorIdentity))
         settingsLifetime.configurations = configurations
         allowedGlobalSettings = identities
         for (identity, surface) in Array(globalSettingsSurfaces) where !identities.contains(identity) {
