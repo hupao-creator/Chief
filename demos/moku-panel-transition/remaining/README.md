@@ -28,6 +28,13 @@ collector and executable fingerprints.
   interaction checks entirely beyond the desktop and records AppKit view
   bitmaps. These images document layout and do not measure composited glass.
 
+- `orbit-fade` mounts the production 168 × 44-point Dock entirely offscreen.
+  Catalog fixtures start, interrupt, reverse, replace and complete executions.
+  The replay advances the production display-frame step by 25ms. Each visible
+  sample must stay on the capsule contour, advance with an uninterrupted peer
+  and paint three 5-point dots at the current fade opacity. The evidence includes
+  intermediate Dock images, 1-pixel-per-point decoration rasters and
+  `orbit-frames.json`. This fixture checks drawing and state, not display pacing.
 - `tool-feedback` mounts the production Dock and delivers Codex catalog fixtures
   to its workspace presentation. The check observes painted dots, the mounted
   character and its animation input across consecutive named calls and reasoning.
