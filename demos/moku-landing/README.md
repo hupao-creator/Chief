@@ -62,3 +62,5 @@ An additional sample exercises inverted device deltas at the mounted handler.
 The reader case also checks that a fresh upward gesture leaves Note closed.
 The camera geometry cases send samples directly to the mounted AppKit monitor.
 Physical trackpad delivery and system fullscreen need separate observation.
+
+The Note swipe replay also routes real window-addressed scroll events through an offscreen workspace with a pending long reminder. Its body scrolls independently, an upward swipe on the exposed canvas opens Note, and only an explicit receipt advances the reminder. See `reminder-note-ownership.json`.

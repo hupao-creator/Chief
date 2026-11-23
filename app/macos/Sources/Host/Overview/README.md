@@ -239,7 +239,7 @@ live.
 ### Overview scroll input
 
 [NativeOverviewScrollInput](NativeOverviewScrollInput.swift) routes window-local AppKit wheel events.
-It checks a [physical upward swipe](../MokuScene/NativeMokuSwipe.swift) before canvas and native scroll dispatch.
+An overflowing reminder body owns gestures starting in its viewport, including their inertia. Elsewhere it checks a [physical upward swipe](../MokuScene/NativeMokuSwipe.swift) before canvas and native scroll dispatch.
 In the exposed Overview the background, cards (including the carousel cover), filter scrollers and Dock share this gesture.
 A precise, unmodified contact opens Chief Note once at 24 points of upward travel with more than 1.5 times the horizontal travel, under either Natural Scrolling setting. Its remaining samples and inertia are consumed.
 Open Note, active or leaving input, an intervention, onboarding, Settings, a collection member panel and a reader keep their own input.

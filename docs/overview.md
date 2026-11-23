@@ -12,7 +12,7 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 Resize the window to adjust how many cards you can see. Overview arranges the cards automatically and centers them vertically. A wide task card can appear between two taller cards when there’s room for it there. In windows taller than 60 points, the cards have at least 30 points of space above and below them. The filter bar and Chief Bar float above the cards. Opening the Chief input box keeps the cards in place.
 
-With the input box closed, swipe up with two fingers anywhere in Overview to open **Chief Note**. Once the note opens, scroll inside it to read more.
+With the input box closed, swipe up with two fingers anywhere in Overview to open **Chief Note**. If your fingers are over a long alert message, the gesture scrolls the alert. Once the note opens, scroll inside it to read more.
 
 When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or turn the mouse wheel. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. Click a task card, or press Return on a focused task, to open it.
 

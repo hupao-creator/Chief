@@ -63,6 +63,7 @@ func parentButton(_ id: String, press: Bool) -> [[String: String]] {
     var request: PublicInteraction?
     var responses: [HarnessRespondRequest] = []
     var replyKey: JSONText?
+    var running = false
     init() {
         timer = NativeMokuTimerController(player: bell)
         scene.setComposerContext(draft, opensInput: false, autofocus: false)
@@ -78,22 +79,21 @@ private struct RoutePanel: View {
     let model: RouteState
     var body: some View {
         NativeMokuScene(state: model.scene) { Color(white: 0.9) } dock: {
-            NativeMokuDock(state: model.scene, draft: model.draft, cwd: "/fixture", replyKey: model.replyKey,
+            NativeMokuDock(state: model.scene, draft: model.draft, cwd: "/fixture", mode: model.running ? .running : .idle,
+                running: model.running, replyKey: model.replyKey,
                 interaction: model.intervention.map { intervention in
                     AnyView(NativeMokuDockInteractionPanel(intervention: intervention, disabled: false) { response in
                         model.responses.append(response)
                     }.id(intervention.identity))
                 }, interactionIsQuestion: model.intervention?.isQuestion == true, onSend: { _ in }, onCancel: {})
         } settings: { EmptyView() }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            NativeMokuTimerBar(timer: model.timer, exclusions: model.scene.outsideClickExclusions)
-        }
+        .modifier(NativeMokuTimerPlacement(timer: model.timer, scene: model.scene))
     }
 }
 
-@MainActor func routesVisit(reduced: Bool) async throws {
+@MainActor func routesVisit(reduced: Bool, offscreen: Bool = false) async throws {
     let model = RouteState(), scene = model.scene, draft = model.draft
-    let panel = try Panel(size: .init(width: 820, height: 640))
+    let panel = try Panel(size: .init(width: 820, height: 640), offscreen: offscreen)
     defer { panel.close() }
     panel.mount(RoutePanel(model: model).environment(\._accessibilityReduceMotion, reduced))
     let root = panel.contentView!
@@ -112,9 +112,13 @@ private struct RoutePanel: View {
         try save(events, "routes.json")
     }
     try await until("Dock mounted") { scene.dockCharacter?.input?.expression == .idle }
-    let filter = try await panel.filter(), config = panel.configuration()
+    let filter = offscreen ? nil : try await panel.filter()
     func capture(_ name: String) async throws {
-        try await savePNG(SCScreenshotManager.captureImage(contentFilter: filter, configuration: config), name + ".png")
+        if let filter {
+            try await savePNG(SCScreenshotManager.captureImage(contentFilter: filter, configuration: panel.configuration()), name + ".png")
+        } else {
+            try panel.saveOffscreenImage(name)
+        }
     }
     try await pause(470)
     try await betweenBlinks()
@@ -189,7 +193,12 @@ private struct RoutePanel: View {
     model.timer.receive(thread)
     for name in ["first", "second"] {
         try await until("Mounted receipt") { !root.descendants(NativeMokuTimerReceiptButton.ReceiptButton.self).isEmpty }
-        if name == "first" { try await capture("timer-with-selection") }
+        if name == "first" {
+            let receipt = root.descendants(NativeMokuTimerReceiptButton.ReceiptButton.self)[0]
+            try check(receipt.convert(receipt.bounds, to: root).maxY <= editor.convert(editor.bounds, to: root).minY,
+                      "Timer leaves the active editor visible above its receipt")
+            try await capture("timer-with-selection")
+        }
         try check(model.timer.current?.text == name && panel.firstResponder === editor, "FIFO retained editor")
         let receipt = try await button("moku-timer-acknowledge", press: true)
         try check(receipt.count == 1 && receipt[0]["press"] == "0", "Timer receipt")
@@ -222,4 +231,120 @@ private struct RoutePanel: View {
     try await until("Host returned") { root.descendants(MokuHorizontalTravelView.self).count == 1 && !scene.dockHitRects.isEmpty }
     try check(draft.text == "Z拼字", "Route draft")
     try record("route-return")
+}
+
+/// Exercise the installed Dock hierarchy, including its AppKit hit-test gate,
+/// without moving the pointer, taking focus from another app or playing audio.
+@MainActor func timersVisit(reduced: Bool) async throws {
+    let model = RouteState()
+    let scene = model.scene
+    let panel = try Panel(size: .init(width: 820, height: 640), offscreen: true)
+    defer { panel.close() }
+    panel.mount(RoutePanel(model: model).environment(\._accessibilityReduceMotion, reduced))
+    let root = panel.contentView!
+    let timer = model.timer
+    timer.receive(nil)
+    let long = (1...8).map { "第\($0)行，请核对发布记录。" }.joined(separator: "\n")
+    var operations: [JSONValue] = []
+    func deliver(_ texts: [String]) throws {
+        for text in texts {
+            operations.append(.object(["type": .text("tool-operation"), "name": .text("timer"),
+                "executionId": .text("sample"), "id": .text("timer-\(operations.count)"), "completedAt": .integer(2),
+                "result": .object(["ok": .bool(true)]), "arguments": .object(["text": .text(text)])]))
+        }
+        timer.receive(try HarnessThread(id: "chief", harnessID: "local", revision: operations.count, sessionState: .null,
+            observation: .init(), cwd: "/fixture", settings: .object([:]), createdAt: 1, updatedAt: 2,
+            title: "Fixture", tags: [], moku: true, transcript: .array(operations)))
+    }
+    typealias Receipt = NativeMokuTimerReceiptButton.ReceiptButton
+    func button(inDock: Bool) async throws -> Receipt {
+        try await until("One receipt in the expected seat") {
+            let buttons = root.descendants(Receipt.self)
+            guard buttons.count == 1 else { return false }
+            return (buttons[0].enclosingDock != nil) == inDock
+        }
+        let receipt = root.descendants(Receipt.self)[0]
+        let rect = receipt.convert(receipt.bounds, to: root)
+        try check(rect.minY >= 0 && rect.maxY < root.bounds.height / 2, "Receipt must occupy bottom of workspace")
+        if let dock = receipt.enclosingDock {
+            let center = receipt.convert(CGPoint(x: receipt.bounds.midX, y: receipt.bounds.midY), to: dock.superview)
+            try await until("Moving Dock settles with a hittable receipt") {
+                guard let hit = dock.hitTest(center) else { return false }
+                return hit === receipt || hit.isDescendant(of: receipt)
+            }
+        }
+        return receipt
+    }
+    func confirm(inDock: Bool) async throws {
+        let previous = timer.current?.id
+        let receipt = try await button(inDock: inDock)
+        try check(receipt.accessibilityPerformPress(), "Receipt press")
+        try await until("One acknowledgement advances the head") { timer.current?.id != previous }
+    }
+    func scrollToEnd() async throws {
+        var scroller: NSScrollView?
+        defer {
+            if scroller == nil {
+                for scroll in root.descendants(NSScrollView.self) {
+                    print("viewport", scroll.contentView.bounds, "document", scroll.documentView?.bounds as Any,
+                          "in Dock", scroll.enclosingDock != nil)
+                }
+            }
+        }
+        // The queue advances before SwiftUI replaces the old message's scroller.
+        // Resolve the mounted viewport again on each observation.
+        try await until("Long message starts at top in compact seat (\(timer.pending.count) pending)") {
+            scroller = root.descendants(NSScrollView.self).first {
+                let clip = $0.contentView.bounds
+                return $0.enclosingDock != nil && ($0.documentView?.bounds.height ?? 0) > clip.height + 1
+                    && clip.height > 0 && clip.height <= 41 && abs(clip.minY) < 1
+            }
+            return scroller != nil
+        }
+        let scroll = scroller!, clip = scroll.contentView, end = scroll.documentView!.bounds.maxY
+        clip.scroll(to: CGPoint(x: 0, y: end - clip.bounds.height))
+        scroll.reflectScrolledClipView(clip)
+        try check(clip.bounds.maxY >= end - 1, "Long message tail is reachable")
+    }
+    for running in [false, true] {
+        model.running = running
+        try await until("Resident ready") {
+            scene.dockCharacter?.input?.running == running && scene.capsuleFrame.size == NativeMokuCapsuleLayout.idleSize
+        }
+        try deliver(["Review ready", long, long])
+        _ = try await button(inDock: true)
+        let ids = timer.pending.map(\.id)
+        try check(Set(ids).count == 3, "Distinct FIFO deliveries")
+        try await pause(400)
+        try check(timer.pending.map(\.id) == ids, "Reminder persisted while waiting")
+        if !running { try panel.saveOffscreenImage("compact-reminder") }
+        try await confirm(inDock: true)
+        for id in ids.dropFirst() {
+            try check(timer.current?.id == id && timer.current?.text == long, "Expected FIFO head")
+            try await scrollToEnd()
+            try await confirm(inDock: true)
+        }
+        try await until("Underlying Dock restored") {
+            root.descendants(Receipt.self).isEmpty && !root.descendants(NativeMokuCharacterCanvas.self).isEmpty
+                && scene.capsuleFrame.size == NativeMokuCapsuleLayout.idleSize && scene.dockCharacter?.input?.running == running
+        }
+    }
+    // Withdraw and restore the ordinary Dock while one head remains outstanding.
+    try deliver(["Review this before leaving"])
+    let pending = timer.current?.id
+    _ = try await button(inDock: true)
+    scene.overviewVisible = false
+    _ = try await button(inDock: false)
+    try check(timer.current?.id == pending, "Covered route kept its pending receipt")
+    scene.overviewVisible = true
+    try await confirm(inDock: true)
+    try check(model.bell.starts == 3 && model.bell.stops == 3 && timer.current == nil, "One bell per nonempty queue")
+    try save(["result": "passed", "reduceMotion": reduced, "origins": ["idle", "running"],
+              "receipts": 7, "ringStarts": model.bell.starts, "ringStops": model.bell.stops], "timers.json")
+}
+
+private extension NSView {
+    var enclosingDock: MokuHorizontalTravelView? {
+        sequence(first: self, next: { $0.superview }).first { $0 is MokuHorizontalTravelView } as? MokuHorizontalTravelView
+    }
 }

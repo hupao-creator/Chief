@@ -56,6 +56,7 @@ struct NativeOverviewScrollSequence {
 /// Transparent geometry/lifecycle anchor, never a hit target or first responder.
 /// A local monitor also sees events above SwiftUI's semantic card subviews.
 struct NativeOverviewScrollInput: NSViewRepresentable {
+    @Environment(\.reminderScrollRegions) private var reminderScrollRegions
     @Environment(\.overviewNoteAction) private var noteAction
     var regions: NativeCanvasInputRegions
     var size: CGSize
@@ -71,6 +72,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
         let geometry = Configuration(size: size, toolbarBottom: toolbarBottom, identity: identity)
         if view.configuration != geometry { view.cancelSequence(); view.configuration = geometry }
         view.noteAction = noteAction
+        view.reminderScrollRegions = reminderScrollRegions
         view.regions = regions
         view.enabled = enabled; view.scroll = scroll
         if !enabled() { view.cancelSequence() }
@@ -85,6 +87,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
 
     @MainActor final class MonitorView: NSView {
         var configuration = Configuration(size: .zero, toolbarBottom: 0, identity: "")
+        weak var reminderScrollRegions: NativeCanvasInputRegions?
         weak var regions: NativeCanvasInputRegions?
         var enabled: () -> Bool = { false }
         var scroll: (Double) -> Void = { _ in }
@@ -123,6 +126,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                   NSEvent.pressedMouseButtons == 0 else { return false }
             let location = windowPoint(point)
             guard bounds.intersection(visibleRect).contains(convert(location, from: nil)),
+                  reminderScrollRegions?.contains(location, in: window) != true,
                   regions?.contains(location, in: window) != true else { return false }
             // Public AppKit fallback for native editors/embedded scrolling views.
             guard let content = window.contentView else { return false }
@@ -146,6 +150,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             // canvas cannot consume a qualifying swipe before Note sees it.
             if let noteAction, let content = window.contentView,
                noteSwipe.route(event, eligible: window.isVisible
+                && reminderScrollRegions?.contains(event.locationInWindow, in: window) != true
                 && content.bounds.contains(content.convert(event.locationInWindow, from: nil))
                 && event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty
                 && NSEvent.pressedMouseButtons == 0 && noteAction.available(), open: noteAction.open) {

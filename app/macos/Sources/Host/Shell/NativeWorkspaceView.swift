@@ -955,9 +955,10 @@ public struct NativeWorkspaceView: View {
                 .allowsHitTesting(!presentation.scene.settingsOpen)
                 .accessibilityHidden(presentation.scene.settingsOpen)
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            NativeMokuTimerBar(timer: model.timer, exclusions: presentation.scene.outsideClickExclusions)
-        }
+        .modifier(NativeMokuTimerPlacement(timer: model.timer, scene: presentation.scene,
+            dockAvailable: { model.catalog.hasMoku && presentation.onboarding.mountDock
+                && presentation.onboarding.dockVisible && !presentation.onboarding.blocksWorkspace
+                && !presentation.browsingCollection && (presentation.collectionPanel.parentVisible || presentation.selected != nil) }))
         .environment(\.threadLocalSteers, presentation.localSteers)
         .environment(\.locale, Locale(identifier: model.locale.rawValue))
         .environment(\.nativeOfflineDraftEditing, model.hasInitialContent && !model.runtimeAvailable && !model.stopping)

@@ -454,14 +454,24 @@ repeated snapshots and a delayed double click cannot replay or acknowledge a
 successor. Equal text in separate successful calls remains separate messages.
 Ordinary Talk keeps its existing silent, latest-only, 60-second presentation.
 
-[NativeMokuTimerBar](NativeMokuTimerBar.swift) reserves a small seat above the
-current workspace route with the complete scrollable text,
-a queue count and an always-present **已收到 / Received** button. It does not
-navigate, replace the editor, grab focus or close permission surfaces. Its click region is excluded from composer outside-click dismissal. It has no
-Escape, outside-click, focus-loss or timeout acknowledgment. Native text/buttons expose the
-content and action to accessibility; acknowledgment does not require audio.
-Like the other Moku surfaces, the Timer bar uses a local dark environment even
-in a light workspace; it does not override the window appearance.
+The passive Dock presents [Timer](NativeMokuTimerBar.swift) in its bottom capsule.
+The surprised eyes, bell caption, text and **已收到 / Received** button share a
+horizontal row. The caption includes the number of additional queued alerts.
+Long text starts at the top of a scrollable two-line viewport. Each operation
+gets its own reading position, including consecutive operations with equal text.
+Receipt and audio retry remain accessible independently of scrolling. The shell
+uses the Dock's dark glass, including its Reduce Transparency fallback. Timer
+changes settle directly and require no motion.
+
+[Placement](NativeMokuTimerPlacement.swift) preserves a mounted editor, its
+selection, Note and Settings by reserving the same compact row below the
+occupied surface. It also keeps a receipt available on routes without an
+interactive Dock. Permissions and questions retain their panel above the passive
+Dock's reminder. A receipt does not navigate or dismiss a draft. Escape,
+outside clicks, loss of focus and time alone never confirm a reminder.
+After the queue drains, the live route and task determine the visible Dock.
+An incoming Talk waits behind Timer. An already-presented Talk keeps its
+existing deadline while covered.
 
 The model owns the controller across scene and route remounts, including UI
 reload. Its first installed snapshot establishes a silent history baseline;

@@ -45,19 +45,31 @@ private final class WheelSample: NSEvent {
     override var timestamp: TimeInterval { ProcessInfo.processInfo.systemUptime }
 }
 
+@MainActor private final class ReminderReplayPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
+@MainActor private final class SilentReminderBell: NativeMokuTimerPlaying {
+    func startLoop() throws {}
+    func stop() {}
+}
+
 @main @MainActor private struct NestedHeaderReplay: App {
     @State private var collectionViewport: CGSize?
     private let workspace: NativeWorkspaceModel
     private let presentation: NativeWorkspacePresentation
 
-    init() {
+    init() { self.init(profile: nil) }
+
+    private init(profile: URL?) {
         do {
-            try prepareIsolatedNativeReplay()
-            let directory = URL(filePath: FileManager.default.currentDirectoryPath)
+            if profile == nil { try prepareIsolatedNativeReplay() }
+            let directory = profile ?? URL(filePath: FileManager.default.currentDirectoryPath)
             let preferences = DesktopPreferences(directory: directory)
             try preferences.setOnboardingCompleted(true)
             workspace = NativeWorkspaceModel(client: RuntimeClient(profile: try RuntimeProfile(dataDirectory: directory)),
-                preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())], sidecards: [], applications: NativeApplicationModules.make()))
+                preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())], sidecards: [], applications: NativeApplicationModules.make()),
+                timer: NativeMokuTimerController(player: SilentReminderBell()))
             presentation = NativeWorkspacePresentation(workspace: workspace)
         } catch { fatalError(String(describing: error)) }
     }
@@ -117,6 +129,9 @@ private final class WheelSample: NSEvent {
             try await focusReplayWindow(window)
             try await Task.sleep(for: .seconds(1))
             try await noteSwipes(window, directory: directory)
+            let reminderFixture = Self(profile: directory.appending(path: "reminder-profile"))
+            try await reminderFixture.reminderSwipe(directory: directory)
+            try await focusReplayWindow(window)
             try await cardInteraction(window, directory: directory, authority: authority)
             try await fittingCards(window, directory: directory, authority: authority)
             try await installTasks(0, revision: 9, authority: authority)
@@ -256,10 +271,12 @@ private final class WheelSample: NSEvent {
     private func postScroll(_ window: NSWindow, _ point: CGPoint, y: Int32, phase: CGScrollPhase?,
                             momentum: CGMomentumScrollPhase = .none, x: Int32 = 0,
                             flags: CGEventFlags = []) async throws {
+        if !window.isKeyWindow && NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) {
+            try await focusReplayWindow(window)
+        }
         // A window-addressed AppKit event supplies the native window identity.
         // Reuse its CGEvent envelope to enqueue a real phased pixel scroll.
-        guard window.isKeyWindow,
-              let event = NSEvent.mouseEvent(with: .mouseMoved, location: point, modifierFlags: [],
+        guard let event = NSEvent.mouseEvent(with: .mouseMoved, location: point, modifierFlags: [],
                 timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
                 context: nil, eventNumber: 0, clickCount: 0, pressure: 0)?.cgEvent else {
             throw ReplayError("Cannot address the replay window")
@@ -385,6 +402,73 @@ private final class WheelSample: NSEvent {
             "tagOffsets": [tagOffset, tags.contentView.bounds.minX], "noteOffsets": [original, scrolled],
             "naturalScrolling": true])
             .write(to: directory.appending(path: "overview-note-swipe.json"))
+    }
+
+    /// Exercise both event owners in the same production workspace, entirely offscreen.
+    private func reminderSwipe(directory: URL) async throws {
+        guard let edge = NSScreen.screens.map({ $0.frame.maxX }).max() else { throw ReplayError("Missing screen") }
+        let frame = CGRect(x: edge + 20, y: 200, width: 900, height: 680)
+        let window = ReminderReplayPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let root = NSHostingView(rootView: NativeWorkspaceView(model: workspace, presentation: presentation)
+            .environment(\.scenePhase, .active))
+        window.contentView = root
+        window.setFrameOrigin(frame.origin)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close() }
+        guard NSScreen.screens.allSatisfy({ !$0.frame.intersects(window.frame) }) else {
+            throw ReplayError("Reminder interaction must run offscreen")
+        }
+        try await installTasks(18, revision: 1, authority: UUID(), manyDirectories: true)
+        try await Task.sleep(for: .seconds(1))
+        let timer = workspace.timer, scene = presentation.scene
+        timer.receive(nil)
+        let message = String(repeating: "Check this.\n", count: 10)
+        let row: JSONValue = .object(["type": .text("tool-operation"), "name": .text("timer"),
+            "id": .text("reminder"), "executionId": .text("fixture"), "completedAt": .integer(1),
+            "result": .object(["ok": .bool(true)]), "arguments": .object(["text": .text(message)])])
+        timer.receive(try HarnessThread(id: "moku", harnessID: "codex", revision: 1,
+            sessionState: .null, observation: .init(), cwd: "/fixture", settings: .object([:]),
+            createdAt: 1, updatedAt: 2, title: "Chief", tags: [], moku: true, transcript: .array([row])))
+        try await Task.sleep(for: .milliseconds(800))
+        guard let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: root),
+              let alert = timer.current else { throw ReplayError("Missing reminder or scroll monitor: pending=\(timer.pending.count)") }
+        func messageScroller(in view: NSView) -> NSScrollView? {
+            if let scroller = view as? NSScrollView, scroller.contentView.bounds.height > 0,
+               scroller.contentView.bounds.height <= 41, let document = scroller.documentView,
+               document.bounds.height > scroller.contentView.bounds.height + 80,
+               monitor.reminderScrollRegions?.contains(scroller.convert(CGPoint(x: scroller.bounds.midX,
+                    y: scroller.bounds.midY), to: nil), in: window) == true { return scroller }
+            return view.subviews.lazy.compactMap { messageScroller(in: $0) }.first
+        }
+        guard let scroller = messageScroller(in: root) else { throw ReplayError("Missing long reminder viewport") }
+        let clip = scroller.contentView
+        let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
+        let generation = scene.noteOpenGeneration, camera = presentation.canvas.camera.scrollOffset
+        try await postScroll(window, point, y: -70, phase: .began)
+        try await postScroll(window, point, y: 0, phase: .ended)
+        let down = clip.bounds.minY
+        try await postScroll(window, point, y: 40, phase: .began)
+        try await postScroll(window, point, y: 0, phase: .ended)
+        let up = clip.bounds.minY
+        guard down > 0, up < down, scene.noteOpenGeneration == generation, !scene.notePanelOpen,
+              timer.current?.id == alert.id, presentation.canvas.camera.scrollOffset == camera else {
+            throw ReplayError("Long reminder lost native scroll or Note took its gesture: \(down), \(up)")
+        }
+        let background = monitor.windowPoint(CGPoint(x: 8, y: monitor.configuration.size.height - 8))
+        try await postScroll(window, background, y: 36, phase: .began)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        guard scene.notePanelOpen, scene.noteOpenGeneration == generation + 1, timer.current?.id == alert.id else {
+            throw ReplayError("Exposed Overview lost the Note gesture while a reminder was pending")
+        }
+        presentation.toggleMokuNote()
+        try await Task.sleep(for: .milliseconds(700))
+        guard let receipt = descendant(NativeMokuTimerReceiptButton.ReceiptButton.self, in: root),
+              receipt.accessibilityPerformPress(), timer.current == nil else { throw ReplayError("Missing explicit receipt") }
+        try JSONSerialization.data(withJSONObject: ["offscreen": true, "scrollOffsets": [down, up],
+            "backgroundOpenedNoteOnce": true, "explicitReceipt": true])
+            .write(to: directory.appending(path: "reminder-note-ownership.json"))
     }
 
     private func cardInteraction(_ window: NSWindow, directory: URL, authority: UUID) async throws {

@@ -50,7 +50,9 @@ After a successful removal, the checkout folder is gone. The task conversation s
 
 To stop Chief's current response, hover over its eyes at the bottom of Overview and click the square **Stop Chief** button on the right. The button stays on the right when you open the input box. To stop one or more delegated tasks, name them in a message to Chief. Chief tries each request separately. You can also stop a task yourself from its conversation. [Stop a run](task-conversations.md#respond-to-a-request-or-stop-a-run)
 
-Chief can send an immediate alert that rings until you click **Received**. If another alert is waiting, it appears next. Alerts are kept while Chief is open and are cleared when you quit.
+When Chief sends an alert, read it in the compact bar at the bottom of the workspace. Scroll inside a longer message to read the rest. To open Chief Note while an alert is visible, start your upward swipe elsewhere in Overview. Click **Received** to confirm just that alert. If more are waiting, the bar shows how many and brings up the next one.
+
+The bell keeps ringing until you confirm the last alert. If the bell fails to play, you can still confirm the message or click **Retry bell**. An open input box keeps your draft and selection above the alert. After the final receipt, the bar returns to its current task. Quitting Chief clears pending alerts.
 
 If a message fails to send, review the error and the text in the input box before retrying. If Chief is still checking the previous send, wait for confirmation or use **Check previous receipt** if shown. Open any task card Chief already created to see what happened.
 
