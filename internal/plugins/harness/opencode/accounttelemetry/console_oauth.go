@@ -42,14 +42,7 @@ func ReadConsoleGoTelemetry(ctx context.Context, host ClientOptions, credentials
 		return nil, errors.New("Console OAuth telemetry requires a live workspace lease")
 	}
 	host.HTTP = consoleWorkspaceClient{host.HTTP, org}
-	status, current, err := readJSON(ctx, host, "https://opencode.ai/console/api/orgs/current", credentials.AccessToken, 2500*time.Millisecond)
-	if err != nil {
-		return nil, err
-	}
-	if status != 200 || text(record(record(current)["org"])["id"]) != org {
-		return nil, errors.New("Console OAuth workspace could not be verified")
-	}
-	account, statusPayload, err := readGoConsole(ctx, host, credentials.AccessToken)
+	account, statusPayload, err := readGoConsole(ctx, host, credentials.AccessToken, org)
 	if err != nil {
 		return nil, err
 	}

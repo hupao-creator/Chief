@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -70,7 +71,7 @@ func NormalizeOpenCodeGoTelemetry(payload any, attribution []string, now time.Ti
 	return jsonValue(object{"source": goUsageSource, "observedAt": now.UnixMilli(), "availability": "available", "plan": nil, "limitReached": nil, "windows": windows, "note": "These are server-reported Go subscription windows for the selected credential. The usage endpoint alone does not expose the plan, Zen balance or paid-overflow setting; any separate Console facts are identified by their own source. Exhausted subscription windows do not establish exhaustion of free models or Zen balance; local generation costs are not an account balance."})
 }
 
-// ReadOpenCodeGoUsage never forwards a native secret until the effective model
+// ReadOpenCodeGoUsage never forwards a native secret until the effective provider
 // endpoint is verified. Only the official EntitlementError establishes absence.
 func ReadOpenCodeGoUsage(ctx context.Context, host ClientOptions, baseURL, apiKey string) (GoUsage, error) {
 	host = normalizeOptions(host)
@@ -78,11 +79,11 @@ func ReadOpenCodeGoUsage(ctx context.Context, host ClientOptions, baseURL, apiKe
 	if err := ctx.Err(); err != nil {
 		return GoUsage{}, err
 	}
-	if !IsOpenCodeGoEndpoint(baseURL) {
-		return unknown("The effective native model endpoint is not OpenCode Go. No Go credential was forwarded.", "unknown"), nil
+	if !OfficialOpenCodeGoEndpoint(baseURL, true) {
+		return unknown("The effective native provider endpoint is not OpenCode Go. No Go credential was forwarded.", "unknown"), nil
 	}
-	if strings.TrimSpace(apiKey) == "" {
-		return unknown("The selected OpenCode Go model has no resolved API key. Account usage is unknown.", "unknown"), nil
+	if strings.TrimSpace(apiKey) == "" || strings.TrimSpace(apiKey) == "public" {
+		return unknown("The native OpenCode Go provider has no private API key. Account usage is unknown.", "unknown"), nil
 	}
 	status, payload, err := readJSON(ctx, host, goUsageURL, apiKey, 10*time.Second)
 	if ctx.Err() != nil {
@@ -128,7 +129,7 @@ func ReadOpenCodeGoTelemetry(ctx context.Context, host ClientOptions, baseURL, a
 	return newGoTelemetryReader(host).read(ctx, baseURL, apiKey)
 }
 func (reader *goTelemetryReader) read(ctx context.Context, baseURL, key string) (json.RawMessage, error) {
-	if !IsOpenCodeGoEndpoint(baseURL) || strings.TrimSpace(key) == "" || strings.TrimSpace(key) == "public" {
+	if !OfficialOpenCodeGoEndpoint(baseURL, true) || strings.TrimSpace(key) == "" || strings.TrimSpace(key) == "public" {
 		usage, err := ReadOpenCodeGoUsage(ctx, reader.host, baseURL, key)
 		return usage.Telemetry, err
 	}
@@ -139,7 +140,7 @@ func (reader *goTelemetryReader) read(ctx context.Context, baseURL, key string) 
 	var workers sync.WaitGroup
 	workers.Add(3)
 	go func() { defer workers.Done(); usage, usageErr = ReadOpenCodeGoUsage(ctx, reader.host, baseURL, key) }()
-	go func() { defer workers.Done(); account, _, accountErr = readGoConsole(ctx, reader.host, key) }()
+	go func() { defer workers.Done(); account, _, accountErr = readGoConsole(ctx, reader.host, key, "") }()
 	go func() { defer workers.Done(); prices, pricesErr = reader.prices.read(ctx, reader.host) }()
 	workers.Wait()
 	if err := ctx.Err(); err != nil {
@@ -148,8 +149,9 @@ func (reader *goTelemetryReader) read(ctx context.Context, baseURL, key string) 
 	if usageErr != nil {
 		return nil, usageErr
 	}
-	_ = accountErr
-	_ = pricesErr
+	if pricesErr != nil {
+		return nil, pricesErr
+	}
 	var snapshot object
 	if err := json.Unmarshal(usage.Telemetry, &snapshot); err != nil {
 		return nil, err
@@ -166,6 +168,9 @@ func (reader *goTelemetryReader) read(ctx context.Context, baseURL, key string) 
 	if console == nil {
 		console = object{"plan": nil, "useBalance": nil, "balance": nil, "note": "The selected credential could not expose verified Console account facts. No other login was consulted."}
 	}
+	if accountErr != nil {
+		console["note"] = accountErr.Error()
+	}
 	snapshot["note"] = strings.Join([]string{text(snapshot["note"]), "Console account facts: " + string(jsonValue(console)), goBillingContext(prices)}, "\n")
 	return jsonValue(snapshot), nil
 }
@@ -173,18 +178,24 @@ func (reader *goTelemetryReader) read(ctx context.Context, baseURL, key string) 
 var organizationPattern = regexp.MustCompile(`^(org|wrk)_[A-Za-z0-9_-]+$`)
 var microCentPattern = regexp.MustCompile(`^-?\d{1,30}$`)
 
-func readGoConsole(ctx context.Context, host ClientOptions, key string) (object, object, error) {
+func readGoConsole(ctx context.Context, host ClientOptions, key, expectedOrg string) (object, object, error) {
 	bounded, cancel := context.WithTimeout(ctx, 2500*time.Millisecond)
 	defer cancel()
 	paths := []string{"/api/orgs/current", "/api/go/status", "/api/billing/status"}
-	values := make([]any, 3)
+	values := make([]any, len(paths))
+	failures := make([]error, len(paths))
 	var workers sync.WaitGroup
 	for i, path := range paths {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
 			status, payload, err := readJSON(bounded, host, "https://opencode.ai/console"+path, key, 2500*time.Millisecond)
-			if err == nil && status >= 200 && status < 300 {
+			switch {
+			case err != nil:
+				failures[i] = err
+			case status < 200 || status >= 300:
+				failures[i] = fmt.Errorf("OpenCode Console %s returned HTTP %d", path, status)
+			default:
 				values[i] = payload
 			}
 		}()
@@ -194,6 +205,15 @@ func readGoConsole(ctx context.Context, host ClientOptions, key string) (object,
 		return nil, nil, err
 	}
 	org := text(record(record(values[0])["org"])["id"])
+	if failures[0] != nil {
+		return nil, nil, failures[0]
+	}
+	if expectedOrg != "" && org != expectedOrg {
+		return nil, nil, errors.New("OpenCode Console workspace could not be verified")
+	}
+	if failures[1] != nil && expectedOrg != "" {
+		return nil, nil, failures[1]
+	}
 	if !organizationPattern.MatchString(org) {
 		return nil, nil, nil
 	}
@@ -222,11 +242,19 @@ func readGoConsole(ctx context.Context, host ClientOptions, key string) (object,
 		total = microCentsToUSD(billing["balanceMicroCents"])
 	}
 	if plan == nil && useBalance == nil && total == "" {
+		if expectedOrg == "" {
+			return nil, nil, errors.Join(failures[1], failures[2])
+		}
 		return nil, nil, nil
 	}
 	result := object{"source": "https://opencode.ai/console/api/go/status + /api/billing/status", "observedAt": host.Now().UTC().Format("2006-01-02T15:04:05.000Z"), "plan": plan, "useBalance": useBalance, "accessEndsAt": endsAt, "accessActive": active}
 	if total != "" {
 		result["balance"] = object{"currency": "USD", "total": total}
+	}
+	if failures[1] != nil {
+		result["note"] = failures[1].Error()
+	} else if failures[2] != nil {
+		result["note"] = failures[2].Error()
 	}
 	return result, status, nil
 }

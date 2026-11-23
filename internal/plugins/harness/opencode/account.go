@@ -3,6 +3,8 @@ package opencode
 import (
 	"net/url"
 	"strings"
+
+	"github.com/hupao-creator/Chief/internal/plugins/harness/opencode/accounttelemetry"
 )
 
 func hasCredentialOverride(value map[string]any) bool {
@@ -27,7 +29,7 @@ func officialInferenceRoute(raw string) string {
 	path := strings.TrimSuffix(u.Path, "/")
 	switch path {
 	case "/inference/openai/v1", "/inference/anthropic/v1", "/inference/google/v1beta",
-		"/inference/go/openai/v1", "/inference/go/anthropic", "/zen/go/v1":
+		"/inference/go/openai/v1", "/inference/go/anthropic", "/zen/go/v1", "/zen/go":
 		return "https://opencode.ai" + path
 	}
 	return ""
@@ -57,7 +59,7 @@ func consoleAccountOverrides(layer map[string]any) bool {
 
 func describeConsoleRoute(facts map[string]any, providerID, modelID, variantID string) (string, map[string]any) {
 	provider, model, variant := credentialObject(facts["provider"]), credentialObject(facts["model"]), credentialObject(facts["variant"])
-	if provider["integrationID"] != "opencode" || provider["id"] != providerID || model["providerID"] != providerID || model["id"] != modelID {
+	if provider["integrationID"] != "opencode" || provider["id"] != providerID || (modelID != "" && (model["providerID"] != providerID || model["id"] != modelID)) {
 		return "", nil
 	}
 	if variantID != "" && variantID != "default" && variant["id"] != variantID {
@@ -67,13 +69,11 @@ func describeConsoleRoute(facts map[string]any, providerID, modelID, variantID s
 	if pkg == "" {
 		pkg = credentialString(provider["package"])
 	}
-	switch pkg {
-	case "@opencode/ai/providers/openai-compatible", "@opencode/ai/providers/openai", "@opencode/ai/providers/anthropic", "@opencode/ai/providers/google":
-	default:
+	if !consoleProviderPackage(pkg) {
 		return "", nil
 	}
 	route := officialInferenceRoute(credentialString(credentialObject(provider["settings"])["baseURL"]))
-	if route == "" {
+	if route == "" || (modelID == "" && (providerID != "opencode-go" || !accounttelemetry.OfficialOpenCodeGoEndpoint(route, true))) {
 		return "", nil
 	}
 	headers := make(map[string]any)
@@ -90,4 +90,12 @@ func describeConsoleRoute(facts map[string]any, providerID, modelID, variantID s
 		}
 	}
 	return route, headers
+}
+
+func consoleProviderPackage(pkg string) bool {
+	switch pkg {
+	case "@opencode/ai/providers/openai-compatible", "@opencode/ai/providers/openai", "@opencode/ai/providers/anthropic", "@opencode/ai/providers/google":
+		return true
+	}
+	return false
 }

@@ -146,6 +146,8 @@ func (c *Coordinator) validateTargetAdmission(ctx context.Context, owner string,
 	return nil
 }
 
+const messageTelemetry = "message-telemetry"
+
 func (c *Coordinator) collectNativeContext(ctx context.Context, entryID string, settings model.Settings) ([]plugin.ContextEntry, error) {
 	timeout := 2 * time.Second
 	if entryID == "telemetry" {
@@ -166,8 +168,9 @@ func (c *Coordinator) collectNativeContext(ctx context.Context, entryID string, 
 			continue
 		}
 		harness := c.config.Harnesses[id]
-		contributor, ok := harness.(plugin.MokuContextContributor)
-		if !ok {
+		contributor, regular := harness.(plugin.MokuContextContributor)
+		live, messageScoped := harness.(plugin.MokuMessageTelemetrySource)
+		if !regular || (entryID == messageTelemetry && !messageScoped) {
 			continue
 		}
 		var ledger plugin.TelemetryLedger
@@ -175,7 +178,15 @@ func (c *Coordinator) collectNativeContext(ctx context.Context, entryID string, 
 			ledger = c.config.Ledger(id)
 		}
 		sources = append(sources, source{id: id, label: harness.Descriptor().DisplayName + " (" + id + ")", collect: func(ctx context.Context) (string, error) {
-			return contributor.MokuContext(ctx, entryID, plugin.SettingsRequest{Settings: mergedSettings(settings, id, false), Cwd: c.config.Workspace}, ledger)
+			request := plugin.SettingsRequest{Settings: mergedSettings(settings, id, false), Cwd: c.config.Workspace}
+			if entryID == messageTelemetry {
+				return live.MokuMessageTelemetry(ctx, request, ledger)
+			}
+			text, err := contributor.MokuContext(ctx, entryID, request, ledger)
+			if entryID == "telemetry" && messageScoped {
+				return "", err
+			}
+			return text, err
 		}})
 	}
 	type result struct {
@@ -227,7 +238,10 @@ func (c *Coordinator) collectNativeContext(ctx context.Context, entryID string, 
 			return nil, ctx.Err()
 		}
 		if value.err != nil {
-			continue
+			if entryID != messageTelemetry {
+				continue
+			}
+			value.text = "Account telemetry could not be verified for this message. Capacity is unknown."
 		}
 		if value.text == "" {
 			continue
@@ -248,6 +262,9 @@ func (c *Coordinator) collectNativeContext(ctx context.Context, entryID string, 
 	}
 	if len(blocks) == 0 {
 		return []plugin.ContextEntry{}, nil
+	}
+	if entryID == messageTelemetry {
+		entryID = "telemetry"
 	}
 	return []plugin.ContextEntry{{ID: entryID, Content: strings.Join(blocks, "\n\n")}}, nil
 }
@@ -332,7 +349,11 @@ func (c *Coordinator) sendContext(ctx context.Context, input model.AgentInput, d
 		if err != nil {
 			return nil, err
 		}
-		entries, err := c.withWorkspaceHint(mergeContext(applications, native), input, directoryTag, directoryScopeID)
+		live, err := c.collectNativeContext(ctx, messageTelemetry, applied.AppliedSettings)
+		if err != nil {
+			return nil, err
+		}
+		entries, err := c.withWorkspaceHint(mergeContext(applications, native, live), input, directoryTag, directoryScopeID)
 		if err != nil {
 			return nil, err
 		}

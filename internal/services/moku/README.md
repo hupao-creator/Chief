@@ -294,6 +294,11 @@ presentation and viewport evidence collection.
 
 Moku collects registered [Context contributions](../../hosts/contexthost/README.md) at their declared hooks. Harness-native model/account facts retain their owners.
 
+Periodic telemetry collection warms message-scoped account sources. Moku
+collects their current readings at each outgoing message, including when
+the other Harness readings are already cached. An unreadable account source
+leaves its capacity unknown. [OpenCode account binding](../../plugins/harness/opencode/README.md#permission-and-account-boundaries)
+
 Outgoing workspace context reads the Thread catalog only when a directory tag
 needs resolving. Explicit directory mentions and inputs without a directory tag
 do not load unrelated Thread histories.

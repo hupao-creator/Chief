@@ -124,3 +124,8 @@ only a nonempty list. Each native snapshot retains its own evidence; ordinary
 model validation may use enumeration data without asserting remote completeness.
 Moku routing also accepts successful nonempty native enumeration under the current
 policy; source evidence remains informational, not an admission prerequisite.
+
+`MokuMessageTelemetrySource` supplies account evidence scoped to an outgoing
+message. Its send-time read must validate local identity and keep remote I/O
+in the background. Moku can warm the provider through `MokuContextContributor`
+and requests the message-scoped text when composing each send.

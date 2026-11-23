@@ -38,11 +38,11 @@ export async function readConsoleAccount(ctx, input) {
   }
   return queue('opencode', async () => {
     const connection = await ctx.integration.connection.active('opencode');
+    if (input.sourceCredentialID && identity(connection) !== input.sourceCredentialID) throw new Error('Chief native Console account changed');
     if (!connection || connection.type !== 'credential' || connection.method !== 'oauth') return {};
-    if (input.sourceCredentialID) await pinned(ctx, 'opencode', input.sourceCredentialID);
     if (input.phase === 'describe') {
       const provider = (await ctx.provider.get({ providerID: input.providerID })).data;
-      const model = (await ctx.model.list()).data.find(value => value.providerID === input.providerID && value.id === input.modelID);
+      const model = input.modelID ? (await ctx.model.list()).data.find(value => value.providerID === input.providerID && value.id === input.modelID) : undefined;
       const variant = input.variant && input.variant !== 'default' ? model?.variants?.find(value => value.id === input.variant) : undefined;
       await pinned(ctx, 'opencode', connection.id);
       return { provider: provider || {}, model: model || {}, variant: variant || {},

@@ -30,9 +30,9 @@ func (runtime *Runtime) ReadProviderCredential(ctx context.Context, providerID, 
 }
 
 // Console account facts are resolved by this same native server, only after the
-// effective model route has been validated. Refresh grants never cross RPC.
+// provider or effective model route has been validated. Refresh grants never cross RPC.
 func (runtime *Runtime) ReadConsoleAccount(ctx context.Context, providerID, modelID, variant string) (*ConsoleAccount, error) {
-	if modelID == "" {
+	if modelID == "" && providerID != "opencode-go" {
 		return nil, nil
 	}
 	input := Object{"providerID": providerID, "modelID": modelID, "variant": variant, "phase": "describe"}
@@ -50,7 +50,7 @@ func (runtime *Runtime) ReadConsoleAccount(ctx context.Context, providerID, mode
 		return nil, err
 	}
 	if len(raw) == 0 {
-		return nil, nil
+		return nil, errors.New("OpenCode Console lease disappeared during resolution")
 	}
 	lease, err := ParseOAuthLease(raw["lease"])
 	if err != nil {
@@ -74,8 +74,8 @@ func (runtime *Runtime) ReadConsoleAccount(ctx context.Context, providerID, mode
 		return nil, err
 	}
 	currentRoute, headers := describeConsoleRoute(facts, providerID, modelID, variant)
-	if currentRoute != route {
-		return nil, nil
+	if currentRoute != route || facts["sourceCredentialID"] != input["sourceCredentialID"] {
+		return nil, errors.New("OpenCode Console binding changed during resolution")
 	}
 	for name, value := range headers {
 		if (strings.EqualFold(name, "x-org-id") || strings.EqualFold(name, "x-opencode-org-id")) && value != orgID {

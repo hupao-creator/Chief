@@ -11,6 +11,8 @@
   {"id":"PBT-STORE-STREAM","suite":"go","engine":"rapid","package":"tools/verification/pbt/store","test":"TestStreamStorageProperties","doc":"internal/core/store/README.md","cases":30},
   {"id":"PBT-STORE-LIFECYCLE","suite":"go","engine":"rapid","package":"tools/verification/pbt/store","test":"TestLifecycleProperties","doc":"internal/core/store/README.md","cases":100},
   {"id":"PBT-CODEX-TERMINAL","suite":"go","engine":"rapid","package":"tools/verification/pbt/codex","test":"TestCodexTerminalProperties","doc":"internal/plugins/harness/codex/README.md","cases":100},
+  {"id":"PBT-OPENCODE-QUOTA","suite":"go","engine":"rapid","package":"internal/plugins/harness/opencode","test":"TestGoAccountTelemetryProperties","doc":"internal/plugins/harness/opencode/README.md","cases":100},
+  {"id":"PBT-MOKU-MESSAGE-TELEMETRY","suite":"go","engine":"rapid","package":"internal/services/moku","test":"TestMessageAccountTelemetryProperties","doc":"internal/services/moku/README.md","cases":100},
   {"id":"PBT-CODEX-CATALOG","suite":"go","engine":"rapid","package":"internal/plugins/harness/codex","test":"TestNativeCatalogWriteProperties","doc":"internal/plugins/harness/codex/README.md","cases":100},
   {"id":"PBT-CODEX-REVIEWER","suite":"go","engine":"rapid","package":"tools/verification/pbt/codex","test":"TestCodexReviewerProperties","doc":"internal/plugins/harness/codex/README.md","cases":100},
   {"id":"PBT-REPORT-PREVIEW","suite":"go","engine":"fuzz","package":"internal/plugins/applications/report","test":"FuzzReportHTMLProjections","doc":"internal/plugins/applications/report/README.md"},

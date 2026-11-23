@@ -373,3 +373,10 @@ type MokuTargetDiscoverer interface {
 type MokuContextContributor interface {
 	MokuContext(context.Context, string, SettingsRequest, TelemetryLedger) (string, error)
 }
+
+// MokuMessageTelemetrySource serves an account-checked snapshot at message
+// preparation. Periodic collection can warm it but must not retain the text.
+type MokuMessageTelemetrySource interface {
+	MokuContextContributor
+	MokuMessageTelemetry(context.Context, SettingsRequest, TelemetryLedger) (string, error)
+}
