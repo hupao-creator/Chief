@@ -109,6 +109,9 @@ band, including outside the glass during a fold. In the scene-driven movie it
 requires an intermediate reversal and independently matches the settled model
 name and input placeholder to catch simultaneous ink. It also checks for text
 in the reserved Stop seat and measures the square’s clearance from the rim.
+When a blink or partially visible Stop cannot be located at one pixel per
+point, it repeats the measurement on that frame's original 2× pixels with
+the same size and fill criteria. The result identifies recovered frame indices.
 On the system-input movie, with the pointer over the
 compact eyes before each opening, the square must remain visible as the
 capsule widens. Its measured distance from the right edge stays between
@@ -348,6 +351,24 @@ first frames of expansion as the editor reports its vertical inset. Also click
 Close during expansion, reopen the card and check the mark on both legs.
 
 Keep the executable digest, revision, displayed layout, input backend and movie.
+
+## Control ink recording
+
+Run the preview executable with `--capture-overview --english --control-ink`
+under the shared desktop and performance leases. A nonactivating panel records
+its own production Dock. The fixture inserts ten characters through the native
+editor, clears the draft, reverses a Send reveal after 55 ms, folds the editor
+and delivers pending, started and failed dispatch projections. The movie and
+event times are written to `control-ink` beside the disposable bundle.
+The replay checks the native draft, responder and foreground owner. The
+[frame checker](check_control_ink.py) reads each encoded frame. It checks
+action ink against the settled Stop and Send seats, measures reversal and
+compares status ink with the settled labels. Run it with the capture directory
+and a JSON output path. Add `--reduced-motion` to record the same events with
+the local SwiftUI accessibility setting enabled. The checker then requires
+direct glyph and label changes. These fixture operations do not call a Harness.
+The [recordings and frame measurements](evidence/state-ink/README.md) include
+both motion settings, an interrupted fold, and receipts from the mounted routes.
 
 ## Chief input replay
 

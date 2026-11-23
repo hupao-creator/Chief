@@ -20,11 +20,14 @@ struct NativeMokuTimerPlacement: ViewModifier {
         content
             .environment(\.nativeMokuDockTimer, resident ? timer : nil)
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if !resident, let message = timer.current {
-                    NativeMokuTimerBar(timer: timer, message: message, exclusions: scene.outsideClickExclusions)
-                        .frame(maxWidth: NativeMokuTimerBar.preferredWidth)
-                        .padding(.horizontal, 16).padding(.vertical, 8)
-                }
+                ZStack {
+                    if !resident, let message = timer.current {
+                        NativeMokuTimerBar(timer: timer, message: message, exclusions: scene.outsideClickExclusions)
+                            .frame(maxWidth: NativeMokuTimerBar.preferredWidth)
+                            .padding(.horizontal, 16).padding(.vertical, 8)
+                            .transition(.opacity)
+                    }
+                }.mokuInk(value: !resident && timer.current != nil)
             }
             .environment(\.reminderScrollRegions, scrollRegions)
     }

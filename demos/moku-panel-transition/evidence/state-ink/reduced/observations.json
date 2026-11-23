@@ -1,0 +1,48 @@
+{
+  "events" : [
+    {
+      "event" : "send",
+      "seconds" : 0.41018920834176242
+    },
+    {
+      "event" : "same-role",
+      "seconds" : 0.7591069582849741
+    },
+    {
+      "event" : "stop",
+      "seconds" : 1.015471666585654
+    },
+    {
+      "event" : "partial-send",
+      "seconds" : 1.3422399999108166
+    },
+    {
+      "event" : "reverse-to-stop",
+      "seconds" : 1.3994386249687523
+    },
+    {
+      "event" : "fold",
+      "seconds" : 1.7333370000123978
+    },
+    {
+      "event" : "dispatching",
+      "seconds" : 2.4260488331783563
+    },
+    {
+      "event" : "started",
+      "seconds" : 3.1669689998961985
+    },
+    {
+      "event" : "next-dispatch",
+      "seconds" : 3.5939245831687003
+    },
+    {
+      "event" : "failed",
+      "seconds" : 3.8460740416776389
+    }
+  ],
+  "foregroundUnchanged" : true,
+  "pid" : 27818,
+  "reduceMotion" : true,
+  "window" : 109317
+}

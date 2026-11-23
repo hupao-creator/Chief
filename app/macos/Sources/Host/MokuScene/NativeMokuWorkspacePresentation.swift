@@ -256,6 +256,7 @@ struct NativeMokuDockInteractionPanel: View {
                             .id(current.id)
                     } else { NativeMokuDockQuestionField(question: current, answers: $answers, disabled: busy).id(current.id) }
                 }
+                    .mokuInk(value: current.id)
                     .scrollIndicators(.automatic).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
                 GeometryReader { geometry in
@@ -379,6 +380,7 @@ private struct NativeMokuDockQuestionField: View {
                     .accessibilityLabel(question.prompt)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
+            .mokuInk(value: otherOpen)
             .onChange(of: otherOpen, initial: true) { _, open in inputFocused = open && !disabled }
     }
     private func choice(label: String, detail: String?, selected: Bool, action: @escaping () -> Void) -> some View {
@@ -396,8 +398,9 @@ private struct NativeMokuDockQuestionField: View {
                 .foregroundStyle(selected ? .white : ink.opacity(0.65))
                 .background(ink.opacity(selected ? 0.1 : 0.045), in: RoundedRectangle(cornerRadius: 11))
                 .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(ink.opacity(selected ? 0.42 : 0.12)))
+                .mokuInk(value: selected)
                 .contentShape(RoundedRectangle(cornerRadius: 11))
-        }.buttonStyle(.plain).disabled(disabled).opacity(disabled ? 0.48 : 1)
+        }.buttonStyle(.plain).disabled(disabled).opacity(disabled ? 0.48 : 1).mokuInk(value: disabled)
             .accessibilityLabel(label).accessibilityValue(selected ? localize("已选", "Selected") : localize("未选", "Not selected"))
             .accessibilityAddTraits(selected ? .isSelected : [])
     }
@@ -416,6 +419,7 @@ private struct NativeMokuInteractionButtonStyle: ButtonStyle {
             .background(primary ? ink : .clear, in: RoundedRectangle(cornerRadius: question ? 13 : 11))
             .overlay(RoundedRectangle(cornerRadius: question ? 13 : 11).strokeBorder(ink.opacity(primary ? 1 : 0.18)))
             .scaleEffect(configuration.isPressed ? 0.98 : 1).opacity(enabled ? 1 : 0.34)
+            .mokuInk(value: configuration.isPressed).mokuInk(value: enabled)
     }
 }
 

@@ -9,6 +9,11 @@ import cv2
 import numpy as np
 
 
+# Use one ink threshold for the square and its exclusion from the text seat.
+# During a fade the entire Stop can be dimmer than the settled glyph.
+CONTROL_INK = 140
+
+
 def read_frames(folder):
     movie = str(folder / "window.mp4")
     info = subprocess.check_output(["ffprobe", "-v", "error", "-show_entries",
@@ -38,32 +43,69 @@ def measure(pts, image):
     # require a filled two-dimensional mark: strokes in a moving dispatch
     # label can have the same horizontal run length on separate scanlines.
     band = np.frombuffer(image, np.uint8).reshape(260, 720)[190:225, 376:right - 6]
-    boxes = cv2.connectedComponentsWithStats((band >= 150).astype("uint8"))[2][1:] if band.size else []
-    stops = [376 + x + (w - 1) / 2 for x, _, w, h, area in boxes
-             if 7 <= w <= 12 and 5 <= h <= 12 and abs(w - h) <= 2 and area >= .85 * w * h]
+    stop = stop_center(band, pts)
+    return {"pts": pts, "width": right - left + 1, "center": (left + right) / 2, "stopInset": right - stop if stop is not None else None}
+
+
+def stop_center(band, pts, scale=1):
+    boxes = cv2.connectedComponentsWithStats((band > CONTROL_INK).astype("uint8"))[2][1:] if band.size else []
+    stops = [376 + (x + w / 2) / scale - .5 for x, _, w, h, area in boxes
+             if 7 * scale <= w <= 12 * scale and 5 * scale <= h <= 12 * scale
+             and abs(w - h) <= 2 * scale and area >= .85 * w * h]
     if len(stops) > 1:
         raise ValueError(f"Multiple Stop marks at {pts}s")
-    return {"pts": pts, "width": right - left + 1, "center": (left + right) / 2, "stopInset": right - stops[0] if stops else None}
+    return stops[0] if stops else None
 
 
-def eye_margin(band):
+def eye_margin(band, scale=1):
     # Search the full panel. The white eye cores are brighter than even the
     # plain backdrop, so an escaped pair is still counted outside the dark shell.
     components = cv2.connectedComponentsWithStats((band > 245).astype("uint8"))[2][1:]
     eyes = [(x, y, w, h, area) for x, y, w, h, area in components
-            if 3 <= w <= 14 and 2 <= h <= 23 and area >= .45 * w * h]
+            if 3 * scale <= w <= 14 * scale and 2 * scale <= h <= 23 * scale and area >= .45 * w * h]
     margins = []
     for i, (x, y, w, h, area) in enumerate(eyes):
         for xx, yy, ww, hh, other in eyes[i + 1:]:
-            if not (10 <= abs(x - xx) <= 23 and abs(y - yy) <= 4
-                    and abs(h - hh) <= 3 and .65 <= other / area <= 1.55):
+            if not (10 * scale <= abs(x - xx) <= 23 * scale and abs(y - yy) <= 4 * scale
+                    and abs(h - hh) <= 3 * scale and .65 <= other / area <= 1.55):
                 continue
             for edge_y in (min(y, yy), max(y + h, yy + hh) - 1):
                 dark = np.flatnonzero(band[edge_y] < 150)
                 if not dark.size:
                     raise ValueError("Eyes visible on a scanline outside the capsule")
-                margins.append(int(min(min(x, xx) - dark[0], dark[-1] - max(x + w - 1, xx + ww - 1))))
+                margins.append(float(min(min(x, xx) - dark[0], dark[-1] - max(x + w - 1, xx + ww - 1))) / scale)
     return min(margins, default=None)
+
+
+def measure_native_ink(folder, frames):
+    # A downsample can remove the white cores of a closing blink. Apply the
+    # same contrast, point dimensions, fill ratio and edge tests to the
+    # original 2x pixels before classifying that displayed frame as unresolved.
+    # At partial opacity the same downsample can erase a filled Stop corner.
+    eyes, stops = [], []
+    movie = cv2.VideoCapture(str(folder / "window.mp4"))
+    try:
+        for index, frame in enumerate(frames):
+            ok, pixels = movie.read()
+            if not ok or pixels.shape[:2] != (520, 1440):
+                raise ValueError(f"Missing native-scale frame {index}")
+            if frame["eyeMargin"] is None:
+                band = cv2.cvtColor(pixels[344:484], cv2.COLOR_BGR2GRAY)
+                frame["eyeMargin"] = eye_margin(band, scale=2)
+                if frame["eyeMargin"] is not None:
+                    eyes.append(index)
+            if frame["stopInset"] is None:
+                right = round(frame["center"] + (frame["width"] - 1) / 2)
+                band = cv2.cvtColor(pixels[380:450], cv2.COLOR_BGR2GRAY)[:, 752:2 * (right - 6)]
+                stop = stop_center(band, frame["pts"], scale=2)
+                if stop is not None:
+                    frame["stopInset"] = right - stop
+                    stops.append(index)
+        if movie.read()[0]:
+            raise ValueError("Unexpected additional native-scale frame")
+    finally:
+        movie.release()
+    return eyes, stops
 
 
 def check_rows(frames, bands):
@@ -95,7 +137,7 @@ def check_rows(frames, bands):
             if f["stopInset"] is not None:
                 mark = round(45 - f["stopInset"])
                 seat[:, max(0, mark - 6):max(0, mark + 7)] = 0
-            if (seat > 140).sum() >= 5:
+            if (seat > CONTROL_INK).sum() >= 5:
                 raise ValueError(f"Dispatch ink in trailing control seat at {f}")
     if min(dispatch_frames, editor_frames) < 3:
         raise ValueError("Insufficient readable dispatch or editor frames")
@@ -111,6 +153,7 @@ def check(folder):
     frames, bands = read_frames(folder)
     for f, band in zip(frames, bands):
         f["eyeMargin"] = eye_margin(band)
+    native_eyes, native_stops = measure_native_ink(folder, frames)
     def phase(frame):
         if frame["width"] < 174:
             return "compact"
@@ -141,7 +184,7 @@ def check(folder):
         raise ValueError(f"Capsule skipped at least half its travel in one frame at {jump}")
     if abs(worst["center"] - 359.5) > 2:
         raise ValueError(f"Capsule left the Overview center at {worst}")
-    result = dict(locale=receipt["locale"], frames=len(frames), worstCenterFrame=worst,
+    result = dict(locale=receipt["locale"], frames=len(frames), nativeScaleEyeFrames=native_eyes, nativeScaleStopFrames=native_stops, worstCenterFrame=worst,
                   measuredEyes=len(margins), leastEyeMarginFrame=least, largestWidthStep=step,
                   phases=[dict(phase=kind, first=group[0]["pts"], last=group[-1]["pts"],
                                distinctWidths=len({f["width"] for f in group}),

@@ -24,6 +24,31 @@ Chief communicates through the Dock. Note links open ordinary Agent executions o
 
 ## Dock and composer
 
+### State and transition map
+
+The [workspace](../Shell/NativeWorkspaceView.swift) supplies the route, draft,
+execution, intervention and timer. The [scene](NativeMokuScene.swift) owns
+route visibility. The [Dock](NativeMokuDock.swift) measures the shell and
+places its persistent seats. The following map lists the actual presentation
+owners and their verification entries. Each replay exercises a subset.
+
+| Entry or change | Visible property and ownership | Verification entry |
+| --- | --- | --- |
+| First-run handoff, empty Landing, first or last eligible card | Onboarding prepares input under the contracting cover. Landing scales the shell and eye seat together and moves to the bottom on the first card. | [First-run and first-card workspace](../../../../../demos/moku-panel-transition/README.md#joint-workspace-replay) |
+| Overview capsule, Compose command, Escape, outside click, send and rejection | The bottom-center shell folds on its geometry curve. Editor ink follows expansion. Focus, selection and cancellation belong to the native input. | [Overview window](../../../../../demos/moku-panel-transition/README.md#overview-dock-replay) · [Pending sends](../../../../../demos/moku-panel-transition/README.md#pending-send-replay) |
+| Agent card, history, continuation, Super Thread related execution, Browser annotation, Git, unselected Report | Reader travel, identity flip and input admission have separate owners. Drag/resize fits the current column directly. Annotation uses the cancel seat. Git follows ordinary Chief routing. Unselected Report suppresses input. | [Reader and column visits](../../../../../demos/moku-panel-transition/README.md#agent-entrance-replay) · [Report workspace](../../../../../demos/moku-panel-transition/README.md#host-receipt-replay) |
+| Idle, unread/read reply, active execution, tool/reasoning, permission, completion, failure and interruption | The character controller retargets expression, color, blink and orbit. Consecutive tool updates keep the orbit clock. Input suppresses outside ink. | [Orbit and projected tools](../../../../../demos/moku-panel-transition/remaining/README.md) |
+| Compact pointer enter/leave, keyboard and accessibility focus | Hover shadow and Stop square ease locally. Focus can reveal Stop independently. Its target follows the live seat. | [Overview and system input](../../../../../demos/moku-panel-transition/README.md#overview-dock-replay) |
+| Editing, whitespace, IME, file import, submit readiness, offline and receipt recovery | The trailing glyphs and enabled Send opacity change in place. Control ownership switches on the input event. Text, caret, marked range and selection update immediately. Chips, suggestions and recovery rows take their measured space. The selected directory row changes tint. | [Input and action replay](../../../../../demos/moku-panel-transition/README.md#chief-input-replay) · [Pending sends](../../../../../demos/moku-panel-transition/README.md#pending-send-replay) |
+| Talk, replacement, expiry and Compose over a notice | The shell fits the message. Talk ink fades while native text layout and scrolling update at their reading width. Opening input consumes a presented notice. | [Overview window](../../../../../demos/moku-panel-transition/README.md#overview-dock-replay) · [Note handoff](../../../../../demos/moku-note-transition/README.md) |
+| Dispatching, started, failed and superseding operation | The status seat fades through clear. The operation owns its deadline, configuration, Harness mark and 48-point trailing reservation. | [Control ink recording](../../../../../demos/moku-panel-transition/README.md#control-ink-recording) |
+| Note command, swipe, close, link, interrupted return | Outgoing ink, a single clear/Regular glass shell, then incoming ink. A generation fences completions. Reading eligibility follows settlement. | [Note window](../../../../../demos/moku-note-transition/README.md) |
+| Settings command, close, reopen, short viewport | Shell and face travel to the page header, glass yields to the system background and page ink fades. Settings owns the save gate. | [Settings](../Settings/README.md) |
+| Permission or questionnaire, step, choice, other answer, submit | The panel fades at its own seat. Selection tint, borders, pressed and enabled states use local feedback. Answer text updates at native input speed. | [Mounted intervention controls](../../../../../demos/moku-panel-transition/remaining/README.md) |
+| Timer arrival, FIFO receipt, active input/Note/Settings or unavailable Dock | The reminder borrows the passive seat or reserves a bottom inset. Message identity resets scrolling. Bell failure reveals Retry bell. The current head owns its receipt through retry. | [Timer visits](../../../../../demos/moku-panel-transition/remaining/README.md) |
+| Collection, covered/absent route, return during withdrawal | Collection owns its page fade. The scene retains the native Dock through route opacity retirement and revokes interaction at withdrawal. A return redirects that opacity. | [Collection](../Overview/README.md) · [Route reversal](../../../../../demos/moku-panel-transition/remaining/README.md) |
+| Reduce Motion, Reduce Transparency, hidden/inactive window | Reduced motion settles local ink and shell layout, Note and Settings directly. Reduced transparency selects the opaque capsule. Hidden/inactive windows suspend character and travel work. | [Reduced-motion routes and timers](../../../../../demos/moku-panel-transition/remaining/README.md) |
+
 The resident Dock editor plays Apple keyboard clicks for printable keys and the
 delete sound for Backspace and forward Delete. Each delivered key-down,
 including auto-repeat, can request one sound. IME updates, pastes, draft
@@ -49,8 +74,8 @@ The composer layout reserves attachment/action seats and the resident eye seat
 the remaining width to the editor; long placeholder text cannot displace Stop.
 Dispatch status remains a single line with tail truncation and retains the
 Dock's separate trailing control inset. Its configuration adapts within that
-reserved content seat as described below. A dispatch phase change replaces the
-status text in one frame, including when it coincides with the first Thread card.
+reserved content seat as described below. During a phase change the outgoing
+status fades through clear before the next label appears in the same seat.
 
 Moku’s Dock (idle, landing, composer, Talk, dispatch and Note), interaction
 panel use a dark SwiftUI environment.
@@ -492,7 +517,8 @@ Long text starts at the top of a scrollable two-line viewport. Each operation
 gets its own reading position, including consecutive operations with equal text.
 Receipt and audio retry remain accessible independently of scrolling. The shell
 uses the Dock's dark glass, including its Reduce Transparency fallback. Timer
-changes settle directly and require no motion.
+receipts advance the queue immediately. Caption and message ink change in
+place, with a fresh reading position for each queue head.
 
 [Placement](NativeMokuTimerPlacement.swift) preserves a mounted editor, its
 selection, Note and Settings by reserving the same compact row below the

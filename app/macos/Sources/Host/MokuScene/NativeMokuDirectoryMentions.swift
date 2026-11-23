@@ -222,6 +222,7 @@ private struct NativeMokuDirectoryOption: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(selected ? Color.primary.opacity(0.08) : .clear,
                         in: RoundedRectangle(cornerRadius: 9))
+            .mokuInk(value: selected)
             .contentShape(RoundedRectangle(cornerRadius: 9))
         }.buttonStyle(.plain).focusable(false)
             .accessibilityLabel(directory.name.string + ", " + directory.path.string)

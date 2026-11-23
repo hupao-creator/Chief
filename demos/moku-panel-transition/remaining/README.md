@@ -15,7 +15,8 @@ collector and executable fingerprints.
 - `timers` and `timers-reduced` mount the compact production Timer at original
   scale in an offscreen panel. They check its bottom placement and AppKit hit
   region, explicit FIFO receipts, reading to the final line and restoring idle
-  and running Docks. A pending head also moves to a route without a Dock and
+  and running Docks. A failed bell exposes Retry bell and keeps the same pending receipt through retry.
+  A pending head also moves to a route without a Dock and
   back. The fixture injects a silent bell and records its start/stop lifetime.
 - The compositor expression experiment (`eyes`) uses the native modules at
   `3e355741`. Its phase and main-thread-hold checks target that layer renderer.
@@ -23,7 +24,8 @@ collector and executable fingerprints.
   controls and two completed Timer operations. An external AX client restricted
   to the fixture's own PID presses the controls. The visits check first-key
   delivery, UTF-16 selection, marked-text commit and draft restoration across
-  reversal and retirement. The fixture supplies the projected requests and
+  reversal and retirement. A Talk visit opens Note, reverses its return, opens
+  Settings, interrupts its close and uses the restored close controls. The fixture supplies the projected requests and
   records bell callbacks. `routes-offscreen` runs the same normal-motion
   interaction checks entirely beyond the desktop and records AppKit view
   bitmaps. These images document layout and do not measure composited glass.

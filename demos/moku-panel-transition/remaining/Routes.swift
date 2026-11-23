@@ -9,7 +9,11 @@ import SwiftUI
 
 @MainActor private final class Bell: NativeMokuTimerPlaying {
     var starts = 0, stops = 0
-    func startLoop() { starts += 1 }
+    var failNext = false
+    func startLoop() throws {
+        if failNext { failNext = false; throw ReplayFailure("Fixture bell unavailable") }
+        starts += 1
+    }
     func stop() { stops += 1 }
 }
 
@@ -18,6 +22,10 @@ import SwiftUI
     let draft = NativeComposerDraft(services: .init(stageFiles: { _, _ in [] }, discardAttachments: { _ in }))
     let bell = Bell()
     let timer: NativeMokuTimerController
+    var note: NativeMokuNote?
+    let settings = NativeSettingsModel(settings: .object([:]), revision: 0,
+        save: { value, revision in .saved(settings: value, revision: revision + 1) },
+        clearHistory: {}, loadInstallations: { .object([:]) }, installHarness: { _ in })
     var request: PublicInteraction?
     var responses: [HarnessRespondRequest] = []
     var replyKey: JSONText?
@@ -43,8 +51,13 @@ private struct RoutePanel: View {
                     AnyView(NativeMokuDockInteractionPanel(intervention: intervention, disabled: false) { response in
                         model.responses.append(response)
                     }.id(intervention.identity))
-                }, interactionIsQuestion: model.intervention?.isQuestion == true, onSend: { _ in }, onCancel: {})
-        } settings: { EmptyView() }
+                }, interactionIsQuestion: model.intervention?.isQuestion == true, note: model.note, onSend: { _ in }, onCancel: {})
+        } settings: {
+            if model.scene.settingsOpen {
+                NativeSettingsPage(model: model.settings, locale: .english, harnesses: [],
+                    harnessSettings: { _ in AnyView(EmptyView()) }, onClose: { _ in model.scene.closeSettings() })
+            }
+        }
         .modifier(NativeMokuTimerPlacement(timer: model.timer, scene: model.scene))
     }
 }
@@ -189,6 +202,35 @@ private struct RoutePanel: View {
     try await until("Host returned") { root.descendants(MokuHorizontalTravelView.self).count == 1 && !scene.dockHitRects.isEmpty }
     try check(draft.text == "Z拼字", "Route draft")
     try record("route-return")
+
+    model.note = NativeMokuNote(id: "bar-note", text: "Review the release notes.", revision: 1, updatedAt: 1)
+    scene.receiveTalk(.init(id: "bar-talk", text: "Ready for review"))
+    try await until("Talk presented") { scene.talkPresentation.presented }
+    let deadline = scene.talkPresentation.deadline
+    scene.openNotePanelFromUser()
+    try await pause(150)
+    scene.setNotePanelOpen(false)
+    try await pause(50)
+    scene.openNotePanelFromUser()
+    try await pause(780)
+    try check(try await button("moku-note-close").count == 1, "Note close control after reversal")
+    try await capture("note-after-reversal")
+    scene.openSettings()
+    try await pause(150)
+    scene.closeSettings()
+    try await pause(65)
+    scene.openSettings()
+    try await until("Settings settled after reversal") { scene.settingsExpanded && !scene.settingsTransitioning }
+    try check(try await button("settings-close").count == 1, "Settings close control after reversal")
+    try await capture("settings-after-reversal")
+    _ = try await button("settings-close", press: true)
+    try await until("Settings returned to Note") { !scene.settingsOpen && scene.notePanelOpen }
+    try check(try await button("moku-note-close", press: true).count == 1, "Close retained Note")
+    try await until("Note closed") { !scene.notePanelOpen }
+    try check(draft.text == "Z拼字" && (scene.talkPresentation.deadline == deadline || scene.talkPresentation.message == nil),
+              "Cover changed draft or extended Talk")
+    try record("talk-note-settings-return")
+
 }
 
 /// Exercise the installed Dock hierarchy, including its AppKit hit-test gate,
@@ -215,7 +257,7 @@ private struct RoutePanel: View {
             title: "Fixture", tags: [], moku: true, transcript: .array(operations)))
     }
     typealias Receipt = NativeMokuTimerReceiptButton.ReceiptButton
-    func button(inDock: Bool) async throws -> Receipt {
+    func receiptButton(inDock: Bool) async throws -> Receipt {
         try await until("One receipt in the expected seat") {
             let buttons = root.descendants(Receipt.self)
             guard buttons.count == 1 else { return false }
@@ -235,7 +277,7 @@ private struct RoutePanel: View {
     }
     func confirm(inDock: Bool) async throws {
         let previous = timer.current?.id
-        let receipt = try await button(inDock: inDock)
+        let receipt = try await receiptButton(inDock: inDock)
         try check(receipt.accessibilityPerformPress(), "Receipt press")
         try await until("One acknowledgement advances the head") { timer.current?.id != previous }
     }
@@ -270,7 +312,7 @@ private struct RoutePanel: View {
             scene.dockCharacter?.input?.running == running && scene.capsuleFrame.size == NativeMokuCapsuleLayout.idleSize
         }
         try deliver(["Review ready", long, long])
-        _ = try await button(inDock: true)
+        _ = try await receiptButton(inDock: true)
         let ids = timer.pending.map(\.id)
         try check(Set(ids).count == 3, "Distinct FIFO deliveries")
         try await pause(400)
@@ -288,17 +330,22 @@ private struct RoutePanel: View {
         }
     }
     // Withdraw and restore the ordinary Dock while one head remains outstanding.
+    model.bell.failNext = true
     try deliver(["Review this before leaving"])
     let pending = timer.current?.id
-    _ = try await button(inDock: true)
+    _ = try await receiptButton(inDock: true)
+    try check(timer.audioError != nil, "Failed bell must leave the receipt available")
+    let retry = try await button("Retry bell", press: true)
+    try check(retry.count == 1 && retry[0]["press"] == "0", "Retry failed bell")
+    try await until("Retry clears the error for the same head") { timer.audioError == nil && timer.current?.id == pending }
     scene.overviewVisible = false
-    _ = try await button(inDock: false)
+    _ = try await receiptButton(inDock: false)
     try check(timer.current?.id == pending, "Covered route kept its pending receipt")
     scene.overviewVisible = true
     try await confirm(inDock: true)
     try check(model.bell.starts == 3 && model.bell.stops == 3 && timer.current == nil, "One bell per nonempty queue")
     try save(["result": "passed", "reduceMotion": reduced, "origins": ["idle", "running"],
-              "receipts": 7, "ringStarts": model.bell.starts, "ringStops": model.bell.stops], "timers.json")
+              "receipts": 7, "retriedFailedBell": true, "ringStarts": model.bell.starts, "ringStops": model.bell.stops], "timers.json")
 }
 
 private extension NSView {

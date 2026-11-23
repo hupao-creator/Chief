@@ -28,6 +28,7 @@ class ComposerReplayPanel: NSPanel {
     var centeredAgent = false
     var talk: String?
     var overviewCapture = false
+    var reducedMotion = false
     var language = "zh-Hans"
     @ObservationIgnored var overviewInputChanges: [Bool] = []
     var openingClock = CaptureOpeningClock.realtime
@@ -90,6 +91,7 @@ private struct Surface: View {
         } dock: {
             dock
         } settings: { EmptyView() }
+        .transformEnvironment(\._accessibilityReduceMotion) { if model.reducedMotion { $0 = true } }
         .environment(\.locale, Locale(identifier: model.language))
         .environment(\.nativeExecutionDockRoute, model.route)
         .environment(\.scenePhase, model.isolatedReplay ? .active : scenePhase)
@@ -322,6 +324,7 @@ private struct Controls: View {
         let systemInput = args.contains("--system-input")
         let language = args.contains("--english") ? "en" : "zh-Hans"
         model.overviewCapture = true
+        model.reducedMotion = args.contains("--reduced-motion")
         model.language = language
         model.thread = false
         model.scene.setComposerContext(model.draft, opensInput: false)
@@ -342,6 +345,11 @@ private struct Controls: View {
         Task {
             do {
                 try await Task.sleep(for: .milliseconds(400))
+                if args.contains("--control-ink") {
+                    try await captureControlInk(panel)
+                    NSApp.terminate(nil)
+                    return
+                }
                 let folder = ["overview", language, "motion",
                               systemInput ? "system" : "scene"].joined(separator: "-")
                 let movie = try await DockMovieCapture(window: panel, folder: folder)
@@ -402,6 +410,78 @@ private struct Controls: View {
             }
             NSApp.terminate(nil)
         }
+    }
+
+    private func captureControlInk(_ panel: NSPanel) async throws {
+        let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        model.scene.toggleInput(focusOnOpening: true)
+        try await Task.sleep(for: .milliseconds(700))
+        let movie = try await DockMovieCapture(window: panel, folder: model.reducedMotion ? "control-ink-reduced" : "control-ink")
+        let start = CACurrentMediaTime()
+        var events: [[String: Any]] = []
+        func mark(_ event: String) {
+            events.append(["event": event, "seconds": CACurrentMediaTime() - start])
+        }
+        func pause(_ milliseconds: Int) async throws { try await Task.sleep(for: .milliseconds(milliseconds)) }
+        guard let editor = panel.firstResponder as? NSTextView else {
+            throw NSError(domain: "Control ink capture requires the focused editor", code: 1)
+        }
+        try await pause(400)
+        mark("send")
+        editor.insertText("a", replacementRange: editor.selectedRange())
+        try await pause(320)
+        mark("same-role")
+        for letter in "bcdefghij" {
+            editor.insertText(String(letter), replacementRange: editor.selectedRange())
+            try await pause(25)
+        }
+        guard model.draft.text == "abcdefghij", panel.firstResponder === editor else {
+            throw NSError(domain: "Typing lost its draft or responder", code: 1)
+        }
+        mark("stop")
+        editor.selectAll(nil)
+        editor.deleteBackward(nil)
+        try await pause(320)
+        mark("partial-send")
+        editor.insertText("x", replacementRange: editor.selectedRange())
+        try await pause(55)
+        mark("reverse-to-stop")
+        editor.deleteBackward(nil)
+        try await pause(320)
+        mark("fold")
+        model.scene.setInputOpen(false)
+        try await pause(650)
+        func dispatch(_ id: JSONText, _ result: JSONValue?, failed: Bool = false) {
+            var fields: [JSONText: JSONValue] = ["name": .text("create_thread"), "arguments": .object([
+                "target": .object(["codex": .object(["model": .text("Fixture")])])])]
+            if let result {
+                fields["completedAt"] = .integer(1)
+                fields["result"] = result
+                fields["isError"] = .bool(failed)
+            }
+            let notice = NativeMokuDispatch(operation: .object(fields), executionIsActive: true)!
+            model.scene.receiveTalk(.init(id: id, text: notice.sentence(chinese: false), dispatch: notice))
+        }
+        mark("dispatching")
+        dispatch("first", nil)
+        try await pause(700)
+        mark("started")
+        dispatch("first", .object(["ok": .bool(true), "threadId": .text("fixture")]))
+        try await pause(400)
+        // A new pending operation can supersede the settled notification.
+        mark("next-dispatch")
+        dispatch("second", nil)
+        try await pause(250)
+        mark("failed")
+        dispatch("second", .object(["error": .text("fixture")]), failed: true)
+        try await pause(420)
+        try await movie.finish()
+        let retained = NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground
+        let receipt: [String: Any] = ["events": events, "foregroundUnchanged": retained, "reduceMotion": model.reducedMotion,
+            "window": panel.windowNumber, "pid": ProcessInfo.processInfo.processIdentifier]
+        try JSONSerialization.data(withJSONObject: receipt, options: [.prettyPrinted, .sortedKeys])
+            .write(to: movie.directory.appendingPathComponent("observations.json"))
+        guard retained else { throw NSError(domain: "Foreground changed during capture", code: 1) }
     }
 
     private func startAgentEntranceCapture() {
