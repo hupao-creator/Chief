@@ -488,6 +488,7 @@ def pixels(root, plan, observation, frames, times, result, mark):
             earliest_progress=latest_progress=start['postedNS']
             previous_request=requests[baseline[0]]
             stall_lower=stall_upper=0
+            vertical_drift = 0
             response_bounds=None
             correspondence=[start['postedNS']];last_anchor=baseline[0]
             for at,anchors,scale,_ in relevant:
@@ -499,6 +500,8 @@ def pixels(root, plan, observation, frames, times, result, mark):
                 if not common: continue
                 correspondence.append(at);last_anchor=at
                 positions={k:(anchors[k]['x']-baseline[1][k]['x'],anchors[k]['y']-baseline[1][k]['y']) for k in common}
+                if horizontal:
+                    vertical_drift = max(vertical_drift, max(abs(p[1]) for p in positions.values()))
                 moving=any(k not in last_positions or math.dist(p,last_positions[k])>1 for k,p in positions.items())
                 # A changed frame brackets when progress resumed; its previous
                 # frame only bounds the end of a stall. Keep both ends instead
@@ -529,6 +532,8 @@ def pixels(root, plan, observation, frames, times, result, mark):
                 'firstVisibleResponseSecondsBounds':response_bounds,'responseDisplacementThresholdPixels':3,
                 'maximumNoProgressSeconds':maximum_stall,'noProgressSecondsBounds':{'lower':stall_lower,'upper':stall_upper},
                 'maximumTrajectoryErrorPixels':max(errors,default=None)}
+            if horizontal:
+                result['metrics']['pan']['maximumVerticalDisplacementPixels'] = vertical_drift
             coverage_end=min(times[3],motion[-1]['postedNS']+round(plan['maximumNoProgressSeconds']*1e9))
             stamps=[t for t in correspondence if t<=coverage_end]+[coverage_end]
             missing=any(b-a>plan['maximumCaptureGapSeconds']*1e9 for a,b in zip(stamps,stamps[1:]))
@@ -545,6 +550,8 @@ def pixels(root, plan, observation, frames, times, result, mark):
                     mark('fitting Overview moved during the scroll probe', product='wrong-result')
                 else:
                     result['scenarioEvidence'] = True
+            elif horizontal and vertical_drift > plan['motionTolerancePixels']:
+                mark('horizontal scroll moved business anchors vertically', product='wrong-result')
             elif first_response is None and plan['targetKind']=='application':
                 # AX rectangles guide input; they are not a receipt that the
                 # product's gesture recognizer accepted mouse-down. A completely
@@ -580,9 +587,6 @@ def pixels(root, plan, observation, frames, times, result, mark):
                 if not content:
                     result['scenarioEvidence'] = False
                     mark('business title and body were not observed after entry','incomplete')
-    if 'zoom' in plan['scenario']:
-        mark('no validated system magnification injector','unsupported')
-        result['scenarioEvidence'] = False
     if plan['scenario'].startswith('body'):
         body(root,plan,rows,times,requests,result,mark)
     if plan['targetKind']=='application' and any(e['kind']=='down' for e in plan['events']) and 'inputPreparation' not in result:

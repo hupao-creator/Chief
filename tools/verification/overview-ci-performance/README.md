@@ -84,7 +84,7 @@ A real foreground window and all four full card bounds must fit a physical
 reported screen. The runner requires macOS 26 arm64, Metal and the
 [runner image contract](../../../scripts/ci/self-hosted.md). Optional
 `--configure-display` is restricted to disposable GitHub-hosted runners and
-chooses an already offered mode ≥1265×800, preferring 1440×900. It records and
+chooses an already offered mode ≥1392×800, preferring 1440×900. The visible desktop must fit a 1392×600pt content area: the first two wide cards in each row reach x=1392pt at the opening offset. It records and
 restores the original mode. It creates no virtual display. Self-hosted images
 must supply the display policy in advance.
 

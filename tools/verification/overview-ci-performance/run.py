@@ -100,15 +100,18 @@ func modes(_ display: CGDirectDisplayID) -> [CGDisplayMode] {
                 "configurationScope": "forSession"]
             // Write restoration information before any mutation, including a failed mutation.
             try write(result, output)
+            // Two 656pt wide cards per row, a 16pt gap and a 64pt leading inset.
+            // Mounted card frames remain the final visibility oracle.
+            let minimumWidth = 1392
             var selected = original
-            if (original.width < 1265 || original.height < 800) && action == "prepare" {
-                let candidates = available.filter { $0.width >= 1265 && $0.height >= 800 }
+            if (original.width < minimumWidth || original.height < 800) && action == "prepare" {
+                let candidates = available.filter { $0.width >= minimumWidth && $0.height >= 800 }
                 guard let target = candidates.min(by: { a, b in
                     let aScore = abs(a.width - 1440) + abs(a.height - 900)
                     let bScore = abs(b.width - 1440) + abs(b.height - 900)
                     return aScore == bScore ? a.pixelWidth * a.pixelHeight < b.pixelWidth * b.pixelHeight : aScore < bScore
                 }) else {
-                    result["valid"] = false; result["reason"] = "No offered mode at least 1265x800 logical pixels"
+                    result["valid"] = false; result["reason"] = "No offered mode at least 1392x800 logical pixels"
                     try write(result, output); exit(1)
                 }
                 let status = setSessionMode(display, target)
@@ -117,12 +120,17 @@ func modes(_ display: CGDirectDisplayID) -> [CGDisplayMode] {
                 selected = target; result["changed"] = true
                 try write(result, output)
                 let deadline = Date(timeIntervalSinceNow: 3)
-                while Date() < deadline && !(NSScreen.main.map { $0.frame.width >= 1265 && $0.frame.height >= 800 } ?? false) {
+                while Date() < deadline && !(NSScreen.main.map { $0.frame.width >= CGFloat(minimumWidth) && $0.frame.height >= 800 } ?? false) {
                     RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
                 }
             }
             let actual = CGDisplayCopyDisplayMode(display) ?? selected
-            let valid = actual.width >= 1265 && actual.height >= 800
+            let capacity = NSScreen.main.map {
+                NSWindow.contentRect(forFrameRect: $0.visibleFrame, styleMask: [.titled, .closable, .resizable]).size
+            } ?? .zero
+            let valid = actual.width >= minimumWidth && actual.height >= 800
+                && capacity.width >= CGFloat(minimumWidth) && capacity.height >= 600
+            if !valid { result["reason"] = "Display must fit a 1392x600pt probe content area on the visible desktop" }
             result["selectedMode"] = describe(selected); result["actualMode"] = describe(actual)
             result["screensAfter"] = screenFacts(); result["valid"] = valid
             try write(result, output)
@@ -1078,7 +1086,7 @@ def markdown(report):
               "contain commands, logs and per-file source/binary identity. Display changes/restoration are recorded separately.", "", "```sh",
               f"python3 tools/verification/overview-ci-performance/run.py --baseline {report['baseline']} --candidate {report['candidate']} --output /tmp/overview-performance",
               "```", "", "The default command requires an already adequate real display. The hosted workflow additionally uses "
-              "`--configure-display`, which may select an existing >=1265×800 mode only on a disposable GitHub Actions runner and restores it in cleanup. "
+              "`--configure-display`, which may select an existing >=1392×800 mode only on a disposable GitHub Actions runner and restores it in cleanup. "
               "Actual full-card and whole-window screen containment remain the final validity checks.", ""]
     return "\n".join(lines)
 

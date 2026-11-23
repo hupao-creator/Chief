@@ -8,7 +8,7 @@ import threading
 import time
 import uuid
 
-from contracts.model import CLOCK, plan as validate_plan
+from contracts.model import CLOCK, number, plan as validate_plan
 from lifecycle import native, save, sha256
 from analysis.report import seal, write_report
 from input_region import background_point, validate_hit
@@ -52,7 +52,9 @@ def overview_probe(preparation, point, seconds):
     direction = -1 if scroll['maximum'] - scroll['offset'] >= scroll['offset'] else 1
     room = max(scroll['offset'], scroll['maximum'] - scroll['offset'])
     # Fitting cards still receive the same input; their observable result is stasis.
-    travel = min(120, int(room)) or 120
+    if 0 < room < 1:
+        raise ValueError('available scroll travel is below the integral pixel input resolution')
+    travel = min(120, int(room)) if room else 120
     half = (seconds - 1) / 2
     steps = min(travel, round(half * 60))
     events = [{'kind': 'move', 'atSeconds': .15, **point}]
@@ -81,8 +83,10 @@ def prepare_input(application, directory, fixture, context):
     state = application.ui.request(include_scroll_range=True)
     if 'scrollRange' in state:
         scroll = state['scrollRange']
-        ratio = bounds['width'] / scroll['viewportWidth']
-        record['scrollRange'] = {key: scroll[key] * ratio for key in ('offset', 'maximum')}
+        ratio = bounds['width'] / number(scroll['viewportWidth'], 'viewport width', 1)
+        maximum = number(scroll['maximum'], 'maximum scroll offset')
+        offset = number(scroll['offset'], 'initial scroll offset', 0, maximum)
+        record['scrollRange'] = {'offset': offset * ratio, 'maximum': maximum * ratio}
     elif 'overview.pan' not in state['actions']:
         raise ValueError('Overview navigation is unavailable during input preparation')
     record['afterNS']=time.monotonic_ns()
@@ -385,11 +389,6 @@ def run_suite(tools, bundle, directory, counts, scenarios, mode, seconds, capabi
                 try:
                     for filename in ('artifact.json','native-cli.json','selection.json'):
                         shutil.copy2(application.root/filename,case/filename)
-                    if 'zoom' in scenario:
-                        save(case/'report.json',{'version':1,'scenario':scenario,'count':count,'mode':mode,
-                            'measurement':'unsupported','product':'unknown','comparison':'not-comparable','metrics':{},
-                            'reasons':['No validated public system magnification injector; command-wheel is not a pinch.']})
-                        continue
                     if scenario=='first-render':
                         startup(application,tools,case,count,mode,seconds)
                         save(case/'outcome.json',outcome(application))

@@ -90,7 +90,7 @@
       }
     },
     "external-overview": {
-      "version": 1,
+      "version": 2,
       "documentation": "README.md",
       "calibration": "provisional-not-physically-calibrated",
       "maxNormalizedMAD": 1.0,
@@ -101,10 +101,8 @@
         "idle.completed",
         "idle.active",
         "pan",
-        "zoom",
         "body",
-        "body.pan",
-        "body.zoom"
+        "body.pan"
       ]
     },
     "external-reading": {
@@ -123,7 +121,7 @@
       ]
     },
     "ux-startup": {
-      "version": 2,
+      "version": 3,
       "documentation": "gate/UX.md",
       "calibration": "provisional-not-physically-calibrated",
       "maxNormalizedMAD": 1.0,
@@ -135,14 +133,15 @@
       ],
       "workload": {
         "family": "startup",
-        "count": 5,
+        "count": 10,
         "formalSeconds": 8,
         "windowBounds": [
           50,
           60,
           1280,
-          950
-        ]
+          820
+        ],
+        "scrollTravelPoints": 120
       },
       "metrics": {
         "firstContentSeconds": {
@@ -166,7 +165,7 @@
       }
     },
     "ux-overview": {
-      "version": 2,
+      "version": 3,
       "documentation": "gate/UX.md",
       "calibration": "provisional-not-physically-calibrated",
       "maxNormalizedMAD": 1.0,
@@ -185,8 +184,9 @@
           50,
           60,
           1280,
-          950
-        ]
+          820
+        ],
+        "scrollTravelPoints": 120
       },
       "metrics": {
         "appCPUPercent": {
@@ -263,17 +263,6 @@
           "absolute": 0.1
         }
       }
-    },
-    "ux-zoom": {
-      "version": 1,
-      "documentation": "gate/UX.md",
-      "calibration": "unavailable",
-      "adapter": "unsupported",
-      "reason": "No validated public system magnification injector; actual product pinch input cannot be replaced with command-wheel or internal camera setters",
-      "scenarios": [
-        "zoom",
-        "body.zoom"
-      ]
     }
   }
 }

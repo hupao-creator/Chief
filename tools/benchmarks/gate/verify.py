@@ -87,6 +87,25 @@ def main():
     rng = random.Random(args.seed)
     checks = []
     try:
+        from gate.ux import navigation_schedule
+        from runner import overview_probe
+        navigation = []
+        for maximum in (0, 1, 119, 120, 121, 240, 400):
+            for offset in (0, maximum, maximum / 2, rng.randrange(maximum + 1)):
+                scroll = {'maximum': maximum, 'offset': offset}
+                room = max(offset, maximum - offset)
+                try:
+                    plan = {'events': overview_probe({'scrollRange': scroll}, {'x': 100, 'y': 200}, 8)}
+                    schedule = navigation_schedule(plan, {'inputPreparation': {'scrollRange': scroll}}, {'scrollTravelPoints': 120})
+                except ValueError:
+                    assert room < 120, 'full travel should be admitted from either end'
+                    admitted = False
+                else:
+                    assert room >= 120 and len([row for row in schedule if row[1] == 4]) == 2
+                    admitted = True
+                navigation.append({**scroll, 'admitted': admitted})
+        write(args.output / 'scroll-workloads.json', navigation)
+        checks.append('bounded-round-trip-admission')
         for index in range(args.examples):
             # Generate many scales and both directions. Improvements preserve a
             # passing identity; a deliberately large degradation fails in either
@@ -263,8 +282,8 @@ def main():
         assert snapshot.read_bytes() == snapshot_bytes and digest(snapshot) == approval['reportSHA256']
         checks.append('promotion-exclusive-immutable-snapshot-output-failure-and-rejudgment')
         path = args.output / 'unsupported-command'
-        cli(['run', '--suite', 'ux-zoom', '--baseline', 'b'*40, '--candidate', 'c'*40, '--output', path], 2, path)
-        cli(['run', '--suite', 'ux-zoom', '--baseline', 'b'*40, '--candidate', 'c'*40, '--output', path], 2)
+        cli(['run', '--suite', 'external-overview', '--baseline', 'b'*40, '--candidate', 'c'*40, '--output', path], 2, path)
+        cli(['run', '--suite', 'external-overview', '--baseline', 'b'*40, '--candidate', 'c'*40, '--output', path], 2)
         checks.append('unsupported-command-and-output-exclusivity')
     except BaseException as error:
         write(args.output / 'verification.json', {'kind': 'synthetic-gate-verification', 'passed': False,

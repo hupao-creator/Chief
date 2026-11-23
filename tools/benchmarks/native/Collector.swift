@@ -227,7 +227,6 @@ func post(_ event: Record) throws {
     case "down": mouse = CGEvent(mouseEventSource: source, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left)
     case "drag": mouse = CGEvent(mouseEventSource: source, mouseType: .leftMouseDragged, mouseCursorPosition: point, mouseButton: .left)
     case "up": mouse = CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left)
-    case "zoom": throw fail("no validated public system magnification injector")
     default: throw fail("unsupported input kind")
     }
     guard let mouse else { throw fail("cannot create HID event") }

@@ -5,6 +5,7 @@ calibrated observations can enter this adapter; unknown exclusions fail closed.
 """
 from contextlib import contextmanager
 import fcntl
+import math
 import os
 from pathlib import Path
 import plistlib
@@ -114,6 +115,10 @@ def scoped_metrics(case, suite):
     require(report.get('collectorCalibration', {}).get('pixelsPassed') is True, 'pixel controls did not pass')
     metrics = report['metrics']
     family = suite['workload']['family']
+    if family in ('startup', 'overview'):
+        motion = metrics.get('pan', {})
+        require(report.get('motionEvidence') is True and motion.get('firstVisibleResponseSecondsBounds') is not None,
+                'signed Overview workload requires observed travel and return')
     if family == 'startup':
         app = metrics['startupApplication']
         values = {'firstContentSeconds': metrics['presentation']['firstContentSecondsBounds'],
@@ -131,8 +136,6 @@ def scoped_metrics(case, suite):
             if 'firstContentSeconds' in suite['metrics']:
                 values['firstContentSeconds'] = reading['presentation']['firstContentSeconds']
         else:
-            require(not metrics['pan'].get('stationaryLayout'),
-                    'fitting Overview has no scroll travel for latency comparison')
             values.update(responseSeconds=metrics['pan']['firstVisibleResponseSecondsBounds'],
                           noProgressSeconds=metrics['pan']['noProgressSecondsBounds'])
     return {name: values[name] for name in suite['metrics']}, report
@@ -158,6 +161,19 @@ def export_evidence(source, destination):
                     shutil.copytree(entry, group / entry.name)
                 elif entry.is_dir() and (entry / 'cleanup.json').exists():
                     shutil.copy2(entry / 'cleanup.json', group / (entry.name + '-cleanup.json'))
+
+
+def navigation_schedule(plan, result, workload):
+    from analysis.report import overview_positions
+    scroll = result['inputPreparation'].get('scrollRange')
+    require(scroll is not None, 'signed Overview workload requires bounded horizontal scrolling')
+    events = [e for e in plan['events'] if e['kind'] == 'scroll']
+    positions = overview_positions(events, scroll)
+    ends = [p['x'] for p in positions if p['phase'] == 4]
+    travel = workload['scrollTravelPoints']
+    require(len(ends) == 2 and math.isclose(abs(ends[0]), travel, abs_tol=1e-6)
+            and math.isclose(ends[1], 0, abs_tol=1e-6), 'prepared Overview cannot supply the prescribed round trip')
+    return [[e['atSeconds'], e['phase'], e['deltaX']] for e in events]
 
 
 def execute(output, campaign, suite, deadline, options):
@@ -234,9 +250,8 @@ def execute(output, campaign, suite, deadline, options):
                                   'windowBounds': plan['windowBounds'],
                                   'nativeCLI': read(case / 'native-cli.json')['sha256'],
                                   'timing': {k: plan[k] for k in ('sampleHz', 'captureHz', 'formalSeconds', 'warmupSeconds', 'tailSeconds')}}
-                    if suite['workload']['family'] in ('overview', 'startup'):
-                        comparison['navigationInput'] = ('horizontal-scroll' if any('deltaX' in e for e in plan['events'])
-                                                         else 'background-drag')
+                    if family in ('overview', 'startup'):
+                        comparison['navigationInput'] = navigation_schedule(plan, result, workload)
                     store_observation(output, campaign, suite, {
                         'id': run_id + '-' + entry['scenario'], 'scenario': entry['scenario'], 'pair': pair,
                         'order': order, 'side': side, 'validity': 'valid', 'product': 'passed', 'reasons': [],

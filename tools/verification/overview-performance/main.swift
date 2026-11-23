@@ -121,14 +121,23 @@ private func snapshot(count: Int) throws -> JSONValue {
             let members = (0..<count).map { NativeOverviewMember(id: "layout-\($0)", columns: count <= 6 && $0 == 0 ? 2 : 1, rows: 1) }
             records.append(try measure("layout-initial", count: count, iterations: 5) { _ in
                 _ = try NativeOverviewLayout.solve(members: members,
-                    usableViewport: .init(left: 0, top: 0, width: 1440, height: 780))
+                    windowSize: .init(width: 1440, height: 780))
             })
             records.append(try measure("layout-resize", count: count, iterations: 5) { i in
                 let result = try NativeOverviewLayout.solve(members: members,
-                    usableViewport: .init(left: 0, top: 0, width: i.isMultiple(of: 2) ? 900 : 1440, height: 780))
+                    windowSize: .init(width: i.isMultiple(of: 2) ? 900 : 1440, height: 780))
                 guard result.placements.count == count else { throw Failure(message: "Layout membership mismatch") }
             })
         }
+        let spans = [(1, 2), (2, 1), (1, 2), (1, 1), (2, 1)]
+        let mixed = spans.enumerated().map { index, span in
+            NativeOverviewMember(id: "mixed-\(index)", columns: span.0, rows: span.1)
+        }
+        records.append(try measure("layout-mixed-resize", count: mixed.count, iterations: 50) { i in
+            let geometry = try NativeOverviewLayout.solve(members: mixed,
+                windowSize: .init(width: i.isMultiple(of: 2) ? 900 : 1440, height: 900))
+            guard geometry.placements.count == mixed.count else { throw Failure(message: "Mixed layout lost a card") }
+        })
         let output: [String: Any] = ["schema": 1, "startedAt": startedAt,
             "endedAt": ISO8601DateFormatter().string(from: Date()), "initialThermalState": initialThermalState,
             "os": ProcessInfo.processInfo.operatingSystemVersionString, "cpuCount": ProcessInfo.processInfo.processorCount,

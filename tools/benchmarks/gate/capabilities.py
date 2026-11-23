@@ -42,8 +42,6 @@ def probe(output):
                       'reason': 'No per-product physical energy measurement; system estimated power and energy impact are different signals'},
                   'systemEstimatedGPUPower': {'status': 'available-diagnostic' if observations.get('powermetrics-sample', {}).get('exitCode') == 0 else 'unsupported',
                       'unit': 'milliwatts-estimated', 'attribution': 'whole-system', 'gateEligible': False},
-                  'overviewPinchInjection': {'status': 'unsupported',
-                      'reason': 'No validated public macOS system magnification injector; product ignores command/control/option wheel for canvas navigation'},
                   'startupColdOSCache': {'status': 'unsupported',
                       'reason': 'No controlled reboot/cache-cold protocol; collector never purges system caches'},
               },
