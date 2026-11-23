@@ -418,7 +418,7 @@ Ordinary browsing ignores retired agent-authored visibility markers. Archive, ex
 
 ## Unread bookmarks
 
-The emoji badge shows a system-blue bookmark for each unseen Report content revision
+The emoji badge shows a system-red bookmark for each unseen Report content revision
 and for an ordinary Agent Thread whose latest execution completed and has no read
 receipt. Collection members use their own document revisions. An open route,
 preview, loading placeholder or related-execution list cannot acknowledge content.

@@ -46,7 +46,7 @@ public struct ThreadCardProviderStatus: View {
                 Image(systemName: "bookmark.fill")
                     .resizable().aspectRatio(contentMode: .fit)
                     .frame(width: 12, height: 16)
-                    .foregroundStyle(Color(nsColor: .systemBlue))
+                    .foregroundStyle(Color(nsColor: .systemRed))
                     .shadow(color: .black.opacity(0.15), radius: 0.8, y: 0.8)
                     .rotationEffect(.degrees(-10)).offset(x: 3, y: -2)
                     .allowsHitTesting(false).accessibilityHidden(true)
