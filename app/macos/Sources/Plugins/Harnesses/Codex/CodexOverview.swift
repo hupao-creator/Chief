@@ -54,7 +54,6 @@ public struct CodexOverviewCard: View {
             status: threadCardStatus(input.thread.observation), emoji: generatedEmoji,
             harnessLogo: AnyView(CodexLogo(size: 12)))
             .environment(\.threadCardProviderColor, CodexLogo.themeColor)
-            .environment(\.threadCardCloudPalette, CodexLogo.threadCardCloudPalette)
     }
 
     private var responseHandler: ThreadCardInterventionHandler? {

@@ -534,7 +534,7 @@ private final class OverviewProbe {
         report["nativeDecoration"] = ["beforeWarmup": beforeNative]
         samples.append(try windowSample(label: "beforeWarmup", model: model, window: window, reject: true))
         guard beforeVisibility["allFull"] as? Bool == true else { throw ProbeFailure(description: "Four running cards are not fully visible in the real window") }
-        guard beforeNative["nativePathActive"] as? Bool == true else { throw ProbeFailure(description: "Four active native clouds/scans are unavailable on this runner") }
+        guard beforeNative["nativePathActive"] as? Bool == true else { throw ProbeFailure(description: "Expected running-card decorations and scans are unavailable on this runner") }
         try validateCardShapes(model, workspace: workspace)
         guard NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency == false else {
             throw ProbeFailure(description: "Runner accessibility transparency setting do not match the fixed scenario")

@@ -198,7 +198,6 @@ public struct ClaudeOverviewCard: View {
                 return claudeLocalized(claudeActionLabel(publicAction, kind: "question"), locale: locale)
             }, status: threadCardStatus(input.thread.observation), emoji: claudeEmoji(input.thread), harnessLogo: AnyView(ClaudeLogo(size: 12)))
             .environment(\.threadCardProviderColor, ClaudeLogo.themeColor)
-            .environment(\.threadCardCloudPalette, ClaudeLogo.threadCardCloudPalette)
     }
     private var workflowSlots: [String: AnyView] {
         guard let workflow = projection.workflow else { return [:] }

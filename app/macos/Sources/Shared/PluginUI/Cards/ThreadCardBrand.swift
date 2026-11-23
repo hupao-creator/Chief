@@ -15,6 +15,7 @@ public struct ThreadCardProviderStatus: View {
     public let brandKey: String
     public let emoji: String?
     public let terminal: ThreadCardTerminalStatus?
+    public let running: Bool
     public let completedBackground: Bool
     public let usesRegularGlass: Bool
     public let emojiUsesLiquidGlass: Bool
@@ -23,8 +24,9 @@ public struct ThreadCardProviderStatus: View {
     @Environment(\.threadCardProviderColor) private var providerColor
     public init(label: String, brandKey: String, emoji: String? = nil,
                 terminal: ThreadCardTerminalStatus? = nil, completedBackground: Bool = false, usesRegularGlass: Bool = false,
-                emojiUsesLiquidGlass: Bool = false) {
+                emojiUsesLiquidGlass: Bool = false, running: Bool = false) {
         self.label = label; self.brandKey = brandKey; self.emoji = emoji; self.terminal = terminal
+        self.running = running
         self.completedBackground = completedBackground
         self.usesRegularGlass = usesRegularGlass
         self.emojiUsesLiquidGlass = emojiUsesLiquidGlass
@@ -38,6 +40,12 @@ public struct ThreadCardProviderStatus: View {
             if let terminal { TerminalBadge(terminal: terminal, tone: tone).id(terminal) }
         }
         .frame(width: Self.diameter, height: Self.diameter).foregroundStyle(tone)
+        .background {
+            if running {
+                RunningThreadBadge(transparentFace: emojiUsesLiquidGlass && emoji?.isEmpty == false)
+                    .accessibilityHidden(true).allowsHitTesting(false)
+            }
+        }
         .modifier(ThreadCardBadgeMaterial(hasEmoji: emoji?.isEmpty == false,
             completed: terminal == .completed || completedBackground, usesRegularGlass: usesRegularGlass,
             emojiUsesLiquidGlass: emojiUsesLiquidGlass))

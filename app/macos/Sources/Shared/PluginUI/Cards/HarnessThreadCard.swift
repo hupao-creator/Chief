@@ -176,7 +176,7 @@ private struct ThreadCardIdentity: View {
                     if let providerStatus { providerStatus }
                     else if let status {
                         ThreadCardProviderStatus(label: status.providerLabel(identity.harness?.label, locale: locale), brandKey: identity.harness?.brandKey ?? "", emoji: emoji,
-                                                 terminal: status.terminal, emojiUsesLiquidGlass: emojiUsesLiquidGlass)
+                                                 terminal: status.terminal, emojiUsesLiquidGlass: emojiUsesLiquidGlass, running: status.kind == .running)
                     } else if let providerStatus = identity.providerStatus {
                         ThreadCardProviderStatus(label: providerStatus, brandKey: identity.harness?.brandKey ?? "", emoji: emoji,
                                                  emojiUsesLiquidGlass: emojiUsesLiquidGlass)

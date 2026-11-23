@@ -777,17 +777,17 @@ limit. The bounded source preview and streaming batch policy remain unchanged.
 `HarnessThreadCard` and the Overview semantic boundary supply
 `threadCardUsesFlatMaterials`: terminal badges and provider badges without an
 emoji use static palette fills, and the in-progress plan row uses the accent-soft
-surface without a glass container or effect. The 44pt emoji badge uses a static
-opaque palette fill with no added border: adaptive accent-soft green when
-completed, neutral surface-strong otherwise, including under Reduce Transparency.
-By default it contains no Liquid Glass effect, avoiding per-card spatial glass updates when
-panning Overview. Overview card shells remain neutral after completion. The emoji
-stays 21pt, with the existing terminal mark preserving a non-color status cue.
+surface without a glass container or effect. The 44pt badge shows a stationary 21pt emoji, or the conversation glyph
+while the emoji is unavailable. A running status fills the disc with the
+[perforated running badge](Cards/RunningThreadBadge.swift). Idle uses a neutral
+fill and completed uses accent-soft green with a check mark. Status precedence
+comes from the shared execution and background-work projection. The card shell
+keeps its opaque neutral surface.
 The explicit isolated Overview benchmark can supply
 `agentThreadEmojiUsesLiquidGlass` to `HarnessThreadCard` to compare the emoji
 backdrop with untinted regular Liquid Glass. Only its emoji-bearing default
 provider badge consumes the override; terminal marks, custom provider views,
-clouds, plan rows and Report/collection badges retain their own materials.
+plan rows and Report/collection badges retain their own materials.
 The shared glass helper still respects Reduce Transparency. This is a launch-scoped
 experiment, not a persisted preference; ordinary launches stay flat.
 Agent and Report cards share its upper-right placement and title clearance.
@@ -802,8 +802,7 @@ provided. Other card activation stays with the surrounding host. Empty plans
 render no section.
 The shared controls keep their original materials outside a card; this internal
 renderer policy is not a preference and does not identify plugins by name.
-Completion drawing and plan geometry remain unchanged. Loading-cloud
-palette is supplied by the Harness rather than selected by identity inside the renderer.
+Harness projections supply the adaptive provider color used for the lit dots.
 
 The Git extension is omitted before composition when both known line totals are
 zero, regardless of changed files or HEAD. It contributes no placement, footprint
@@ -1053,42 +1052,15 @@ Window visibility, detachment, cancellation and explicit pause are separate life
 
 ### Native Overview decorations
 
-`threadCardNativeDecorationsEnabled` defaults to false; only the production
-Overview card closure opts in. Its cloud uses
-[NativeOverviewCloudView](Design/NativeOverviewCloudView.swift), a stable native
-view with a screen-rate-capped serial render timer and transparent Metal layer, instead of a SwiftUI
-timeline or nested hosting graph. The existing seeded, point-space
-`NativeCloudField` and the shader's `cloudField` function serve both renderers.
-Palette colors resolve from the current SwiftUI environment into premultiplied
-linear components; the native drawable declares the same linear working space.
+The running Agent badge uses a 9 × 9 grid with 2pt perforations on a 5.25pt
+pitch. Four axial holes touch the 44pt circular rim. Core Animation varies the
+opacity of the harness accent over neutral holes grouped by diagonal. The sweep
+travels for 2.25s in a 2.8s cycle. The emoji, unread mark and card surface stay
+still. The view removes its animations when the workspace pauses decorations,
+the card leaves the viewport, the window hides or is occluded, or the view
+detaches. Reduce Motion uses a fixed lit diagonal. Visible badges share a phase
+and require no per-frame SwiftUI updates. See the [mounted badge comparison](../../../../../demos/running-emoji-badge/README.md).
 
-The soft cloud field renders at half the backing-pixel width and height, then
-scales to the same layer bounds. The shader maps actual drawable pixels back to
-logical points, preserving positions, radii and the live motion path. Text and
-card borders keep their own original resolution. The existing maximum-rate
-driver is unchanged; this reduces spatial samples, not animation frequency.
-The tradeoff is softer cloud detail, particularly under magnification. The
-[candidate measurements](../../../../../tools/benchmarks/baselines/2026-11-13-live-cloud-candidates.md)
-record the observed GPU/memory benefit and the absence of body-update CPU gains.
-
-The native view retains its seed and epoch across running, palette and visibility
-updates. It interpolates light intensity over 0.4 seconds, including reversals,
-without publishing per-frame SwiftUI state; fading final layer opacity would not
-preserve the field's additive energy. Geometry and semantic updates remain inputs
-from the surrounding card. Inactive completed views do not request drawables;
-bounded rendering work runs off the UI thread and removal retires its driver.
-The existing shared SwiftUI renderer remains the capability fallback and the
-renderer for other cloud consumers.
-
-The render queue samples immutable inputs independently of the main run loop.
-Only geometry, resolved colors, activity and visibility cross from AppKit;
-first-frame reveal still returns to main. One in-flight GPU frame bounds work,
-missing drawables retry, and generation/revision fences retire stale work.
-Static fields stop after a successful draw; a zero-energy terminal frame finishes
-fade-out and stops the timer even while main is busy. Hiding/occlusion preserves
-the last image and cancels sampling; detach/removal retires the generation.
-The timer is not a display-link or a physical-FPS guarantee. Main-thread blockage
-still delays newly requested state, layout, visibility and interaction changes.
 [NativeStatusSpinner](Design/NativeStatusSpinner.swift) supplies the production
 Codex quarter-ring indicator. Core Animation owns its 800ms linear rotation;
 resolved colors, line width and size retain the original geometry. Background
