@@ -1,13 +1,14 @@
 import Foundation
 @testable import ChiefCore
 import ChiefPluginAPI
+import ChiefComposition
 @testable import ChiefPluginUI
 import ChiefSidecardConversation
 import ChiefSidecardBrowser
 @testable import ChiefUI
 
 private struct Failure: Error, CustomStringConvertible { let description: String }
-private func require(_ ok: Bool, _ message: String) throws {
+func require(_ ok: Bool, _ message: String) throws {
     guard ok else { throw Failure(description: message) }
 }
 
@@ -66,7 +67,7 @@ private extension RuntimeClient {
             epoch: peer["epoch"]!.stringValue!, protocolVersion: RuntimeProtocol.version, pid: 0, dataDir: rootProfile.path)
         await client.attach(to: connection, followUpRows: peer["followUpRowIdentity"] == .bool(true))
         let workspace = NativeWorkspaceModel(client: client, preferences: DesktopPreferences(directory: rootProfile),
-            plugins: try .init(harnesses: [], sidecards: [], applications: []))
+            plugins: try NativePlugins.make())
         let thread = try HarnessThread(id: "T", harnessID: "codex", revision: 1, sessionState: .object([:]),
             observation: .init(latestExecution: try .init(executionID: "current", status: .running, startedAt: 1)), cwd: "/fixture", settings: .object([:]), createdAt: 1, updatedAt: 1, title: "fixture", tags: [])
         try workspace.catalog.install(.object(["revision": .integer(1), "settingsRevision": .integer(0),
@@ -294,6 +295,7 @@ private extension RuntimeClient {
             "EXECUTION_CHANGED fork handoff failed: " + (changed.error ?? ""))
         try await checkOwners(root: rootProfile, moku: moku)
         try await checkSendReveal(workspace: workspace, mode: mode)
+        try await checkReportSend(workspace: workspace, mode: mode)
         try await checkSteerReader(workspace: workspace, mode: mode)
     }
 

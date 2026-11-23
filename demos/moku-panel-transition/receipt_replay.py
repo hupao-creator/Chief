@@ -63,7 +63,7 @@ class Proxy(BaseHTTPRequestHandler):
             status, result = call(self.path, raw, headers)
         else:
             channel = unquote(self.path).removeprefix("/invoke/")
-            if channel != "harness:detect-installations":
+            if channel in {"thread:fork", "thread:follow-up", "moku:submit"}:
                 text = input_text(channel, data["args"])
                 writes[channel].append((receipt, text))
                 requests[receipt] = (self.path, raw, headers)
@@ -100,7 +100,7 @@ try:
     backend = build("receipt-peer")
     files = json.loads(subprocess.check_output([collector, "stage"], cwd=replay.workspace))
     (replay.workspace / "files.json").write_text(json.dumps(files))
-    replay.compile([source / "ReceiptReplay.swift", source / "SteerReaderReplay.swift"], extra_args=["-package-name", "macos"])
+    replay.compile([source / "ReceiptReplay.swift", source / "SteerReaderReplay.swift", source / "ReportSendReplay.swift"], extra_args=["-package-name", "macos"])
     with subprocess.Popen([backend], cwd=replay.workspace, stdin=subprocess.PIPE, stdout=subprocess.PIPE) as peer:
         try:
             upstream = json.loads(peer.stdout.readline())
@@ -156,6 +156,7 @@ try:
                 if channel == "thread:follow-up":
                     expected += ["after-fork", "historical", "after-followup", "historical", "same-checkpoint", "changed", "changed"]
                     expected += ["sidecard " + step for step in ("catalog first", "receipt first", "finished", "reject", "fold", "switch card", "leave")]
+                    expected += ["Report accept", "Report reject", "Report leave"]
                     expected += ["Repeat this instruction"] * 5
                 if channel == "thread:fork":
                     expected = ["historical"] * 4 + ["current"]
