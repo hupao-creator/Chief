@@ -280,7 +280,8 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 		return nil, errors.New("independent preview requires a global application settings binding")
 	}
 	snapshotError := ""
-	if request.Scope == "global" && !request.PreviewIndependent && (request.ExecutionOwner == "moku" || request.ApplicationSettings != "") {
+	executionProfile := request.Scope == "global" && (request.ExecutionOwner == "moku" || request.ApplicationSettings != "")
+	if executionProfile && !request.PreviewIndependent {
 		_, snapshotErr := r.EnsureExecutionSettings(ctx, request.HarnessID, request.ApplicationSettings)
 		if err := snapshotErr; err != nil {
 			if ctx.Err() != nil {
@@ -395,7 +396,10 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 			return nil, err
 		}
 	}
-	value, err := h.Settings().Presentation(ctx, plugin.SettingsPresentationRequest{Settings: harnessSettings, Cwd: cwd, ThreadSettings: threadSettings, Refresh: request.Refresh})
+	value, err := h.Settings().Presentation(ctx, plugin.SettingsPresentationRequest{
+		Settings: harnessSettings, Cwd: cwd, ThreadSettings: threadSettings,
+		Refresh: request.Refresh, ExecutionProfile: executionProfile,
+	})
 	if err != nil {
 		return nil, err
 	}

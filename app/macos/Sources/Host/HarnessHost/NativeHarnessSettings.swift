@@ -369,8 +369,7 @@ public struct NativeHarnessSettingsView: View {
                 }
                 content(surface)
             } else {
-                NativeSettingsNotice(message: text("正在读取 Agent 配置…", "Loading Agent configuration…"),
-                                     leading: AnyView(ProgressView().controlSize(.small)))
+                NativeSettingsNotice.loading(text("正在读取 Agent 配置…", "Loading Agent configuration…"))
             }
         }
         .task(id: SettingsLoadIdentity(configuration: configuration, generation: host.settingsLifetime.generation,

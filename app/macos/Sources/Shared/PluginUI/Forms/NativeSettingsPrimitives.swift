@@ -495,6 +495,10 @@ public struct NativeHarnessSettingsFields<Basic: View, Advanced: View>: View {
 }
 
 public struct NativeSettingsNotice: View {
+    public static func loading(_ message: String) -> Self {
+        Self(message: message, leading: AnyView(NativeLoadingMark(size: 32)))
+    }
+
     @State private var interactionID = UUID().uuidString
     public enum Kind: Sendable { case info, error, warning, success }
     public let message: String

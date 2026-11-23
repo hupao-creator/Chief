@@ -190,7 +190,7 @@ func (s roleSettingsNative) SnapshotExecution(_ context.Context, _ plugin.Settin
 	return raw(map[string]int{"captured": 1}), nil
 }
 func (roleSettingsNative) Presentation(_ context.Context, request plugin.SettingsPresentationRequest) (json.RawMessage, error) {
-	return raw(map[string]any{"cwd": request.Cwd, "source": request.Settings}), nil
+	return raw(map[string]any{"cwd": request.Cwd, "source": request.Settings, "executionProfile": request.ExecutionProfile}), nil
 }
 
 type roleSettingsApplications struct{ core.Applications }
@@ -293,7 +293,7 @@ func TestBackgroundSettingsSaveProperties(t *testing.T) {
 				source = harnesses[id].DefaultSettings()
 			}
 			owner, template, _ := (roleSettingsApplications{}).BackgroundSettingsWorkspace(role)
-			want := raw(map[string]any{"cwd": filepath.Join(root, "plugins", owner, template), "source": source})
+			want := raw(map[string]any{"cwd": filepath.Join(root, "plugins", owner, template), "source": source, "executionProfile": true})
 			if string(result.(map[string]any)["value"].(json.RawMessage)) != string(want) {
 				t.Fatalf("wrong preflight workspace or source for %s", role)
 			}

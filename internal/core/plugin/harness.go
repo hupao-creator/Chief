@@ -286,11 +286,12 @@ type UpdateSettingsRequest struct {
 	Cwd        string
 }
 type SettingsPresentationRequest struct {
-	Settings       json.RawMessage
-	Cwd            string
-	ThreadSettings json.RawMessage
-	Refresh        bool
-	RoutingCatalog bool // internal catalog projection; never execution authority
+	ExecutionProfile bool // Chief or background-role execution settings, including independent previews
+	Settings         json.RawMessage
+	Cwd              string
+	ThreadSettings   json.RawMessage
+	Refresh          bool
+	RoutingCatalog   bool // internal catalog projection; never execution authority
 }
 
 type Installer interface{ Install(context.Context) error }

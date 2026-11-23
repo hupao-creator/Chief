@@ -860,7 +860,11 @@ func (s *SettingsAPI) Presentation(ctx context.Context, input plugin.SettingsPre
 	if err != nil {
 		return nil, err
 	}
-	observed, err := s.observe(ctx, selected, input.Cwd, input.Refresh, presentationCatalogRead)
+	mode := presentationCatalogRead
+	if input.ExecutionProfile {
+		mode = completeCatalogRead
+	}
+	observed, err := s.observe(ctx, selected, input.Cwd, input.Refresh, mode)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()

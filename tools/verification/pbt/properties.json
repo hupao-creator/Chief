@@ -14,6 +14,8 @@
   {"id":"PBT-OPENCODE-QUOTA","suite":"go","engine":"rapid","package":"internal/plugins/harness/opencode","test":"TestGoAccountTelemetryProperties","doc":"internal/plugins/harness/opencode/README.md","cases":100},
   {"id":"PBT-MOKU-MESSAGE-TELEMETRY","suite":"go","engine":"rapid","package":"internal/services/moku","test":"TestMessageAccountTelemetryProperties","doc":"internal/services/moku/README.md","cases":100},
   {"id":"PBT-CODEX-CATALOG","suite":"go","engine":"rapid","package":"internal/plugins/harness/codex","test":"TestNativeCatalogWriteProperties","doc":"internal/plugins/harness/codex/README.md","cases":100},
+  {"id":"PBT-CODEX-TIER","suite":"go","engine":"rapid","package":"internal/plugins/harness/codex","test":"TestExecutionServiceTierProperties","doc":"internal/plugins/harness/codex/README.md","cases":100},
+  {"id":"PBT-OPENCODE-EXECUTION-CATALOG","suite":"go","engine":"rapid","package":"internal/plugins/harness/opencode","test":"TestExecutionCatalogProperties","doc":"internal/plugins/harness/opencode/README.md","cases":30},
   {"id":"PBT-CODEX-REVIEWER","suite":"go","engine":"rapid","package":"tools/verification/pbt/codex","test":"TestCodexReviewerProperties","doc":"internal/plugins/harness/codex/README.md","cases":100},
   {"id":"PBT-REPORT-PREVIEW","suite":"go","engine":"fuzz","package":"internal/plugins/applications/report","test":"FuzzReportHTMLProjections","doc":"internal/plugins/applications/report/README.md"},
   {"id":"PBT-OVERVIEW-GEOMETRY","suite":"native","engine":"swift","test":"NativeOverviewGeometryProperties/generatedLayoutsSatisfyTheContract","doc":"app/macos/Sources/Host/Overview/README.md","cases":480},

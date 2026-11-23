@@ -22,6 +22,8 @@ Use **Auto-Categorization** to set up Tag Agent and **Super Thread** to set up S
 - **Use Chief** uses Chief's agent and model settings for future work.
 - **Configure separately** lets you choose an agent and model for the role. If its configuration fails to load, use **Retry** in the form. Chief keeps those choices if you later switch to **Use Chief** or **Agent off**.
 
+When you choose **OpenCode**, wait for **Loading Agent configuration…** to finish. Choose your provider, model and variant from the available options. If your saved model is marked **Unavailable in catalog**, check the provider in OpenCode or choose another listed model.
+
 [Find tags and Super Threads](reports-tags-and-changes.md)
 
 ## Change appearance or language on your Mac

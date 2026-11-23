@@ -108,6 +108,8 @@ provenance is retained without becoming a routing rejection. Optional `MokuTarge
 uses this same contract; it cannot defer model discovery to a later tool call.
 Advisory model caches remain separate from task admission.
 
+`SettingsPresentationRequest.ExecutionProfile` identifies Chief and background execution editors, including independent previews. These editors can depend on model availability filtering to finish before the returned choices become actionable.
+
 `SettingsRequest.RoutingCatalog` permits a complete same-configuration directory
 to be stale and refreshed in the background. It is only set for Moku routing;
 creation and execution validation keep strict reads. Completeness evidence also

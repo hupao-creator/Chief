@@ -4,14 +4,13 @@ import SwiftUI
 /// A loading state for an entire workspace, sheet or reader viewport.
 public struct NativeSurfaceLoading: View {
     @Environment(\.locale) private var locale
-    @Environment(\.colorScheme) private var colorScheme
     private let caption: String?
 
     public init(_ caption: String? = nil) { self.caption = caption }
 
     public var body: some View {
         VStack(spacing: 6) {
-            TossImage().id(colorScheme)
+            NativeLoadingMark(size: 120)
             if let caption {
                 Text(caption).font(.callout).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -24,11 +23,22 @@ public struct NativeSurfaceLoading: View {
     }
 }
 
+struct NativeLoadingMark: View {
+    let size: CGFloat
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        TossImage(size: CGSize(width: size, height: size)).id(colorScheme)
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
+    }
+}
+
 private struct TossImage: NSViewRepresentable {
-    private static let size = CGSize(width: 120, height: 120)
+    let size: CGSize
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSImageView, context: Context) -> CGSize? {
-        Self.size
+        size
     }
 
     func makeNSView(context: Context) -> NSImageView {
@@ -39,7 +49,7 @@ private struct TossImage: NSViewRepresentable {
         let url = NativeResources.bundle.url(forResource: resource, withExtension: "gif")
         if let image = url.flatMap({ NSImage(contentsOf: $0) }) {
             // The bitmap is 2×. NSImage otherwise treats each GIF pixel as a point.
-            image.size = Self.size
+            image.size = size
             view.image = image
         }
         return view

@@ -146,7 +146,7 @@ Expired entries trigger an owned background refresh with a 30-second failure
 cooldown. Concurrent refreshes do not block routing through the last complete
 snapshot. The native phase has
 a 30-second cancellation timer and the whole flight a 55-second budget, with
-process cleanup joined. The editor can still show the earlier native projection
+process cleanup joined. Ordinary Thread settings can show the earlier native projection
 with `accountCheckPending`; Moku routing does not use that partial projection.
 
 The full native model inventory accompanies creation options, including disabled,
@@ -234,7 +234,9 @@ fact is projection-only and never enters canonical session state. Native cards
 use it for ordinary threads with zero or one execution; eligible agent content
 retains its existing precedence. Other scopes omit the field.
 
-Settings presentation publishes an immutable native model/agent/default catalog
+The Chief, Tag Agent and Super Thread Agent execution editors, including independent previews, await the complete account-filtered catalog on initial load and Retry. A native read error reaches the editor, and a confirmed account exclusion removes the model and preserves its reason for the selected profile.
+
+Ordinary Thread settings presentation publishes an immutable native model/agent/default catalog
 before optional Console account/remote billing checks finish. The response marks
 `accountCheckPending`, but the native editor keeps that transient state silent:
 the user sees no banner or retry action while account evidence is merely
