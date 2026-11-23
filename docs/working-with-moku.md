@@ -4,7 +4,7 @@
 
 From **Overview**, click Chief's eyes or press **⌘⇧B** to open **Type a message…**. The bar opens around its center. If Chief is showing a dispatch message, the input box takes its place. Start typing, or press the shortcut again to fold the bar. Ask a question, describe a task for Chief to assign, or ask it to find work you already started. Say what you want back and which materials to use.
 
-Typing or pressing Delete in the open bar plays a keyboard click when your Mac has the matching Apple sounds and interface sound effects are enabled. You can still type normally on Macs where the sounds are unavailable.
+Typing or pressing Delete in the open bar plays a keyboard click when your Mac has the matching Apple sounds and interface sound effects are enabled. To silence the clicks, turn off **Play user interface sound effects** in **System Settings → Sound**. Pasting text is quiet. Choosing an input method candidate adds no extra click. You can still type normally on Macs where the sounds are unavailable.
 
 In a task conversation, the same input box shows the agent's icon and sends to that conversation. In a Super Thread, open a source conversation in **Related executions** before sending a follow-up. [Agent conversations](task-conversations.md) · [Super Threads](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 

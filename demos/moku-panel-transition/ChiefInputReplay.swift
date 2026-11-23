@@ -2,6 +2,7 @@ import AppKit
 import ChiefCore
 import ChiefPluginAPI
 import SwiftUI
+import ScreenCaptureKit
 @testable import ChiefPluginUI
 @testable import ChiefUI
 
@@ -89,6 +90,12 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
         throw ChiefInputReplayFailure(description: "\(surface) did not mount its native editor")
     }
     let editor = try await focusEditor()
+    if CommandLine.arguments.contains("--replay-typing-cadence") {
+        try await replayTypingCadence(editor, draft: draft, panel: panel)
+        try require(!NSApp.isActive && foreground == NSWorkspace.shared.frontmostApplication?.processIdentifier,
+                    "Typing replay acquired foreground focus")
+        return
+    }
     try replayTypingFeedback(editor, draft: draft, panel: panel)
     editor.keyDown(with: key("@", code: 19, modifiers: .shift, unmodified: "2", panel: panel))
     try await Task.sleep(for: .milliseconds(500))
@@ -211,6 +218,102 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
     print("Passed persisted Chief draft and explicit host directory serialization.")
 }
 
+// Route each keystroke through the window so changing the first responder also changes
+// which editor receives feedback. The pauses separate the groups in an audio capture.
+@MainActor private func replayTypingCadence(_ editor: NSTextView, draft: NativeComposerDraft, panel: NSPanel) async throws {
+    let target = try await SCShareableContent.currentProcess.windows.first { $0.windowID == panel.windowNumber }
+    guard let target else { throw ChiefInputReplayFailure(description: "Missing replay window for audio capture") }
+    let config = SCStreamConfiguration()
+    config.width = 16
+    config.height = 16
+    config.capturesAudio = true
+    config.excludesCurrentProcessAudio = false
+    config.channelCount = 1
+    config.sampleRate = 48000
+    let stream = SCStream(filter: SCContentFilter(desktopIndependentWindow: target), configuration: config, delegate: nil)
+    let output = TypingWaveform()
+    try stream.addStreamOutput(output, type: .audio, sampleHandlerQueue: output.queue)
+    try await stream.startCapture()
+    func type(_ characters: String = "a", code: UInt16 = 0) {
+        panel.sendEvent(key(characters, code: code, panel: panel))
+    }
+    let silent = CommandLine.arguments.contains("--expect-silent-typing")
+        || CommandLine.arguments.contains("--expect-unavailable-sounds")
+    var previousCount = 0
+    var previousFrames = 0
+    func checkOutput(_ label: String, clicks: Int) async throws {
+        try await Task.sleep(for: .milliseconds(220))
+        let (pulses, frames) = output.queue.sync { (output.onsets.dropFirst(previousCount), output.frames) }
+        let start = pulses.first ?? 0
+        let offsets = pulses.map { Int((($0 - start) * 1000).rounded()) }
+        print("Audio [\(label)]: \(pulses.count) clicks, offsets (ms) \(offsets), \(frames - previousFrames) captured frames")
+        try require(frames > previousFrames && pulses.count == (silent ? 0 : clicks), "Unexpected captured audio for " + label)
+        previousCount += pulses.count
+        previousFrames = frames
+    }
+    do {
+        try await checkOutput("quiet before typing", clicks: 0)
+        var expectedText = ""
+        for interval in [120, 40, 20] {
+            for _ in 0..<12 {
+                type()
+                try await Task.sleep(for: .milliseconds(interval))
+            }
+            expectedText += String(repeating: "a", count: 12)
+            try require(draft.text == expectedText, "Continuous typing did not reach the Dock")
+            try await checkOutput("12 keys at " + String(interval) + " ms", clicks: 12)
+        }
+        for _ in 0..<6 { type() }
+        try await checkOutput("six keys in one event-loop turn", clicks: 6)
+        let other = NSTextView(frame: .zero)
+        panel.contentView!.addSubview(other)
+        try require(panel.makeFirstResponder(other), "Could not move focus out of the Dock")
+        type()
+        try require(other.string == "a" && draft.text.count == 42, "Typing followed the wrong responder")
+        try await checkOutput("other editor", clicks: 0)
+        try require(panel.makeFirstResponder(editor), "Could not return focus to the Dock")
+        other.removeFromSuperview()
+        type("d", code: 2)
+        try require(draft.text.hasSuffix("ad"), "The first character after refocus was lost")
+        try await checkOutput("first key after refocus", clicks: 1)
+        for _ in 0..<12 {
+            type("\u{7F}", code: 51)
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        try require(draft.text == String(repeating: "a", count: 31), "Unexpected draft after rapid deletion")
+        try await checkOutput("rapid Backspace", clicks: 12)
+
+        panel.sendEvent(key("a", code: 0, repeating: true, panel: panel))
+        editor.setSelectedRange(NSRange(location: 0, length: 0))
+        panel.sendEvent(key("\u{F728}", code: 117, modifiers: .function, panel: panel))
+        try require(draft.text.count == 31, "Repeat and forward Delete changed the wrong text")
+        try await checkOutput("auto-repeat and forward Delete", clicks: 2)
+
+        draft.text = ""
+        editor.setMarkedText("p", selectedRange: NSRange(location: 1, length: 0), replacementRange: editor.selectedRange())
+        type("i", code: 34)
+        editor.setMarkedText("pin", selectedRange: NSRange(location: 3, length: 0),
+                             replacementRange: NSRange(location: 0, length: editor.string.utf16.count))
+        editor.insertText("拼", replacementRange: editor.markedRange())
+        try require(draft.text == "拼" && !editor.hasMarkedText(), "Unexpected composition commit")
+        try await checkOutput("composing key, marked updates and commit", clicks: 1)
+
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        try require(pasteboard.setString("paste", forType: .string)
+            && editor.readSelection(from: pasteboard, type: .string), "Private paste failed")
+        panel.sendEvent(key("\u{F703}", code: 124, modifiers: .function, panel: panel))
+        panel.sendEvent(key("\r", code: 36, modifiers: .command, panel: panel))
+        draft.text = "restored"
+        try await checkOutput("paste, navigation, shortcut and restored draft", clicks: 0)
+    } catch {
+        try? await stream.stopCapture()
+        throw error
+    }
+    try await stream.stopCapture()
+    print("Passed mounted Dock typing and audio checks.")
+}
+
 @MainActor private func replayTypingFeedback(_ view: NSTextView, draft: NativeComposerDraft, panel: NSPanel) throws {
     guard let editor = view as? ComposerTextView, let play = editor.onTypingKey else {
         throw ChiefInputReplayFailure(description: "The mounted Chief Bar has no keyboard feedback")
@@ -278,4 +381,31 @@ private func require(_ condition: Bool, _ failure: String) throws {
         if let match = accessibilityElement(child, matching: matching) { return match }
     }
     return nil
+}
+
+private final class TypingWaveform: NSObject, SCStreamOutput, @unchecked Sendable {
+    let queue = DispatchQueue(label: "ChiefReplay.typing-waveform")
+    private var lastSignal = -Double.infinity
+    private(set) var onsets: [Double] = []
+    private(set) var frames = 0
+
+    func stream(_ stream: SCStream, didOutputSampleBuffer buffer: CMSampleBuffer, of type: SCStreamOutputType) {
+        guard type == .audio else { return }
+        guard let format = buffer.formatDescription?.audioStreamBasicDescription,
+              format.mSampleRate == 48_000, format.mChannelsPerFrame == 1,
+              format.mFormatID == kAudioFormatLinearPCM, format.mFormatFlags & kAudioFormatFlagIsFloat != 0,
+              format.mBitsPerChannel == 32 else { return }
+        let start = buffer.presentationTimeStamp.seconds
+        try? buffer.withAudioBufferList { list, _ in
+            guard let channel = list.first, let data = channel.mData else { return }
+            let samples = UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self),
+                                              count: Int(channel.mDataByteSize) / MemoryLayout<Float>.stride)
+            frames += samples.count
+            for (index, sample) in samples.enumerated() where abs(sample) > 0.0005 {
+                let time = start + Double(index) / 48000
+                if time - lastSignal > 0.003 { onsets.append(time) }
+                lastSignal = time
+            }
+        }
+    }
 }
