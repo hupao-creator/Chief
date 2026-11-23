@@ -293,6 +293,19 @@ before delivering a receipt or index. It checks both receipt/catalog orders, a t
 successor draft, folding, Browser selection and replacing the reading target. The scenario
 drives the native presentation and selection model without measuring screen timing.
 
+The [Super Thread follow-up scenario](ReportSendReplay.swift) mounts the Report
+sidecard and native editor, presses Return on a finished execution, and holds
+the Go response for at least 900ms. It reads the Harness name from rendered
+pixels before releasing the peer and again while the accepted reader is waiting
+for content. The replay checks a second Return, typing during submission,
+draft recovery on rejection, returning to the source draft after acceptance,
+and leaving the Report before the receipt arrives. The source and document
+are fixtures. The accepted reader uses a Go-reduced Codex turn.
+Set `CHIEF_REPORT_REPLAY_EVIDENCE` to an existing absolute directory to keep
+the sampled PNGs. The log measures from Return to completed AppKit bitmap
+capture, before OCR, so the first matching sample bounds mounted-view latency.
+Physical display refresh and live model latency are outside this measurement.
+
 The live steer scenario holds the HTTP handler and reads pixels from a mounted
 Codex turn. It checks the ordinary message before release, both receipt/content
 orders, identical consecutive inputs, first-run and sidecard ownership, direct

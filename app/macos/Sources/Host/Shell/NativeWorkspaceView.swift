@@ -35,7 +35,20 @@ public final class NativeWorkspacePresentation {
     private let executionContinuation: NativeExecutionContinuation
     private let mokuSubmission: NativeMokuSubmission
     @ObservationIgnored private var reportInputBack: (() -> Void)?
-    private var executionSendNavigation: (route: UUID, generation: UUID, reference: ApplicationExecutionRef, destination: ApplicationExecutionRef, reportSelection: UUID?, text: String)?
+    private struct ExecutionSendNavigation {
+        let request: UUID
+        let route: UUID
+        let generation: UUID
+        let reference: ApplicationExecutionRef
+        let destination: ApplicationExecutionRef
+        let reportSelection: UUID?
+        let text: String
+    }
+    private var executionSendNavigation: ExecutionSendNavigation? {
+        didSet {
+            if let oldValue { reportSidecards.endConnection(request: oldValue.request) }
+        }
+    }
     var awaitingExecutionContinuation: Bool {
         guard let pending = executionSendNavigation else { return false }
         return pending.route == navigationRouteID && pending.generation == scene.composerGeneration
@@ -618,11 +631,12 @@ public final class NativeWorkspacePresentation {
         // The command receipt may precede the public catalog event, especially
         // for a new fork. Wait for that event without delaying draft admission.
         guard let thread = workspace.catalog.thread(pending.destination.thread.threadID) else { return }
-        executionSendNavigation = nil
         if let selection = pending.reportSelection {
-            reportSidecards.continueExecution(pending.destination, from: pending.reference, selection: selection, text: pending.text)
+            reportSidecards.continueExecution(pending.destination, from: pending.reference, selection: selection, text: pending.text, request: pending.request)
+            executionSendNavigation = nil
             return
         }
+        executionSendNavigation = nil
         let previousDockFrame = scene.executionDockPlacement.frame
         // Even a continuation in the same Thread is a new exact-result visit.
         // Its retained predecessor must not publish layout/input for this one.
@@ -747,10 +761,23 @@ public final class NativeWorkspacePresentation {
         }
         workspace.dismissOperationError()
         let route = route ?? navigationRouteID, generation = scene.composerGeneration, request = UUID()
-        let reportSelection = selected?.typeID == "report.document" ? reportSidecards.selectionID : nil
+        let sidecards = reportSidecards
+        let reportSelection = selected?.typeID == "report.document" ? sidecards.selectionID : nil
         let thread = workspace.catalog.thread(id)
         let previousExecutionID = thread?.observation.latestExecution?.executionID
         let source = ApplicationThreadRef(threadID: id, typeID: "agent")
+        // Steers already have an execution and a local input row. A finished or
+        // historical Report selection needs feedback before either receipt or row exists.
+        if reportSelection != nil, let executionID, let thread, workspace.canExecute(thread),
+           executionID != previousExecutionID || !thread.observation.isExecutionActive,
+           let harness = try? workspace.plugins.harnesses.require(thread.harnessID) {
+            sidecards.beginConnection(request: request, from: .init(thread: source, executionID: executionID),
+                harness: harness.descriptor.displayName.string)
+        }
+        defer {
+            // A fork receipt may arrive before the destination enters the catalog.
+            if executionSendNavigation?.request != request { sidecards.endConnection(request: request) }
+        }
         let steer = captureSteer(submission, thread: thread, from: executionID)
         if executionID == nil, selected == source, !scene.dockCovered {
             threadExecutionReveal = SidecardExecutionReveal(id: request, previousExecutionID: previousExecutionID)
@@ -769,7 +796,8 @@ public final class NativeWorkspacePresentation {
             if let executionID, (reportSelection != nil || accepted != steer), navigationRouteID == route, scene.composerGeneration == generation {
                 let reference = ApplicationExecutionRef(thread: .init(threadID: id, typeID: "agent"), executionID: executionID)
                 if dockExecution == reference {
-                    executionSendNavigation = (route, generation, reference, accepted, reportSelection, submission.text)
+                    executionSendNavigation = .init(request: request, route: route, generation: generation,
+                        reference: reference, destination: accepted, reportSelection: reportSelection, text: submission.text)
                     finishExecutionSendNavigation()
                 }
             }

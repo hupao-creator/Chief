@@ -11,14 +11,14 @@ import Vision
 
 private struct ReplayError: Error, CustomStringConvertible { let description: String }
 
-@MainActor @Observable private final class SteerReaderFixture {
+@MainActor @Observable final class SteerReaderFixture {
     var thread: HarnessThread
     var includesLocalInput = true
     let steers: ThreadLocalSteers
     init(thread: HarnessThread, steers: ThreadLocalSteers) { self.thread = thread; self.steers = steers }
 }
 
-private struct SteerReader: View {
+struct SteerReader: View {
     let fixture: SteerReaderFixture
     var body: some View {
         CodexThreadView(input: .init(thread: fixture.thread),
@@ -33,18 +33,20 @@ private struct SteerReader: View {
     }
 }
 
-private struct ReaderFrame: Equatable {
+struct ReaderFrame: Equatable {
     let labels: [String]
     let pixels: SHA256.Digest
 }
 
-@MainActor private func readerFrame(_ view: NSView) throws -> ReaderFrame {
+@MainActor func readerFrame(_ view: NSView, saveTo url: URL? = nil, onCapture: () -> Void = {}) throws -> ReaderFrame {
     view.displayIfNeeded()
     guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
         throw ReplayError(description: "Missing mounted reader bitmap")
     }
     view.cacheDisplay(in: view.bounds, to: bitmap)
     guard let image = bitmap.cgImage else { throw ReplayError(description: "Missing reader pixels") }
+    onCapture()
+    if let url { try bitmap.representation(using: .png, properties: [:])?.write(to: url) }
     let request = VNRecognizeTextRequest()
     request.recognitionLanguages = ["en-US"]
     request.minimumTextHeight = 0.005
