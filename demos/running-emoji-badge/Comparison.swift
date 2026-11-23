@@ -4,6 +4,7 @@ import SwiftUI
 
 @MainActor @Observable final class ComparisonState {
     var running = true
+    var dots = true
 }
 
 struct Comparison: View {
@@ -33,6 +34,11 @@ struct Comparison: View {
                         .foregroundStyle(palette.muted.swiftUI)
                 }
                 Spacer()
+                Picker("候选组", selection: $state.dots) {
+                    Text("点阵候选").tag(true)
+                    Text("材质对照").tag(false)
+                }
+                .pickerStyle(.menu).labelsHidden().frame(width: 106)
                 Picker("候选状态", selection: $state.running) {
                     Text("空闲").tag(false)
                     Text("运行中").tag(true)
@@ -40,8 +46,14 @@ struct Comparison: View {
                 .pickerStyle(.segmented).labelsHidden().frame(width: 144)
             }
             Grid(alignment: .leading, horizontalSpacing: NativeGeometry.overviewCardGap, verticalSpacing: 18) {
-                GridRow { sample(.orbit); sample(.titanium) }
-                GridRow { sample(.latitude); sample(.matrix) }
+                GridRow {
+                    sample(state.dots ? .matrix : .orbit)
+                    sample(state.dots ? .split : .titanium)
+                }
+                GridRow {
+                    sample(state.dots ? .duet : .latitude)
+                    sample(state.dots ? .steps : .matrix)
+                }
             }
         }
         .padding(24)

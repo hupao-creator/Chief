@@ -20,7 +20,7 @@ struct BadgeFinish: View {
             switch style {
             case .titanium: titanium(context, disk)
             case .latitude: latitude(context, disk)
-            case .matrix: matrix(context, disk)
+            case .matrix, .split, .duet, .steps: matrix(context, disk)
             case .orbit: break
             }
         }
@@ -79,19 +79,55 @@ struct BadgeFinish: View {
         let ceramic = face.mix(with: graphite, by: scheme == .dark ? 0.20 : 0.08)
         c.fill(disk, with: .color(ceramic))
         let lit = accent.mix(with: scheme == .dark ? .white : graphite, by: 0.24)
-        let sweep = min(1, time.truncatingRemainder(dividingBy: 2.8) / 2.25) * 15 - 2
         for row in 0..<7 {
             for column in 0..<7 {
                 let x = 22 + Double(column - 3) * 5.1, y = 22 + Double(row - 3) * 5.1
                 let radius = hypot(x - 22, y - 22)
                 guard radius < 20, radius > 11.5 else { continue }
-                let distance = (Double(row + column) - sweep) / 1.25
-                let intensity = exp(-distance * distance)
+                let intensity = dotLight(row: row, column: column)
                 let dot = Path(ellipseIn: .init(x: x - 1, y: y - 1, width: 2, height: 2))
                 c.fill(dot, with: .color(ceramic.mix(with: lit, by: 0.19 + 0.80 * intensity)))
             }
         }
     }
+
+    private func dotLight(row: Int, column: Int) -> Double {
+        switch style {
+        case .split:
+            let phase = time.truncatingRemainder(dividingBy: 3.1) / 3.1
+            let distance = Double(abs(column - 3)) - (min(1, phase / 0.80) * 6 - 1)
+            return exp(-2.25 * distance * distance)
+        case .duet:
+            let phase = time.truncatingRemainder(dividingBy: 2.8)
+            let left = column < 3
+            let dx = Double(column - (left ? 1 : 5))
+            let dy = Double(row - (left ? 2 : 4))
+            let weight = exp(-0.19 * (dx * dx + dy * dy))
+            let arrival = left ? 0.50 : 1.55
+            let beat = (phase - arrival - 0.06 * dy) / (left ? 0.23 : 0.36)
+            return weight * exp(-beat * beat)
+        case .steps:
+            let tick = time.truncatingRemainder(dividingBy: 2.8) / 0.22
+            // Mirror the stair across the center so both trails stay outside the glyph.
+            let step = Self.stair.firstIndex { point in
+                (point.x == column && point.y == row) || (6 - point.x == column && 6 - point.y == row)
+            }
+            guard let step else { return 0 }
+            let age = tick - Double(step)
+            if age < 0 { return max(0, 1 + age * 5) }
+            return exp(-1.25 * age)
+        case .matrix:
+            let sweep = min(1, time.truncatingRemainder(dividingBy: 2.8) / 2.25) * 15 - 2
+            let distance = (Double(row + column) - sweep) / 1.25
+            return exp(-distance * distance)
+        default:
+            return 0
+        }
+    }
+
+    private static let stair: [(x: Int, y: Int)] = [
+        (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (5, 1), (6, 1), (6, 2), (6, 3), (6, 4)
+    ]
 
     // Stable grain coordinates across frames, appearances and app launches.
     private static func noise(_ index: Int, _ channel: Int) -> Double {

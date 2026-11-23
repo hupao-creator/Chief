@@ -6,6 +6,9 @@ enum BadgeStyle: String {
     case titanium = "拉丝钛"
     case latitude = "纬光"
     case matrix = "微孔点阵"
+    case split = "对开"
+    case duet = "双拍"
+    case steps = "折线"
 
     var caption: String {
         switch self {
@@ -13,6 +16,9 @@ enum BadgeStyle: String {
         case .titanium: "一束冷光掠过哑光金属"
         case .latitude: "亮色沿球面逐层下行"
         case .matrix: "一列微孔点亮，斜向传递"
+        case .split: "从中轴向两侧展开"
+        case .duet: "左边短亮，右边缓缓应答"
+        case .steps: "两枚亮点逐格折行，留下短尾"
         }
     }
 }
@@ -57,7 +63,7 @@ struct CandidateBadge: View {
                         .rotationEffect(.degrees(t.truncatingRemainder(dividingBy: 2.8) / 2.8 * 360))
                 }
             }
-        case .titanium, .latitude, .matrix:
+        case .titanium, .latitude, .matrix, .split, .duet, .steps:
             ZStack {
                 BadgeFinish(style: style, time: t)
                 glyph
