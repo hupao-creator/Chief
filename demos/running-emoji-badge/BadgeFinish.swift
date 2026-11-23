@@ -79,13 +79,18 @@ struct BadgeFinish: View {
         let ceramic = face.mix(with: graphite, by: scheme == .dark ? 0.20 : 0.08)
         c.fill(disk, with: .color(ceramic))
         let unlit = ceramic.mix(with: NativePalette.overview.ink.swiftUI, by: 0.18)
-        for row in 0..<7 {
-            for column in 0..<7 {
-                let x = 22 + Double(column - 3) * 5.1, y = 22 + Double(row - 3) * 5.1
-                let radius = hypot(x - 22, y - 22)
-                guard radius < 20, radius > 11.5 else { continue }
+        let radius = disk.boundingRect.midX
+        let dotRadius = 1.0
+        // Eight intervals place the four axial holes tangent to the disk.
+        // The circular Canvas clip also trims neighboring holes across the rim.
+        let pitch = (radius - dotRadius) / 4
+        for row in -4...4 {
+            for column in -4...4 {
+                let dx = Double(column) * pitch, dy = Double(row) * pitch
+                guard hypot(dx, dy) < radius + dotRadius else { continue }
                 let intensity = dotLight(row: row, column: column)
-                let dot = Path(ellipseIn: .init(x: x - 1, y: y - 1, width: 2, height: 2))
+                let dot = Path(ellipseIn: .init(x: radius + dx - dotRadius, y: radius + dy - dotRadius,
+                                                width: 2 * dotRadius, height: 2 * dotRadius))
                 c.fill(dot, with: .color(unlit.mix(with: accent, by: intensity)))
             }
         }
@@ -95,13 +100,13 @@ struct BadgeFinish: View {
         switch style {
         case .split:
             let phase = time.truncatingRemainder(dividingBy: 3.1) / 3.1
-            let distance = Double(abs(column - 3)) - (min(1, phase / 0.80) * 6 - 1)
+            let distance = Double(abs(column)) - (min(1, phase / 0.80) * 7 - 1)
             return exp(-2.25 * distance * distance)
         case .duet:
             let phase = time.truncatingRemainder(dividingBy: 2.8)
-            let left = column < 3
-            let dx = Double(column - (left ? 1 : 5))
-            let dy = Double(row - (left ? 2 : 4))
+            let left = column < 0
+            let dx = Double(column - (left ? -2 : 2))
+            let dy = Double(row - (left ? -1 : 1))
             let weight = exp(-0.19 * (dx * dx + dy * dy))
             let arrival = left ? 0.50 : 1.55
             let beat = (phase - arrival - 0.06 * dy) / (left ? 0.23 : 0.36)
@@ -110,14 +115,14 @@ struct BadgeFinish: View {
             let tick = time.truncatingRemainder(dividingBy: 2.8) / 0.22
             // Mirror the stair across the center so both trails stay outside the glyph.
             let step = Self.stair.firstIndex { point in
-                (point.x == column && point.y == row) || (6 - point.x == column && 6 - point.y == row)
+                (point.x == column && point.y == row) || (-point.x == column && -point.y == row)
             }
             guard let step else { return 0 }
             let age = tick - Double(step)
             if age < 0 { return max(0, 1 + age * 5) }
             return exp(-1.25 * age)
         case .matrix:
-            let sweep = min(1, time.truncatingRemainder(dividingBy: 2.8) / 2.25) * 15 - 2
+            let sweep = min(1, time.truncatingRemainder(dividingBy: 2.8) / 2.25) * 20 - 10
             let distance = (Double(row + column) - sweep) / 1.25
             return exp(-distance * distance)
         default:
@@ -126,7 +131,8 @@ struct BadgeFinish: View {
     }
 
     private static let stair: [(x: Int, y: Int)] = [
-        (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (5, 1), (6, 1), (6, 2), (6, 3), (6, 4)
+        (-1, -4), (0, -4), (1, -4), (1, -3), (2, -3), (2, -2),
+        (3, -2), (3, -1), (4, -1), (4, 0), (4, 1)
     ]
 
     // Stable grain coordinates across frames, appearances and app launches.
