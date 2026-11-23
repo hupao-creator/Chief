@@ -334,7 +334,7 @@ execution ID through Runtime. Repeat with a settled reply taller than the
 viewport. Scroll partway up before sending and compare the timeline's offset
 and following state before and after each steer. Repeat with Reduce Motion
 enabled to check the immediate final placement. Record the build, capture settings, input method
-and which cases were exercised. [Reading contract](../../design/reading.md#content-and-execution-identity)
+and which cases were exercised. [Reading contract](../../design/reading.md#content-and-execution-identity) · [Recorded window and observations](../../demos/moku-panel-transition/evidence/live-steer/README.md)
 
 ### Super Thread reading regression
 
