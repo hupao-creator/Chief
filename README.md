@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  Apple silicon · macOS 26+ · Invited alpha
+  Apple silicon · macOS 26+ · Invited alpha · <a href="https://github.com/hupao-creator/Chief/releases/tag/v0.1.0-alpha.2">Alpha 2 download (about 31 MB)</a>
 </p>
 
 ---
