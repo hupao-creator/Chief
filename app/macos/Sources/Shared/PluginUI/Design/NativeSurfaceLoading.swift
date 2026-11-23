@@ -1,19 +1,29 @@
 import AppKit
 import SwiftUI
 
-/// The startup surface owns the loading announcement and window drag region.
-public struct NativeStartupLoadingMark: View {
-    public init() {}
+/// A loading state for an entire workspace, sheet or reader viewport.
+public struct NativeSurfaceLoading: View {
+    @Environment(\.locale) private var locale
+    private let caption: String?
+
+    public init(_ caption: String? = nil) { self.caption = caption }
 
     public var body: some View {
-        StartupTossImage()
-            .frame(width: 96, height: 96)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        VStack(spacing: 6) {
+            TossImage().frame(width: 96, height: 96)
+            if let caption {
+                Text(caption).font(.callout).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(caption ?? (locale.language.languageCode?.identifier == "zh" ? "正在加载…" : "Loading…"))
     }
 }
 
-private struct StartupTossImage: NSViewRepresentable {
+private struct TossImage: NSViewRepresentable {
     func makeNSView(context: Context) -> NSImageView {
         let view = NSImageView()
         view.imageScaling = .scaleProportionallyUpOrDown

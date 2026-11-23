@@ -311,7 +311,8 @@ public struct NativeThreadOpeningContent: View {
     public var body: some View {
         ThreadConversation(threadId: "opening-heading", title: visit?.source["title"]?.text ?? "",
             icon: visit?.source["emoji"]?.text ?? "", rows: [],
-            emptyState: AnyView(NativeThreadLoadingSkeleton().opacity(showsLoading ? 1 : 0)))
+            emptyState: AnyView(Color.clear.frame(height: 240)))
+            .overlay { if showsLoading { NativeSurfaceLoading() } }
     }
 
 }

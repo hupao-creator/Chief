@@ -127,8 +127,7 @@ private struct HTMLDocumentSession: View {
                 .padding(28).frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityElement(children: .contain)
             } else if !ready {
-                ProgressView(english ? "Loading document…" : "正在读取文档…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                NativeSurfaceLoading(english ? "Loading document…" : "正在读取文档…")
             }
             if ready && !panel {
                 HTMLNavigationPortal(content: AnyView(navigation), collapsed: collapsed, suppressed: suppressed,
