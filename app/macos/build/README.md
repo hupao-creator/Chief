@@ -239,7 +239,7 @@ HTTP destination.
 
 ## Resource validation
 
-The packaging tool preserves Swift resource bundles, checks for the startup GIF, validates
+The packaging tool preserves Swift resource bundles, checks for both appearance variants of the loading GIF, validates
 fonts and icon geometry, checks architecture and dynamic dependencies, and removes nonportable
 SwiftPM rpaths. Release packaging strips the Swift linker's debug map from the
 staged executable before signing. The UI looks up resources relative to the

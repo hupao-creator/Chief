@@ -6,8 +6,8 @@ illustration shows a black skillet tossing symbols for Codex, Pi and Claude
 Code, with warm gray motion marks on an ivory tile. The agent marks identify
 their respective products. Padding outside the tile is transparent.
 
-The startup loading mark uses the [high-toss motion study](../../../demos/chief-logo-loading/toss-variants/high.webp).
-Its [192 × 192 GIF](../Sources/Shared/PluginUI/Resources/ChiefStartupToss.gif) contains 80 frames at 40 ms per frame and is packaged in the shared UI resource bundle.
+The full-surface loading mark uses the [high-toss motion study](../../../demos/chief-logo-loading/toss-variants/high.webp).
+The shared UI bundle contains transparent 192 × 192 GIFs for [light](../Sources/Shared/PluginUI/Resources/ChiefStartupToss.gif) and [dark](../Sources/Shared/PluginUI/Resources/ChiefStartupTossDark.gif) appearances. Both show only the moving foreground over 80 frames at 40 ms per frame. The dark version adds a fine gray edge to the dark ink.
 
 [`generate-app-icon.swift`](generate-app-icon.swift) resizes this artwork with
 ImageIO and packages the representations with the macOS `iconutil` tool.

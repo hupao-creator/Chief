@@ -1,6 +1,6 @@
 # Chief logo 加载动效
 
-各段动效取自同一张[应用图标原画](../../design/chief-logo.webp)。表中以原生[启动加载标记](../../app/macos/Sources/Shared/PluginUI/Design/NativeSurfaceLoading.swift)的 96 pt 布局尺寸并排展示。点开名称可查看 384 × 384 的透明循环 WebP。动画按 25 fps 采样，象牙白底板和外圈透明区域随图保留。
+各段动效取自同一张[应用图标原画](../../design/chief-logo.webp)。表中以原生[启动加载标记](../../app/macos/Sources/Shared/PluginUI/Design/NativeSurfaceLoading.swift)的 96 pt 布局尺寸并排展示。点开名称可查看 384 × 384 的透明循环 WebP。动画按 25 fps 采样。
 
 | [颠勺](toss.webp) | [三拍接力](relay.webp) | [锅底余火](ember.webp) |
 | :---: | :---: | :---: |
@@ -20,4 +20,4 @@
 
 双颠的两次抛接共用一次短停顿。高抛在顶点放慢，使三个标记充分展开。沿锅翻炒让每个标记轮流经过同一条弧线。逐个抛接时，其余两个标记贴着锅沿随锅身起伏。
 
-启动界面使用 B「高抛慢接」。[192 像素播放资源](../../app/macos/Sources/Shared/PluginUI/Resources/ChiefStartupToss.gif)用于 96 pt 显示。加载状态和结束时机见 [NativeRuntimeSurface](../../app/macos/Sources/Host/Shell/NativeRuntimeSurface.swift)。
+启动、打开对话和其他整页加载界面使用 B「高抛慢接」。锅、三个 Agent 和动作线直接叠在页面背景上。原生资源以 96 pt 显示，深色版给深色笔画加了一道细灰边。加载状态和结束时机见 [NativeRuntimeSurface](../../app/macos/Sources/Host/Shell/NativeRuntimeSurface.swift)。
