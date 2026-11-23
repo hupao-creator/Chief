@@ -250,6 +250,14 @@ Geometry reuse applies when the current membership and viewport are unchanged; a
 
 ## Tags and filter transitions
 
+Selecting a chip reconciles against the admitted catalog and projects the selected
+membership into card slots. Full Report cover HTML is requested on mount and
+reused by revision and appearance. On a switch into a directory with several
+standalone Report cards, the plugin schedules browser mounts across main-loop
+turns so metadata and cached posters can enter with the card transition.
+[Report cover contract](../../../../../internal/plugins/applications/report/README.md#cover-cards)
+and [mounted switch benchmark](../../../../../tools/verification/tag-space/README.md).
+
 [NativeOverviewChrome](NativeOverviewChrome.swift) owns the tag and action controls. Semantic tag identity remains a plain name with separately validated emoji. Each scope exposes up to five semantic tags, including singly assigned tags and separate names with equal membership. Directory filters use persistent scope identity for membership and exclude managed temporary roots. Labels are presentation only: a symlink alias or linked checkout with another label remains in its canonical directory’s All view, and same-named directories stay separate.
 
 The tag bar omits a directory's sole semantic child when its actual selected

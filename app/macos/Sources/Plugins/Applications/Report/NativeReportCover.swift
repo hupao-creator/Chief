@@ -41,7 +41,31 @@ enum NativeReportCoverLayout {
     }
 }
 
+/// The Overview can mount a directory of reports in one SwiftUI transaction.
+@MainActor final class NativeReportCoverStarts {
+    private var waiting: [(id: UUID, start: () -> Void)] = []
+    private var draining = false
+
+    func enqueue(_ id: UUID, start: @escaping () -> Void) {
+        waiting.append((id, start))
+        guard !draining else { return }
+        draining = true
+        Task {
+            while !waiting.isEmpty {
+                // Give AppKit time to present the cards between synchronous
+                // WebKit process starts, including the first batch at scene entry.
+                try? await Task.sleep(for: .milliseconds(16))
+                if !waiting.isEmpty { waiting.removeFirst().start() }
+            }
+            draining = false
+        }
+    }
+
+    func cancel(_ id: UUID) { waiting.removeAll { $0.id == id } }
+}
+
 extension EnvironmentValues {
+    @Entry var overviewReportCoverStarts: NativeReportCoverStarts? = nil
     @Entry var nativeReportCoverCache: NativeReportCoverCache? = nil
 }
 
@@ -96,6 +120,9 @@ private struct ReportCoverSession: View {
     let onPlaybackCompleted: (ApplicationThreadRef, JSONText, Int) -> Void
     @State private var document: ApplicationHTMLDocument?
     @State private var image: NSImage?
+    @Environment(\.overviewReportCoverStarts) private var starts
+    @State private var ticket = UUID()
+    @State private var admitted = false
     @State private var ready = false
     @State private var failure: String?
 
@@ -118,7 +145,10 @@ private struct ReportCoverSession: View {
                 Text(applicationText(props.context.locale, "封面暂不可用", "Cover unavailable"))
                     .font(NativeTypography.inter(size: 12)).foregroundStyle(.secondary).help(failure)
             } else if !ready { ProgressView().controlSize(.small) }
-            if let document {
+            if document != nil, let starts, !admitted {
+                Color.clear.onAppear { starts.enqueue(ticket) { admitted = true } }
+                    .onDisappear { starts.cancel(ticket) }
+            } else if let document {
                 ReportCoverHTML(html: document.html.string, dark: key.dark, playback: playback,
                     replayID: replayID, initiallyFinished: initiallyFinished,
                     onPlaybackStarted: onPlaybackStarted,

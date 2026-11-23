@@ -16,6 +16,7 @@ import SwiftUI
 
 @MainActor private struct ReportThreadPlugin: ApplicationThreadPlugin {
     private let coverCache = NativeReportCoverCache()
+    private let coverStarts = NativeReportCoverStarts()
     var type: ApplicationValueKey<NativeReportView> { NativeReportContracts.thread }
     var requires: [ApplicationCapabilityRequirement] {
         [ApplicationCapabilities.executionReferencesUI.requirement, ApplicationCapabilities.threadUserActions.requirement,
@@ -41,6 +42,7 @@ import SwiftUI
     }
     func card(props: ApplicationThreadProps<NativeReportView>, projection: NativeReportCardProjection, openThread: @escaping () -> Void) -> some View {
         NativeReportCard(props: props, projection: projection, openThread: openThread)
+            .environment(\.overviewReportCoverStarts, coverStarts)
             .environment(\.nativeReportCoverCache, coverCache)
     }
     func detail(props: ApplicationThreadProps<NativeReportView>) -> some View {
