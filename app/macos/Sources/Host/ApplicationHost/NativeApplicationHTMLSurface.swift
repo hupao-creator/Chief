@@ -27,8 +27,6 @@ public struct NativeApplicationHTMLSurface: View {
     @Environment(\.nativeApplicationCloseLinkCard) private var closeLinkCard
     @Environment(\.nativeApplicationOpenLinkCard) private var openLinkCard
     @Environment(\.nativeHTMLPreloader) private var preloader
-    // Survives revision-scoped sessions, but resets with the reader visit.
-    @State private var hasRevealedDocument = false
 
     public init(source: ApplicationHTMLSource, thread: ApplicationThreadRef, theme: PluginTheme,
                 suppressed: Bool, locale: JSONText = "zh-CN", zoomPreferencesURL: URL? = nil,
@@ -47,17 +45,23 @@ public struct NativeApplicationHTMLSurface: View {
     public var body: some View {
         HTMLDocumentSession(source: source, thread: thread, theme: theme, suppressed: suppressed, panel: panel,
             locale: locale, zoomPreferencesURL: zoomPreferencesURL, preloader: preloader,
-            hasRevealedDocument: $hasRevealedDocument,
             readDocument: readDocument, openExternal: openExternal, openLinkCard: openLinkCard,
             onBack: { if closeLinkCard?() != true { onBack() } }, onSettings: onSettings,
             onNativeNavigationChange: onNativeNavigationChange, onFailure: onFailure)
-            .id(HTMLDocumentIdentity(source: source, thread: thread))
+            .id(HTMLDocumentIdentity(thread: thread, plugin: source.pluginID, query: source.queryID, input: source.input))
     }
 }
 
 private struct HTMLDocumentIdentity: Hashable {
-    let source: ApplicationHTMLSource
     let thread: ApplicationThreadRef
+    let plugin: JSONText
+    let query: JSONText
+    let input: JSONValue
+}
+
+private struct HTMLDocumentRead: Equatable {
+    let revision: JSONText
+    let retry: UUID
 }
 
 @MainActor
@@ -70,7 +74,6 @@ private struct HTMLDocumentSession: View {
     let locale: JSONText
     let zoomPreferencesURL: URL?
     let preloader: NativeApplicationHTMLPreloader?
-    @Binding var hasRevealedDocument: Bool
     let readDocument: @MainActor (ApplicationHTMLSource) async throws -> ApplicationHTMLDocument
     let openExternal: @MainActor (URL) async throws -> Void
     let openLinkCard: ((URL) -> Void)?
@@ -80,14 +83,15 @@ private struct HTMLDocumentSession: View {
     let onFailure: (ApplicationHTMLFailure) -> Void
     @State private var document: ApplicationHTMLDocument?
     @State private var failure: String?
-    @State private var refresh = UUID()
-    @State private var loadedGeneration = UUID()
-    @State private var ready = false
+    @State private var generation = UUID()
+    @State private var hasRevealedDocument = false
+    @State private var readySource: ApplicationHTMLSource?
     @State private var scrollHidden = false
     @State private var hovered = false
     @State private var navigationNotice: String?
     @FocusState private var navigationFocused: Bool
 
+    private var ready: Bool { readySource != nil }
     private var english: Bool { locale.string.hasPrefix("en") }
     private var collapsed: Bool { scrollHidden && !hovered && !navigationFocused }
 
@@ -98,9 +102,10 @@ private struct HTMLDocumentSession: View {
                 HTMLWebDocument(document: document, thread: thread, theme: theme, suppressed: suppressed, panel: panel, locale: locale,
                     zoomPreferencesURL: zoomPreferencesURL, preloader: preloader,
                     openExternal: openExternal, openLinkCard: openLinkCard, onLoading: {
-                        ready = false; onNativeNavigationChange(false)
-                    }, onReady: {
-                        ready = true; onNativeNavigationChange(!panel)
+                        readySource = nil; onNativeNavigationChange(false)
+                    }, onReady: { revision in
+                        guard revision == source.contentRevision else { return }
+                        readySource = source; onNativeNavigationChange(!panel)
                         if !hasRevealedDocument {
                             withAnimation(.easeOut(duration: 0.2)) { hasRevealedDocument = true }
                         }
@@ -113,7 +118,7 @@ private struct HTMLDocumentSession: View {
                     }, onPresentation: { hidden in
                         scrollHidden = hidden
                     }, onHover: { hovered = $0 }, onNavigationNotice: { navigationNotice = $0 })
-                    .id(loadedGeneration)
+                    .id(generation)
                     .opacity(hasRevealedDocument ? 1 : 0)
             }
             if let failure {
@@ -152,11 +157,10 @@ private struct HTMLDocumentSession: View {
         }
         .nativeReadingEscape(perform: panel && !ready && !suppressed ? onBack : nil)
         .preference(key: NativeApplicationHTMLReadinessKey.self, value:
-            NativeApplicationHTMLReadiness(source: source, thread: thread, generation: loadedGeneration, ready: ready))
+            NativeApplicationHTMLReadiness(source: readySource ?? source, thread: thread, generation: generation, ready: ready))
         .environment(\.colorScheme, theme == .dark ? .dark : .light)
-        .task(id: refresh) {
-            document = nil; failure = nil; ready = false; scrollHidden = false; hovered = false; navigationNotice = nil
-            onNativeNavigationChange(false)
+        .task(id: HTMLDocumentRead(revision: source.contentRevision, retry: generation)) {
+            failure = nil; navigationNotice = nil
             do {
                 let result = try await readDocument(source)
                 try Task.checkCancellation()
@@ -165,7 +169,7 @@ private struct HTMLDocumentSession: View {
                         ? "HTML document changed; reopen the current revision."
                         : "HTML 文档已更新，请重新打开当前版本。")
                 }
-                loadedGeneration = UUID(); document = result
+                failure = nil; document = result
             } catch is CancellationError {
                 // A newer source or a departing view owns subsequent results.
             } catch {
@@ -220,13 +224,13 @@ private struct HTMLDocumentSession: View {
     }
 
     private func fail(_ message: String) {
-        document = nil; ready = false; failure = message
+        document = nil; readySource = nil; failure = message
         onNativeNavigationChange(false)
         onFailure(ApplicationHTMLFailure(thread: thread, message: message))
     }
 
     private func reload() {
-        document = nil; ready = false; refresh = UUID()
+        generation = UUID()
     }
 }
 
@@ -248,7 +252,7 @@ private struct HTMLWebDocument: HTMLViewRepresentable {
     let openExternal: @MainActor (URL) async throws -> Void
     let openLinkCard: ((URL) -> Void)?
     let onLoading: () -> Void
-    let onReady: () -> Void
+    let onReady: (JSONText) -> Void
     let onFailure: (String) -> Void
     let onNavigation: (HTMLNavigationIntent) -> Void
     let onPresentation: (Bool) -> Void
@@ -264,7 +268,7 @@ private struct HTMLWebDocument: HTMLViewRepresentable {
     }
 
     func updateNSView(_ view: HTMLDocumentContainer, context: Context) {
-        context.coordinator.input = self
+        context.coordinator.update(self, in: view)
         if suppressed { context.coordinator.cancelPageDialog() }
         view.onHover = onHover
         view.suppressed = suppressed
@@ -291,7 +295,9 @@ private struct HTMLWebDocument: HTMLViewRepresentable {
         private var preloader: NativeApplicationHTMLPreloader?
         private var warmupNavigation: WKNavigation?
         private var navigation: WKNavigation?
-        private var hasReadyDocument = false
+        private var finishedRevision: JSONText?
+        private var pendingRevisionNavigation: WKNavigation?
+        private var scheme: HTMLDocumentScheme?
         private let documentURL: URL
         private static let world = WKContentWorld.world(name: "Chief.HTML.Presentation")
         private static let handler = "presentation"
@@ -307,6 +313,7 @@ private struct HTMLWebDocument: HTMLViewRepresentable {
             let view = prepared.view
             warmupNavigation = prepared.warmupNavigation
             view.stopLoading()
+            scheme = prepared.scheme
             prepared.scheme.bind(url: documentURL, html: input.document.html)
             let controller = view.configuration.userContentController
             controller.addUserScript(NativeWebScrollbarStyle.reportScript)
@@ -333,6 +340,22 @@ private struct HTMLWebDocument: HTMLViewRepresentable {
             container.documentView = view
         }
 
+        func update(_ next: HTMLWebDocument, in container: HTMLDocumentContainer) {
+            let previous = input.document.contentRevision
+            input = next
+            guard previous != next.document.contentRevision, let view = webView else { return }
+            scheme?.replaceHTML(next.document.html)
+            // A covered initial mount still has its first load queued on visibility.
+            guard container.onDocumentVisible == nil else { return }
+            cancelPageDialog()
+            if let url = view.url, HTMLDocumentScheme.matches(url, documentURL) {
+                pendingRevisionNavigation = view.reloadFromOrigin()
+            } else {
+                pendingRevisionNavigation = view.load(URLRequest(url: documentURL))
+            }
+            navigation = pendingRevisionNavigation
+        }
+
         func dispose() {
             guard !disposed else { return }
             disposed = true; active = false
@@ -349,20 +372,26 @@ private struct HTMLWebDocument: HTMLViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             guard owns(webView), let navigation, navigation === self.navigation else { return }
             (webView as? HTMLDocumentWebView)?.updateSafeArea()
-            hasReadyDocument = true
-            input.onReady()
+            finishedRevision = input.document.contentRevision
+            input.onReady(input.document.contentRevision)
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
             guard owns(webView), warmupNavigation == nil || navigation !== warmupNavigation else { return }
+            if let pendingRevisionNavigation {
+                // A superseded start can arrive after a newer reload was requested.
+                guard navigation === pendingRevisionNavigation else { return }
+                self.pendingRevisionNavigation = nil
+            } else {
+                input.onLoading()
+            }
             self.navigation = navigation
             cancelPageDialog()
-            input.onLoading()
         }
 
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
             guard owns(webView), let navigation, navigation === self.navigation, let url = webView.url else { return }
-            hasReadyDocument = false
+            finishedRevision = nil
             cancelPageDialog()
             // A new document owns its scroll state, including remote pages
             // reached from a Report whose navigation was collapsed.
@@ -392,11 +421,12 @@ private struct HTMLWebDocument: HTMLViewRepresentable {
         private func failed(_ view: WKWebView, _ error: Error) {
             let error = error as NSError
             guard owns(view) else { return }
+            pendingRevisionNavigation = nil
             // Policy cancellation (including rejected downloads) interrupts
             // a provisional frame, not the already loaded Report document.
             if error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled ||
                 error.domain == "WebKitErrorDomain" && error.code == 102 {
-                if hasReadyDocument { input.onReady() }
+                if let finishedRevision { input.onReady(finishedRevision) }
                 return
             }
             active = false
@@ -609,7 +639,7 @@ private struct HTMLWebDocument: HTMLViewRepresentable {
     }
 }
 
-/// Serves exactly one in-memory document. Neither local files nor domain IPC
+/// Serves the current HTML at one fixed document URL. Neither local files nor domain IPC
 /// are addressable through the custom scheme.
 @MainActor
 private final class HTMLDocumentScheme: NSObject, WKURLSchemeHandler {
@@ -618,7 +648,11 @@ private final class HTMLDocumentScheme: NSObject, WKURLSchemeHandler {
 
     func bind(url: URL, html: JSONText) {
         precondition(self.url == nil, "An isolated HTML view can serve only one document")
-        self.url = url; data = Data(html.string.utf8)
+        self.url = url; replaceHTML(html)
+    }
+
+    func replaceHTML(_ html: JSONText) {
+        data = Data(html.string.utf8)
     }
 
     static func documentURL(threadID: JSONText) -> URL {

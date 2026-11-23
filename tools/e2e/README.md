@@ -325,6 +325,24 @@ Agent and Super Thread opening and closing in the same session. Use the
 [Chief history contract](../../app/macos/Sources/Host/MokuScene/README.md) for
 the expected layout and lifecycle.
 
+### Live Super Thread updates
+
+In an isolated app, open an existing Super Thread from its Overview card with
+a cited execution visible beside the document. Use a long report with a
+recognizable background, a section link, and text that distinguishes each
+revision. Record the target window before triggering any update.
+
+Complete a follow-up in the cited source conversation. Have the background
+Super Thread Agent read the report and update just its introduction. Complete
+another follow-up and have the agent replace only the HTML. Record the report
+ID, revisions, accepted fields and selected reader throughout. Inspect the
+window frames from the old text through the first visible new text. The body
+must stay visible and the related list must keep its width and position.
+Repeat after following the section link and compare the visible section, its
+updated text and focus across the change. Keep the source commits, capture
+conditions and movies with the results.
+[Reader contract](../../design/reading.md#report-and-execution-sidecards)
+
 ### Super Thread reading regression
 
 The [Markdown layout contract](../../design/markdown.md) also applies to the

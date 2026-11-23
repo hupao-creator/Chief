@@ -106,7 +106,9 @@ See the [reading lifecycle](../../design/reading.md)
 for ownership and admission boundaries.
 
 Report HTML fades in over 200ms after its first successful WebKit load in a
-reader visit; later content revisions do not repeat the entrance. Loading and error controls remain independent.
+reader visit. A body revision reloads the same WebKit view after the matching
+HTML arrives. The displayed page stays visible during the read, and the related
+sidecard keeps its selection and width. A failed read or load exposes Retry.
 The Super Thread's selected associated execution uses a persistent composer
 without suppressing its document or sidecards; covering surfaces such as Settings
 still suppress them. The default document/list keeps Moku input closed and

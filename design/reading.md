@@ -139,7 +139,10 @@ Report commits folded layout, matching HTML query revision and WebKit main-frame
 completion before related-card admission. Primary travel and layout must also
 finish; a cancellable 200ms admission interval starts after readiness. WebKit
 `didFinish` does not certify all later scripts/assets. Covering, replacing or
-closing retires that visit. The stable Report route remains exempt from composer
+closing retires that visit. A body edit within an admitted visit uses the same
+WebKit view. The previous page stays readable while the matching revision is
+fetched. WebKit reloads the document at its existing address and the active
+sidecard keeps its layout. The stable Report route remains exempt from composer
 suppression during selected-execution handoff.
 
 List state uses a 3:7 Sidecard-to-Report ratio; exact execution detail uses 5:5,

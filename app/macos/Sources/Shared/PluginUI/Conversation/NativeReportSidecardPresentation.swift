@@ -111,7 +111,11 @@ public final class NativeReportSidecardPresentation {
 
     public func updateDocument(_ next: NativeApplicationHTMLReadiness?) {
         guard !retainingForReturn, document != next else { return }
+        let previous = document
         document = next
+        // A successful in-place refresh keeps the current card and its input owner.
+        if admitted, let next, next.ready, next.thread == previous?.thread,
+           next.generation == previous?.generation { return }
         invalidateAdmission()
         admitWhenReady()
     }

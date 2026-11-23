@@ -1560,7 +1560,9 @@ current source, thread, WebKit view generation and main-frame readiness.
 `NativeReportSidecardPresentation` waits for both gates, then 200ms, before
 admitting the latest pending selection. Report references and Browser share
 that single selection; closing or switching cannot revive a replaced card.
-Document replacement, covering and departure revoke pending admission.
+A new HTML revision cancels admission still waiting on the old revision.
+Once admitted, the same WebKit view can finish a revision reload with the
+current card and its input owner in place. Coverage and departure retire admission.
 Folding retains the selected execution reader, with hit testing and accessibility
 excluded until reopening. Returning from an execution restores the reference
 list; the next Escape folds it and returns focus to its launcher.

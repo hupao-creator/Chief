@@ -218,7 +218,9 @@ struct NativeReportDetail: View {
                 suppressed: suppressed, retainingForReturn: returning != nil)
             if returning == nil { refresh() }
         }
-        .onChange(of: props.entry.view.contentRevision) { _, _ in sidecards.updateDocument(nil) }
+        .onChange(of: props.entry.view.contentRevision) { _, _ in
+            if !sidecards.admitted { sidecards.updateDocument(nil) }
+        }
         .onChange(of: props.entry.view.relatedExecutions) { _, _ in subscribeReferences(); refresh() }
         .onChange(of: props.entry.revision) { _, _ in refresh() }
         .task(id: relationsRefresh) {
