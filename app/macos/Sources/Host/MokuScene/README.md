@@ -90,7 +90,10 @@ at the trailing edge with its existing cancellation and accessibility semantics.
 The shared input row places the attachment plus immediately to the right of
 the identity seat. Below 260pt the editor takes the upper row and the plus
 stays beside the identity on the lower row. A primary click or accessibility press opens
-the macOS chooser directly. A single confirmation can select multiple files and
+the macOS chooser directly. The default Chief composer starts on the current
+user's Desktop each time, including after navigating elsewhere in the previous
+panel. Agent and related-execution composers pass their thread's explicit working
+directory to the chooser. A single confirmation can select multiple files and
 folders. Files enter attachment staging. Each selected folder adds one explicit
 directory reference by path, including empty folders. The draft counts the two
 kinds independently (20 files and 50 distinct directories) and rejects an
