@@ -73,7 +73,7 @@ of the loading surface, the pan should dip, toss three colored agent marks into
 a fan and catch them. In both appearances, the surface background must remain visible
 between the marks and around the pan throughout the loop. Release the service and check that Overview replaces the
 mark as soon as initial content arrives. With Reduce Motion enabled, the same
-96 pt mark should remain still while waiting. Record the source revision,
+120 pt mark should remain still while waiting. Record the source revision,
 runtime delay, captured window frames and the first ready workspace frame.
 [Startup surface](../../app/macos/README.md#system-appearance-and-language)
 
