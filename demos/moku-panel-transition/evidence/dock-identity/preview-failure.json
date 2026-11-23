@@ -1,0 +1,429 @@
+{
+  "events" : [
+    {
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "idle",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "phase" : 0,
+      "seconds" : 2.8833e-05,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "shortcut-reopen",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "seconds" : 0.53527183300000003,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{1, 0}"
+      ],
+      "editorText" : [
+        "a"
+      ],
+      "event" : "shortcut-first-key",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "seconds" : 0.56780612500000005,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "shortcut-focus-released",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "seconds" : 1.2610820409999999,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "agent-enter-0",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "phase" : 1,
+      "seconds" : 1.9194129580000001,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-expanding-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "phase" : 2,
+      "seconds" : 3.3931837910000002,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-open-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "phase" : 3,
+      "seconds" : 6.299183041,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-close-0",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "phase" : 4,
+      "seconds" : 6.4062456660000002,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "overview-closed-0",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "seconds" : 8.0277400829999994,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "agent-enter-1",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "phase" : 5,
+      "seconds" : 8.0278447909999997,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-expanding-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "phase" : 6,
+      "seconds" : 9.4946784159999993,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-open-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "phase" : 7,
+      "seconds" : 12.391291499999999,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "agent-close-1",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "phase" : 8,
+      "seconds" : 12.493984749999999,
+      "shellHeight" : 58,
+      "shellWidth" : 356,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "overview-closed-1",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "seconds" : 14.168262457999999,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "interrupted-open",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "phase" : 9,
+      "seconds" : 14.168385625000001,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "interrupted-close",
+      "inputLeaving" : true,
+      "inputOpen" : false,
+      "phase" : 10,
+      "seconds" : 14.249990958,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "interrupted-reopen",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "phase" : 11,
+      "seconds" : 14.332929416000001,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "interrupted-settled",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "seconds" : 15.016928957999999,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{0, 0}"
+      ],
+      "editorText" : [
+        ""
+      ],
+      "event" : "overview-edit",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "phase" : 12,
+      "seconds" : 15.017145083000001,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{3, 0}"
+      ],
+      "editorText" : [
+        "cao"
+      ],
+      "event" : "marked-text",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "seconds" : 15.118976083,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{3, 2}"
+      ],
+      "editorText" : [
+        "草稿 🦉 stays in Overview.\nThe second line stays too."
+      ],
+      "event" : "draft-open",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "seconds" : 15.126236125,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{3, 2}"
+      ],
+      "editorText" : [
+        "草稿 🦉 stays in Overview.\nThe second line stays too."
+      ],
+      "event" : "draft-close",
+      "inputLeaving" : true,
+      "inputOpen" : false,
+      "phase" : 13,
+      "seconds" : 15.126377832999999,
+      "shellHeight" : 58,
+      "shellWidth" : 560,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{3, 0}"
+      ],
+      "editorText" : [
+        "cao"
+      ],
+      "event" : "draft-leaving",
+      "inputLeaving" : true,
+      "inputOpen" : false,
+      "seconds" : 15.21421775,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{3, 0}"
+      ],
+      "editorText" : [
+        "cao"
+      ],
+      "event" : "draft-reopen",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "phase" : 14,
+      "seconds" : 15.214456458000001,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{3, 2}"
+      ],
+      "editorText" : [
+        "草稿 🦉 stays in Overview.\nThe second line stays too."
+      ],
+      "event" : "draft-reopened",
+      "inputLeaving" : false,
+      "inputOpen" : true,
+      "seconds" : 15.900746249999999,
+      "shellHeight" : 78,
+      "shellWidth" : 560,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+        "{3, 2}"
+      ],
+      "editorText" : [
+        "草稿 🦉 stays in Overview.\nThe second line stays too."
+      ],
+      "event" : "close-to-talk",
+      "inputLeaving" : true,
+      "inputOpen" : false,
+      "phase" : 15,
+      "seconds" : 16.028064457999999,
+      "shellHeight" : 78,
+      "shellWidth" : 560,
+      "talkPresented" : false
+    },
+    {
+      "editorSelection" : [
+
+      ],
+      "editorText" : [
+
+      ],
+      "event" : "talk-visible",
+      "inputLeaving" : false,
+      "inputOpen" : false,
+      "seconds" : 16.686659165999998,
+      "shellHeight" : 44,
+      "shellWidth" : 168,
+      "talkPresented" : false
+    }
+  ],
+  "failure" : "Closing lost the draft or failed to present queued Talk",
+  "foregroundUnchanged" : true,
+  "geometrySecondsPerStep" : 0.10000000000000001,
+  "geometrySourceFPS" : 60
+}
