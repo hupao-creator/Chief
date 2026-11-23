@@ -460,8 +460,12 @@ opening a bookmarked card, including a shared child tag, a covered execution
 and a Report collection. Selecting a tag preserves the count. When its last
 unread version is acknowledged the number disappears while the selected check
 and any activity ring remain. Expand a directory at normal window scale and
-capture the settled child row. The complete white digits and the red capsule
-must be visible over the child’s glass, including its upper edge. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)
+capture the opening, settled and returning child row. Child badges first appear
+when their chips settle. Check the complete white digits and red capsule over
+the glass, including its upper edge. Close and reopen during travel, switch
+folders rapidly, and change a child’s count during entry, including to zero.
+Only the settled, open row should show its latest positive counts. Repeat with
+Reduce Motion and check the folder badge throughout. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)
 
 ### Agent reader alignment
 
