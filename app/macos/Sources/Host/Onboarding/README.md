@@ -6,8 +6,9 @@ sequence; the connected workspace continues to own installation discovery,
 settings resources, draft validation and Runtime persistence.
 
 A valid preexisting desktop preferences file or actual catalog activity skips
-first-run setup. Settings revisions and prefetched execution snapshots do not
-establish prior use. The profile stores an explicit pending marker before setup,
+first-run setup. An empty Chief history from a default Harness change, settings
+revisions and prefetched execution snapshots do not establish prior use.
+The profile stores an explicit pending marker before setup,
 so restarting during setup preserves all saved choices and returns to discovery.
 A pending marker takes priority over subsequently created history. Marker write
 failures stay visible and retryable. Completion is written only after the last
@@ -44,6 +45,9 @@ ready Harnesses. The admitted roster remains stable across execution-profile
 saves, while each active editor still enforces its own readiness and validation.
 The same cached, source-keyed surfaces supply the subsequent editors immediately;
 page changes do not reload successful resources or reseed selected defaults.
+If discovery publishes other settings while a first-run draft saves, the draft
+and the new revision can reconcile automatically when they agree on every
+changed field. Overlapping edits still surface the conflict and preserve the draft.
 Disabled roles need no execution resources until enabled; changing a saved source,
 role mode or connection authority retains the ordinary targeted reload boundary.
 Plugin-owned installation guides remain available for missing Harnesses. Moku reuses the
@@ -99,10 +103,12 @@ The Super Thread illustration gathers dense documents into one landscape documen
 Each of its three abstract figures sits directly above two placeholder lines.
 The illustration has no visible text and exposes a single accessibility description.
 
-The setup panel does not mount a hidden composer. Pointer, keyboard, semantic
-navigation and direct presentation entry points remain gated. After persistence,
-the panel fades its contents, contracts to the actual Dock geometry, and reveals
-the real composer. In an active, visible window, the
+Setup keeps the composer unmounted until the final save. Each page's controls
+become available when the transition completes and the editor is ready. After
+persistence, the panel fades its contents over 140ms while preparing the hidden
+Dock, contracts to the laid-out Dock over 220ms, then reveals the Dock behind
+the panel's fade. These stages advance on animation completion. Workspace input
+and accessibility become available after the reveal. In an active, visible window, the
 resident eyes stay open through the 180ms final fade and blink once for 320ms
 as the input box comes fully into view. Leaving the foreground or hiding
 the face during either interval cancels the cue for
@@ -132,3 +138,14 @@ native Harness execution.
 The Overview benchmark entry also requests a fixed 1280 × 820 initial window
 and disables scene restoration for that explicit scenario. This removes saved
 window geometry as a startup variable; the OS bounds remain externally verified.
+
+## Confirmation e2e
+
+[E2E-ONBOARDING-001](../../../../../tools/e2e/README.md#onboarding-confirmations)
+launches first-run setup with a fresh profile and uses macOS AXPress on each
+confirmation. Discovery → Chief, Chief → Tag, Tag → Super Thread and Super
+Thread → Chief's focused input each have a strict budget below 1,000ms. A page
+is interactive when its own enabled confirmation is available. The final
+destination requires the workspace's enabled attachment control and its focused,
+editable composer. Both background roles are configured separately in the UI;
+the run checks their saved settings and the completion marker after the handoff.

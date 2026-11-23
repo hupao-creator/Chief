@@ -273,6 +273,9 @@ or unmounting one editor releases only that editor's composition; unrelated
 text-field notifications cannot clear another editor's close/save gate.
 
 Saves carry expected settings revision. Success adopts the normalized response as the new base while retaining later local edits. Conflicts reconcile against the returned latest state; an obsolete failed save does not discard or block a newer ready draft. Current failures remain visible.
+During [first-run setup](../Onboarding/README.md), a stale draft can reconcile
+automatically when applying the local and remote changes in either order gives
+the same settings. Overlapping edits use the ordinary conflict controls.
 
 Moku displays its concrete saved execution profile. Background editors select inherited Moku configuration or an independent snapshot; switching back to inheritance retains the independent choice for later reuse. Moku, Super Thread Agent and Tag Agent use their built-in system instructions; settings do not expose full system-prompt replacement. Chief's “Task Orchestration Preferences” (任务编排偏好) offers Economy, Balanced,
 Performance and Custom separate capsule buttons after its basic execution fields

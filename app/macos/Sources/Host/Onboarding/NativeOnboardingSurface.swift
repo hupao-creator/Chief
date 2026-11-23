@@ -12,13 +12,15 @@ struct NativeOnboardingSurface: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @State private var mapMotion = NativeMokuSettingsAnimationState()
     @State private var panelStep = NativeOnboardingStep.discovery
+    @State private var presentedStep = NativeOnboardingStep.discovery
     @State private var contentVisible = true
     @State private var collapsed = false
     @State private var panelVisible = true
     private let ink = NativePalette.settings.text.swiftUI
     private let secondary = NativePalette.settings.muted.swiftUI
-    private var motion: Animation? { .smooth(duration: 0.32) }
+    private var motion: Animation { .easeInOut(duration: 0.32) }
     private var locale: DesktopLocale { state.locale }
+    private var pageReady: Bool { presentedStep == state.step && panelStep == state.step }
 
     var body: some View {
         GeometryReader { geometry in
@@ -109,6 +111,8 @@ struct NativeOnboardingSurface: View {
                         }
                     }
                     .id(panelStep).transition(.opacity.combined(with: .offset(y: 10)))
+                    .allowsHitTesting(pageReady)
+                    .accessibilityHidden(!pageReady)
                     .frame(maxWidth: 560).padding(.horizontal, 30).padding(.bottom, 20).frame(maxWidth: .infinity)
                 }
             }.scrollIndicators(.never)
@@ -116,7 +120,7 @@ struct NativeOnboardingSurface: View {
                 if panelStep != .discovery {
                     Button(action: state.back) { Label(locale.text("返回", "Back"), systemImage: "chevron.left") }
                         .buttonStyle(.glass)
-                        .nativeSettingsAction("back", label: "Back") { state.back() }.disabled(state.busy)
+                        .nativeSettingsAction("back", label: "Back") { state.back() }.disabled(!pageReady || state.busy)
                 }
                 Spacer()
                 if panelStep == .discovery, state.installed.isEmpty, !state.detecting, !discoveryHasFailures, discoveryError == nil {
@@ -132,7 +136,9 @@ struct NativeOnboardingSurface: View {
                             Image(systemName: "arrow.right")
                         }.font(.system(size: 12, weight: .medium)).frame(minWidth: 116, minHeight: 24)
                     }.buttonStyle(.glass).keyboardShortcut(.defaultAction)
-                        .nativeSettingsAction("next", label: "Continue") { Task { await state.advance() } }.disabled(!state.canAdvance)
+                        .accessibilityIdentifier("onboarding-confirm-\(panelStep)")
+                        .nativeSettingsAction("next", label: "Continue") { Task { await state.advance() } }
+                        .disabled(!pageReady || !state.canAdvance)
                 }
             }.frame(maxWidth: 560).padding(.horizontal, 30).padding(.bottom, 22).padding(.top, 8)
         }.foregroundStyle(ink)
@@ -246,30 +252,42 @@ struct NativeOnboardingSurface: View {
     }
 
     @MainActor private func transition() async {
-        guard state.step == .landing else { withAnimation(motion) { panelStep = state.step }; return }
-        do {
-            withAnimation(.easeOut(duration: 0.14)) { contentVisible = false }
-            try await Task.sleep(for: .milliseconds(160))
-            scene.disabled = !state.workspace.runtimeAvailable
-            state.mountDock = true
-            scene.setInputOpen(true)
-            try await Task.sleep(for: .milliseconds(50))
-            withAnimation(.timingCurve(0.22, 1, 0.36, 1, duration: 0.78)) { collapsed = true }
-            try await Task.sleep(for: .milliseconds(800))
-            // Reveal the Dock behind the still-opaque panel first. Animating the
-            // panel and the Dock against each other leaves both translucent over
-            // the light workspace for a frame, which reads as a second flash.
-            let firstReveal = !state.dockVisible
-            state.dockVisible = true
-            try await Task.sleep(for: .milliseconds(30))
-            let revealDuration = 0.18
-            if firstReveal, scene.windowVisible {
-                scene.dockCharacter?.scheduleOnboardingBlink(at: .now.addingTimeInterval(revealDuration))
-            }
-            withAnimation(.easeInOut(duration: revealDuration)) { panelVisible = false }
-            try await Task.sleep(for: .milliseconds(200))
-            state.finishHandoff()
-            if scene.windowVisible && NSApp.isActive { scene.focusOpenComposer() }
-        } catch { return }
+        let destination = state.step
+        guard destination == .landing else {
+            guard panelStep != destination else { return }
+            await animate(motion) { panelStep = destination }
+            guard !Task.isCancelled, state.step == destination else { return }
+            presentedStep = destination
+            return
+        }
+
+        // Prepare the hidden Dock while the form fades. Its actual geometry is
+        // then available for the contraction to the existing composer seat.
+        scene.disabled = !state.workspace.runtimeAvailable
+        state.mountDock = true
+        scene.setInputOpen(true)
+        await animate(.easeOut(duration: 0.14)) { contentVisible = false }
+        guard !Task.isCancelled else { return }
+        await animate(.timingCurve(0.22, 1, 0.36, 1, duration: 0.22)) { collapsed = true }
+        guard !Task.isCancelled else { return }
+        // The Dock appears at full opacity behind the still-opaque panel, so
+        // fading the panel never exposes the light workspace between them.
+        state.dockVisible = true
+        let revealDuration = 0.18
+        if scene.windowVisible {
+            scene.dockCharacter?.scheduleOnboardingBlink(at: .now.addingTimeInterval(revealDuration))
+        }
+        await animate(.easeInOut(duration: revealDuration)) { panelVisible = false }
+        guard !Task.isCancelled else { return }
+        state.finishHandoff()
+        if scene.windowVisible && NSApp.isActive { scene.focusOpenComposer() }
+    }
+
+    @MainActor private func animate(_ animation: Animation, _ updates: () -> Void) async {
+        await withCheckedContinuation { continuation in
+            // Ease curves reach their destination at logical completion.
+            // Descendant illustrations can keep animating after input opens.
+            withAnimation(animation, completionCriteria: .logicallyComplete, updates) { continuation.resume() }
+        }
     }
 }

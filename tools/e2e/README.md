@@ -4,12 +4,14 @@ This runner checks **interaction input → real system → user-observable state
 Overview, Reading, Settings and Collection use the opt-in
 [native automation protocol](../native-interaction/README.md), with real Swift
 UI, Runtime, authenticated HTTP/NDJSON, persistence and native Codex processes.
+Onboarding uses an unattended macOS Accessibility driver with real confirmation
+buttons and a strict per-confirmation deadline.
 Composer uses an explicit operator-assisted system Accessibility/input path; the
 runner independently checks its public persisted inputs, output and interruption.
 It does not link reducers or instantiate fixture views. Runtime setup and public
-content reads establish prerequisites and independent result evidence; they are
-not counted as interaction coverage. Runtime invariants belong to PBT; UX timing,
-resource use and visual-performance measurements belong to benchmarks.
+content reads establish prerequisites and independent result evidence. Runtime
+invariants belong to PBT. Benchmarks own general UX timing, resource use and
+visual-performance measurements.
 
 ## Harness Thread Markdown
 
@@ -30,6 +32,7 @@ contains every requested ID, including blocked and unreached entries.
 
 | ID | Implemented interaction and criterion | Prerequisite / evidence | Coverage boundary |
 | --- | --- | --- | --- |
+| `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Each confirmation reaches an interactive destination in under 1,000ms. | Fresh profile, authorized system AX driver, exclusive desktop. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
 | `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve completed tasks in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
 | `E2E-SETTINGS-001` | Open Settings with Chief Agent selected and only Chief Agent, Auto-Categorization and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief Agent and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
@@ -64,6 +67,44 @@ version, quit it and open the candidate against the same home. Check its saved
 work and settings. Record the OS, fixture, observed pages and cleanup.
 Downloaded-file Gatekeeper and permission prompts require a quarantined copy
 on a clean Mac. A local launch cannot establish those outcomes.
+
+### Onboarding confirmations
+
+Build with `python3 tools/e2e/build.py --go ./scripts/go.sh --with-app`, then
+use the local E2E runner from a macOS graphical session with Accessibility
+authorization for the invoking tool and Reduce Motion off. Coordinate the
+desktop slot before running. The measurement holds the shared performance lease
+and the desktop lease through cleanup.
+
+```sh
+python3 tools/e2e/run.py run --suite onboarding --runtime .build/e2e/chief-runtime \
+  --app app/macos/.build/debug/Chief \
+  --desktop-lease /private/tmp/mokusei-ui-verification.lock \
+  --desktop-owner YOUR_COORDINATOR_THREAD_ID \
+  --output output/e2e/onboarding
+python3 tools/e2e/run.py verify output/e2e/onboarding
+```
+
+The runner launches a uniquely bundled development App, starts Runtime with a
+fresh isolated profile and passes no Overview preparation flags. It performs
+no settings writes during preparation. Native discovery uses the installed
+Harnesses found in the isolated environment. The external peer and private
+native homes follow the same isolation policy as the other desktop scenarios.
+
+The clock starts immediately before each AXPress. The next page must expose its
+own enabled confirmation after the normal page animation. After **Start using
+Chief**, the same window must expose the enabled attachment button and have an
+editable Chief text area focused. Observation and AX transport overhead count
+toward each deadline. The timings are individual samples, with one press per
+confirmation. A sample at or above 1,000ms fails. A late destination can allow
+the journey to continue measuring subsequent confirmations in that same visit.
+The terminal and report show the elapsed milliseconds. The run also reads
+both saved role modes through Runtime and checks the profile completion marker.
+
+The `onboarding` suite runs separately from prepared-profile suites, including
+`all`. The hosted Desktop interaction workflow covers its supported mounted
+journeys. Onboarding requires a local AX-authorized graphical session. The
+driver records macOS and accessibility settings for that session.
 
 ### First-run handoff
 

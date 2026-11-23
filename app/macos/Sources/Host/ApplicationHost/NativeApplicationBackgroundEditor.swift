@@ -120,6 +120,7 @@ public struct NativeApplicationBackgroundEditor: View {
             let selected = selectedChoice == choice
             let hint = editorDrafts != nil ? choiceDescription(choice) : nil
             NativeSettingsChoiceButton(title, selected: selected, hint: hint) { selectChoice(choice) }
+                .accessibilityIdentifier("\(settingID.string)-mode-\(choice.rawValue)")
                 .nativeSettingsAction(choice.rawValue, label: title, selected: selected) { selectChoice(choice) }
         }
     }
@@ -159,6 +160,7 @@ public struct NativeApplicationBackgroundEditor: View {
                             .glassEffect(.regular.interactive(), in: .capsule)
                             .contentShape(Capsule())
                     }.buttonStyle(.plain)
+                        .accessibilityIdentifier("\(settingID.string)-harness-\(harness.descriptor.id.string)")
                         .nativeSettingsAction("harness." + harness.descriptor.id.string, label: harness.descriptor.displayName.string,
                                               selected: effective.harnessPreference == harness.descriptor.id) { selectHarness(harness.descriptor.id) }
                 }

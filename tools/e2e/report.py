@@ -89,11 +89,21 @@ def finish(directory, report):
     lines = ["# E2E run", "", f"Validity: **{report['validity']}**; functionality: **{report['functionality']}**; exit: **{report['exitCode']}**.",
              "", "Boundary: real Runtime / HTTP+NDJSON / SQLite / real Codex CLI; deterministic external provider.",
              "Overview uses semantic camera actions. Reading, Settings and Collection use mounted controls. Composer uses operator-assisted system input.",
+             "Onboarding uses system AXPress and checks each confirmation against its own 1,000 ms deadline.",
              "Only passing rows are certified for this attempt; real external-provider behavior is not covered.", "",
              "| Scenario | Status | Functionality | Reason |", "| --- | --- | --- | --- |"]
     for row in report["scenarios"]:
         reason = row.get("reason", "").replace("|", "\\|").replace("\n", " ")
         lines.append(f"| {row['id']} | {row['status']} | {row['functionality']} | {reason} |")
+    onboarding = directory / "onboarding-ax.jsonl"
+    if onboarding.is_file():
+        trace = [json.loads(line) for line in onboarding.read_text().splitlines()]
+        late = {r["step"]: r["observedNS"] for r in trace if r["kind"] == "late-readiness"}
+        lines += ["", "| Confirmation | Destination | Observed ms | Status |", "| --- | --- | ---: | --- |"]
+        for r in trace:
+            if r["kind"] == "confirmation":
+                ms = (late.get(r["step"], r["observedNS"]) - r["startNS"]) / 1_000_000
+                lines.append(f"| {r['step']} | {r['destination']} | {ms:.6f} | {r['status']} |")
     lines += ["", "## Input backend and retained evidence", "",
               "Operator metadata is a declaration, not an automatically recorded AX trace or TCC-host proof.",
               "Unknown stays unknown. A null raw-artifact inventory is unknown; an empty list declares none archived.",
@@ -136,9 +146,15 @@ def verify(directory):
     cleanup = json.loads((directory / "cleanup.json").read_text())
     if report["validity"] == "valid" and cleanup.get("ok") is not True:
         raise ValueError("valid run lacks successful cleanup")
-    if any(row["status"] == "passed" for row in report["scenarios"]):
-        required = {"artifact.json", "ui-artifact.json", "peer.json", "api.jsonl", "ui-events.jsonl",
-                    "native-cli.json", "selection.json", "creation.json", "initial-content.json", "initial-oracle.json"}
+    for row in report["scenarios"]:
+        if row["status"] != "passed":
+            continue
+        required = {"artifact.json", "ui-artifact.json", "peer.json", "api.jsonl", "desktop-lease.json"}
+        if row["id"] == "E2E-ONBOARDING-001":
+            verify_onboarding(directory)
+        else:
+            required |= {"ui-events.jsonl", "native-cli.json", "selection.json", "creation.json",
+                         "initial-content.json", "initial-oracle.json"}
         if not required.issubset(files):
             raise ValueError("passing interaction lacks cross-boundary evidence")
     for stage, metadata in report.get("inputEvidence", {}).get("operatorStages", {}).items():
@@ -159,3 +175,22 @@ def verify(directory):
     if code != report["exitCode"]:
         raise ValueError("exit code contradicts report")
     return code
+
+
+def verify_onboarding(directory):
+    trace = [json.loads(line) for line in (directory / "onboarding-ax.jsonl").read_text().splitlines()]
+    steps = [row for row in trace if row["kind"] == "confirmation"]
+    if ([(row["step"], row["destination"]) for row in steps] !=
+            [("discovery", "moku"), ("moku", "tag"), ("tag", "report"), ("report", "dock")]):
+        raise ValueError("onboarding evidence lacks the ordered confirmations")
+    if any(not 0 < row["observedNS"] - row["startNS"] < 1_000_000_000
+           or row["status"] != "passed" for row in steps):
+        raise ValueError("passing onboarding evidence exceeds a confirmation budget")
+    roles = {"tag.settings": {"enabled": True, "mode": "override"},
+             "report.settings": {"enabled": True, "mode": "override"}}
+    if [(row["id"], row["selection"]) for row in trace if row["kind"] == "role"] != [
+            ("tag.settings", "independent"), ("report.settings", "independent")]:
+        raise ValueError("onboarding evidence lacks separate role selections")
+    persisted = json.loads((directory / "onboarding-persisted.json").read_text())
+    if persisted["onboardingCompleted"] is not True or persisted["roles"] != roles:
+        raise ValueError("passing onboarding evidence lacks saved settings")

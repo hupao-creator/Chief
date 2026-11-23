@@ -28,7 +28,8 @@ class ObservedRuntime(Runtime):
             result = super().invoke(channel, args)
             if channel == "state:load":
                 record["result"] = {"settingsRevision": result["settingsRevision"],
-                    "threads": [{k: t[k] for k in ("id", "title", "observation", "cancellationId") if k in t}
+                    "threads": [{k: t[k] for k in ("id", "title", "moku", "mokuHistory", "pendingInput",
+                                                  "observation", "cancellationId") if k in t}
                                 for t in result["threads"]]}
             else:
                 record["result"] = result

@@ -11,7 +11,7 @@ from lifecycle import Blocked
 from report import input_evidence_template, operator_input_evidence, save, sha256
 
 
-def bundle(app, session):
+def bundle(app, session, receipt="operator-bundle.json"):
     target = session.root / "ChiefE2E.app"
     contents = target / "Contents"
     mac = contents / "MacOS"
@@ -26,7 +26,7 @@ def bundle(app, session):
         "CFBundleExecutable": "ChiefE2E", "CFBundleIdentifier": "com.chief.e2e." + session.nonce,
         "CFBundleName": "Chief E2E Isolated", "CFBundlePackageType": "APPL",
         "ChiefDataDirectoryName": "ChiefE2E-" + session.nonce, "NSHighResolutionCapable": True}))
-    save(session.output / "operator-bundle.json", {"path": str(target), "executableSHA256": sha256(executable),
+    save(session.output / receipt, {"path": str(target), "executableSHA256": sha256(executable),
         "files": {str(p.relative_to(target)): sha256(p) for p in sorted(target.rglob("*")) if p.is_file()}})
     return executable
 
