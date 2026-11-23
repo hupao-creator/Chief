@@ -60,10 +60,11 @@ scrollable and the shell stays within the viewport. Closing the bottom Overview
 input fades the draft as the capsule starts to fold. The native editor stays
 mounted for the 420ms return and keeps its selection for reopening.
 Returning to Overview hides the Agent composer as soon as the reading panel
-blocks input. The shell folds in its reading column before traveling to the
-workspace center. The vertical seat follows the reader's release and can rise
-during horizontal travel. Closing a Super
-Thread with an execution selected uses the same sequence.
+blocks input. The shell contracts around the bottom center of its reading
+column. Once compact, it glides horizontally at the reading height until
+centered in the workspace, then rises vertically to its Overview seat.
+A centered reader only needs the lift. Closing a Super Thread with an
+execution selected uses the same sequence.
 The editor reveals its input ink at its settled position during expansion.
 See the [Dock contract](../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer).
 

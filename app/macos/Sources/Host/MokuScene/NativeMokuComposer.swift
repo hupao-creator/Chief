@@ -219,7 +219,7 @@ struct NativeMokuComposerInput: View {
             fontSize: landing ? 16 : 14, lineHeight: landing ? 24 : 20,
             insets: .init(top: compact ? 6 : (landing ? 26 : 19), left: 6,
                          bottom: compact ? 6 : (landing ? 26 : 19), right: 6),
-            onSubmit: { if !disabled && draft.canSubmit && (sidecardComposer?.ready ?? true) { onSend() } }, onEscape: onEscape,
+            onSubmit: { if !actionsUnavailable && draft.canSubmit && (sidecardComposer?.ready ?? true) { onSend() } }, onEscape: onEscape,
             onFiles: importFiles, preparePaste: preparePaste,
             selectionRequest: selectionRequest, initialSelection: initialSelection, preservesSelection: true, onEditorStateChange: { state in
                 updateComposition(state.composing)

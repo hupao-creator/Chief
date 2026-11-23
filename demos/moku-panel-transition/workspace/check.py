@@ -18,6 +18,8 @@ def check(directory, pending, started):
     for name, args in [
         ("overview", ["check_workspace_folds.py", directory / "overview/window.mp4",
                       directory / "overview.csv", "--reversal"]),
+        ("execution-return", ["check_workspace_folds.py", directory / "execution-return/window.mp4",
+                              directory / "execution-return.csv", "--column-return"]),
         ("mounted-overview", ["check_overview.py", directory / "overview-zh-Hans-motion-scene"]),
         ("agent", ["check_frames.py", directory / "agent-entrance"]),
         ("first-card", ["check_landing_handoff.py", directory / "first-card/window.mp4",

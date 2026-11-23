@@ -1,0 +1,156 @@
+{
+  "macOS": "26.5.1",
+  "configuration": "SwiftPM Debug",
+  "productionBase": "f6c940ec9ae2ee29648d6b3308a9c17f4569087d",
+  "productionSourceBlobs": {
+    "app/macos/Sources/Host/MokuScene/NativeMokuComposer.swift": "630d866326ff47a5a28156012c3bc31696ce8297",
+    "app/macos/Sources/Host/MokuScene/NativeMokuDock.swift": "b43fb43194d3e5b8b039599848c8105d6031d07a",
+    "app/macos/Sources/Host/MokuScene/NativeMokuHorizontalTravel.swift": "ee1789c2bd273a68b69f1923b6078662e45f29c1",
+    "app/macos/Sources/Host/Shell/NativeWorkspaceView.swift": "1e9780ddb0a775326a45f213e185d166480c0246",
+    "app/macos/Sources/Host/Sidecards/NativeExecutionDockPlacement.swift": "d2c7817806f49792ba73953288d18f5f551b647d",
+    "app/macos/Sources/Host/WindowNavigation/NativeApplicationReadingPanel.swift": "2a071d3d1362bc7e2d72eb98b65131ba95047401",
+    "app/macos/Sources/Plugins/Applications/Report/NativeReportApplication.swift": "612ce6a77b4886d6d213ad4fe9821312ae857f3a",
+    "app/macos/Sources/Shared/PluginUI/Conversation/NativeReportExecutionScroll.swift": "36aaaff203b71883f7f8666b9f567976cc43e4b9",
+    "app/macos/Sources/Shared/PluginUI/Conversation/NativeReportSidecardPresentation.swift": "96f3813017543676fa06bee93d5d66088203945e"
+  },
+  "capture": "ScreenCaptureKit, desktop-independent window of the capture process. Untrimmed and unscaled.",
+  "windowPoints": [
+    1280,
+    820
+  ],
+  "moviePixels": [
+    2560,
+    1640
+  ],
+  "coordinateSpace": "Top-left of the recorded window in native backing pixels. centerPx is the horizontal midpoint of the dark glass cap and topPx is its top edge.",
+  "profile": "Fresh private Go Runtime and native Codex CLI with a deterministic loopback Responses peer.",
+  "captureHostSHA256": "e88de04d87cbf83771cdf38ce915164735bd5d53eb9ed39c92dc70ab1e9999fc",
+  "runtimeSHA256": "6639fc5f5c3cb47c7de9c7f1f9a2a9447711e46f8795816260249c1d47de63e4",
+  "movieSHA256": "ba57b68cea98a32c7c325d8aeb421848cb4a1e481ab439d85ba66512c42bc261",
+  "foregroundUnchanged": true,
+  "frameMeasurements": {
+    "frames": 312,
+    "centerRangePx": [
+      1851.5,
+      1852.0
+    ],
+    "topRangePx": [
+      1484,
+      1484
+    ],
+    "widthRangePx": [
+      1010,
+      1011
+    ],
+    "errors": []
+  },
+  "action": "Native Return on the right-column editor of a finished Super Thread execution.",
+  "observations": {
+    "backingScale": 2,
+    "events": [
+      {
+        "action": "finished source",
+        "seconds": 3.875000402331352e-06,
+        "top": 742,
+        "width": 508,
+        "x": 926
+      },
+      {
+        "action": "native Return",
+        "seconds": 0.5723886250052601,
+        "top": 742,
+        "width": 508,
+        "x": 926
+      },
+      {
+        "action": "receipt with catalog",
+        "seconds": 0.714386833133176,
+        "top": 742,
+        "width": 508,
+        "x": 926
+      },
+      {
+        "action": "destination reader and input ready",
+        "seconds": 1.1079685832373798,
+        "top": 742,
+        "width": 508,
+        "x": 926
+      },
+      {
+        "action": "result settled",
+        "seconds": 5.382658416638151,
+        "top": 742,
+        "width": 508,
+        "x": 926
+      }
+    ],
+    "foregroundUnchanged": true,
+    "points": [
+      1280,
+      820
+    ],
+    "reportStayedOpen": true,
+    "windowFrame": [
+      2558,
+      0,
+      1280,
+      820
+    ]
+  },
+  "pageTurn": {
+    "headingTemplate": [
+      1372,
+      339,
+      219,
+      23
+    ],
+    "cornerBounds": [
+      2190,
+      145,
+      2380,
+      202
+    ],
+    "cornerInkMax": 1025,
+    "firstHeading": [
+      46,
+      0.791667,
+      1362
+    ],
+    "landedHeading": [
+      62,
+      1.07,
+      339
+    ],
+    "distinctTravelPositions": 17,
+    "maxDownwardReversalPx": 0,
+    "frames": 312,
+    "firstCornerInk": [
+      47,
+      0.81
+    ],
+    "lastCornerInk": [
+      47,
+      0.81
+    ],
+    "cornerReview": {
+      "flaggedFrames": [
+        47
+      ],
+      "connectionChipFrames": 0,
+      "visibleText": "显示执行过程",
+      "owner": "The outgoing execution filter passes through the upper right during the page turn at 0.810 s.",
+      "crop": "turning-corner.png"
+    },
+    "headingMethod": "Match a rested slice of the submitted heading at 1.65s against the same x range in each frame of the execution viewport, normalized correlation at least 0.90. Rows contain [zero-based frame, PTS seconds, top in pixels].",
+    "cornerMethod": "Count grayscale values above 68 where the same pixel was below 58 in frame zero, inside cornerBounds [left, top, right, bottom]."
+  },
+  "heldReceiptReplay": {
+    "entry": "demos/moku-panel-transition/receipt_replay.py",
+    "clock": "Seconds from native Return to the first matching AppKit bitmap captured before OCR.",
+    "submittedPageLandedBeforePeerRelease": 0.786812875,
+    "inlineWhileAcceptedReaderLoads": 1.032769584,
+    "readyReader": 1.196498292,
+    "rejectedSourceRestoredWithNextDraft": 0.975427042,
+    "lateReceiptStayedOnOtherConversation": 1.319829166
+  }
+}

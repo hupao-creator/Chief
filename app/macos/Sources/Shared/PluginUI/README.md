@@ -1629,11 +1629,13 @@ Streaming, refresh,
 and read-error recovery do not repeat it; selection identity owns a fresh visit.
 
 `NativeReportExecutionScroll` wraps the related-execution capability with that
-admission gate. Manual reference selection retains the fade; a send-created
-execution instead waits behind the actual outgoing reader and enters from below
-while the outgoing viewport moves up. Both model viewports remain at their final
-size. Landing retains the new host and its scroll model, and stale visit callbacks
-cannot reenable input. The Report's Back button lives outside this carrier.
+admission gate. Manual reference selection retains the fade. A finished or historical
+send gives the submitted page one scroll seat. Its heading and inline
+connection label can enter from below immediately while the outgoing viewport
+moves up. Both viewports retain their layout size. The received execution
+prepares behind its connection state in that same seat. Landing and real
+content readiness jointly admit its reader. Stale callbacks are scoped to the
+visit. The Report's Back button lives outside this carrier.
 `NativeReportSidecardPresentation` owns the selection and execution visit alongside
 Browser/list admission; accepted continuations are visit-local and independent of
 the authored reference list. The window supplies one presentation per route.

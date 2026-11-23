@@ -32,7 +32,10 @@ and a loopback peer. The workspace starts empty, creates its first Agent cards,
 opens the dispatch row for editing, hovers the compact capsule and focuses its Stop button, reverses a
 fold and presses Stop via its unique AX control. A second running Chief turn on the populated Overview
 exercises click-to-open, Escape, outside click and a 120ms Compose reversal.
-Two completed card visits use the reader's Close control. The mounted preview
+Two completed card visits use the reader's Close control. A held follow-up
+then opens in the right-hand Execution sidecard. Its return recording starts
+with the editor settled beneath that column and ends on Overview after Close.
+The peer releases the same execution to finish after the return. The mounted preview
 also drives narrow right-column visits with short and long titles. A separate
 first-run profile measures the 780ms contraction and the focused editor.
 
@@ -68,6 +71,21 @@ against the movie. The screen-recording variant accepts a vertical search
 band in source pixels, for example `check_workspace_folds.py screen.mov
 positions.csv --band 2180 2350` for a 4096×2514 recording. This locates
 the silhouette within the window without trimming the time interval.
+
+For one right-column return, run
+`python3 demos/moku-panel-transition/check_workspace_folds.py window.mp4 positions.csv --column-return`.
+The movie starts in the expanded editor and ends with the compact Dock at the
+window center. On a full-display recording of a centered window, use `--band`
+to select the Dock’s vertical range. The check requires intermediate widths at
+the source and intermediate compact positions on the way to center. It checks
+every frame for width jumps and rightward reversals. It locates the corner
+at the workspace center, checks constant height up to that frame and constant
+horizontal position through the lift, with a two-point optical tolerance.
+The CSV includes the glass cap's top edge and horizontal center in pixels.
+The [native-scale return recording](evidence/column-return/return.mp4) and
+[frame coordinates](evidence/column-return/positions.csv) cover Close from an
+active Agent column to Overview. Its [capture record](evidence/column-return/capture.json)
+identifies the test window, builds, external peer and corner.
 
 ## Overview Dock replay
 
@@ -246,8 +264,9 @@ On all four returns the checker measures from the Close marker to the first
 frame showing 10% of the width change from expanded to idle. That frame must
 fall within the first half of the 420ms panel return. Until the shell reaches
 idle width, its center must stay at the source column within two points. The compact shell must then
-show intermediate horizontal and vertical positions as it returns and
-finish at the initial height and width. The checker retains movie PTS, center
+reach the workspace center at the reading height, then show intermediate
+heights at that fixed center. It finishes at the initial height and width.
+The checker retains movie PTS, center
 x, top y and width for compact frames. At 2× the two-point edge tolerance is four pixels.
 
 Two additional real-time visits use a centered Agent editor without an
@@ -405,16 +424,32 @@ drives the native presentation and selection model without measuring screen timi
 
 The [Super Thread follow-up scenario](ReportSendReplay.swift) mounts the Report
 sidecard and native editor, presses Return on a finished execution, and holds
-the Go response for at least 900ms. It reads the Harness name from rendered
-pixels before releasing the peer and again while the accepted reader is waiting
-for content. The replay checks a second Return, typing during submission,
-draft recovery on rejection, returning to the source draft after acceptance,
-and leaving the Report before the receipt arrives. The source and document
-are fixtures. The accepted reader uses a Go-reduced Codex turn.
-Set `CHIEF_REPORT_REPLAY_EVIDENCE` to an existing absolute directory to keep
-the sampled PNGs. The log measures from Return to completed AppKit bitmap
-capture, before OCR, so the first matching sample bounds mounted-view latency.
-Physical display refresh and live model latency are outside this measurement.
+the Go response for at least 900ms. The new heading and a single inline
+connection label must land before the receipt. OCR locates the label below the
+submitted heading. The accepted reader must take over in the same visit. The
+replay also checks duplicate Return, continued typing, rejection and restoration,
+and leaving before the reply. The document and source are fixtures. The accepted
+reader uses a Go-reduced Codex turn. Set `CHIEF_REPORT_REPLAY_EVIDENCE` to an
+existing absolute directory to keep the AppKit bitmap samples.
+
+To capture the complete workspace, build the Debug Chief Swift product and the
+Go `./cmd/chief-runtime` binary at `.build/e2e/chief-runtime` (or pass
+`--runtime`). Run
+`python3 demos/moku-panel-transition/workspace/report_followup.py /private/tmp/chief-report-followup`
+with a new output directory and the shared verification leases available.
+The replay creates its own profile and mounts a nonactivating 1280 × 820 point
+window at native scale. ScreenCaptureKit records only that window.
+
+The [whole-window Report recording](evidence/report-send/send.mp4) covers a
+native Return in a finished execution beside a mounted Super Thread. The
+[screen coordinates](evidence/report-send/positions.csv) cover every encoded
+frame from the settled source through the completed successor. Recompute them
+with `python3 demos/moku-panel-transition/check_workspace_folds.py send.mp4 positions.csv --report-send`.
+The expanded right-column glass must keep its center and top within one pixel
+and its width within two pixels. The [capture record](evidence/report-send/capture.json)
+identifies the window geometry, peer, submission and readiness observations.
+These recordings measure native composition with deterministic responses.
+Live service latency is outside their scope.
 
 The live steer scenario holds the HTTP handler and reads pixels from a mounted
 Codex turn. It compares the settled row across receipt and content updates.

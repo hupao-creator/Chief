@@ -50,7 +50,12 @@ public final class NativeWorkspacePresentation {
             if let oldValue { reportSidecards.endConnection(request: oldValue.request) }
         }
     }
+    fileprivate var retainsReportComposer: Bool {
+        guard let source = reportSidecards.connection?.source else { return false }
+        return selected?.typeID == "report.document" && reportExecution == source && !scene.dockCovered
+    }
     var awaitingExecutionContinuation: Bool {
+        if retainsReportComposer { return true }
         guard let pending = executionSendNavigation else { return false }
         return pending.route == navigationRouteID && pending.generation == scene.composerGeneration
             && pending.reference == dockExecution && !scene.dockCovered
@@ -594,7 +599,7 @@ public final class NativeWorkspacePresentation {
             return target.ready && (target.followsLatest || target.executionID != nil)
         }
         guard let reportExecution else { return true }
-        return reportInputReady && reportSidecards.executionReady && reportSidecards.inputReady
+        return reportSidecards.connection == nil && reportInputReady && reportSidecards.executionReady && reportSidecards.inputReady
             && reportSidecards.active == .relatedExecutions
             && reportSidecards.inputExecution == reportExecution && !reportSidecards.retainingForReturn
     }
@@ -618,7 +623,7 @@ public final class NativeWorkspacePresentation {
         guard navigationRouteID == route, selected?.typeID == "report.document" else { return }
         reportInputBack = onBack
         if reportExecution == reference, reportInputReady == ready { return }
-        let switchingExecution = reportExecution?.thread == reference?.thread && reference != nil
+        let switchingExecution = reportExecution != nil && reference != nil && (reportExecution?.thread == reference?.thread || (reportInputReady && ready))
         reportExecution = reference; reportInputReady = ready
         recordVisibleBookmarks()
         configureDockInput(in: scene, autofocus: !switchingExecution, retainingOpenInput: switchingExecution)
@@ -787,7 +792,7 @@ public final class NativeWorkspacePresentation {
            executionID != previousExecutionID || !thread.observation.isExecutionActive,
            let harness = try? workspace.plugins.harnesses.require(thread.harnessID) {
             sidecards.beginConnection(request: request, from: .init(thread: source, executionID: executionID),
-                harness: harness.descriptor.displayName.string)
+                harness: harness.descriptor.displayName.string, text: submission.text)
         }
         defer {
             // A fork receipt may arrive before the destination enters the catalog.
@@ -1027,7 +1032,7 @@ public struct NativeWorkspaceView: View {
                     mode: detailRunning.map { $0 ? .running : .idle } ?? presentation.moku.dockMode,
                     running: sidecardComposer == nil && (detailRunning ?? presentation.moku.running),
                     talk: presentation.moku.talk, replyKey: detail == nil ? presentation.moku.replyKey : nil,
-                    disabled: disabled || (detail.map { !model.canExecute($0) || !presentation.dockInputAvailable } ?? false),
+                    disabled: disabled || (detail.map { !model.canExecute($0) || (!presentation.dockInputAvailable && !presentation.retainsReportComposer) } ?? false),
                     interaction: presentation.moku.interaction, interactionIsQuestion: presentation.moku.interactionIsQuestion,
                     presentation: presentation.moku,
                     note: presentation.moku.note,

@@ -155,16 +155,21 @@ pending. Back reuses ready text even when the list rows remount. Preparation is
 cancellable on source changes, folding, coverage and exit. Unchanged source text
 is reused within the visit, and a source with no eligible excerpt needs no parse.
 
-Report continuation keeps the Report, shell, column and resident composer in
-place. Sending from a finished or historical execution immediately shows the
-source Harness's connection label over the reader. The submitted request and
-current selection own that label while awaiting the receipt. An accepted
-successor visit retains it until its reader is ready. Rejection, folding,
-switching the reading target or leaving the Report retires the local feedback.
-Only an observed runtime cancellation target enables Stop.
+Sending from a finished or historical execution immediately turns the Report
+sidecard to the submitted page. The old viewport moves up as the new one enters
+from below. The new page shows the submitted heading and the source Harness's
+inline connection status. The receipt binds the accepted execution to this same
+page. Its prepared reader takes over in place after landing. A same-execution
+steer keeps the reader and scroll position.
 
-A successor execution enters from below as the old viewport moves up;
-same-execution steer keeps reader and scroll. The Back button stays outside the
+The Report, sidecard column and open composer stay in place throughout the
+handoff. The source draft accepts typing while the request is pending. The
+destination owns actions only after its reader, exact input and column are ready.
+Only an observed runtime cancellation target enables Stop. Rejection restores
+the source run and draft. Folding, changing selection or leaving the Report
+retires the submitted page's authority to navigate.
+
+The Back button stays outside the
 carrier and returns to the list. Exact forks and uncertain receipts retain the
 [Runtime](../internal/core/runtime/README.md) and [client](../app/macos/Sources/Core/README.md)
 authority boundaries. No guessed resend follows an uncertain outcome.

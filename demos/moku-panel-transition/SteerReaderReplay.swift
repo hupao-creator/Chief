@@ -37,6 +37,7 @@ struct SteerReader: View {
 
 struct ReaderFrame: Equatable {
     let labels: [String]
+    let bounds: [CGRect]
     let pixels: SHA256.Digest
 }
 
@@ -55,7 +56,10 @@ struct ReaderFrame: Equatable {
     try VNImageRequestHandler(cgImage: image).perform([request])
     guard let data = bitmap.bitmapData else { throw ReplayError(description: "Missing bitmap data") }
     let pixels = SHA256.hash(data: Data(bytes: data, count: bitmap.bytesPerRow * bitmap.pixelsHigh))
-    return ReaderFrame(labels: (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }, pixels: pixels)
+    let text = (request.results ?? []).compactMap { observation in
+        observation.topCandidates(1).first.map { ($0.string, observation.boundingBox) }
+    }
+    return ReaderFrame(labels: text.map(\.0), bounds: text.map(\.1), pixels: pixels)
 }
 
 @MainActor func checkSteerReader(workspace: NativeWorkspaceModel, mode: (String) throws -> Void) async throws {

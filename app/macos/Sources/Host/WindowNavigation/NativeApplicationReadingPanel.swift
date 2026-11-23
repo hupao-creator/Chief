@@ -141,8 +141,11 @@ private struct NativeReportLinkWorkspace<Content: View>: View {
                 .allowsHitTesting(false)
         }
         .onPreferenceChange(NativeReportExecutionInputKey.self) { next in
+            let sameReadyColumn = executionInput?.ready == true && next?.ready == true && executionInput?.frame == next?.frame
             executionInput = next
-            inputChanged?(next?.reference, false, returnFromExecution)
+            // A ready-to-ready handoff at the same seat publishes its new owner
+            // together with the native marker. Withdrawing input here folds the Dock.
+            if !sameReadyColumn { inputChanged?(next?.reference, false, returnFromExecution) }
         }
         .onPreferenceChange(NativeReadingAuxiliaryBackKey.self) { auxiliaryBack = $0 }
         .onChange(of: suppressed) { _, hidden in

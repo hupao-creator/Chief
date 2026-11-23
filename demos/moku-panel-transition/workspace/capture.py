@@ -24,7 +24,7 @@ from lifecycle import Session
 from operator_input import bundle
 from provider import declared_tools, find_tool
 from report import save, sha256
-from run import completed
+from run import completed, send, thread_state
 from tools.benchmarks.build import build as build_collector
 
 
@@ -65,14 +65,19 @@ def workspace(session, app, driver, collector, output):
 
     def held_response(request):
         events = respond(request)
-        if not find_tool(declared_tools(request), "create_thread") or len(session.peer.receipts) < 2:
+        hold_chief = find_tool(declared_tools(request), "create_thread") and len(session.peer.receipts) >= 2
+        hold_followup = isinstance(events, list) and any(e.get("delta") == session.peer.followup_body() for e in events)
+        if not (hold_chief or hold_followup):
             return events
 
         def stream():
-            yield events[0]
+            # Let the Execution sidecard display the reply while its run is
+            # still active. Only the terminal event waits for the return.
+            split = len(events) - 1 if hold_followup else 1
+            yield from events[:split]
             while not release.wait(.12):
                 yield {"type": "response.in_progress", "response": events[0]["response"]}
-            yield from events[1:]
+            yield from events[split:]
         return stream()
 
     session.peer.respond = held_response
@@ -207,6 +212,28 @@ def workspace(session, app, driver, collector, output):
                 point("click", next(r for r in rows if r.get("AXDescription") in ["关闭 Thread", "Close thread"]))
                 stable(overview)
                 time.sleep(.65)
+        # A completed result in main and its running successor in Execution
+        # place the editor beneath the right column in the real workspace.
+        previous = completed(session, card)["observation"]["latestExecution"]["executionId"]
+        release.clear()
+        successor = send(session, card, previous, "BENCH ITEM 01: E2E FOLLOWUP " + session.nonce)
+        point("click", item(inspect("before-execution"), "overview-card-" + card))
+        stable(lambda s: s["page"] == "thread" and s["overview"]["dock"]["inputOpen"])
+        time.sleep(.65)
+        rows = inspect("execution-open")
+        dock = item(rows, "moku-capsule")["bounds"]
+        assert dock["x"] > bounds["x"] + bounds["width"] / 2 and dock["width"] > 168
+        active = thread_state(session, card)["observation"]["latestExecution"]
+        assert active["executionId"] == successor["executionId"] and active["status"] == "running"
+        with movie(driver, target, output / "execution-return"):
+            point("click", next(r for r in rows if r.get("AXDescription") in ["关闭 Thread", "Close thread"]))
+            stable(overview)
+            time.sleep(.65)
+        resting = item(inspect("execution-resting"), "moku-capsule")["bounds"]
+        assert resting["width"] == 168 and abs(resting["x"] + 84 - (bounds["x"] + bounds["width"] / 2)) < 2
+        release.set()
+        finished = completed(session, card, successor["executionId"])["observation"]["latestExecution"]
+        save(output / "execution-return-result.json", dict(thread=card, before=active, after=finished))
         # No input is posted by a probe. Exercise the same checks used before
         # each event, including the foreground loss after withdrawing this app.
         recorded = json.loads(target.read_text())

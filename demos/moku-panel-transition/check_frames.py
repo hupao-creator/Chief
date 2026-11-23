@@ -6,6 +6,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from check_workspace_folds import column_return
 
 
 def dock_frame(movie, phase_count):
@@ -149,7 +150,7 @@ def check_return(frames, codes, times, close, open_width, idle_width, name):
     source_center = sum(glass_edges(frames[close - 1])) / 2
     idle_center = sum(glass_edges(frames[0])) / 2
     max_fold_drift = 0.0
-    fold_widths = []
+    fold_widths, fold_centers, fold_tops = [open_width], [source_center], [None]
     samples = []
     def compact_top(frame, center):
         # Follow the top of the warm finish, away from the mark and end caps.
@@ -168,24 +169,26 @@ def check_return(frames, codes, times, close, open_width, idle_width, name):
         width = right - left + 1
         center = (left + right) / 2
         fold_widths.append(width)
+        fold_centers.append(center)
         if delay is None and width <= threshold:
             delay = float(times[i] - times[close])
         if width > idle_width + 4:
+            fold_tops.append(None)
             max_fold_drift = max(max_fold_drift, abs(center - source_center))
         else:
             top = compact_top(frames[i], center)
+            fold_tops.append(top)
             samples.append([float(times[i]), center, top, width])
     centers = np.array([row[1] for row in samples])
     tops = np.array([row[2] for row in samples])
     regrowth = int(max(fold_widths - np.minimum.accumulate(fold_widths)))
-    # Both axes retarget independently. Require intermediate positions and
-    # bounded travel on each axis, including when the lift overlaps the glide.
+    path = column_return(fold_widths, fold_centers, fold_tops, idle_width, idle_center, idle_top, 2)
     horizontal = centers[(centers > idle_center + 4) & (centers < source_center - 4)]
     vertical = tops[(tops > idle_top + 4) & (tops < reading_top - 4)]
     return dict(visit=name, secondsToTenPercentFold=delay, maxExpandedCenterDriftPx=max_fold_drift,
                 horizontalFrames=len(horizontal), verticalFrames=len(vertical), maxReturnRegrowthPx=regrowth,
-                finalCenterErrorPx=abs(center - idle_center), compactSamples=samples,
-                passed=bool(delay is not None and delay <= 0.210 and max_fold_drift <= 4 and regrowth <= 4
+                finalCenterErrorPx=abs(center - idle_center), compactSamples=samples, columnReturn=path,
+                passed=bool(not path["errors"] and delay is not None and delay <= 0.210 and max_fold_drift <= 4 and regrowth <= 4
                             and len(set(horizontal)) >= 3 and len(set(vertical)) >= 3
                             and np.all((centers >= idle_center - 4) & (centers <= source_center + 4))
                             and np.all((tops >= idle_top - 4) & (tops <= reading_top + 4))

@@ -23,10 +23,12 @@ private struct ComposerInk: ViewModifier, @preconcurrency Animatable {
     }
 }
 
-/// Report the size being drawn. A normal layout observer can see the compact
-/// proposal while the glass is still interpolating from the editor's width.
-private struct CapsuleFoldObserver: ViewModifier, @preconcurrency Animatable {
+/// Propose each presented size to the glass, its overlays and their alignment
+/// together for reading columns and rows with trailing execution controls.
+/// Note and Settings retain their own panel layout inside the same editor tree.
+private struct CapsuleSurfaceFrame: ViewModifier, @preconcurrency Animatable {
     var size: CGSize
+    let sizesRow: Bool
     let compactChanged: (Bool) -> Void
 
     var animatableData: CGSize.AnimatableData {
@@ -36,9 +38,10 @@ private struct CapsuleFoldObserver: ViewModifier, @preconcurrency Animatable {
 
     func body(content: Content) -> some View {
         let idle = NativeMokuCapsuleLayout.idleSize
-        content.onChange(of: size.width <= idle.width && size.height <= idle.height, initial: true) { _, compact in
-            compactChanged(compact)
-        }
+        content.frame(width: sizesRow ? size.width : nil, height: sizesRow ? size.height : nil)
+            .onChange(of: size.width <= idle.width && size.height <= idle.height, initial: true) { _, compact in
+                compactChanged(compact)
+            }
     }
 }
 
@@ -384,6 +387,8 @@ public struct NativeMokuDock: View {
             let openColumn = expanded && (state.inputOpen || continuationPresenting)
                 ? requestedFrame.map { InputColumn(frame: $0, viewport: geometry.size) } : nil
             let executionFrame = holdingColumn ? inputColumn?.frame : requestedFrame
+            let sizesRow = (executionFrame != nil || running || state.talkPresentation.message?.dispatch != nil)
+                && !state.settingsOpen && !state.notePanelOpen && !noteMounted && !settlingNoteDock
             let column = executionFrame.map {
                 CGRect(x: $0.minX, y: viewport.minY, width: $0.width, height: viewport.height).intersection(viewport)
             }
@@ -436,9 +441,9 @@ public struct NativeMokuDock: View {
                             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { timerHeight = $0 }
                     } else {
                         capsule(width: width, room: max(58, frame.height - 18),
-                            surface: surface, messageWidth: messageWidth, rowHeight: rowHeight, noteHeight: noteHeight,
+                            surface: surface, sizesRow: sizesRow, messageWidth: messageWidth, rowHeight: rowHeight, noteHeight: noteHeight,
                             noteAvailableHeight: noteAvailableHeight, decorationPadding: placement.decorationPadding, settingsSize: settingsSize)
-                            .modifier(CapsuleFoldObserver(size: surface.size) { shellIsCompact = $0 })
+                            .modifier(CapsuleSurfaceFrame(size: surface.size, sizesRow: sizesRow) { shellIsCompact = $0 })
                     }
                 }
                     .nativeCanvasNavigationRegion()
@@ -788,7 +793,7 @@ public struct NativeMokuDock: View {
             }
         }
     }
-    private func capsule(width: CGFloat, room: CGFloat, surface: CGRect, messageWidth: CGFloat, rowHeight: CGFloat,
+    private func capsule(width: CGFloat, room: CGFloat, surface: CGRect, sizesRow: Bool, messageWidth: CGFloat, rowHeight: CGFloat,
                          noteHeight: CGFloat, noteAvailableHeight: CGFloat, decorationPadding: CGFloat, settingsSize: CGSize) -> some View {
         let composerStop = ordinaryOverviewDock && composerVisible
         let retiringOverviewInk = ordinaryOverviewDock && inputPresent && state.inputLeaving && state.inputInteractionReady
@@ -819,7 +824,7 @@ public struct NativeMokuDock: View {
             motion: scenePhase == .active && state.windowVisible && (!state.dockCovered || state.settingsOpen),
             dark: !state.settingsExpanded || workspaceColorScheme == .dark, immediateOrbit: threadID != nil)
         return Color.clear
-        .frame(width: surface.width, height: surface.height)
+        .frame(width: sizesRow ? nil : surface.width, height: sizesRow ? nil : surface.height)
         .overlay(alignment: .bottom) {
             ZStack {
                 if composerMounted {
@@ -1053,7 +1058,7 @@ public struct NativeMokuDock: View {
         // The ink reveal owns only automatic acquisition. An admitted
         // editor must accept clicks/Tab without a delayed update blurring it.
         return NativeMokuComposerInput(draft: draft, cwd: cwd, disabled: disabled,
-            submissionPending: draft.submitting,
+            submissionPending: draft.submitting || (sidecardComposer == nil && awaitingContinuation),
             targetsThread: threadID != nil, sidecardComposer: sidecardComposer,
             readOnly: state.inputLeaving, focusEnabled: composerCanFocus && (sidecardComposer?.ready ?? true),
             automaticFocus: false,

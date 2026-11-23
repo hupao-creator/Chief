@@ -126,22 +126,14 @@ struct NativeReportDetail: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if let selected {
                         let visit = sidecards.executionVisit
-                        NativeReportExecutionScroll(visit: visit, continuing: sidecards.continuedExecution,
+                        let connection = sidecards.connection
+                        let awaitingReceipt = connection.map { $0.destination == nil } ?? false
+                        NativeReportExecutionScroll(visit: sidecards.pageVisit, continuing: connection != nil || sidecards.continuedExecution,
                             active: expanded && !suppressed && returning == nil,
+                            connection: awaitingReceipt || !sidecards.executionReady ? connection : nil,
                             onReady: { sidecards.admitExecution(visit: visit) }) {
-                            execution(selected).id(selected)
+                            if !awaitingReceipt { execution(selected).id(selected) }
                         }
-                            .overlay(alignment: .topTrailing) {
-                                if let harness = sidecards.connectingHarness {
-                                    ThreadConnectionLabel(harness: harness)
-                                        .padding(.horizontal, 12).padding(.vertical, 7)
-                                        .background(.regularMaterial, in: Capsule())
-                                        .padding(12)
-                                        .allowsHitTesting(false)
-                                } else if sidecards.continuedExecution && !sidecards.executionReady {
-                                    ProgressView().controlSize(.small).padding(18)
-                                }
-                            }
                             .overlay(alignment: .topLeading) {
                                 Button { if !sidecards.retainingForReturn { sidecards.selectExecution(nil) } } label: {
                                     Image(systemName: "chevron.left")
@@ -195,9 +187,9 @@ struct NativeReportDetail: View {
                 }
             }
             .preference(key: NativeReportExecutionInputKey.self,
-                value: expanded && !suppressed && returning == nil ? sidecards.inputExecution.map {
+                value: expanded && !suppressed && returning == nil ? sidecards.composerExecution.map {
                     NativeReportExecutionInput(reference: $0, frame: CGRect(x: layout.surfaceX, y: layout.surfaceY,
-                        width: layout.surfaceWidth, height: layout.surfaceHeight), ready: sidecards.executionReady && sidecards.inputReady)
+                        width: layout.surfaceWidth, height: layout.surfaceHeight), ready: sidecards.connection != nil || (sidecards.executionReady && sidecards.inputReady))
                 } : nil)
         }
         .onAppear { subscribeReferences(); refresh() }

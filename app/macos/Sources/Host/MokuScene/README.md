@@ -160,9 +160,11 @@ and height before the editor mounts. In the wide layout, input ink appears to
 the right of the Harness logo after the logo clears the final text seat. Below
 260pt of capsule width, text and attachments occupy the row above the identity
 and actions. The editor fades in during the last tenth of shell expansion.
-The retiring input keeps its column until the glass reaches its compact size,
-even when a Super Thread withdraws its execution marker or releases the route
-during the fold. The compact Dock then travels to the current destination.
+The retiring shell keeps its bottom center in the reading column. The same
+interpolated frame sizes the glass and releases the column when it reaches
+the compact size, even when a Super Thread withdraws its execution marker or
+releases the route during the fold. The compact Dock returns horizontally at
+the reading height and lifts at the workspace center.
 An already compact bar can travel immediately. Reduce Motion settles the return
 without a fold or travel delay. Resize preserves the native editor and the
 shell fits the viewport.
@@ -550,10 +552,12 @@ no expanded activity does not move it. When the target column changes, the
 Dock glides horizontally for 520ms with a cubic Bézier curve
 `(0.30, 0.12, 0.44, 1)`, including on its return to the workspace center.
 The curve starts moving immediately and eases to a stop. The compositor moves directly from the current
-presentation position to the target, without overshoot or a settling rebound. Vertical
-descent retains its independent, non-bouncing timing. A change to the vertical
-seat during return leaves the horizontal animation running. Shell sizing retains the
-Sidecard's 380ms curve; divider dragging and window resizing settle without
+presentation position to the target, without overshoot or a settling rebound.
+On return to Overview, the native host holds the reading height through
+horizontal arrival. Route release and that arrival both have to occur before
+the compact Dock rises at the fixed workspace center. Reopening during
+either leg retargets from the displayed position. Shell sizing retains the
+Sidecard's 380ms curve. Divider dragging and window resizing settle without
 travel. Stacked layouts share the
 panels' full column width and keep the same bottom reading baseline. Composer
 expansion retains its separate entrance timing.
@@ -770,8 +774,10 @@ Super Thread document/list state does not admit Moku input. The shared scene
 admission gate blocks capsule clicks, Compose menu/shortcut actions, scripted
 toggles and direct open requests; its compact capsule exposes no input launcher
 or hint. Selecting an associated execution still borrows and pins the ordinary
-Agent composer after reading/content admission, with its existing historical
-continuation, Stop authority and receipt handling. Returning to the list, folding
+Agent composer after reading/content admission. During a follow-up the submitted
+page holds the expanded composer's source column and draft until the destination
+reader and exact input are admitted. A ready-to-ready handoff at the same frame
+changes input ownership in place, including when a fork changes Thread. Returning to the list, folding
 or replacing the associated reader immediately retires input, including pending
 focus work. Escape retains the report's auxiliary Back or normal close; IME,
 completions and covering routes keep their existing precedence. Overview and
