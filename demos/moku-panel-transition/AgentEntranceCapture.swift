@@ -236,7 +236,23 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
         try require(scene.talkPresentation.message == talk && !scene.talkPresentation.presented, "Talk did not queue behind the open draft")
         try require(scene.dismissInputForOutsideClick(), "Second outside dismissal was rejected")
         event("close-to-talk", beginsPhase: true)
-        try await pause(650)
+        let talkDeadline = ContinuousClock.now + .milliseconds(650)
+        while !scene.talkPresentation.presented, .now < talkDeadline { try await pause(8) }
+        try require(scene.talkPresentation.presented, "Queued Talk did not reach the offscreen panel")
+        // This click belongs to another window in this process. A mouse-transparent
+        // recording panel must keep its Talk while the user works elsewhere.
+        let other = NSPanel(contentRect: .init(x: -20000, y: -20000, width: 32, height: 32),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        for type: NSEvent.EventType in [.leftMouseDown, .leftMouseUp] {
+            guard let event = NSEvent.mouseEvent(with: type, location: .zero, modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: other.windowNumber,
+                context: nil, eventNumber: 1, clickCount: 1, pressure: 1) else {
+                throw CollapseCaptureError(description: "Could not create a window-local outside press")
+            }
+            NSApp.postEvent(event, atStart: false)
+        }
+        try await ContinuousClock().sleep(until: talkDeadline)
+        withExtendedLifetime(other) {}
         event("talk-visible")
         try require(!scene.inputOpen && !scene.inputLeaving && overviewDraft.text == text
                     && scene.talkPresentation.presented && scene.talkPresentation.message == talk,

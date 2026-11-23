@@ -8,7 +8,7 @@ Click **Show work** when it appears for a summary, including the number of reaso
 
 A Codex task continues normally when a command returns binary data. You can follow the agent’s next step in the same conversation.
 
-When you open a Codex task, the eyes flip to the Codex logo inside the input bar. Closing the conversation brings the eyes back.
+When you open a Codex task, Chief’s eyes flip to the Codex logo inside the input bar. When you close the conversation, the logo flips back to the eyes as the bar shrinks.
 
 When a conversation opens with an **Execution** sidecard on the right, the input bar glides beneath it and opens there. Click **×** at the top left of the conversation or click the blank margin to return to Overview. The bar shrinks beneath the sidecard, moves left at the same height, then rises into place at the center of Overview.
 

@@ -27,6 +27,7 @@ import ChiefPluginUI
     public private(set) var inputAdmissionReady = true
     private var inputIdentityReady = true
     private let readingPanelMotion: NativeReadingPageMotion?
+    var readingPanelReturning: Bool { readingPanelVisible && readingPanelMotion?.isReturning == true }
     public var inputInteractionReady: Bool {
         inputAdmissionReady && inputIdentityReady && (!readingPanelVisible || readingPanelMotion?.active != true)
     }
@@ -218,10 +219,15 @@ import ChiefPluginUI
         setInputOpen(opensInput)
         command?(.position)
     }
+    func retireInputIdentity(generation: UUID) {
+        // Reopening the same reader during its fold retains the draft and
+        // generation. Its next expansion still needs a settled Harness mark.
+        if composerGeneration == generation { inputIdentityReady = false }
+    }
     func completeInputIdentity(generation: UUID) {
         // A removed flip may report after route replacement or Dock teardown.
         // Only the admitted composer visit can release its own expansion.
-        guard composerGeneration == generation, inputAdmissionReady, !inputIdentityReady else { return }
+        guard composerGeneration == generation, inputAdmissionReady, !readingPanelReturning, !inputIdentityReady else { return }
         inputIdentityReady = true
         if inputPinnedOpen, !dockCovered, !dockInteractionVisible { setInputOpen(true) }
     }

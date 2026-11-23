@@ -90,6 +90,8 @@ starts a new positioning identity.
 Closing retains the native return: reader ink fades over the first 80%, shell
 travel reaches the refreshed source at 86%, and the final 14% crossfades to card
 content. Closing before primary admission uses the opening-reversal path.
+The workspace Dock reads the accepted return from parent preparation through
+travel completion, so the outgoing Harness mark can flip as the editor folds.
 A deleted/archived source supplies no stale return target. Route/generation
 identity fences all preparation and completion callbacks.
 

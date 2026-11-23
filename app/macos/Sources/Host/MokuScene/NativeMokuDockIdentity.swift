@@ -1,6 +1,5 @@
 import ChiefCore
 import ChiefPluginAPI
-import ChiefPluginUI
 import SwiftUI
 
 /// Only the passive mark flips. The editor, its layout seat and native input
@@ -10,17 +9,25 @@ struct NativeMokuDockIdentity<Face: View>: View {
     let showsHarness: Bool
     let entranceReady: Bool
     let generation: UUID
-    let motion: Bool
+    let animation: Animation?
     let onSettled: () -> Void
     @ViewBuilder var face: Face
     @Environment(\.scenePhase) private var scenePhase
-    @State private var displayedIdentity: Identity?
-    @State private var displayedHarness: AnyHarnessPlugin?
-    @State private var settledIdentity: Identity?
+    @State private var front: Mark?
+    @State private var back: Mark?
+    @State private var showingBack = false
+    @State private var turning = false
+    @State private var snapGeneration = 0
     @State private var transitionGeneration = 0
+    @State private var nextMark: Mark?
     @State private var pendingCompletion: (() -> Void)?
 
-    private enum Identity: Hashable { case moku, harness(JSONText?) }
+    private enum Identity: Equatable { case moku, harness(JSONText?) }
+    private struct Mark {
+        let identity: Identity
+        let harness: AnyHarnessPlugin?
+        static var eyes: Self { Self(identity: .moku, harness: nil) }
+    }
     private struct Request: Equatable {
         let identity: Identity
         let entranceReady: Bool
@@ -28,76 +35,97 @@ struct NativeMokuDockIdentity<Face: View>: View {
         let immediate: Bool
     }
     private var identity: Identity { showsHarness ? .harness(harness?.descriptor.id) : .moku }
-    private var transition: AnyTransition {
-        .asymmetric(
-            insertion: .modifier(active: NativeMokuIdentityFlip(progress: 0, incoming: true),
-                identity: NativeMokuIdentityFlip(progress: 1, incoming: true)),
-            removal: .modifier(active: NativeMokuIdentityFlip(progress: 0, incoming: false),
-                identity: NativeMokuIdentityFlip(progress: 1, incoming: false)))
+    private var destination: Mark? { showingBack ? back : front }
+    private var initialMark: Mark {
+        showsHarness && entranceReady ? Mark(identity: identity, harness: harness) : .eyes
     }
 
     var body: some View {
-        let displayed = displayedIdentity ?? (showsHarness && !entranceReady ? .moku : identity)
-        let logo = displayedIdentity == nil ? harness : displayedHarness
-        ZStack {
-            if case .harness = displayed {
-                Group {
-                    if let logo { logo.logo(size: 24) }
+        NativeMokuIdentityFlip(progress: showingBack ? 1 : 0,
+            front: artwork(front ?? (back == nil ? initialMark : nil)), back: artwork(back))
+            .id(snapGeneration)
+            .frame(width: NativeMokuFaceLayout.seat.width, height: NativeMokuFaceLayout.seat.height)
+            .onChange(of: Request(identity: identity, entranceReady: entranceReady, generation: generation,
+                immediate: animation == nil || scenePhase != .active), initial: true) { _, request in
+                update(request)
+            }
+            .onDisappear {
+                transitionGeneration &+= 1
+                pendingCompletion = nil
+                nextMark = nil
+                turning = false
+                showingBack = false
+                front = nil
+                back = nil
+            }
+            .environment(\.colorScheme, .dark)
+            .foregroundStyle(.white)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private func artwork(_ mark: Mark?) -> some View {
+        if let mark {
+            Group {
+                switch mark.identity {
+                case .moku: face
+                case .harness:
+                    if let logo = mark.harness { logo.logo(size: 24) }
                     else { Image(systemName: "terminal").font(.system(size: 22)) }
                 }
-                .frame(width: NativeMokuFaceLayout.seat.width, height: NativeMokuFaceLayout.seat.height)
-                .id(displayed)
-                .transition(transition)
-            } else {
-                face.transition(transition)
             }
+            .frame(width: NativeMokuFaceLayout.seat.width, height: NativeMokuFaceLayout.seat.height)
+            .transition(.identity)
         }
-        .frame(width: NativeMokuFaceLayout.seat.width, height: NativeMokuFaceLayout.seat.height)
-        .onChange(of: Request(identity: identity, entranceReady: entranceReady, generation: generation,
-            immediate: !motion || scenePhase != .active), initial: true) { _, request in
-            update(request)
-        }
-        .onDisappear {
-            transitionGeneration &+= 1
-            pendingCompletion = nil
-            displayedIdentity = nil; settledIdentity = nil
-            displayedHarness = nil
-        }
-        .environment(\.colorScheme, .dark)
-        .foregroundStyle(.white)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 
     private func update(_ request: Request) {
-        // A new composer can borrow an in-flight flip to the same mark. Replace
-        // its waiter, but never treat the target value as animation completion.
+        // A new visit can borrow a flip to the same mark. Only its waiter may
+        // admit the editor, and only after the angle has reached its endpoint.
         pendingCompletion = showsHarness && request.entranceReady ? onSettled : nil
-        // Travel keeps the current mark. In particular a continuation between
-        // Agent visits must not turn a retained Harness logo back into eyes.
-        let target = showsHarness && !request.entranceReady ? displayedIdentity ?? .moku : request.identity
-        if displayedIdentity == nil || request.immediate {
+        nextMark = nil
+        let target = showsHarness && !request.entranceReady ? destination ?? .eyes : initialMark
+        if destination == nil || request.immediate {
             transitionGeneration &+= 1
             var transaction = Transaction(animation: nil)
             transaction.disablesAnimations = true
             withTransaction(transaction) {
-                displayedIdentity = target
-                if target == request.identity { displayedHarness = harness }
-                settledIdentity = target
+                // Keep the settled side to avoid remounting the resident face.
+                if turning { snapGeneration &+= 1 }
+                if showingBack { back = target; front = nil }
+                else { front = target; back = nil }
+                turning = false
             }
             complete()
-        } else if displayedIdentity == target {
-            if settledIdentity == target { complete() }
+        } else if destination?.identity == target.identity {
+            if !turning { complete() }
         } else {
-            transitionGeneration &+= 1
-            let token = transitionGeneration
-            settledIdentity = nil
-            withAnimation(NativeReadingPageTiming.openingAnimation, completionCriteria: .removed) {
-                displayedIdentity = target
-                displayedHarness = harness
-            } completion: {
-                guard transitionGeneration == token else { return }
-                settledIdentity = target
+            turn(to: target)
+        }
+    }
+
+    private func turn(to target: Mark) {
+        let other = showingBack ? front : back
+        if turning && other?.identity != target.identity {
+            // Both sides still have visible work. Install a third Harness in
+            // the hidden seat only once the current turn has landed.
+            nextMark = target
+            return
+        }
+        if showingBack { front = target } else { back = target }
+        turning = true
+        transitionGeneration &+= 1
+        let token = transitionGeneration
+        withAnimation(animation, completionCriteria: .removed) {
+            showingBack.toggle()
+        } completion: {
+            guard transitionGeneration == token else { return }
+            turning = false
+            if let next = nextMark {
+                nextMark = nil
+                turn(to: next)
+            } else {
+                if showingBack { front = nil } else { back = nil }
                 complete()
             }
         }
@@ -110,23 +138,26 @@ struct NativeMokuDockIdentity<Face: View>: View {
     }
 }
 
-private struct NativeMokuIdentityFlip: ViewModifier, @preconcurrency Animatable {
+private struct NativeMokuIdentityFlip<Front: View, Back: View>: View, @preconcurrency Animatable {
     var progress: CGFloat
-    let incoming: Bool
+    let front: Front
+    let back: Back
     var animatableData: CGFloat {
         get { progress }
         set { progress = newValue }
     }
-    func body(content: Content) -> some View {
-        // Retire the front in the first half, then reveal the back. Both rotate
-        // downward about the same horizontal axis, with no mirrored back face.
-        let visible = min(1, max(0, progress * 2 - 1))
-        // A fully hidden face has no projected pixels. Keep its coordinate
-        // space invertible for SwiftUI geometry and accessibility queries.
-        let degrees = visible > 0 ? (incoming ? 90 : -90) * (1 - visible) : 0
-        content
-            .rotation3DEffect(.degrees(Double(degrees)),
-                axis: (x: 1, y: 0, z: 0), perspective: 0.5)
-            .opacity(visible > 0 ? 1 : 0)
+
+    var body: some View {
+        // A reversal retargets this same angle. At the edge neither face has
+        // projected pixels. Hidden faces keep an invertible coordinate space.
+        let angle = Double(min(1, max(0, progress))) * 180
+        ZStack {
+            front
+                .rotation3DEffect(.degrees(angle < 90 ? -angle : 0), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
+                .opacity(angle < 90 ? 1 : 0)
+            back
+                .rotation3DEffect(.degrees(angle > 90 ? 180 - angle : 0), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
+                .opacity(angle > 90 ? 1 : 0)
+        }
     }
 }

@@ -307,13 +307,46 @@ next recorded frame after visible ink and persist through the hold. The
 explicit Compose visit must acquire focus before ink appears. The marker
 and glyphs share a movie frame and presentation timestamp. Inspect the movie
 for partial glyphs crossing the Harness mark, tail truncation, immediate ink
-retirement on Close and readable draft and Talk after rapid reversal.
+retirement on Close and readable draft and Talk after rapid reversal. The
+mouse-transparent capture panel must retain queued Talk through a click
+posted to a second, hidden window in the same replay process.
 Missing or fully occluded motion cannot establish a visual pass. These frames
 exercise synthetic routes and in-memory drafts without a Runtime or system input.
 After capture, the focused Agent editor sends via Return and commits a new
 draft through AppKit marked text. The fixture returns to Overview and rejects
 the earlier send. It checks the exact restored Agent draft and that Overview
 keeps its own draft and focus.
+
+### Right-column identity return
+
+This offscreen replay mounts the production workspace with a completed Codex
+result in the reader and a running follow-up in its Execution sidecard. It
+clicks the mounted **Close thread** button with mouse events confined to that
+window. A second visit reopens the same Agent during the fold, checks that the
+editor waits for the Harness mark and regains its draft, then presses Close again.
+The peer releases the same follow-up after both returns.
+
+Record into a new directory on macOS with a 2× display, native Codex CLI,
+Python, OpenCV and ffprobe.
+
+```sh
+python3 demos/moku-panel-transition/workspace/identity_return.py /tmp/chief-identity-return
+python3 demos/moku-panel-transition/workspace/check_identity_return.py /tmp/chief-identity-return/close/window.mp4 /tmp/chief-identity-return/close
+python3 demos/moku-panel-transition/workspace/check_identity_return.py /tmp/chief-identity-return/reverse/window.mp4 /tmp/chief-identity-return/reverse --reverse
+```
+
+ScreenCaptureKit records only the nonactivating panel in the replay process.
+The 4096×2450 framing preserves the reference's workspace bounds and 1.8 movie
+pixels per point. The window renders at native layout scale on a 2× display.
+The checks measure the capsule on every encoded frame. Both a foreshortened
+Codex logo and the incoming eyes must be visible during the in-column fold.
+The compact bar must reach center at reading height before it lifts.
+The interrupted visit must stay in its reading column and show the logo,
+eyes and logo again before the final close. Per-frame measurements retain unresolved frames for visual inspection.
+The [close recording](evidence/identity-return/close.mp4) and
+[interrupted return](evidence/identity-return/reverse.mp4) are untrimmed.
+The [capture record](evidence/identity-return/capture.json) identifies their
+production sources, input events, first visible eyes and measured turn into the lift.
 
 ### Production centered return
 

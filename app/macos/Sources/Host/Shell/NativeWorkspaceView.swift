@@ -940,11 +940,6 @@ public struct NativeWorkspaceView: View {
             || (presentation.scene.inputOpen && presentation.dockThreadID == nil && presentation.selected?.typeID != "report.document")
             || presentation.moku.interaction != nil
     }
-    private var sidecardsSuppressed: Bool {
-        presentation.scene.settingsOpen
-            || (presentation.scene.inputOpen && presentation.dockThreadID == nil && presentation.selected?.typeID != "report.document")
-            || presentation.moku.interaction != nil || presentation.messageMotion.active
-    }
 
     public var body: some View {
         NativeOperationNotice(error: model.localizedOperationError,
@@ -1189,7 +1184,7 @@ public struct NativeWorkspaceView: View {
         } else if let selected = presentation.selected, let thread = model.catalog.thread(selected.threadID) {
             NativeAgentThreadWorkspace(harnessHost: model.harnessHost, thread: thread, registry: model.plugins.sidecards,
                 executionDisabled: !model.executionAvailable(thread), readingTarget: presentation.readingTarget,
-                sidecardsSuppressed: sidecardsSuppressed,
+                sidecardsSuppressed: applicationSuppressed,
                 enabledSidecardIDs: enabledSidecards, services: presentation.sidecardServices(),
                 onBack: { if presentation.navigationRouteID == routeID { presentation.backFromReader() } },
                 onFollowUpVisibilityChange: { presentation.setFollowUpVisible($0) },

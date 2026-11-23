@@ -98,8 +98,9 @@ with a 420ms ease-in/ease-out curve rather than SwiftUI layout animation. Reader
 preparation cannot stall submitted travel frames. Both axes share sampled
 replacement geometry, completion fencing and moving-control hit protection;
 shell sizing and composer expansion remain owned by SwiftUI.
-Rapid replacement retains the current mark during travel; the same Harness
-reuses a settled or in-flight flip. Return keeps the existing collapse path.
+Rapid replacement retains the current mark during travel. The same Harness
+reuses a settled or in-flight flip. Reopening during a return waits for the
+Harness mark to settle before the editor expands, even with the same draft.
 An inactive scene or a hidden window settles the mark immediately,
 while reading/content readiness still gates input. See the
 [entrance contract](../../../../../design/reading.md).
@@ -159,8 +160,9 @@ end the handoff.
 `inputLeaving` keeps the ordinary closing editor mounted for 420ms to retain
 its selection. Returning from an Agent conversation to Overview closes the reading
 panel's input gate while the workspace still owns the outgoing draft. The
-composer and its directory suggestions hide at that point. The shell starts
-contracting in its reading column on the same update, easing out over the
+composer and its directory suggestions hide at that point. The accepted close
+starts the Harness-to-eyes flip, including while Overview prepares the return.
+The shell starts contracting in its reading column on the same update, easing out over the
 420ms return. Route release removes the row without a SwiftUI exit fade. Reopening
 restores the active draft and its selection. Talk has independent presentation
 and can become readable when input closes. The shell and the single identity
@@ -173,9 +175,10 @@ The retiring shell keeps its bottom center in the reading column. The same
 interpolated frame sizes the glass and releases the column when it reaches
 the compact size, even when a Super Thread withdraws its execution marker or
 releases the route during the fold. The compact Dock returns horizontally at
-the reading height and lifts at the workspace center.
-An already compact bar can travel immediately. Reduce Motion settles the return
-without a fold or travel delay. Resize preserves the native editor and the
+the reading height and lifts at the workspace center. If the same Agent reader
+reopens during its fold, its input expands again under the selected execution.
+An already compact bar can travel immediately. Reduce Motion settles the
+returning mark, fold and travel immediately. Resize preserves the native editor and the
 shell fits the viewport.
 The [Agent entrance replay](../../../../../demos/moku-panel-transition/README.md#agent-entrance-replay)
 checks the settled text origin, focus and return. The
@@ -311,7 +314,7 @@ their trace rendering.
 
 The eyes and their Compose hit target sit at the horizontal center of the Note footer. Stop remains on the trailing edge while Chief runs. Opening Chief input acknowledges the Dock’s reply reminder. The Note body stays above the Dock control row. Its header scrolls with the body in short viewports.
 
-[NativeMokuTalk](NativeMokuTalk.swift) shows the latest valid `talk` or `create_thread` operation. Talk is selectable text in a four-line viewport with scrolling for overflow. Its trailing control seat stays reserved for the whole message so retiring Stop does not shift centered text or change its wrapping. It does not edit the draft or grab focus. Clicking outside the capsule dismisses the presented notification without consuming the click, including clicks in another window or app; clicks and scrolling inside retain it. The cross-app mouse observer is removed when the notification is hidden or the Dock unmounts. Dismissed/presented operation identity survives refresh and remount within its scene; a notification covered before presentation waits until it can actually be shown.
+[NativeMokuTalk](NativeMokuTalk.swift) shows the latest valid `talk` or `create_thread` operation. Talk is selectable text in a four-line viewport with scrolling for overflow. Its trailing control seat stays reserved for the whole message so retiring Stop does not shift centered text or change its wrapping. It does not edit the draft or grab focus. Clicking outside the capsule dismisses the presented notification without consuming the click, including clicks in another window or app; clicks and scrolling inside retain it. Only windows accepting mouse input observe outside-window presses. The cross-app mouse observer is removed when the notification is hidden or the Dock unmounts. Dismissed/presented operation identity survives refresh and remount within its scene; a notification covered before presentation waits until it can actually be shown.
 
 Talk uses symmetric 64-point insets around its centered selectable text viewport,
 reserving the persistent eye/control seats without shifting prose. No Talk clipping/transcript
@@ -647,10 +650,11 @@ and accessibility hit testing. A 420ms horizontal-axis flip retires the old mark
 in its first half and reveals the new mark in its second half. Changing Harness
 flips to the new mark; changing Threads within the same Harness keeps it steady.
 Overview and Report/Git restore Moku's theme. Settings uses the resident eyes.
-SwiftUI retains both marks through the flip. A fully transparent mark uses an
-identity transform so its local coordinate space stays invertible. A visible
-mark follows the original perspective and angle. The current visit alone can
-admit the editor when the flip has settled.
+Both marks share one animated angle. Reopening during the fold reverses that
+angle, so only the side facing the viewer can draw. A hidden side uses an
+identity transform to keep its coordinate space invertible. If a third Harness
+is requested mid-turn, its artwork takes the hidden seat once the turn lands.
+The current visit alone can admit the editor when its mark has settled.
 The logo is separate from placeholder/draft text and never replaces the editor.
 The window owns persisted drafts (text, directory mentions and attachments) per
 Thread for ordinary current input and per exact Thread/execution for fixed

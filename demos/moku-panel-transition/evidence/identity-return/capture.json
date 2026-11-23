@@ -1,0 +1,289 @@
+{
+  "recording": "Full, untrimmed ScreenCaptureKit recording of the nonactivating replay panel, HEVC",
+  "scenePoints": [
+    2164,
+    1250
+  ],
+  "backingScale": 2,
+  "moviePixels": [
+    4096,
+    2450
+  ],
+  "moviePixelsPerPoint": 1.8,
+  "requestedFramesPerSecond": 60,
+  "macOS": "26.5.1",
+  "configuration": "SwiftPM Debug",
+  "captureCommit": "14410e441d00ddaeaf534608c69194887996f7cc",
+  "productionBase": "d39ee2a3d654e700a307d5af3e0bcb22c8f3eb59",
+  "productionSourceSHA256": "8646418e4c8610ebf2f663b500aca89dc449871a36d5a15ea3489a8eec0915af",
+  "modifiedProductionBlobs": {
+    "app/macos/Sources/Host/MokuScene/NativeMokuDock.swift": "8e39a768f8040492cac7e04271d6c3a8915c4009",
+    "app/macos/Sources/Host/MokuScene/NativeMokuDockIdentity.swift": "12e28d40bb05fea0b4bf315b66c2d78bd443cbae",
+    "app/macos/Sources/Host/MokuScene/NativeMokuOutsideClick.swift": "65d6754f901baeed49716ec1aebcd18053812d4d",
+    "app/macos/Sources/Host/MokuScene/NativeMokuSceneState.swift": "f65fbf70b05bb74153debefc1546de4bb36941c8",
+    "app/macos/Sources/Host/Shell/NativeWorkspaceView.swift": "23f793a350d5155a7343e48c702a69541f4a3458",
+    "app/macos/Sources/Host/Sidecards/NativeAgentThreadWorkspace.swift": "b0b2dc1ba6b07b727d1dfaee8532d64e74210921",
+    "app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingPageStack.swift": "073d0cabd1aa2712c530929e25dddc76fdc38e99"
+  },
+  "captureHostSHA256": "0e401eabc7eb4d975544faa7f22f7db68a4cce86c3ecde095c8e46880aed6218",
+  "chiefSHA256": "d22ebbb4d9d90102fcdc5f1cbfa8d7fa210443638e635499b726e848c3931d8a",
+  "runtimeSHA256": "93d952f3767ca4bc551f1023ce1d9202f2e77f2cb37af0e480253604bb43238e",
+  "profile": "Private Go runtime, native Codex CLI and deterministic loopback Responses peer",
+  "action": "Window-local AppKit click on the mounted Close thread button; the interrupted visit reopens the same Agent",
+  "followupStatusDuringBothReturns": "running",
+  "sameFollowupStatusAfterBothReturns": "completed",
+  "reference": {
+    "movieSHA256": "a05a731f84bc6065d744018f82c81f47248f9331623ff558b42a69a084ad526d",
+    "frames": 299,
+    "tiltedLogoDuringFold": [],
+    "firstEyes": {
+      "frame": 145,
+      "pts": 2.883333,
+      "width": 296,
+      "center": 2437.5,
+      "top": 2201,
+      "face": "eyes",
+      "inkLeft": 2409.6,
+      "inkTop": 2227.0,
+      "inkWidth": 30,
+      "inkHeight": 15
+    },
+    "compactWidthPx": 296
+  },
+  "agentEntrance": {
+    "events": 58,
+    "encodedPhases": 45,
+    "peerWindowPressRetainedTalk": true,
+    "checker": "check_frames.py",
+    "capture": "--capture-agent-entrance"
+  },
+  "recordings": {
+    "close": {
+      "movie": "close.mp4",
+      "movieSHA256": "e8226600c1de7639d5719b0593efbb919884e3cc830c235d4b8c8efe24cb1748",
+      "measurements": "close.csv",
+      "events": [
+        {
+          "action": "press Close thread",
+          "barCenter": 1755.5,
+          "barWidth": 560,
+          "columnFrame": "{{1423, 58}, {665, 1104}}",
+          "columnOwned": true,
+          "inputAdmitted": true,
+          "inputOpen": true,
+          "inputReady": true,
+          "readerReturning": false,
+          "readerSelected": true,
+          "seconds": 0.46284904167987406
+        }
+      ],
+      "foregroundUnchanged": true,
+      "check": {
+        "passed": true,
+        "tiltedLogoDuringFold": [
+          35,
+          36,
+          37
+        ],
+        "revealingEyesDuringFold": [
+          39,
+          41,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ],
+        "firstEyes": {
+          "frame": 39,
+          "pts": 0.801667,
+          "width": 600,
+          "center": 3258.5,
+          "top": 2192,
+          "face": "eyes",
+          "inkLeft": 3084.0,
+          "inkTop": 2227.0,
+          "inkWidth": 25,
+          "inkHeight": 4
+        },
+        "pathFirstFrame": 0,
+        "path": {
+          "frames": 123,
+          "openWidthPx": 1001,
+          "compactWidthPx": 296,
+          "intermediateWidths": 21,
+          "maxWidthStepPx": 69,
+          "maxFoldCenterDriftPx": 0.5,
+          "maxRightwardReversalPx": 1.0,
+          "reversalFrame": 35,
+          "corner": {
+            "frame": 85,
+            "x": 2047.5,
+            "top": 2203.0,
+            "sourceX": 3259.0,
+            "sourceTop": 2203.0,
+            "targetX": 2047.5,
+            "targetTop": 2174.0,
+            "firstLiftFrame": 93,
+            "glideDriftYPx": 0.0,
+            "liftDriftXPx": 1.0,
+            "intermediateHeights": 11
+          },
+          "errors": []
+        },
+        "frameErrors": []
+      }
+    },
+    "reverse": {
+      "movie": "reverse.mp4",
+      "movieSHA256": "ce3226d2f7424ea31e215b8787ccd7c7783304bd1ff5cdc3ede7b41785775013",
+      "measurements": "reverse.csv",
+      "events": [
+        {
+          "action": "press Close thread",
+          "barCenter": 1755.5,
+          "barWidth": 560,
+          "columnFrame": "{{1423, 58}, {665, 1104}}",
+          "columnOwned": true,
+          "inputAdmitted": true,
+          "inputOpen": true,
+          "inputReady": true,
+          "readerReturning": false,
+          "readerSelected": true,
+          "seconds": 0.4787993333302438
+        },
+        {
+          "action": "reopen Agent during fold",
+          "barCenter": 1755.5,
+          "barWidth": 168,
+          "columnFrame": "{{1423, 58}, {665, 1104}}",
+          "columnOwned": true,
+          "inputAdmitted": true,
+          "inputOpen": true,
+          "inputReady": false,
+          "readerReturning": true,
+          "readerSelected": true,
+          "seconds": 0.810289166867733
+        },
+        {
+          "action": "reopened editor",
+          "barCenter": 1755.5,
+          "barWidth": 560,
+          "columnFrame": "{{1423, 58}, {665, 1104}}",
+          "columnOwned": true,
+          "inputAdmitted": true,
+          "inputOpen": true,
+          "inputReady": true,
+          "readerReturning": false,
+          "readerSelected": true,
+          "seconds": 1.8118420417886227
+        },
+        {
+          "action": "press Close thread again",
+          "barCenter": 1755.5,
+          "barWidth": 560,
+          "columnFrame": "{{1423, 58}, {665, 1104}}",
+          "columnOwned": true,
+          "inputAdmitted": true,
+          "inputOpen": true,
+          "inputReady": true,
+          "readerReturning": false,
+          "readerSelected": true,
+          "seconds": 2.089285166701302
+        }
+      ],
+      "foregroundUnchanged": true,
+      "check": {
+        "passed": true,
+        "facesBeforeReopened": [
+          "logo",
+          "eyes",
+          "logo"
+        ],
+        "maxColumnDriftBeforeReopenedPx": 2.0,
+        "narrowestFrame": {
+          "frame": 53,
+          "pts": 1.048333,
+          "width": 296,
+          "center": 3258.5,
+          "top": 2203,
+          "face": "eyes",
+          "inkLeft": 3232.4,
+          "inkTop": 2229.0,
+          "inkWidth": 28,
+          "inkHeight": 14
+        },
+        "tiltedLogoBeforeReopened": [
+          36,
+          37,
+          38,
+          39,
+          55,
+          56,
+          57
+        ],
+        "finalClose": {
+          "passed": true,
+          "tiltedLogoDuringFold": [
+            120,
+            121,
+            122,
+            123
+          ],
+          "revealingEyesDuringFold": [
+            125,
+            128,
+            129,
+            130,
+            131,
+            132,
+            133,
+            134,
+            135,
+            136,
+            137
+          ],
+          "firstEyes": {
+            "frame": 125,
+            "pts": 2.408333,
+            "width": 593,
+            "center": 3259.0,
+            "top": 2192,
+            "face": "eyes",
+            "inkLeft": 3086.2,
+            "inkTop": 2227.0,
+            "inkWidth": 26,
+            "inkHeight": 4
+          },
+          "pathFirstFrame": 88,
+          "path": {
+            "frames": 120,
+            "openWidthPx": 999,
+            "compactWidthPx": 296,
+            "intermediateWidths": 20,
+            "maxWidthStepPx": 102,
+            "maxFoldCenterDriftPx": 0.5,
+            "maxRightwardReversalPx": 1.0,
+            "reversalFrame": 33,
+            "corner": {
+              "frame": 82,
+              "x": 2047.5,
+              "top": 2203.0,
+              "sourceX": 3259.0,
+              "sourceTop": 2203.0,
+              "targetX": 2047.5,
+              "targetTop": 2174.0,
+              "firstLiftFrame": 89,
+              "glideDriftYPx": 0.0,
+              "liftDriftXPx": 1.0,
+              "intermediateHeights": 12
+            },
+            "errors": []
+          }
+        },
+        "frameErrors": []
+      }
+    }
+  }
+}
