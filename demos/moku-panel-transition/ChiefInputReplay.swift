@@ -11,6 +11,12 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
 
 @MainActor func replayChiefInput() async throws {
     let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
+    if CommandLine.arguments.contains("--expect-unavailable-sounds") {
+        let resources = URL(fileURLWithPath: "/System/iOSSupport/System/Library/PrivateFrameworks/UIKitCore.framework/Resources")
+        for file in ["key_press_click.caf", "key_press_delete.caf"] {
+            try require((try? Data(contentsOf: resources.appendingPathComponent(file))) == nil, "Expected unavailable " + file)
+        }
+    }
     let hostDirectory = try JSONDecoder().decode(RuntimeHostDirectory.self, from: Data(
         #"{"reference":{"hostID":"fixture-host","path":"/fixture/Old directory"},"entries":[]}"#.utf8))
     let storage = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -48,7 +54,7 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
     let scene = NativeMokuSceneState()
     scene.setComposerContext(draft, opensInput: true, autofocus: false)
     let panel = ComposerReplayPanel(contentRect: NSRect(x: 100, y: 100, width: 720, height: 400),
-        styleMask: [.titled, .nonactivatingPanel], backing: .buffered, defer: false)
+        styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     panel.isReleasedWhenClosed = false
     panel.ignoresMouseEvents = true
     var sent: [JSONValue] = []
@@ -63,7 +69,12 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
         }, onSend: send, onCancel: {})
     } settings: { EmptyView() }
     panel.contentView = NSHostingView(rootView: dock.environment(\.scenePhase, .active).environment(\.locale, Locale(identifier: "en")))
+    guard let edge = NSScreen.screens.map({ $0.frame.maxX }).max() else {
+        throw ChiefInputReplayFailure(description: "Missing screen for offscreen fixture")
+    }
+    panel.setFrameOrigin(CGPoint(x: edge + 20, y: 120))
     panel.orderBack(nil)
+    try require(NSScreen.screens.allSatisfy { !$0.frame.intersects(panel.frame) }, "Typing replay must stay offscreen")
     defer { panel.close() }
 
     let content = panel.contentView!
@@ -78,6 +89,7 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
         throw ChiefInputReplayFailure(description: "\(surface) did not mount its native editor")
     }
     let editor = try await focusEditor()
+    try replayTypingFeedback(editor, draft: draft, panel: panel)
     editor.keyDown(with: key("@", code: 19, modifiers: .shift, unmodified: "2", panel: panel))
     try await Task.sleep(for: .milliseconds(500))
     try require(editor.string == "@" && draft.text == "@" && catalogLoads == 0 && scene.dockMentionHitRect == nil
@@ -199,6 +211,39 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
     print("Passed persisted Chief draft and explicit host directory serialization.")
 }
 
+@MainActor private func replayTypingFeedback(_ view: NSTextView, draft: NativeComposerDraft, panel: NSPanel) throws {
+    guard let editor = view as? ComposerTextView, let play = editor.onTypingKey else {
+        throw ChiefInputReplayFailure(description: "The mounted Chief Bar has no keyboard feedback")
+    }
+    var keys: [NativeComposerTypingKey] = []
+    editor.onTypingKey = { keys.append($0); play($0) }
+    defer { editor.onTypingKey = play }
+
+    editor.keyDown(with: key("a", code: 0, panel: panel))
+    editor.keyDown(with: key("a", code: 0, repeating: true, panel: panel))
+    editor.keyDown(with: key("\u{7F}", code: 51, panel: panel))
+    try require(draft.text == "a" && keys == [.character, .character, .delete], "Typing, repeat or Backspace feedback")
+
+    // Exercise NSTextInputClient's marked-text lifecycle without changing the user's input source.
+    editor.setMarkedText("p", selectedRange: NSRange(location: 1, length: 0), replacementRange: editor.selectedRange())
+    editor.keyDown(with: key("i", code: 34, panel: panel))
+    let composing = NSRange(location: 1, length: editor.string.utf16.count - 1)
+    editor.setMarkedText("pin", selectedRange: NSRange(location: 3, length: 0), replacementRange: composing)
+    editor.insertText("拼", replacementRange: editor.markedRange())
+    try require(!editor.hasMarkedText() && draft.text == "a拼" && keys == [.character, .character, .delete, .character],
+        "Marked text and its commit must share the single composing key-down")
+
+    draft.text = "restore"
+    editor.setSelectedRange(NSRange(location: 0, length: 0))
+    editor.keyDown(with: key("\u{F728}", code: 117, modifiers: .function, panel: panel))
+    try require(draft.text == "estore" && keys == [.character, .character, .delete, .character, .delete],
+        "Draft restoration or forward Delete feedback")
+    editor.keyDown(with: key("\u{F703}", code: 124, modifiers: .function, panel: panel))
+    draft.text = ""
+    try require(editor.string.isEmpty && keys.count == 5, "Navigation or programmatic clearing played a sound")
+    print("Passed Chief Bar keyboard feedback: ordinary, repeat, both deletes, IME callbacks, navigation and draft updates.")
+}
+
 private func textInput(_ text: String) -> JSONValue {
     .object(["parts": .array([.object(["kind": .string("text"), "text": .text(text)])])])
 }
@@ -208,10 +253,10 @@ private func require(_ condition: Bool, _ failure: String) throws {
 }
 
 @MainActor private func key(_ characters: String, code: UInt16, modifiers: NSEvent.ModifierFlags = [],
-                            unmodified: String? = nil, panel: NSPanel) -> NSEvent {
+                            unmodified: String? = nil, repeating: Bool = false, panel: NSPanel) -> NSEvent {
     NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers, timestamp: 0,
         windowNumber: panel.windowNumber, context: nil, characters: characters,
-        charactersIgnoringModifiers: unmodified ?? characters, isARepeat: false, keyCode: code)!
+        charactersIgnoringModifiers: unmodified ?? characters, isARepeat: repeating, keyCode: code)!
 }
 
 @MainActor private func find<T: NSView>(_ view: NSView, _ type: T.Type, matching: (T) -> Bool) -> T? {

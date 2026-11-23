@@ -27,6 +27,7 @@ struct NativeComposerEditor: NSViewRepresentable {
     var onKeyDown: ((NativeComposerKeyEvent) -> Bool)?
     var onSubmit: () -> Void
     var onEscape: (() -> Void)?
+    var onTypingKey: ((NativeComposerTypingKey) -> Void)?
     var submitOnReturn = false
     var emphasizedInsertionPoint = false
     var onPaste: (([NSItemProvider], NSRange) -> Void)? = nil
@@ -103,6 +104,7 @@ struct NativeComposerEditor: NSViewRepresentable {
                 editor.setSelectedRange(coordinator.clamped(oldSelection))
             }
         }
+        editor.onTypingKey = active ? onTypingKey : nil
         editor.isEditable = !unavailable
         editor.isSelectable = !unavailable
         // A remounted editor restores the draft before applying the caret saved
@@ -278,6 +280,7 @@ struct NativeComposerEditor: NSViewRepresentable {
     var focusChanged: (() -> Void)?
     var windowChanged: (() -> Void)?
     var handleKey: ((NSEvent) -> Bool)?
+    var onTypingKey: ((NativeComposerTypingKey) -> Void)?
     var pasteAttachments: (([NSItemProvider], NSRange) -> Void)?
     var composerTextInsets = EdgeInsets() {
         didSet {
@@ -330,7 +333,10 @@ struct NativeComposerEditor: NSViewRepresentable {
         } else { super.paste(sender) }
     }
     override func keyDown(with event: NSEvent) {
-        if hasMarkedText() || handleKey?(event) != true { super.keyDown(with: event) }
+        if !hasMarkedText(), handleKey?(event) == true { return }
+        // Count the key here, before AppKit can fan it out into several IME edits.
+        if let onTypingKey, let key = NativeComposerTypingKey(event) { onTypingKey(key) }
+        super.keyDown(with: event)
     }
     override func becomeFirstResponder() -> Bool {
         let accepted = super.becomeFirstResponder()
@@ -341,5 +347,22 @@ struct NativeComposerEditor: NSViewRepresentable {
         let accepted = super.resignFirstResponder()
         if accepted { focusChanged?() }
         return accepted
+    }
+}
+
+public enum NativeComposerTypingKey: Sendable {
+    case character, delete
+
+    init?(_ event: NSEvent) {
+        guard event.modifierFlags.intersection([.command, .control]).isEmpty else { return nil }
+        switch event.keyCode {
+        case 51, 117: self = .delete // Backspace and forward Delete (including Fn-Delete).
+        default:
+            guard let text = event.characters, !text.isEmpty,
+                  text.unicodeScalars.allSatisfy({
+                      !CharacterSet.controlCharacters.contains($0) && !(0xF700...0xF8FF).contains($0.value)
+                  }) else { return nil }
+            self = .character
+        }
     }
 }

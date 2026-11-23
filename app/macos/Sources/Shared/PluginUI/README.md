@@ -752,6 +752,8 @@ Remote Markdown images use URLSession HTTP caching and revalidation, with no pro
 
 ## Cards, composer and forms
 
+The editor can report printable and delete key-downs to its owner after composer shortcuts have had a chance to consume them. Only the active Chief Bar opts into [typing feedback](../../Host/MokuScene/README.md#dock-and-composer).
+
 The native composer applies a focus request once to its attached AppKit
 editor when editing is available. That window owns its first responder and
 keeps its current key and activation state. Focus changes reported by AppKit

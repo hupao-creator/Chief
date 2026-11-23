@@ -224,7 +224,7 @@ struct NativeMokuComposerInput: View {
             selectionRequest: selectionRequest, initialSelection: initialSelection, preservesSelection: true, onEditorStateChange: { state in
                 updateComposition(state.composing)
                 onEditorStateChange?(state)
-            }, onKeyDown: onKeyDown, submitOnReturn: true, emphasizedInsertionPoint: true)
+            }, onKeyDown: onKeyDown, onTypingKey: NativeMokuTypingSound.play, submitOnReturn: true, emphasizedInsertionPoint: true)
             .help(editorHelp)
     }
     private func updateComposition(_ active: Bool) {

@@ -24,6 +24,20 @@ Chief communicates through the Dock. Note links open ordinary Agent executions o
 
 ## Dock and composer
 
+The resident Dock editor plays Apple keyboard clicks for printable keys and the
+delete sound for Backspace and forward Delete. Each delivered key-down,
+including auto-repeat, can request one sound. IME updates, pastes, draft
+restoration and shortcut handling do not independently request sound.
+
+On Apple Silicon macOS 26 or later, [the player](NativeMokuTypingSound.swift)
+uses public System Sound Services with the installed iOSSupport UIKitCore
+resource URLs. The click and delete CAFs on macOS 26.5.1 (25F80) match their
+iOS 17.2 and 26.5 simulator counterparts by SHA-256. Only the two verified
+digests are accepted. The paths are OS implementation details. A missing,
+changed, unreadable or unregistrable file silences that key category.
+Registration and playback requests run off the input thread. Playback uses
+the user's macOS UI sound settings. Chief ships no audio from iOSSupport.
+
 Dock composer placeholders stay on one line and truncate at the tail.
 The native draft editor remains multiline.
 The composer layout reserves attachment/action seats and the resident eye seat

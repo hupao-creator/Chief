@@ -334,7 +334,12 @@ Keep the executable digest, revision, displayed layout, input backend and movie.
 
 Run `--replay-chief-input` under the same shared desktop verification lease to
 check the [Chief composer contract](../../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer).
-The nonactivating panel mounts the production Overview Dock. It delivers local AppKit key events, pastes through a private
+The 1× nonactivating panel mounts the production Overview Dock outside all displays. In a separate process with read access denied to both keyboard CAFs, add `--expect-unavailable-sounds` to confirm the missing-resource precondition and run the same input checks. It counts and forwards
+the editor's keyboard sound requests for typing, auto-repeat and both delete keys.
+It delivers an input key while marked text is active, updates and commits the marked
+range through AppKit, and checks that composing callbacks, navigation and draft
+restoration add no requests. This exercises the native client callbacks without
+selecting a system IME or measuring speaker output. It delivers local AppKit key events, pastes through a private
 pasteboard, edits the text and submits through Return. The replay checks that
 typing `@` opens no completion UI and that bare `@` and messages with and without
 `@` reach the submission callback as exact text parts. A reopened draft sends a saved catalog path as plain text. The replay
