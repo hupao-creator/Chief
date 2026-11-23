@@ -778,6 +778,16 @@ switch focus to an Overview filter and verify that the Dock leaves it there.
 Check that Escape and outside click still close the bottom input. A Compose
 shortcut sent while another app is foreground belongs to that app.
 
+For visible-caret latency, record three untyped Compose openings per build
+in a populated, key Overview window. Use the same window size, appearance,
+capture scale and input driver for both builds. On each video, mark the first
+frame where both shell edges are within one pixel of their settled positions,
+then locate the first visible insertion stroke at the editor's text origin.
+Use frame presentation timestamps. Record both times and the signed difference.
+A caret already visible at arrival has zero post-expansion wait. Keep the
+preceding frames, the window recording and the separate typing/focus
+observations with each build's identity.
+
 This procedure uses the real workspace menu and system keyboard input. The
 [Agent entrance replay](../../demos/moku-panel-transition/README.md#agent-entrance-replay)
 separately drives the Compose intent and the responder chain of a non-key

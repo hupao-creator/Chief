@@ -338,9 +338,16 @@ struct NativeComposerEditor: NSViewRepresentable {
         if let onTypingKey, let key = NativeComposerTypingKey(event) { onTypingKey(key) }
         super.keyDown(with: event)
     }
+    override func viewWillDraw() {
+        super.viewWillDraw()
+        showInitialComposerCaret()
+    }
     override func becomeFirstResponder() -> Bool {
         let accepted = super.becomeFirstResponder()
-        if accepted { focusChanged?() }
+        if accepted {
+            if emphasizedInsertionPoint { needsDisplay = true }
+            focusChanged?()
+        }
         return accepted
     }
     override func resignFirstResponder() -> Bool {

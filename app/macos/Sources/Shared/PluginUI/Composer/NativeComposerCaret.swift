@@ -20,15 +20,35 @@ import SwiftUI
         super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
     }
 
+    private var canShowCaret: Bool {
+        shouldDrawInsertionPoint && window?.isKeyWindow == true
+            && window?.occlusionState.contains(.visible) == true && !isHiddenOrHasHiddenAncestor
+            && selectedRanges.count == 1 && selectedRange().length == 0
+    }
+
+    // The editor can receive focus before its first layout. At paint time AppKit
+    // can locate the actual insertion, even if its blink timer is in the off phase.
+    func showInitialComposerCaret() {
+        guard emphasizedInsertionPoint, !caret.hasFrame, !hasMarkedText(), canShowCaret,
+              let window, window.firstResponder === self else { return }
+        let screenRect = firstRect(forCharacterRange: selectedRange(), actualRange: nil)
+        guard screenRect.height > 0 else { return }
+        let insertion = convert(window.convertFromScreen(screenRect), from: nil)
+        // TextKit returns a zero-width insertion origin. Its painted stroke is
+        // centered on that column, with the line's top on a whole view point.
+        let rect = NSRect(x: insertion.minX.rounded() - 0.5, y: floor(insertion.minY),
+                          width: 1, height: insertion.height)
+        guard rect.intersects(visibleRect) else { return }
+        caret.show(at: rect, in: self, color: emphasizedInsertionPointColor)
+    }
+
     public override func drawInsertionPoint(in rect: NSRect, color: NSColor, turnedOn flag: Bool) {
         guard emphasizedInsertionPoint, !hasMarkedText() else {
             caret.remove()
             super.drawInsertionPoint(in: rect, color: color, turnedOn: flag)
             return
         }
-        guard shouldDrawInsertionPoint, window?.isKeyWindow == true,
-              window?.occlusionState.contains(.visible) == true,
-              selectedRange().length == 0, !isHiddenOrHasHiddenAncestor, rect.intersects(visibleRect) else {
+        guard canShowCaret, rect.intersects(visibleRect) else {
             caret.remove()
             return
         }
@@ -84,7 +104,7 @@ import SwiftUI
     private let glow = CALayer()
     private var glowHeight: CGFloat = 0
     private var glowScale: CGFloat = 0
-    private var hasFrame = false
+    private(set) var hasFrame = false
 
     init() {
         layer.name = "composer-insertion-point"

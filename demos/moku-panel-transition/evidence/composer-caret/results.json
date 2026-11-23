@@ -1,0 +1,223 @@
+{
+  "platform": "macOS 26.5.1 (25F80), Apple Silicon, scale 2, 60 Hz display",
+  "sourceRecording": {
+    "sha256": "d7484e76d96268be5c7b352ae812f0bcf402f58ad4c86451ee8a70e679af0bde",
+    "visits": [
+      {
+        "visit": 1,
+        "settledFrame": 34,
+        "settledPTS": 1.0,
+        "caretFrame": 56,
+        "caretPTS": 1.566667,
+        "signedMs": 566.67,
+        "postExpansionMs": 566.67
+      },
+      {
+        "visit": 2,
+        "settledFrame": 175,
+        "settledPTS": 4.333333,
+        "caretFrame": 200,
+        "caretPTS": 4.916667,
+        "signedMs": 583.33,
+        "postExpansionMs": 583.33
+      }
+    ]
+  },
+  "runs": {
+    "baseline": {
+      "app": {
+        "commit": "4e711246a0110a8d6775a4b155cd4d0d7891f1de",
+        "sha256": "a7ede3240eed969a4c286dccb3007223b9a93cb80e2d2b410f42695d0c006ab8",
+        "productionSourceSHA256": "ec6d4c4734091a03c6eb257fe86785c02133e435c099e9ba9d9124a897d101e9",
+        "command": [
+          "xcrun",
+          "swift",
+          "build",
+          "--package-path",
+          "app/macos",
+          "-Xswiftc",
+          "-warnings-as-errors"
+        ]
+      },
+      "runtime": "1dbf337f931124a6e24e44bb87a1dfb7b5127436b879a16f4f4f39fa47c27d69",
+      "driver": "cd268d12a5f1696034549394d2c1dc88fba69be71043bc8597304830dae5e34f",
+      "collector": "7e4a61a11c0414c9908d3ed76aa8a6ff153db6e4dcc3b91f55e4f9964d2468d7",
+      "pid": 75217,
+      "runtimePID": 75004,
+      "windowID": 107557,
+      "bounds": {
+        "x": 100,
+        "y": 56,
+        "width": 1180,
+        "height": 760
+      },
+      "display": {
+        "height": 1520,
+        "width": 2360,
+        "window": 107557,
+        "pid": 75217
+      },
+      "rawWindowVideoSHA256": "76b07ad0c704fda163b654d57ceb56deab9ce7b22d4dbadce72abc8fb1953a37",
+      "cleanup": true,
+      "visits": [
+        {
+          "visit": 1,
+          "settledFrame": 89,
+          "settledPTS": 1.64,
+          "caretFrame": 119,
+          "caretPTS": 2.25,
+          "signedMs": 610.0,
+          "postExpansionMs": 610.0
+        },
+        {
+          "visit": 2,
+          "settledFrame": 255,
+          "settledPTS": 4.741667,
+          "caretFrame": 290,
+          "caretPTS": 5.355,
+          "signedMs": 613.33,
+          "postExpansionMs": 613.33
+        },
+        {
+          "visit": 3,
+          "settledFrame": 445,
+          "settledPTS": 8.081667,
+          "caretFrame": 479,
+          "caretPTS": 8.675,
+          "signedMs": 593.33,
+          "postExpansionMs": 593.33
+        }
+      ],
+      "postExpansionMedianMs": 610.0
+    },
+    "fixed": {
+      "app": {
+        "commit": "47ba480a0a4dd4374db8c7083ac26ce4d54d6106",
+        "sha256": "97e0ed0c606ee53a4b4bd34dfa5aa8208a520f09a147cc58bf53c60a8629dc55",
+        "productionSourceSHA256": "f2b298db92c33946fe96601e7a5d87d78959c6ec9785dd2ea2ab7c1e3b201b93",
+        "command": [
+          "xcrun",
+          "swift",
+          "build",
+          "--package-path",
+          "app/macos",
+          "-Xswiftc",
+          "-warnings-as-errors"
+        ]
+      },
+      "runtime": "b73b029f6436cbbc8acc2365c6b7807a7d29e77c7635e5330d341c4d4dabe154",
+      "driver": "cd268d12a5f1696034549394d2c1dc88fba69be71043bc8597304830dae5e34f",
+      "collector": "7e4a61a11c0414c9908d3ed76aa8a6ff153db6e4dcc3b91f55e4f9964d2468d7",
+      "pid": 6694,
+      "runtimePID": 6497,
+      "windowID": 107921,
+      "bounds": {
+        "x": 100,
+        "y": 56,
+        "width": 1180,
+        "height": 760
+      },
+      "display": {
+        "height": 1520,
+        "pid": 6694,
+        "window": 107921,
+        "width": 2360
+      },
+      "rawWindowVideoSHA256": "16d6dd87eac93cf5019af4d84081d4e2a4e4b1e4064cf510850400bfd604c784",
+      "cleanup": true,
+      "visits": [
+        {
+          "visit": 1,
+          "settledFrame": 90,
+          "settledPTS": 1.721667,
+          "caretFrame": 75,
+          "caretPTS": 1.446667,
+          "signedMs": -275.0,
+          "postExpansionMs": 0
+        },
+        {
+          "visit": 2,
+          "settledFrame": 265,
+          "settledPTS": 4.981667,
+          "caretFrame": 250,
+          "caretPTS": 4.701667,
+          "signedMs": -280.0,
+          "postExpansionMs": 0
+        },
+        {
+          "visit": 3,
+          "settledFrame": 451,
+          "settledPTS": 8.365,
+          "caretFrame": 436,
+          "caretPTS": 8.098333,
+          "signedMs": -266.67,
+          "postExpansionMs": 0
+        }
+      ],
+      "postExpansionMedianMs": 0
+    }
+  },
+  "focus": {
+    "opened-0": {
+      "AXValue": "",
+      "AXIdentifier": "",
+      "AXDescription": "",
+      "AXRole": "AXTextArea"
+    },
+    "opened-1": {
+      "AXDescription": "",
+      "AXValue": "",
+      "AXRole": "AXTextArea",
+      "AXIdentifier": ""
+    },
+    "opened-2": {
+      "AXDescription": "",
+      "AXIdentifier": "",
+      "AXRole": "AXTextArea",
+      "AXValue": ""
+    },
+    "immediate": {
+      "AXRole": "AXTextArea",
+      "AXDescription": "",
+      "AXValue": "a",
+      "AXIdentifier": ""
+    },
+    "rapid": {
+      "AXIdentifier": "",
+      "AXDescription": "",
+      "AXValue": "ab",
+      "AXRole": "AXTextArea"
+    },
+    "closed": {
+      "AXIdentifier": "workspace",
+      "AXRole": "AXWindow",
+      "AXValue": "",
+      "AXDescription": ""
+    },
+    "mouse-open": {
+      "AXRole": "AXTextArea",
+      "AXValue": "ab",
+      "AXDescription": "",
+      "AXIdentifier": ""
+    }
+  },
+  "focusTransfer": {
+    "moved": {
+      "AXIdentifier": "directory:/private/tmp/me2e-kwm8jlwl/Library:library",
+      "AXDescription": "Library",
+      "AXValue": "Library · 1 · 1 条未读",
+      "AXRole": "AXButton"
+    },
+    "pid": 26598,
+    "cleanup": true,
+    "shortcutOpen": {
+      "AXValue": "",
+      "AXRole": "AXTextArea",
+      "AXIdentifier": "",
+      "AXDescription": ""
+    }
+  },
+  "rawTypingVideoSHA256": "c1baa99752f8ef14f9809c3b913ff681e05f2917b9e93696c2a16f89a101dedb",
+  "decoder": "FFmpeg 9.0.2, frame best_effort_timestamp_time and RGB24 pixels",
+  "reductionPercent": 100
+}

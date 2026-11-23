@@ -140,7 +140,8 @@ editing immediately. See the [Overview Dock replay](../../../../../demos/moku-pa
 
 The foreground workspace's Compose command (⌘⇧B) requests focus when it
 admits an opening. The mounted editor can receive keystrokes during the ink
-transition. The Overview capsule button also requests editor focus on activation. Closing the
+transition. Once the focused editor is visible, its insertion mark appears with
+the input ink. The Overview capsule button also requests editor focus on activation. Closing the
 input or replacing its draft invalidates an unfinished command request. An
 open pinned editor uses Compose to request focus again. See the
 [Chief shortcut replay](../../../../../tools/e2e/README.md#chief-compose-shortcut).
