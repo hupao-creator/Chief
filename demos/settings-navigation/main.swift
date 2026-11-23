@@ -24,7 +24,6 @@ import ChiefHarnessOpenCode
         }
     }
     var dark = false
-    var scale: CGFloat = 1
     let harnesses = [AnyHarnessPlugin(PiHarnessPlugin()), AnyHarnessPlugin(CodexHarnessPlugin()),
                      AnyHarnessPlugin(ClaudeHarnessPlugin()), AnyHarnessPlugin(OpenCodeHarnessPlugin())]
 
@@ -63,10 +62,8 @@ private struct Surface: View {
                     harnessSettings: { _ in AnyView(FixtureHarnessForm()) },
                     onClose: { _ in fixture.scene.closeSettings() })
             }
-            .frame(width: geometry.size.width / fixture.scale, height: geometry.size.height / fixture.scale)
+            .frame(width: geometry.size.width, height: geometry.size.height)
             .coordinateSpace(name: "workspace")
-            .environment(\.nativeWindowContentScale, fixture.scale)
-            .scaleEffect(fixture.scale, anchor: .topLeading)
         }
         .modifier(NativeWorkspaceWindowSurface())
         .environment(\.locale, Locale(identifier: "zh-CN"))

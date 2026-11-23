@@ -239,7 +239,6 @@ private typealias HTMLViewRepresentable = NSViewRepresentable
 
 @MainActor
 private struct HTMLWebDocument: HTMLViewRepresentable {
-    @Environment(\.nativeWindowContentScale) private var contentScale
     let document: ApplicationHTMLDocument
     let thread: ApplicationThreadRef
     let theme: PluginTheme
@@ -274,7 +273,6 @@ private struct HTMLWebDocument: HTMLViewRepresentable {
         if let document = view.documentView as? HTMLDocumentWebView {
             document.applyAppearance(theme)
             document.panelPresentation = panel
-            document.setWorkspaceScale(contentScale)
         }
     }
 
@@ -323,7 +321,6 @@ private struct HTMLWebDocument: HTMLViewRepresentable {
                 injectionTime: .atDocumentEnd, forMainFrameOnly: true, in: Self.world))
             view.panelPresentation = input.panel
             view.zoomPreferences = HTMLZoomPreferences.shared(at: input.zoomPreferencesURL)
-            view.setWorkspaceScale(input.contentScale)
             view.restoreZoom(for: documentURL)
             view.navigationDelegate = self; view.uiDelegate = self
             view.applyAppearance(input.theme)
@@ -895,7 +892,6 @@ private final class HTMLDocumentViewport: NSView {
 /// hit testing alongside the document, including during reading-page motion.
 @MainActor
 private struct HTMLNavigationPortal: NSViewRepresentable {
-    @Environment(\.nativeWindowContentScale) private var contentScale
     let content: AnyView
     let collapsed: Bool
     let suppressed: Bool
@@ -904,7 +900,7 @@ private struct HTMLNavigationPortal: NSViewRepresentable {
     let onSettings: () -> Void
     func makeNSView(context: Context) -> HTMLNavigationAnchor { HTMLNavigationAnchor() }
     func updateNSView(_ view: HTMLNavigationAnchor, context: Context) {
-        view.update(content: content, collapsed: collapsed, suppressed: suppressed, contentScale: contentScale,
+        view.update(content: content, collapsed: collapsed, suppressed: suppressed,
                     preferences: HTMLZoomPreferences.shared(at: zoomPreferencesURL), onBack: onBack, onSettings: onSettings)
     }
     static func dismantleNSView(_ view: HTMLNavigationAnchor, coordinator: ()) { view.release() }
@@ -915,7 +911,6 @@ private final class HTMLNavigationAnchor: NSView {
     private let portal = HTMLNavigationViewport()
     private var suppressed = true
     private var collapsed = false
-    private var contentScale: CGFloat = 1
     private weak var buttonWindow: NSWindow?
     private var offset: CGFloat = 0
     private var offsetFrom: CGFloat = 0
@@ -936,10 +931,10 @@ private final class HTMLNavigationAnchor: NSView {
     }
     required init?(coder: NSCoder) { nil }
 
-    func update(content: AnyView, collapsed: Bool, suppressed: Bool, contentScale: CGFloat,
+    func update(content: AnyView, collapsed: Bool, suppressed: Bool,
                 preferences: HTMLZoomPreferences, onBack: @escaping () -> Void, onSettings: @escaping () -> Void) {
         let changed = self.collapsed != collapsed
-        self.collapsed = collapsed; self.suppressed = suppressed; self.contentScale = contentScale
+        self.collapsed = collapsed; self.suppressed = suppressed
         portal.update(content: content, unavailable: collapsed || suppressed, preferences: preferences,
                       onBack: onBack, onSettings: onSettings)
         synchronize(animate: changed)
@@ -997,8 +992,8 @@ private final class HTMLNavigationAnchor: NSView {
         NativeWindowControlPlacement.setReadingOffset(offset, in: window)
         let top = 8 + offset
         let parent = self
-        let native = CGRect(x: 4 / contentScale, y: top / contentScale,
-                            width: 148 / contentScale, height: 58 / contentScale)
+        let native = CGRect(x: 4, y: top,
+                            width: 148, height: 58)
         portal.frame = native
         portal.bounds = CGRect(x: 0, y: 0, width: 148, height: 58)
         if collapsed && offset <= NativeWindowNavigationGeometry.hiddenOffset {
@@ -1184,22 +1179,12 @@ private final class HTMLZoomPreferences {
 private final class HTMLDocumentWebView: WKWebView {
     private var documentZoomLevel: Double = 0
     private var zoomHostname = ""
-    private var workspaceScale: CGFloat = 1
     var panelPresentation = false
     var zoomPreferences: HTMLZoomPreferences?
 
-    func setWorkspaceScale(_ scale: CGFloat) {
-        guard workspaceScale != scale else { return }
-        workspaceScale = scale
-        updateSafeArea()
-    }
-
     func updateSafeArea() {
-        // Window navigation uses physical points; a panel Close scales with
-        // its workspace. Document zoom must not consume either control's space.
-        let factor = Double(workspaceScale) * pageZoom
-        let top = panelPresentation ? 60 / pageZoom : 74 / factor
-        let left = panelPresentation ? 0 : 160 / factor
+        let top = panelPresentation ? 60 / pageZoom : 74 / pageZoom
+        let left = panelPresentation ? 0 : 160 / pageZoom
         evaluateJavaScript("""
             if (location.protocol === 'chief-html:') {
               document.documentElement.style.setProperty('--chief-safe-area-top', '\(top)px', 'important');

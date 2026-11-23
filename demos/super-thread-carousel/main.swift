@@ -146,7 +146,6 @@ private struct DemoView: View {
             DemoView(model: model, fixtures: self.fixtures)
                 .frame(width: size.width, height: size.height)
                 .onChange(of: size, initial: true) { _, size in model.windowSize = size }
-                .environment(\.nativeWindowContentScale, viewport.scale)
                 .scaleEffect(viewport.scale, anchor: .topLeading)
         }.overlay(alignment: .bottomTrailing) {
             HStack(spacing: 6) {

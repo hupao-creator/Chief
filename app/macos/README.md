@@ -221,10 +221,9 @@ block. A second Quit uses the same bounded exit path.
 
 Before Runtime teardown, Quit flushes pending valid Settings edits. Invalid or
 failed saves expose an explicit continue-editing or quit-without-saving choice.
-The View menu routes Reload and Zoom through the focused Browser/Report document
-before changing the workspace. App zoom persists levels bounded to 1×…5×. Saved
-levels below 1× are normalized and rewritten during load. Clamping stored levels
-keeps the first reverse step at either limit responsive.
+The workspace lays out in window points. View menu zoom commands target focused
+web content. Reload goes to the focused web content when available and otherwise
+reloads the workspace.
 
 Agent panels carry source title/emoji ink separately during deferred opening,
 show a scoped skeleton while loading, and draw the full parsed Markdown body

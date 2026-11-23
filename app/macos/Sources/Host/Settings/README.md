@@ -111,8 +111,7 @@ disconnection. The coordinating Harness form labels its model selector Chief Mod
 Native tab semantics, a selected underline and roving keyboard
 focus are shared at every width; the header scrolls when its tabs no longer fit.
 Switching sections scrolls the whole padded form to its top, retaining the same
-18-point content inset whether the selected form fits or overflows. At extreme
-zoom the outer shell scrolls back to its top as well. Form width follows the
+18-point content inset whether the selected form fits or overflows. In short viewports the outer shell scrolls back to its top as well. Form width follows the
 panel rather than SwiftUI's overflow-dependent scroller proposal, keeping its
 form and illustration columns centered on the same axis with or without overflow.
 Horizontal padding keeps controls clear of the native gutter. Chief starts with
@@ -134,8 +133,7 @@ Reduce Transparency. The resident eyes adapt to the expanded surface as they
 travel into the reserved leading 30-point header column, and return to the
 composer with the shell. A single
 Close button replaces the full-page traffic-light/back capsule and its 74-point
-safe area; the main window retains its own native controls. When extreme zoom
-leaves less than 220 logical points of page height, the entire settings shell
+safe area; the main window retains its own native controls. When the page has less than 220 logical points of page height, the entire settings shell
 also scrolls so its chrome cannot make form controls unreachable. The resident
 eyes scroll with the header so they stay with their seat above the form.
 
@@ -370,8 +368,8 @@ Settings starts with a 900-point preferred height and grows to the active tab's
 natural document height (including header and form insets). The shared Dock shell
 keeps its 780-point preferred width and caps both dimensions to the workspace
 viewport with 24-point margins. Chief Agent, Auto-Categorization and Super Thread use this same sizing,
-including inherited and independent Harness forms. Smaller windows, app zoom,
-expanded editors and notices retain native scrolling; extreme zoom also scrolls
+including inherited and independent Harness forms. Smaller windows,
+expanded editors and notices retain native scrolling; short viewports also scroll
 the whole shell so navigation remains accessible. No scrollbar is hidden to fit
 content.
 

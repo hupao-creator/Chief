@@ -60,17 +60,14 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
     var size: CGSize
     var toolbarBottom: Double
     var identity: String
-    var contentScale: CGFloat
     var enabled: () -> Bool
     var scroll: (Double) -> Void
 
-    // At high workspace zoom, a card can make the canvas stack larger than the
-    // viewport. Window-to-canvas conversion must use the viewport-sized anchor.
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: MonitorView, context: Context) -> CGSize? { size }
 
     func makeNSView(context: Context) -> MonitorView { MonitorView() }
     func updateNSView(_ view: MonitorView, context: Context) {
-        let geometry = Configuration(size: size, toolbarBottom: toolbarBottom, identity: identity, contentScale: contentScale)
+        let geometry = Configuration(size: size, toolbarBottom: toolbarBottom, identity: identity)
         if view.configuration != geometry { view.cancelSequence(); view.configuration = geometry }
         view.regions = regions
         view.enabled = enabled; view.scroll = scroll
@@ -82,11 +79,10 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
         var size: CGSize
         var toolbarBottom: Double
         var identity: String
-        var contentScale: CGFloat
     }
 
     @MainActor final class MonitorView: NSView {
-        var configuration = Configuration(size: .zero, toolbarBottom: 0, identity: "", contentScale: 1)
+        var configuration = Configuration(size: .zero, toolbarBottom: 0, identity: "")
         weak var regions: NativeCanvasInputRegions?
         var enabled: () -> Bool = { false }
         var scroll: (Double) -> Void = { _ in }

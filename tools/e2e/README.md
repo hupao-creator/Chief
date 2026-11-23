@@ -232,10 +232,10 @@ owns resolution, profile compatibility and window appearance.
    until the illustration canvas scales down. Check that the art and the panel
    fit, that the form below remains reachable by scrolling, and that clicking a
    Chief dispatch target and each role's mode control updates its selection.
-   At 5× zoom, scroll the header out of view and continue down to the form.
+   In a short Settings viewport, scroll the header out of view and continue down to the form.
    Check that the resident eyes move out with the header.
    Repeat the backdrop check with Reduce Transparency and inspect the opaque
-   fallback. Record the window width, zoom, frames and observed selections.
+   fallback. Record the window width, height, frames and observed selections.
    See the [Settings backdrop and playback contract](../../app/macos/Sources/Host/Settings/README.md).
 
 Keep the revision, primary language order, appearance, profile fixture, launch
@@ -547,7 +547,7 @@ does not certify first-run onboarding.
 ### Collection member opening
 
 Open the page count with two reports, then with enough covered reports to fill
-several rows. At 2352×1400pt and 1× zoom, capture the member panel at the top
+several rows. At 2352×1400pt, capture the member panel at the top
 of the grid. Measure the first row from the panel's top edge, both side
 margins, card width, and the counts of fully and partially visible cards.
 The first row starts 20pt from the top in both cases. Two cards sit together
@@ -557,11 +557,11 @@ between the side margins, with individual cards capped at 360pt. The
 and [after](../../demos/super-thread-carousel/evidence/member-grid-after.png)
 frames use the same 17 covered reports and one report without a cover.
 
-Resize the open window to 1192×780pt, then to 860×600pt at 2× zoom. Scroll
-with the pointer over the single column and check that it clears Close.
+Resize the open window to 1192×780pt, then to 860×600pt. Scroll
+with the pointer over the grid and check that it clears Close.
 Click a scrolled member, confirm its report title and body, and use Back.
 Compare the visible cards and scroll offset on return. Widen the window again
-and check the column count. At 500×400pt and 2× zoom, reach the final card
+and check the column count. At 500×400pt in the preview, reach the final card
 and click Close with the grid scrolled.
 
 Use a report with a cover and an introduction long enough to wrap past three
@@ -759,7 +759,7 @@ deterministic external peer can observe native delivery without a provider accou
 On a host-enabled draft, Control-click the plus and check that each host option
 opens the corresponding file or directory browser. Check English and Chinese. Capture the plus and
 the eyes in the same row in light and dark system appearances and at a narrow
-width or app zoom that admits the two-row composer. Inspect the control's
+width that admits the two-row composer. Inspect the control's
 localized accessibility label, action and frame. Keep the commit, app digest,
 profile and input backend, screenshots or AX observations, fixture digests,
 transcript result and cleanup receipt. This local system-input procedure is

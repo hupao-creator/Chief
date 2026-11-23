@@ -19,7 +19,6 @@ import SwiftUI
     fileprivate var content = AnyView(EmptyView())
     fileprivate var source: CGRect?
     fileprivate let motion = NativeReadingPageMotion()
-    @ObservationIgnored weak var gridViewport: ReadingPanelView?
     @ObservationIgnored fileprivate let viewport = NativeCollectionPanelSource()
     @ObservationIgnored private var origin: NativeCollectionPanelSource?
     @ObservationIgnored private var onDismiss: ((_ restoreFocus: Bool) -> Void)?
@@ -82,7 +81,7 @@ import SwiftUI
         let restoreFocus = readingMember == nil
         returnToMembers()
         let callback = onDismiss
-        onDismiss = nil; self.owner = nil; origin = nil; gridViewport = nil
+        onDismiss = nil; self.owner = nil; origin = nil
         closing = false; parentVisible = true; content = AnyView(EmptyView())
         callback?(restoreFocus)
         onRetire()

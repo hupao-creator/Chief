@@ -54,9 +54,9 @@ private struct WorkspaceApp: App {
             }
             CommandGroup(after: .toolbar) {
                 Button(session.locale.text("重新载入", "Reload")) { session.performWebCommand("chiefReloadFocusedWebContent:") { session.reload() } }.keyboardShortcut("r").disabled(session.busy)
-                Button(session.locale.text("实际大小", "Actual Size")) { session.performWebCommand("chiefResetFocusedWebContentZoom:") { session.setZoom(0) } }.keyboardShortcut("0")
-                Button(session.locale.text("放大", "Zoom In")) { session.performWebCommand("chiefZoomInFocusedWebContent:") { session.setZoom(session.zoom + 0.5) } }.keyboardShortcut("+")
-                Button(session.locale.text("缩小", "Zoom Out")) { session.performWebCommand("chiefZoomOutFocusedWebContent:") { session.setZoom(session.zoom - 0.5) } }.keyboardShortcut("-")
+                Button(session.locale.text("实际大小", "Actual Size")) { session.performWebCommand("chiefResetFocusedWebContentZoom:") }.keyboardShortcut("0")
+                Button(session.locale.text("放大", "Zoom In")) { session.performWebCommand("chiefZoomInFocusedWebContent:") }.keyboardShortcut("+")
+                Button(session.locale.text("缩小", "Zoom Out")) { session.performWebCommand("chiefZoomOutFocusedWebContent:") }.keyboardShortcut("-")
             }
         }
     }
@@ -72,11 +72,9 @@ final class WorkspaceSession {
     var error: String?
     var quitSettingsBlocked = false
     var busy = false
-    var zoom: Double = 0
     var generation = UUID()
     private var exitCleanup: NativeRuntimeExitCleanup?
     private var interactionServer: NativeInteractionServer?
-    private var zoomURL: URL?
     private var launchReceipt: URL?
     private var task: Task<Void, Never>?
     private(set) var reloadTask: Task<Void, Never>?
@@ -85,9 +83,6 @@ final class WorkspaceSession {
     private var finishingQuit = false
     private var quitSavingSettings = false
     private var quitDeadline: Task<Void, Never>?
-    private static let zoomRange = 0.0...(log(5) / log(1.2))
-    var scale: Double { pow(1.2, zoom) }
-
     init() {
         do {
             let options = try LaunchOptions()
@@ -97,9 +92,6 @@ final class WorkspaceSession {
             let lease = try RuntimeProfileClientLease(dataDirectory: options.dataDirectory)
             lease.retainForProcess()
             let profile = lease.profile
-            zoomURL = profile.dataDirectory.appendingPathComponent("native-window-zoom.json")
-            if let zoomURL, let data = try? Data(contentsOf: zoomURL),
-               let saved = try? JSONDecoder().decode(SavedZoom.self, from: data), saved.level.isFinite { setZoom(saved.level) }
             NativeTypography.registerFonts()
             let preferences = DesktopPreferences(directory: profile.dataDirectory)
             // Explicit scenario setup belongs to the application. External runners
@@ -151,12 +143,7 @@ final class WorkspaceSession {
             self.launchReceipt = nil
         }
     }
-    func setZoom(_ value: Double) {
-        guard value.isFinite else { return }
-        zoom = min(Self.zoomRange.upperBound, max(Self.zoomRange.lowerBound, value))
-        if let zoomURL, let data = try? JSONEncoder().encode(SavedZoom(level: zoom)) { try? data.write(to: zoomURL, options: .atomic) }
-    }
-    func performWebCommand(_ selector: String, fallback: () -> Void) {
+    func performWebCommand(_ selector: String, fallback: () -> Void = {}) {
         if !NSApp.sendAction(NSSelectorFromString(selector), to: nil, from: nil) { fallback() }
     }
     func reload() {
@@ -251,7 +238,6 @@ final class WorkspaceSession {
             interactionServer?.stop()
         }
     }
-    private struct SavedZoom: Codable { let level: Double }
 }
 
 private extension UserDefaults {
@@ -262,21 +248,17 @@ private extension UserDefaults {
 private struct WorkspaceWindow: View {
     let session: WorkspaceSession
     var body: some View {
-        GeometryReader { geometry in
-            Group {
-                if let model = session.model, let presentation = session.presentation {
-                    NativeWorkspaceView(model: model, presentation: presentation).id(session.generation)
-                        .environment(\.agentThreadEmojiUsesLiquidGlass, session.benchmarkEmojiGlass)
-                } else {
-                    ContentUnavailableView(session.locale.text("无法打开 Chief", "Unable to open Chief"),
-                        systemImage: "exclamationmark.triangle", description: Text(session.error ?? ""))
-                }
+        Group {
+            if let model = session.model, let presentation = session.presentation {
+                NativeWorkspaceView(model: model, presentation: presentation).id(session.generation)
+                    .environment(\.agentThreadEmojiUsesLiquidGlass, session.benchmarkEmojiGlass)
+            } else {
+                ContentUnavailableView(session.locale.text("无法打开 Chief", "Unable to open Chief"),
+                    systemImage: "exclamationmark.triangle", description: Text(session.error ?? ""))
             }
-            .frame(width: geometry.size.width / session.scale, height: geometry.size.height / session.scale)
-            .environment(\.nativeWindowContentScale, CGFloat(session.scale))
-            .scaleEffect(session.scale, anchor: .topLeading)
-            .disabled(session.busy)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .disabled(session.busy)
         .modifier(NativeWorkspaceWindowSurface())
         .environment(\.locale, Locale(identifier: session.locale.rawValue))
         .onAppear { session.refreshSystemLocale(); session.start() }

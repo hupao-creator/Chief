@@ -66,7 +66,6 @@ private final class WheelSample: NSEvent {
             GeometryReader { geometry in
                 NativeWorkspaceView(model: workspace, presentation: presentation)
                     .frame(width: geometry.size.width / zoom, height: geometry.size.height / zoom)
-                    .environment(\.nativeWindowContentScale, zoom)
                     .scaleEffect(zoom, anchor: .topLeading)
             }
             .modifier(NativeWorkspaceWindowSurface())

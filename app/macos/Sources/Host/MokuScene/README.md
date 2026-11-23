@@ -342,7 +342,7 @@ display string capped at 256 code points; oversized target keys are omitted
 instead of changing their identity. Other native options are not forwarded to
 the catalog. The full stored operation retains the caller's original request.
 
-[NativeMokuNote](NativeMokuNote.swift) reads the persisted note and expands the same capsule, up to 560 points wide and bounded by the viewport with 24-point side margins. Markdown is read-only/selectable, with a fixed header and scrollable body. When the available note height is too short to show a complete body line below that header, the header scrolls with the body instead; the supported 5× app zoom therefore retains a usable reading viewport. The catalog's `lastExposure` is the only authority for the accessibility update indicator. Opening the panel does not acknowledge it. A user-opened panel or later body interaction can start a reading session; the production renderer must apply the exact note token, the key foreground window must remain visible, and each actual body viewport interval must stay stable for two seconds. Only complete coverage submits an authenticated receipt. Qualification compares the rendered document with the scroll viewport, so the gutter a persistent legacy scroller reserves is layout rather than horizontal overflow; content that actually exceeds the viewport still stays unqualified. Code, tables, images and local-file previews stay unknown in this first version. Each mounted window owns its partial coverage; failed receipts remain pending for a later same-version UI activity, with no optimistic indicator change.
+[NativeMokuNote](NativeMokuNote.swift) reads the persisted note and expands the same capsule, up to 560 points wide and bounded by the viewport with 24-point side margins. Markdown is read-only/selectable, with a fixed header and scrollable body. When the available note height is too short to show a complete body line below that header, the header scrolls with the body. The catalog's `lastExposure` is the only authority for the accessibility update indicator. Opening the panel does not acknowledge it. A user-opened panel or later body interaction can start a reading session; the production renderer must apply the exact note token, the key foreground window must remain visible, and each actual body viewport interval must stay stable for two seconds. Only complete coverage submits an authenticated receipt. Qualification compares the rendered document with the scroll viewport, so the gutter a persistent legacy scroller reserves is layout rather than horizontal overflow; content that actually exceeds the viewport still stays unqualified. Code, tables, images and local-file previews stay unknown in this first version. Each mounted window owns its partial coverage; failed receipts remain pending for a later same-version UI activity, with no optimistic indicator change.
 
 Coverage retains the union of settled ranges, so revisiting text does not accumulate duplicate intervals. Disconnect cancels the in-flight submission while retaining at most one completed receipt. Snapshot rehydration reconciles that receipt against the exact catalog incarnation/version before retrying; a new version, cleared note or released workspace discards it.
 
@@ -531,7 +531,7 @@ The curve starts moving immediately and eases to a stop. The compositor moves di
 presentation position to the target, without overshoot or a settling rebound. Vertical
 descent retains its independent, non-bouncing timing. A change to the vertical
 seat during return leaves the horizontal animation running. Shell sizing retains the
-Sidecard's 380ms curve; divider dragging and window/zoom resizing settle without
+Sidecard's 380ms curve; divider dragging and window resizing settle without
 travel. Stacked layouts share the
 panels' full column width and keep the same bottom reading baseline. Composer
 expansion retains its separate entrance timing.
@@ -739,8 +739,8 @@ Settings starts with a 900-point preferred height and grows to the active tab's
 natural document height (including header and form insets). The shared Dock shell
 keeps its 780-point preferred width and caps both dimensions to the workspace
 viewport with 24-point margins. General, Moku, Tag and Report use this same sizing,
-including inherited and independent Harness forms. Smaller windows, app zoom,
-expanded editors and notices retain native scrolling; extreme zoom also scrolls
+including inherited and independent Harness forms. Smaller windows,
+expanded editors and notices retain native scrolling; short viewports also scroll
 the whole shell so navigation remains accessible. No scrollbar is hidden to fit
 content.
 

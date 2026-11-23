@@ -3,10 +3,6 @@ import ChiefCore
 import QuartzCore
 import SwiftUI
 
-public extension EnvironmentValues {
-    @Entry var nativeWindowContentScale: CGFloat = 1
-}
-
 struct NativeReadingPanelTransition: Equatable {
     let generation: Int
     let closing: Bool
@@ -33,7 +29,6 @@ struct NativeReadingPanelViewport<Content: View>: NSViewRepresentable {
     func makeNSView(context: Context) -> ReadingPanelView {
         let collection = context.environment.nativeCollectionPanel
         let view = ReadingPanelView(usesGlass: usesGlass, readingMember: collection?.readingMember != nil)
-        if usesGlass { collection?.gridViewport = view }
         return view
     }
 
@@ -148,21 +143,10 @@ final class ReadingPanelView: NSView, CAAnimationDelegate {
         }
         paper.backgroundColor = glass?.isHidden == false ? nil : paperColor
         if contentReady || identity?.pending == true {
-            let root: AnyView
-            if let windowContentSpace {
-                // Keep the nested host in window points. Applying zoom inside
-                // its SwiftUI root keeps pointer and AX frames on the artwork.
-                let logical = surface.bounds.size
-                let scale = environment.nativeWindowContentScale
-                windowContentSpace.frame = surface.bounds
-                windowContentSpace.setBoundsSize(CGSize(width: logical.width * scale, height: logical.height * scale))
-                root = AnyView(content.frame(width: logical.width, height: logical.height)
-                    .scaleEffect(scale, anchor: .topLeading)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading))
-            } else { root = content }
-            if let hosting { hosting.rootView = root }
+            windowContentSpace?.frame = surface.bounds
+            if let hosting { hosting.rootView = content }
             else {
-                let view = NSHostingView(rootView: root)
+                let view = NSHostingView(rootView: content)
                 // The compositor supplies the host's frame, independently of
                 // the document's minimum, ideal and maximum content sizes.
                 view.sizingOptions = []
@@ -343,13 +327,6 @@ final class ReadingPanelView: NSView, CAAnimationDelegate {
 
     private func path(_ size: CGSize) -> CGPath {
         CGPath(roundedRect: CGRect(origin: .zero, size: size), cornerWidth: 22, cornerHeight: 22, transform: nil)
-    }
-
-    func zoomedHit(at point: NSPoint, from view: NSView?) -> NSView? {
-        guard let superview, let window, view?.window === window,
-              environment.nativeWindowContentScale > 1, environment.isEnabled,
-              !isHiddenOrHasHiddenAncestor else { return nil }
-        return hitTest(superview.convert(point, from: view))
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {

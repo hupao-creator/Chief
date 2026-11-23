@@ -17,7 +17,7 @@ only to Overview and cannot cover a Thread or application reading route.
 [NativeWindowNavigationView](NativeWindowNavigationView.swift) owns shared
 window/back controls. The workspace hides its Back control for Agent and Report panels; those surfaces use their own production panel Close.
 [NativeWindowControlPlacement](NativeWindowControlPlacement.swift) retains native
-Mac traffic-light actions through resize and workspace zoom. The real buttons
+Mac traffic-light actions during window resizing. The real buttons
 keep their native size and sit 31 window points from the top in Overview.
 Reading navigation applies its offset to that window-relative placement.
 The untinted, 42pt-high clear glass capsule extends 12pt beyond either end of
