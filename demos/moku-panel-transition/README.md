@@ -378,6 +378,27 @@ The isolated callback captures the payload without starting a Runtime.
 The [Chief file picker procedure](../../tools/e2e/README.md#chief-file-picker)
 covers system interaction with the picker UI.
 
+### Typing audio output
+
+With interface sounds enabled and a nonzero effects volume, add
+`--replay-typing-cadence` to `--replay-chief-input`. The replay sends keys to
+the panel's first responder. ScreenCaptureKit captures mono 48 kHz PCM from the
+preview's own window. Each group checks the draft and counts signal onsets
+above 0.0005 amplitude separated by over 3 ms of quiet. The log includes onset
+offsets and the number of frames collected during each group.
+
+The workload includes 12 printable keys each at 120, 40 and 20 ms, six keys in
+one event-loop turn, focus away and back, rapid Backspace, auto-repeat, forward
+Delete and a composing key followed by marked-text updates and a Chinese
+commit. Paste, navigation, the newline shortcut and draft restoration add zero
+clicks. Composition uses the native text client without switching the Mac's
+input source. Capture measures the process output before the speakers.
+
+Use `--expect-silent-typing -com.apple.sound.uiaudio.enabled NO` or
+`--expect-silent-typing -com.apple.sound.beep.volume 0` to repeat the waveform
+and draft checks with process-local Sound preferences. Denying access to the
+two CAFs with `--expect-unavailable-sounds` also requires silence throughout.
+
 ## Pending send replay
 
 Build the preview as above and run the executable with `--replay-send` under

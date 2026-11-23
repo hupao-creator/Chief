@@ -30,13 +30,17 @@ including auto-repeat, can request one sound. IME updates, pastes, draft
 restoration and shortcut handling do not independently request sound.
 
 On Apple Silicon macOS 26 or later, [the player](NativeMokuTypingSound.swift)
-uses public System Sound Services with the installed iOSSupport UIKitCore
-resource URLs. The click and delete CAFs on macOS 26.5.1 (25F80) match their
-iOS 17.2 and 26.5 simulator counterparts by SHA-256. Only the two verified
-digests are accepted. The paths are OS implementation details. A missing,
-changed, unreadable or unregistrable file silences that key category.
-Registration and playback requests run off the input thread. Playback uses
-the user's macOS UI sound settings. Chief ships no audio from iOSSupport.
+decodes the installed iOSSupport UIKitCore click and delete CAFs. The two
+accepted SHA-256 digests match macOS 26.5.1 (25F80) and the iOS 17.2 and 26.5
+simulators. A missing, changed or unreadable file silences its key category.
+Chief ships no audio from iOSSupport.
+
+A serial audio queue schedules the verified PCM buffers in key order on one
+AVAudioPlayerNode. Each clip has a 4 ms silent tail so keys delivered together
+still have distinct attacks. The engine pauses after 500 ms of inactivity
+following playback. At each key the player reads the macOS interface-sound
+switch and alert volume and selects the current system sound-effects device.
+Audio setup and playback run off the input thread.
 
 Dock composer placeholders stay on one line and truncate at the tail.
 The native draft editor remains multiline.
