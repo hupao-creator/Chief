@@ -10,7 +10,7 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 ## Move around the canvas
 
-Overview centers the cards vertically. In windows taller than 60 points, the cards have at least 30 points of space above and below them. The filter bar and Chief Bar float above the cards. Opening the Chief input box keeps the cards in place.
+Overview centers the cards vertically. A wide task card can appear between two taller cards when there’s room for it there. In windows taller than 60 points, the cards have at least 30 points of space above and below them. The filter bar and Chief Bar float above the cards. Opening the Chief input box keeps the cards in place.
 
 When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or turn the mouse wheel. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. Click a task card, or press Return on a focused task, to open it.
 
