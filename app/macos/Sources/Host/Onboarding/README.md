@@ -106,7 +106,7 @@ The illustration has no visible text and exposes a single accessibility descript
 Setup keeps the composer unmounted until the final save. Each page's controls
 become available when the transition completes and the editor is ready. After
 persistence, the panel fades its contents over 140ms while preparing the hidden
-Dock, contracts to the laid-out Dock over 220ms, then reveals the Dock behind
+Dock, contracts to the laid-out Dock over 780ms, then reveals the Dock behind
 the panel's fade. These stages advance on animation completion. Workspace input
 and accessibility become available after the reveal. In an active, visible window, the
 resident eyes stay open through the 180ms final fade and blink once for 320ms
@@ -143,8 +143,13 @@ window geometry as a startup variable; the OS bounds remain externally verified.
 
 [E2E-ONBOARDING-001](../../../../../tools/e2e/README.md#onboarding-confirmations)
 launches first-run setup with a fresh profile and uses macOS AXPress on each
-confirmation. Discovery → Chief, Chief → Tag, Tag → Super Thread and Super
-Thread → Chief's focused input each have a strict budget below 1,000ms. A page
+confirmation. Discovery → Chief, Chief → Tag and Tag → Super Thread each
+have a strict budget below 1,000ms. Super Thread → Chief's focused input has
+a strict budget below 1,560ms, including the full 1,100ms visual handoff.
+The run measures confirmation through persistence, preparation before fade, each
+animation through logical completion, and reveal completion through AX focus.
+Persistence and preparation before the fade must take under 260ms combined.
+Post-reveal AX focus must take under 200ms. The replay checks each animation's duration. A page
 is interactive when its own enabled confirmation is available. The final
 destination requires the workspace's enabled attachment control and its focused,
 editable composer. Both background roles are configured separately in the UI;

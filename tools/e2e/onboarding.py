@@ -3,10 +3,11 @@ import json
 from pathlib import Path
 import subprocess
 
+from desktop import Desktop
 from collection import activate
 from lifecycle import Blocked
 from operator_input import bundle
-from report import save, sha256
+from report import check_handoff, handoff_intervals, save, sha256
 
 
 DRIVER = Path(__file__).with_suffix(".swift")
@@ -37,7 +38,8 @@ def journey(session, app):
     assert not initial["applicationThreads"] and not any(
         thread.get("observation", {}).get("latestExecution") for thread in initial["threads"]
     ), "onboarding requires a fresh Runtime profile"
-    session.app = session.spawn([app, "--runtime", session.binary, "--data-dir", session.profile], "app")
+    session.app = session.spawn([app, "--runtime", session.binary, "--data-dir", session.profile,
+                                 "--automation-socket", session.root / "ui.sock"], "app")
     activate(session)
     trace = output / "onboarding-ax.jsonl"
     with trace.open("wb") as stream:
@@ -59,11 +61,26 @@ def journey(session, app):
 
     # Read the real saved values after the measured UI journey. Earlier reads
     # could change the work scheduled between a mode selection and confirmation.
-    if len(confirmations) == 4 and confirmations[-1]["status"] != "input-failed" and not failures:
+    if len(confirmations) == 4 and confirmations[-1]["status"] != "input-failed":
+        desktop = Desktop(session)
+        try:
+            phases = desktop.request()["onboarding"]["handoffUptimeNS"]
+        finally:
+            desktop.close()
+        save(output / "onboarding-handoff.json", phases)
+        final = confirmations[-1]
+        if not failures:
+            intervals = handoff_intervals(phases, final["startNS"], late.get("report", final["observedNS"]))
+            for name, elapsed in intervals.items():
+                print(f"{name}: {elapsed / 1_000_000:.3f} ms", flush=True)
+            try:
+                check_handoff(intervals)
+            except AssertionError as error:
+                failures.append(str(error))
         state = session.runtime.state()
         saved_roles = {p["id"]: {"mode": p["value"]["mode"], "enabled": p["value"].get("enabled", True)}
                        for p in state["settings"]["pluginSettings"] if p["id"] in ("tag.settings", "report.settings")}
-        completed = json.loads(preferences.read_text()).get("onboardingCompleted")
+        completed = json.loads(preferences.read_text()).get("onboardingCompleted") if preferences.exists() else None
         save(output / "onboarding-persisted.json", {"settingsRevision": state["settingsRevision"],
              "roles": saved_roles,
              "onboardingCompleted": completed})

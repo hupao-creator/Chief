@@ -29,6 +29,11 @@ enum NativeOnboardingStep: Int, CaseIterable {
     var mounted = false
     var mountDock = false
     var dockVisible = false
+    enum HandoffPhase: String { case saved, fade, contract, reveal, finished }
+    // Read once by the interaction client after AX observes the focused editor.
+    @ObservationIgnored private(set) var handoffTimes: [HandoffPhase: UInt64] = [:]
+    func markHandoff(_ phase: HandoffPhase) { handoffTimes[phase] = DispatchTime.now().uptimeNanoseconds }
+
     var panelFrame = CGRect.zero
     var blocksWorkspace: Bool { !finished }
     var settings: NativeSettingsModel { workspace.settingsModel }
@@ -155,6 +160,7 @@ enum NativeOnboardingStep: Int, CaseIterable {
             guard workspace.runtimeAvailable else { throw RuntimeError("UNAVAILABLE", locale.text("连接恢复后再继续。", "Reconnect before continuing.")) }
             if step == .report {
                 try workspace.preferences.setOnboardingCompleted(true)
+                markHandoff(.saved)
                 settings.draft.reconcileFirstRunDiscovery = false
             }
             step = NativeOnboardingStep(rawValue: step.rawValue + 1)!

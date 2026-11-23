@@ -32,7 +32,7 @@ contains every requested ID, including blocked and unreached entries.
 
 | ID | Implemented interaction and criterion | Prerequisite / evidence | Coverage boundary |
 | --- | --- | --- | --- |
-| `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Each confirmation reaches an interactive destination in under 1,000ms. | Fresh profile, authorized system AX driver, exclusive desktop. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
+| `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Page changes take under 1,000ms each. The final Dock handoff takes under 1,560ms. | Fresh profile, authorized system AX driver, exclusive desktop. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
 | `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve completed tasks in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
 | `E2E-CHIEF-001` | Open Note and switch to Compose. The legacy command is rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
@@ -97,9 +97,17 @@ own enabled confirmation after the normal page animation. After **Start using
 Chief**, the same window must expose the enabled attachment button and have an
 editable Chief text area focused. Observation and AX transport overhead count
 toward each deadline. The timings are individual samples, with one press per
-confirmation. A sample at or above 1,000ms fails. A late destination can allow
+confirmation. A sample at or above its deadline fails. Page changes have 1,000ms each.
+The final handoff has 1,560ms, including 140ms of form fade, 780ms of
+contraction and 180ms of reveal. A late destination can allow
 the journey to continue measuring subsequent confirmations in that same visit.
-The terminal and report show the elapsed milliseconds. The run also reads
+After AX observes the editable field, a single read of the app's local interaction
+socket retrieves its monotonic timestamps for successful persistence, Dock preparation
+and the three animation boundaries. The terminal and report show each interval.
+Persistence and preparation before the fade together must take under 260ms.
+Post-reveal AX focus must take under 200ms. Each animation must last its
+authored duration with at most 34ms of early completion (two 60Hz frames).
+These are callback intervals. Use the window recording for rendered motion. The run also reads
 both saved role modes through Runtime and checks the profile completion marker.
 
 The `onboarding` suite runs separately from prepared-profile suites, including

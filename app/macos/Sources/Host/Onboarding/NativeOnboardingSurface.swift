@@ -266,12 +266,15 @@ struct NativeOnboardingSurface: View {
         scene.disabled = !state.workspace.runtimeAvailable
         state.mountDock = true
         scene.setInputOpen(true)
+        state.markHandoff(.fade)
         await animate(.easeOut(duration: 0.14)) { contentVisible = false }
         guard !Task.isCancelled else { return }
-        await animate(.timingCurve(0.22, 1, 0.36, 1, duration: 0.22)) { collapsed = true }
+        state.markHandoff(.contract)
+        await animate(.timingCurve(0.22, 1, 0.36, 1, duration: 0.78)) { collapsed = true }
         guard !Task.isCancelled else { return }
         // The Dock appears at full opacity behind the still-opaque panel, so
         // fading the panel never exposes the light workspace between them.
+        state.markHandoff(.reveal)
         state.dockVisible = true
         let revealDuration = 0.18
         if scene.windowVisible {
@@ -279,6 +282,7 @@ struct NativeOnboardingSurface: View {
         }
         await animate(.easeInOut(duration: revealDuration)) { panelVisible = false }
         guard !Task.isCancelled else { return }
+        state.markHandoff(.finished)
         state.finishHandoff()
         if scene.windowVisible && NSApp.isActive { scene.focusOpenComposer() }
     }

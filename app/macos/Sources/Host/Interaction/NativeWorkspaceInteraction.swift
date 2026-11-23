@@ -80,6 +80,9 @@ public extension NativeWorkspacePresentation {
                 "invalidField": draft.firstInvalidField.map(JSONValue.text) ?? .null,
                 "appearance": .text(workspace.systemTheme.rawValue), "locale": .text(workspace.locale.rawValue)
             ])
+        let handoffTimes = Dictionary(uniqueKeysWithValues: onboarding.handoffTimes.map {
+            (JSONText($0.key.rawValue), JSONValue.integer($0.value))
+        })
         return .object([
             "page": .text(interactionPage), "mounted": .bool(interactionReady && pageMounted),
             "transitioning": .bool(openingCollectionMember || collectionPanel.transitioning || messageMotion.active || scene.flightActive || scene.settingsTransitioning
@@ -87,6 +90,7 @@ public extension NativeWorkspacePresentation {
             "onboarding": .object(["step": .integer(onboarding.step.rawValue), "canContinue": .bool(onboarding.canAdvance),
                 "editorReady": .bool(onboarding.editorReady), "admitted": .bool(onboarding.admitted),
                 "error": onboarding.error.map(JSONValue.text) ?? .null,
+                "handoffUptimeNS": .object(handoffTimes),
                 "saving": .bool(onboarding.busy), "completed": .bool(workspace.preferences.onboardingCompleted)]),
             "runtimeAvailable": .bool(workspace.runtimeAvailable),
             "selectedThread": selected?.json ?? .null,
