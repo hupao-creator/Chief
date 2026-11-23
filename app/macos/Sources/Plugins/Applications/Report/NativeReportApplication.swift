@@ -22,6 +22,7 @@ import SwiftUI
         [ApplicationCapabilities.executionReferencesUI.requirement, ApplicationCapabilities.threadUserActions.requirement,
          ApplicationCapabilities.isolatedHTML.requirement]
     }
+    var bookmarkVersion: KeyPath<NativeReportView, JSONText>? { \.contentRevision }
     var overviewCollection: ApplicationOverviewCollectionPolicy? {
         .init(footprint: .init(columns: 1, rows: 2), providesCardSurface: true)
     }

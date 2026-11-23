@@ -59,7 +59,7 @@ contains every requested ID, including blocked and unreached entries.
 | `E2E-CHIEF-001` | Open Note and switch to Compose. The legacy command is rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
 | `E2E-SETTINGS-001` | Open Settings with Chief Agent selected and only Chief Agent, Auto-Categorization and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief Agent and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
-| `E2E-COLLECTION-001` | Open a grouped member, return, then revisit and read. Switch directory and archive/restore unrelated reports while All remains mounted. | Two isolated directories, two completed tasks and eight reports from a deterministic peer. | In the three-column replay window, All groups six fresh reports and a four-report directory groups two. A brief visit holds the cover, a qualified visit promotes the report, and archiving down to three reports releases the group. Restoring reports groups them again. |
+| `E2E-COLLECTION-001` | Open a grouped member, return, then revisit and read. Switch directory and archive/restore unrelated reports while All remains mounted. | Two isolated directories, two completed tasks and eight reports from a deterministic peer. | In the three-column replay window, All groups six fresh reports and a four-report directory groups two. A brief visit holds the cover, a qualified visit promotes the report, and archiving down to three reports releases the group. Restoring reports groups them again. Each fresh directory shows five unread Threads. Visiting the same Report twice removes one from its directory’s count. |
 | `E2E-COMPOSER-001` | Type a follow-up and activate the actual Send button; observe accepted draft clearing and completed output; send a held task, observe Stop in the empty action seat, activate it and observe interruption and an editable empty composer without navigating away | Exclusive desktop, accessible isolated bundle, external operator; `operator-send/stop.json` AX observations, exact persisted prompts, `composer-send-content/oracle/ui.json`, `composer-running/stopped/stop-content/stop-ui.json` | Operator-assisted OS input, not unattended CI; current ordinary Thread text input and cancellation only, not pause/resume, historical forks, IME or uncertain receipt recovery |
 
 The implemented desktop scenarios require execution evidence before they can be
@@ -455,7 +455,13 @@ the reader comes to the foreground. Restart Chief with the same profile and
 check both badges again. Provide a new HTML revision and another completed
 execution for the same IDs. Each badge should show its bookmark again until
 that version is displayed. Keep the window captures and profile receipt set
-for each step. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)
+for each step. Also check the red count on each containing tag before and after
+opening a bookmarked card, including a shared child tag, a covered execution
+and a Report collection. Selecting a tag preserves the count. When its last
+unread version is acknowledged the number disappears while the selected check
+and any activity ring remain. Expand a directory at normal window scale and
+capture the settled child row. The complete white digits and the red capsule
+must be visible over the child’s glass, including its upper edge. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)
 
 ### Agent reader alignment
 

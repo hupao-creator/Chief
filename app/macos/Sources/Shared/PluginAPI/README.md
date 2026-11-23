@@ -28,6 +28,11 @@ conversation content keep their stored values.
 
 [ApplicationContracts.swift](ApplicationContracts.swift), [ApplicationCapabilities.swift](ApplicationCapabilities.swift) and [ApplicationRegistry.swift](ApplicationRegistry.swift) describe native application surfaces and injected operations. Runtime transactions and background-agent authority remain in the [Go Application host](../../../../../internal/hosts/applicationhost/README.md).
 
+An application Thread plugin can expose its catalog view’s bookmark version
+through `bookmarkVersion`. Report supplies its document content revision.
+Overview uses that version to count unread members without rendering their
+cards or fetching documents.
+
 `ApplicationBackgroundExecutionSettings.enabled` is independent of inheritance
 and retained overrides. Missing values decode as true; false round-trips with
 both modes, and changing a mode/profile preserves the switch.

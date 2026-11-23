@@ -40,3 +40,5 @@ the separate onboarding, route lifetime, mask, Talk, Collection and identity
 experiments and their limitations. Their collectors and rejected candidates are
 available in Git object `9979d53b15b04243d87000e390d1d90d39d0ac6a` under
 `demos/moku-panel-transition/remaining/`.
+
+The `tag-unread` case mounts the production directory and child menu in a 1× offscreen panel with an isolated read history. It records counts and images before reading, after a receipt, after rereading the same version and after the final receipt.

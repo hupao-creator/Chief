@@ -425,6 +425,15 @@ Ordinary browsing ignores retired agent-authored visibility markers. Archive, ex
 
 ## Unread bookmarks
 
+Folder and semantic chips show a system-red unread count at the upper trailing
+edge for their exact browsing membership. Each eligible Thread contributes once
+per space, after visibility, archive and execution coverage filtering and before
+collection grouping. A directory chip displaying a selected child uses that
+child’s count. All and zero-count chips have no badge. The count is included
+in the accessibility value independently of member count and activity. It
+does not change chip width, selection, ordering or the Runtime filter context.
+Receipt and catalog version changes update counts even for unselected spaces.
+
 The emoji badge shows a system-red bookmark for each unseen Report content revision
 and for an ordinary Agent Thread whose latest execution completed and has no read
 receipt. Collection members use their own document revisions. An open route,

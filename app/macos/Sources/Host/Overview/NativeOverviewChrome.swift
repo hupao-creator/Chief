@@ -10,6 +10,7 @@ public struct NativeOverviewFilter: Identifiable, Equatable, Sendable {
     public var scope: String
     public var count: Int
     public var hasActiveTasks: Bool
+    public var unreadCount = 0
     public var aliases: [String]
     public var isDirectory: Bool
     public var selectionKey: String
@@ -231,9 +232,45 @@ public struct NativeOverviewChrome: View {
                     }
                 }
             }
+            .overlayPreferenceValue(OverviewTagBounds.self) { anchors in
+                GeometryReader { reader in
+                    if let scroll = anchors["__scroll__"] {
+                        unreadBadges(presentedFilters, anchors: anchors, reader: reader,
+                                     viewport: reader[scroll])
+                    }
+                    if let parent = presentedFilters.first(where: { $0.isDirectory && $0.scope == hoveredScope }),
+                       let menu = anchors["menu:" + parent.id] {
+                        unreadBadges(parent.children, anchors: anchors, reader: reader,
+                                     viewport: reader[menu])
+                    }
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
             .modifier(OverviewToolbarEntry())
             .accessibilityElement(children: .contain)
             .accessibilityLabel(strings.filter)
+    }
+
+    // Glass is composited above views inside its container. Draw both rows' ink
+    // after the glass pass and clip each overlay to its own scrolling viewport.
+    private func unreadBadges(_ filters: [NativeOverviewFilter], anchors: [String: Anchor<CGRect>],
+                              reader: GeometryProxy, viewport: CGRect) -> some View {
+        let clip = viewport.insetBy(dx: 0, dy: -4)
+        return ZStack(alignment: .topLeading) {
+            ForEach(filters) { filter in
+                let count = (displayedChild(of: filter) ?? filter).unreadCount
+                if count > 0, let anchor = anchors[filter.id] {
+                    let chip = reader[anchor]
+                    OverviewTagUnreadBadge(count: count)
+                        .frame(width: chip.width, height: chip.height, alignment: .topTrailing)
+                        .position(x: chip.midX - clip.minX, y: chip.midY - clip.minY)
+                }
+            }
+        }
+        .frame(width: clip.width, height: clip.height, alignment: .topLeading)
+        .clipped()
+        .position(x: clip.midX, y: clip.midY)
     }
 
     @ViewBuilder
@@ -290,10 +327,11 @@ public struct NativeOverviewChrome: View {
                             .accessibilityIdentifier(child.id)
                             .accessibilityLabel(Text(child.displayTag))
                             .accessibilityAddTraits(child.matches(selectedTag, kind: .semantic, scope: selectedScope) ? .isSelected : [])
-                            .accessibilityValue(Text("\(child.count)\(activitySuffix)"))
+                            .accessibilityValue(Text("\(child.count)\(activitySuffix)\(strings.unreadSuffix(child.unreadCount))"))
                         }
                     }
                 }
+                .overviewTagAnchor("menu:" + parent.id)
                 .nativeCanvasNavigationRegion()
                 .modifier(NativeOverviewMenuRegistration(registry: interactions, root: interactionOwner, id: parent.id))
                 // Keep identities mounted until their geometry reaches the
@@ -445,7 +483,7 @@ public struct NativeOverviewChrome: View {
                 .accessibilityIdentifier(filter.id)
                 .accessibilityLabel(Text(filterTitle(filter)))
                 .accessibilityAddTraits(active ? .isSelected : [])
-                .accessibilityValue(Text("\(filterTitle(filter)) · \(filter.count)\(activitySuffix)"))
+                .accessibilityValue(Text("\(filterTitle(filter)) · \(filter.count)\(activitySuffix)\(strings.unreadSuffix((displayedChild(of: filter) ?? filter).unreadCount))"))
                 .accessibilityHint(filter.isDirectory && filter.children.contains(where: { $0.count > 0 }) ? strings.filter : "")
                 .accessibilityAction(named: Text(hoveredScope == filter.scope ? strings.closeFilter : strings.filter)) {
                     if hoveredScope == filter.scope {
@@ -524,6 +562,21 @@ public struct NativeOverviewChrome: View {
     }
 }
 
+private struct OverviewTagUnreadBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text(verbatim: String(count))
+            .font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit()
+            .foregroundStyle(.white)
+            .padding(.horizontal, 4).frame(minWidth: 16, minHeight: 15)
+            .background(Color(nsColor: .systemRed), in: Capsule())
+            .fixedSize()
+            .padding(.trailing, 5).offset(y: -3.5)
+            .allowsHitTesting(false).accessibilityHidden(true)
+    }
+}
+
 struct OverviewTagTitle: View {
     let title: String
     var child: String?
@@ -577,6 +630,10 @@ public struct NativeOverviewChromeStrings: Sendable {
     public var filter = "按标签筛选"
     public var closeFilter = "关闭子标签菜单"
     public var containsActiveTasks = "包含活跃任务"
+    public var unread = "条未读"
+    fileprivate func unreadSuffix(_ count: Int) -> String {
+        count > 0 ? " · \(count) \(unread)" : ""
+    }
     public init() {}
 }
 

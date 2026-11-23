@@ -175,6 +175,7 @@ public struct NativeOverviewWorkspaceView: View {
             strings.closeFilter = "Close child tag menu"
             strings.filter = "Filter by tag"
             strings.containsActiveTasks = "Contains active tasks"
+            strings.unread = "unread"
         }
         return strings
     }

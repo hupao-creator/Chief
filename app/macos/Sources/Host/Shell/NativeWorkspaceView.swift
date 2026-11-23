@@ -509,11 +509,10 @@ public final class NativeWorkspacePresentation {
     fileprivate func recordVisibleBookmarks() {
         guard started, !workspace.stopping, readingForeground, !messageMotion.active,
               !onboarding.blocksWorkspace, let selected else { return }
-        let history = workspace.preferences.threadReadHistory
         do {
             if selected.typeID == "report.document", let document = visibleReportDocument,
                document.ready, document.thread == selected {
-                try history.markRead(selected, version: document.source.contentRevision)
+                try overview.markRead(selected, version: document.source.contentRevision)
             }
             let shown: ApplicationExecutionRef?
             if selected.typeID == "agent", let target = agentInputTarget, target.ready,
@@ -525,7 +524,7 @@ public final class NativeWorkspacePresentation {
                 shown = reportExecution
             } else { shown = nil }
             if let shown, workspace.catalog.thread(shown.thread.threadID)?.bookmarkVersion == shown.executionID {
-                try history.markRead(shown.thread, version: shown.executionID)
+                try overview.markRead(shown.thread, version: shown.executionID)
             }
         } catch { workspace.report(error) }
     }

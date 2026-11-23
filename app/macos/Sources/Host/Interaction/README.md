@@ -86,6 +86,7 @@ the snapshot reports `transitioning`, withholds reading controls and excludes
 that time from foreground reading. Selecting a carousel page is not a reading event.
 
 
+Overview filter observations include the unread Thread count for each folder and semantic tag.
 Individual report observations expose `collectionEligibility`. Collections expose
 the same fields per real member in `memberEligibility`. `lastClosedAt` and
 `lastQualifiedAt` use epoch milliseconds or null. `defaultsToCollection`

@@ -4,6 +4,8 @@
 
 Press **⌘K** to open **Overview**. In the filter bar at the top center, select **All** to see the full view, or click a project folder to see its tasks. If the bar wraps to a second row, look below the window controls. Move the pointer over a folder with tags to pick one of its tags. Tasks with no project folder go into Inbox. Their tags appear directly in the filter bar.
 
+A red number on a folder or tag shows how many conversations in that space have an unread completed result or Super Thread document. Select the tag and open a card with a red bookmark. Once the result or document appears in the foreground, the count drops by one in each space that includes it. The number disappears when you’ve read them all. Selecting a tag alone keeps its count.
+
 Folders with the same name appear separately. If a folder and its only tag show the same cards, select the folder. If your filter seems too narrow, choose **All**.
 
 If a Super Thread in the same view cites a task's latest run, its card can stand in for the task card. Open **Related executions** in the Super Thread to reach the task. A newer run can make the task card appear again. [See the work behind a Super Thread](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
