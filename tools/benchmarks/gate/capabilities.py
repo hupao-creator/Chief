@@ -1,6 +1,4 @@
 """Read-only probes of installed macOS collectors; never request privileges."""
-import os
-from pathlib import Path
 import platform
 import subprocess
 

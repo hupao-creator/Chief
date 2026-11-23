@@ -175,10 +175,6 @@ public final class NativeHarnessHost {
         return thread
     }
 
-    func hasAuthority(threadID: JSONText, harnessID: JSONText) -> Bool {
-        (try? authoritativeThread(threadID: threadID, harnessID: harnessID)) != nil
-    }
-
     func register(_ resource: HarnessContentResource, id: String) { resources[id] = resource }
     func unregisterResource(_ id: String) { resources[id] = nil }
     func unregisterSurface(_ id: UUID) { surfaces[id] = nil }

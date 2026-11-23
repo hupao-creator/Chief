@@ -105,8 +105,6 @@ public final class NativeHarnessSettingsSurface {
     public private(set) var threadSettingsFailure: String?
     public private(set) var threadSettingsEditorID = UUID()
     private var baselineThreadSettings: ThreadSettingsSnapshot?
-    private var latestThreadSettings: ThreadSettingsSnapshot?
-    private var pendingThreadChange: JSONValue?
     @ObservationIgnored private let host: NativeHarnessHost
     @ObservationIgnored private var session: HarnessSettingsSession!
     @ObservationIgnored private var sequence = 0
@@ -140,9 +138,7 @@ public final class NativeHarnessSettingsSurface {
 
     init(host: NativeHarnessHost, plugin: AnyHarnessPlugin, configuration: NativeHarnessSettingsConfiguration) {
         self.host = host; self.configuration = configuration
-        let initialThreadSettings = ThreadSettingsSnapshot(configuration)
-        baselineThreadSettings = initialThreadSettings
-        latestThreadSettings = initialThreadSettings
+        baselineThreadSettings = ThreadSettingsSnapshot(configuration)
         session = plugin.makeSettingsSession(load: { [weak self] refresh in
             guard let self else { throw CancellationError() }; return try await load(refresh: refresh)
         }, onError: { [weak host] error in host?.callbacks.onError(error) })
@@ -168,14 +164,13 @@ public final class NativeHarnessSettingsSurface {
         try checkAuthority()
         guard next.editorIdentity == configuration.editorIdentity else { throw CancellationError() }
         guard next != configuration else { return }
-        if let snapshot = ThreadSettingsSnapshot(next) { observeThreadSettings(snapshot) }
         configuration = next; sequence += 1; needsReload = true
         session.sourceChanged()
     }
 
     public func release() {
         guard !isReleased else { return }
-        isReleased = true; sequence += 1; executionSnapshotError = nil; pendingThreadChange = nil
+        isReleased = true; sequence += 1; executionSnapshotError = nil
         session.invalidate(); host.unregisterSettingsSurface(id)
     }
 
@@ -258,25 +253,18 @@ public final class NativeHarnessSettingsSurface {
                 change: change, expectedSettingsRevision: expectedRevision) { [weak self] in
                     guard let self else { throw CancellationError() }; try checkAuthority()
                 }
-            let snapshot = ThreadSettingsSnapshot(revision: result.settingsRevision, settings: result.settings)
-            observeThreadSettings(snapshot)
             guard result.saved else {
-                pendingThreadChange = change
                 throw PluginContractError("Thread settings changed on another device. Your draft is retained; choose retry or reload above.")
             }
             guard result.settingsRevision >= expectedRevision else {
                 throw PluginContractError("Thread settings update returned an older version")
             }
-            baselineThreadSettings = snapshot; pendingThreadChange = nil
+            baselineThreadSettings = ThreadSettingsSnapshot(revision: result.settingsRevision, settings: result.settings)
             threadSettingsEditorID = UUID()
         } catch {
             threadSettingsFailure = error.localizedDescription
             throw error
         }
-    }
-
-    private func observeThreadSettings(_ snapshot: ThreadSettingsSnapshot) {
-        if snapshot.revision >= (latestThreadSettings?.revision ?? -1) { latestThreadSettings = snapshot }
     }
 
     public func harnessSettings(section: HarnessSettingsSection, executionSnapshot: Bool = false,

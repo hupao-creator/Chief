@@ -14,7 +14,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from gate.engine import digest, identity, read, reference, write
+from gate.engine import digest, read, reference, write
 
 CLI = Path(__file__).resolve().parents[1] / 'performance.py'
 COMMANDS = None

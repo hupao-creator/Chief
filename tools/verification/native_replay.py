@@ -1,7 +1,6 @@
 """Stage native replay inputs and linked resources outside protected user folders."""
 from pathlib import Path
 import fcntl
-import hashlib
 import json
 import os
 import platform
@@ -107,11 +106,6 @@ class NativeReplay:
             path = line.strip().split(" (", 1)[0]
             if path.startswith("/") and not path.startswith(("/System/", "/usr/lib/", "/Applications/Xcode.app/")):
                 raise RuntimeError("Replay links a non-system absolute library: " + path)
-
-    def copy_input(self, source, name):
-        target = self.workspace / name
-        shutil.copy2(source, target)
-        return target
 
     def acquire(self):
         path = Path(tempfile.gettempdir()) / f"mokusei-note-replay-{os.getuid()}.lock"

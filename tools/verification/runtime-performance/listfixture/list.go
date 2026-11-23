@@ -1,12 +1,11 @@
-// Package listfixture exposes the production Records.List through a public
-// application query for both semantic replay and baseline performance fixtures.
+// Package listfixture exposes Records.List through the application-list benchmark's
+// public application query.
 package listfixture
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync/atomic"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
@@ -15,7 +14,7 @@ import (
 
 const CollectionID = "list-fixture.records"
 
-type Application struct{ IndexCalls, ProjectCalls *atomic.Int64 }
+type Application struct{}
 
 func (Application) Manifest() plugin.ApplicationManifest {
 	return plugin.ApplicationManifest{
@@ -24,12 +23,9 @@ func (Application) Manifest() plugin.ApplicationManifest {
 	}
 }
 
-func (a Application) Register(registry plugin.Registry) error {
+func (Application) Register(registry plugin.Registry) error {
 	contract := plugin.ValueContract{ID: "list-fixture.json", SchemaVersion: 1, Parse: func(raw json.RawMessage) (json.RawMessage, error) { return raw, nil }}
 	if err := registry.Collection(plugin.CollectionDefinition{ID: CollectionID, OwnerPluginID: "list-fixture", Retention: "history", Contract: contract, Indexes: []plugin.RecordIndex{{ID: "list-fixture.bucket", Keys: func(raw json.RawMessage) ([]string, error) {
-		if a.IndexCalls != nil {
-			a.IndexCalls.Add(1)
-		}
 		var value struct {
 			Bucket string `json:"bucket"`
 		}
@@ -39,9 +35,6 @@ func (a Application) Register(registry plugin.Registry) error {
 		return err
 	}
 	if err := registry.ThreadType(plugin.ThreadTypeDefinition{ID: "list-fixture.document", OwnerPluginID: "list-fixture", CollectionID: CollectionID, DisplayName: "Fixture", Contract: contract, Project: func(record model.ApplicationThreadRecord) (plugin.ThreadProjection, error) {
-		if a.ProjectCalls != nil {
-			a.ProjectCalls.Add(1)
-		}
 		return plugin.ThreadProjection{Scope: "inbox", Title: record.ID, View: record.Value}, nil
 	}}); err != nil {
 		return err
@@ -87,21 +80,6 @@ func (a Application) Register(registry plugin.Registry) error {
 type IndexResult struct {
 	IDs   []string
 	Count int
-}
-
-func QueryIndex(ctx context.Context, host *applicationhost.Host, key string) (IndexResult, error) {
-	input, _ := json.Marshal(key)
-	value, err := host.Query(ctx, plugin.OperationRequest{PluginID: "list-fixture", OperationID: "list-fixture.index", Input: input})
-	if err != nil {
-		return IndexResult{}, err
-	}
-	var result IndexResult
-	raw, ok := value.(json.RawMessage)
-	if !ok {
-		return result, fmt.Errorf("unexpected index response %T", value)
-	}
-	err = json.Unmarshal(raw, &result)
-	return result, err
 }
 
 func Query(ctx context.Context, host *applicationhost.Host) ([]string, error) {

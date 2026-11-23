@@ -144,7 +144,6 @@ public final class BrowserSidecardPresentation {
     var preview = false
     var annotationError = ""
     var released = false
-    @ObservationIgnored private var sendTask: Task<Void, Never>?
     @ObservationIgnored private var contextGeneration = 0
 
     init(context: SidecardContext, lifetime: PluginLifetime) {
@@ -252,7 +251,7 @@ public final class BrowserSidecardPresentation {
 
     func send(textOnly: Bool = false) {
         guard canSend, !released else { return }
-        sendTask = Task { [weak self] in try? await self?.submitAnnotations(textOnly: textOnly) }
+        Task { [weak self] in try? await self?.submitAnnotations(textOnly: textOnly) }
     }
 
     private func submitAnnotations(textOnly: Bool = false) async throws {
