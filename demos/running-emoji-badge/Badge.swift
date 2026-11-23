@@ -25,26 +25,18 @@ enum BadgeStyle: String {
 
 struct CandidateBadge: View {
     let style: BadgeStyle
-    let running: Bool
     let brand: ThreadCardHarnessBrand
     @Environment(\.threadCardProviderColor) private var ink
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let emoji = "🧭"
 
     var body: some View {
-        Group {
-            if running {
-                TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { timeline in
-                    let t = reduceMotion ? 0.8 : timeline.date.timeIntervalSinceReferenceDate
-                    runningBadge(at: t)
-                }
-            } else {
-                original
-            }
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { timeline in
+            runningBadge(at: reduceMotion ? 0.8 : timeline.date.timeIntervalSinceReferenceDate)
         }
         .frame(width: ThreadCardProviderStatus.diameter, height: ThreadCardProviderStatus.diameter)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(brand.label + (running ? " · 运行中" : " · 空闲"))
+        .accessibilityLabel(brand.label + " · 运行中")
     }
 
     private var original: some View {
@@ -64,7 +56,9 @@ struct CandidateBadge: View {
                         .rotationEffect(.degrees(t.truncatingRemainder(dividingBy: 2.8) / 2.8 * 360))
                 }
             }
-        case .titanium, .latitude, .matrix, .split, .duet, .steps:
+        case .matrix:
+            ThreadCardProviderStatus(label: brand.label, brandKey: brand.brandKey, emoji: emoji, running: true)
+        case .titanium, .latitude, .split, .duet, .steps:
             ZStack {
                 BadgeFinish(style: style, time: t)
                 glyph

@@ -13,6 +13,13 @@ content reads establish prerequisites and independent result evidence. Runtime
 invariants belong to PBT. Benchmarks own general UX timing, resource use and
 visual-performance measurements.
 
+## Agent Thread running badge
+
+The [native badge replay](../../demos/running-emoji-badge/README.md) mounts the default
+44pt badge in four production card views. Its window recording exercises running,
+idle and completed fixtures and the adaptive harness colors. The [Overview probe](../verification/overview-ci-performance/README.md)
+checks the active decorations in the mounted workspace against a fixture Runtime.
+
 ## Harness Thread Markdown
 
 Run `python3 tools/e2e/thread-transcript/run.py --output /tmp/chief-thread-transcript-evidence` on macOS with a graphical session and the pinned dependencies cached. Specify a fresh output directory. The driver feeds Codex app-server, Claude stream-json, Pi RPC and OpenCode SSE frames to their production parsers and reducers. The replay checks the same manual input identity in all four readers. OpenCode consumes its native inbox event and also replays the authoritative message list twice.

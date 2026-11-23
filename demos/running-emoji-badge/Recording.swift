@@ -12,6 +12,9 @@ private final class RecordingObserver: NSObject, SCRecordingOutputDelegate, Send
 }
 
 @MainActor func recordComparison(window: NSWindow, state: ComparisonState) async throws {
+    // Keep the sampled window visible so the production badge can admit motion.
+    window.level = .floating
+    window.orderFrontRegardless()
     window.appearance = NSAppearance(named: .darkAqua)
     try await Task.sleep(for: .milliseconds(800))
     let available = try await SCShareableContent.currentProcess
@@ -36,14 +39,17 @@ private final class RecordingObserver: NSObject, SCRecordingOutputDelegate, Send
     try stream.addRecordingOutput(output)
     try await stream.startCapture()
     try await Task.sleep(for: .seconds(4))
-    state.running = false
+    state.status = .idle
     try await Task.sleep(for: .seconds(2))
     window.appearance = NSAppearance(named: .aqua)
-    state.running = true
+    state.status = .running
     try await Task.sleep(for: .seconds(4))
     state.harness = .claude
     state.group = .dots
     try await Task.sleep(for: .seconds(3))
+    state.group = .colors
+    state.status = .completed
+    try await Task.sleep(for: .seconds(2))
     try await stream.stopCapture()
     for try await _ in finished {}
 }

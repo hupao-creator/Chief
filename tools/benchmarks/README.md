@@ -185,7 +185,7 @@ python3 tools/benchmarks/benchmark.py compare-badge \
 The artifact must support `--benchmark-agent-emoji-badge flat|liquid-glass`
 inside the isolated Overview scenario. Ordinary launches stay flat. The glass
 variant changes only the 44pt Agent emoji backdrop to untinted regular Liquid
-Glass; emoji size, terminal symbol, body, clouds, card shell, Report/collection
+Glass; emoji size, terminal symbol, running perforations, body, card shell, Report/collection
 badges and other controls retain their current policy. Missing/empty emoji does
 not acquire this experiment. Reduce Transparency is respected by the product;
 the external comparison rejects that fallback instead of measuring two flat

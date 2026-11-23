@@ -465,7 +465,14 @@ func visibilityJSON(_ model: NativeOverviewWorkspaceModel) -> [String: Any] {
 @MainActor
 func nativeDecorationJSON(_ root: NSView) -> [String: Any] {
     var clouds = 0, scans = 0, legacy = 0, activeMetal = 0, scanAnimations = 0
+    var badges = 0, animatedBadges = 0
     var surfaces: [[String: Any]] = []
+
+    func hasSweep(_ layer: CALayer) -> Bool {
+        if layer.animation(forKey: "badge.sweep") != nil { return true }
+        return (layer.sublayers ?? []).contains(where: hasSweep)
+    }
+
     @MainActor
     func inspectLayer(_ layer: CALayer, cloud: Bool, scan: Bool) {
         if cloud, let metal = layer as? CAMetalLayer {
@@ -488,6 +495,10 @@ func nativeDecorationJSON(_ root: NSView) -> [String: Any] {
         let name = String(describing: type(of: view))
         let cloud = name.contains("NativeOverviewCloudSurface")
         let scan = name.contains("NativeCardScanView")
+        if name == "RunningThreadBadgeSurface" {
+            badges += 1
+            if let layer = view.layer, hasSweep(layer) { animatedBadges += 1 }
+        }
         if cloud { clouds += 1 }
         if scan { scans += 1 }
         if name.contains("NativeCardDecorationContainer") || name.contains("NativeCardDecorationHostingView") { legacy += 1 }
@@ -495,10 +506,16 @@ func nativeDecorationJSON(_ root: NSView) -> [String: Any] {
         for child in view.subviews { visit(child) }
     }
     visit(root)
-    return ["nativeCloudSurfaceCount": clouds, "nativeScanViewCount": scans,
+    #if CHIEF_RUNNING_BADGE
+    let runningDecorationActive = badges == 4 && animatedBadges == 4 && clouds == 0
+    #else
+    let runningDecorationActive = clouds == 40 && activeMetal == 4 && badges == 0
+    #endif
+    return ["nativeBadgeCount": badges, "animatedBadgeCount": animatedBadges,
+        "nativeCloudSurfaceCount": clouds, "nativeScanViewCount": scans,
         "legacyDecorationHostCount": legacy, "activeMetalLayerCount": activeMetal,
         "scanAnimationCount": scanAnimations, "metalSurfaces": surfaces,
-        "nativePathActive": clouds == 40 && scans == 4 && activeMetal == 4 && scanAnimations == 4 && legacy == 0,
+        "nativePathActive": runningDecorationActive && scans == 4 && scanAnimations == 4 && legacy == 0,
         "evidenceKind": "Mounted native classes, drawable geometry and live CA animation keys; no presented-frame or pixel claim"]
 }
 

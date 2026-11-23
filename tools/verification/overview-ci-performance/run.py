@@ -1186,6 +1186,8 @@ def main():
             flags = list(SWIFT_FLAGS)
             if (checkout / "app/macos/Sources/Host/Shell/DesktopLocale.swift").is_file():
                 flags.extend(["-D", "CHIEF_SYSTEM_PRESENTATION"])
+            if (checkout / "app/macos/Sources/Shared/PluginUI/Cards/RunningThreadBadge.swift").is_file():
+                flags.extend(["-D", "CHIEF_RUNNING_BADGE"])
             probe_build = {"sources": list(map(str, sources)), "swiftFlags": flags,
                            "configuration": "release", "startedAt": utc(), "succeeded": False}
             try:

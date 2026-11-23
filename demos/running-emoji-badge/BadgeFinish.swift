@@ -20,8 +20,8 @@ struct BadgeFinish: View {
             switch style {
             case .titanium: titanium(context, disk)
             case .latitude: latitude(context, disk)
-            case .matrix, .split, .duet, .steps: matrix(context, disk)
-            case .orbit: break
+            case .split, .duet, .steps: matrix(context, disk)
+            case .orbit, .matrix: break
             }
         }
     }
@@ -121,10 +121,6 @@ struct BadgeFinish: View {
             let age = tick - Double(step)
             if age < 0 { return max(0, 1 + age * 5) }
             return exp(-1.25 * age)
-        case .matrix:
-            let sweep = min(1, time.truncatingRemainder(dividingBy: 2.8) / 2.25) * 20 - 10
-            let distance = (Double(row + column) - sweep) / 1.25
-            return exp(-distance * distance)
         default:
             return 0
         }

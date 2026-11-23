@@ -53,19 +53,17 @@ emoji badges opt into regular glass with a light mint tint at the unchanged
 uses opaque palette fills; the material helper falls back to system Material
 when Liquid Glass is unavailable. Other card content keeps the shared flat
 policy for provider badges, terminal marks and plan highlights.
-Agent Thread emoji badges ordinarily use static opaque palette fills
-without an added border: adaptive accent-soft green when completed, neutral
-surface-strong otherwise. This also applies under Reduce Transparency. Removing
-per-card Liquid Glass on ordinary cards avoids its spatial update cost during canvas movement.
-The terminal symbol and accessible status label remain independent of color.
+Running Agent Threads show a diagonal sweep of harness-colored perforations
+behind the stationary emoji. Reduce Motion holds the pattern still. Idle badges
+have a neutral fill and completed badges have an accent-soft green fill and
+terminal symbol. Their accessible labels follow the projected execution status.
 The isolated `--benchmark-agent-emoji-badge liquid-glass` scenario can compare only
 Agent emoji backdrops with regular glass; ordinary launch defaults and all other
 card materials remain unchanged. See the [external comparison](../../../../../tools/benchmarks/README.md#agent-emoji-badge-material-comparison).
 Only Super Thread collections opt into the new card material; individual Report
 and ordinary Thread surfaces stay flat.
 There is no `glass world` preference. Chrome, directory menus, Moku,
-Settings and shared controls outside a card keep their own materials. Cloud,
-scan and spatial-animation ownership are unchanged.
+Settings and shared controls outside a card keep their own materials.
 
 Overview cannot originate steer/send input for a specified Thread. Emoji badges
 retain their status presentation. For an unarchived ordinary Thread whose latest
@@ -138,16 +136,11 @@ remounting.
 The body counter is an observation-boundary diagnostic, not a CPU/FPS
 measurement.
 
-The production card closure alone enables `threadCardNativeDecorationsEnabled`.
-Clouds use an independently sampled native Metal view with the existing seeded field;
-derived scans use a compositor-owned gradient animation. Neither decoration
-publishes a SwiftUI frame value. Card semantics, duration, spatial wrappers and
-surfaces remain with their existing owners. The native views fill the supplied
-bounds, preserve pause/visibility behavior, and cannot own input or accessibility.
-See the shared [native decoration contract](../../Shared/PluginUI/README.md#native-overview-decorations)
-for color, lifetime and native-composition acceptance. Standalone card fixtures
-default to the shared renderer, so Overview performance verification must mount
-this production workspace path and confirm that its native renderer is active.
+The production card closure enables native derived scans. Both the scan and
+the running badge use Core Animation and receive viewport visibility from the
+canvas. The badge only mounts for a running status. The Release probe checks
+the mounted decorations on the production workspace path.
+See the [native decoration contract](../../Shared/PluginUI/README.md#native-overview-decorations).
 
 ## Accessibility gesture ownership
 

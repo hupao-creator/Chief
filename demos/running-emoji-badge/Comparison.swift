@@ -26,7 +26,7 @@ enum ComparisonGroup: String, CaseIterable {
 }
 
 @MainActor @Observable final class ComparisonState {
-    var running = true
+    var status = ThreadCardStatusKind.running
     var group = ComparisonGroup.colors
     var harness = PreviewHarness.codex
     var pattern = BadgeStyle.matrix
@@ -67,9 +67,10 @@ struct Comparison: View {
                         ForEach(PreviewHarness.allCases, id: \.self) { Text($0.plugin.descriptor.displayName.string).tag($0) }
                     }.pickerStyle(.menu).labelsHidden().frame(width: 104)
                 }
-                Picker("候选状态", selection: $state.running) {
-                    Text("空闲").tag(false)
-                    Text("运行中").tag(true)
+                Picker("候选状态", selection: $state.status) {
+                    Text("空闲").tag(ThreadCardStatusKind.idle)
+                    Text("运行中").tag(ThreadCardStatusKind.running)
+                    Text("完成").tag(ThreadCardStatusKind.completed)
                 }
                 .pickerStyle(.segmented).labelsHidden().frame(width: 144)
             }
@@ -104,7 +105,11 @@ struct Comparison: View {
             model: harness == .claude ? "Claude Sonnet" : "GPT-6", effort: "High",
             runtime: .init(startedAt: 0, endedAt: 84_000),
             excerpt: "已整理侧栏中的常用入口。接下来核对键盘焦点和返回路径，再复查紧凑窗口下的布局。")
-        let running = state.running
+        let status: ThreadCardStatusProjection = switch state.status {
+        case .completed: .init(kind: .completed, label: "已完成", terminal: .completed)
+        case .running: .init(kind: .running, label: "运行中")
+        default: .init(kind: .idle, label: "空闲")
+        }
         let shell = RoundedRectangle(cornerRadius: NativeGeometry.overviewCardRadius)
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -113,11 +118,10 @@ struct Comparison: View {
             }
             .padding(.leading, 4)
             HarnessThreadCard(identity: identity, presentation: presentation,
-                status: .init(kind: running ? .running : .idle, label: running ? "运行中" : "空闲"),
-                providerStatus: AnyView(CandidateBadge(style: style, running: running, brand: brand)),
+                status: status, emoji: "🧭",
+                providerStatus: style != .matrix && status.kind == .running ? AnyView(CandidateBadge(style: style, brand: brand)) : nil,
                 harnessLogo: AnyView(plugin.logo(size: 12)))
                 .environment(\.threadCardProviderColor, plugin.themeColor ?? palette.provider.swiftUI)
-                .environment(\.threadCardCloudPalette, nil)
                 .frame(width: size.width, height: size.height)
                 .background(shell.fill(palette.surface.swiftUI))
                 .overlay(shell.strokeBorder(palette.lineSoft.swiftUI, lineWidth: 1))
