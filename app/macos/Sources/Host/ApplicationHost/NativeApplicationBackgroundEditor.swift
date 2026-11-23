@@ -193,7 +193,7 @@ public struct NativeApplicationBackgroundEditor: View {
 
     @ViewBuilder private func harnessFields(_ host: AnyHarnessPlugin,
                                             effective: ApplicationBackgroundExecutionSettings.Overrides) -> some View {
-        switch Result(catching: { try settingsConfiguration(host.descriptor.id, effective: effective) }) {
+        switch Result(catching: { try settingsConfiguration(host.descriptor.id) }) {
         case .success(let configuration):
             let id = host.descriptor.id
             NativeHarnessSettingsView(host: workspace.harnessHost, configuration: configuration,
@@ -207,18 +207,17 @@ public struct NativeApplicationBackgroundEditor: View {
         }
     }
 
-    private func settingsConfiguration(_ id: JSONText, effective: ApplicationBackgroundExecutionSettings.Overrides) throws
+    private func settingsConfiguration(_ id: JSONText) throws
         -> NativeHarnessSettingsConfiguration {
         let cwd = JSONText(settingsModel.defaultCwd)
+        let chiefSource = settingsModel.savedSettings["moku"]?["executionHarnesses"]?[id.string] ?? .null
         if inherited {
             // Follow the saved Moku resource even while an application's mode
             // change is still saving; its old independent catalog is unrelated.
-            return .init(harnessID: id, cwd: cwd, source: settingsModel.savedSettings["moku"]?["executionHarnesses"]?[id.string] ?? .null,
-                         scope: .global(executionOwner: .moku))
+            return .init(harnessID: id, cwd: cwd, source: chiefSource, scope: .global(executionOwner: .moku))
         }
-        let saved = try savedApplicationSettings()
         return .background(harnessID: id, cwd: cwd, settingID: settingID,
-                           inherited: saved.inherited, source: saved.settings.harnesses[id] ?? .null)
+                           saved: try savedApplicationSettings(), chiefSource: chiefSource)
     }
 
     private func effectiveSettings(_ settings: ApplicationBackgroundExecutionSettings) throws
@@ -229,10 +228,6 @@ public struct NativeApplicationBackgroundEditor: View {
         }
     }
 
-    private func savedMokuSettings() throws -> ApplicationBackgroundExecutionSettings.Overrides {
-        try mokuSettings(settingsModel.savedSettings)
-    }
-
     private func mokuSettings(_ source: JSONValue) throws -> ApplicationBackgroundExecutionSettings.Overrides {
         guard case .string(let preference) = source["moku"]?["hostHarnessPreference"],
               case .object(let harnesses) = source["moku"]?["executionHarnesses"] else {
@@ -241,16 +236,12 @@ public struct NativeApplicationBackgroundEditor: View {
         return try .init(harnessPreference: preference, harnesses: harnesses)
     }
 
-    private func savedApplicationSettings() throws -> (settings: ApplicationBackgroundExecutionSettings.Overrides, inherited: Bool) {
+    private func savedApplicationSettings() throws -> ApplicationBackgroundExecutionSettings {
         guard let entry = settingsModel.savedSettings["pluginSettings"]?.arrayValue?.first(where: { $0["id"] == .string(settingID) }),
               let settings = entry["value"] else {
             throw PluginContractError("Unknown application settings: \(settingID.string)")
         }
-        let saved = try ApplicationBackgroundExecutionSettings(json: settings)
-        let inherited: Bool
-        if case .inherit = saved.mode { inherited = true } else { inherited = false }
-        if case .override(let overrides) = saved.mode { return (overrides, false) }
-        return (try savedMokuSettings(), inherited)
+        return try ApplicationBackgroundExecutionSettings(json: settings)
     }
 
     private func selectChoice(_ choice: AgentChoice) {

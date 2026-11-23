@@ -377,6 +377,11 @@ The **Super Thread** tab configures Super Thread Agent through the
 `report.settings` identity. Its mode choices are Agent off, Use Chief and
 Configure separately.
 
+An independent editor opens its selected Harness in the role's own workspace,
+including before its mode is saved. The settings admission gate checks local
+draft readiness. The Runtime save checks shape and revision and commits the
+profiles together. Native catalog acquisition belongs to the editor resource.
+
 All Harness advanced-options headers retain the native disclosure, with a
 full-width label and 32-point minimum hit height. Title, chevron and trailing space toggle the same
 disclosure; native keyboard activation, localized expanded state, disabled gates

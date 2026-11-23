@@ -262,7 +262,7 @@ public final class NativeSettingsDraft {
                 } catch {
                     guard !self.retired else { return false }
                     // A newer edit may have fixed the rejected combination while
-                    // native validation was still running. Drain that edit before
+                    // the previous draft was saving. Drain that edit before
                     // reporting an error for a value no longer shown in the UI.
                     if self.ready != snapshot { continue }
                     self.failed = true; self.error = error.localizedDescription; self.status = .error
