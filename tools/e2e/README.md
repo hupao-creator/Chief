@@ -65,6 +65,17 @@ work and settings. Record the OS, fixture, observed pages and cleanup.
 Downloaded-file Gatekeeper and permission prompts require a quarantined copy
 on a clean Mac. A local launch cannot establish those outcomes.
 
+### Startup loading mark
+
+Open the native app with a disposable returning profile. Delay the start of its
+background service long enough to see a complete 3.2-second loop. At the center
+of the loading surface, the pan should dip, toss three colored agent marks into
+a fan and catch them. Release the service and check that Overview replaces the
+mark as soon as initial content arrives. With Reduce Motion enabled, the same
+96 pt mark should remain still while waiting. Record the source revision,
+runtime delay, captured window frames and the first ready workspace frame.
+[Startup surface](../../app/macos/README.md#system-appearance-and-language)
+
 ### First-run handoff
 
 Launch the native app with a fresh private profile and a ready Chief-capable
