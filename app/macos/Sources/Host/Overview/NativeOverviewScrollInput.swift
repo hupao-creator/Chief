@@ -56,6 +56,7 @@ struct NativeOverviewScrollSequence {
 /// Transparent geometry/lifecycle anchor, never a hit target or first responder.
 /// A local monitor also sees events above SwiftUI's semantic card subviews.
 struct NativeOverviewScrollInput: NSViewRepresentable {
+    @Environment(\.overviewNoteAction) private var noteAction
     var regions: NativeCanvasInputRegions
     var size: CGSize
     var toolbarBottom: Double
@@ -69,6 +70,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
     func updateNSView(_ view: MonitorView, context: Context) {
         let geometry = Configuration(size: size, toolbarBottom: toolbarBottom, identity: identity)
         if view.configuration != geometry { view.cancelSequence(); view.configuration = geometry }
+        view.noteAction = noteAction
         view.regions = regions
         view.enabled = enabled; view.scroll = scroll
         if !enabled() { view.cancelSequence() }
@@ -87,6 +89,8 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
         var enabled: () -> Bool = { false }
         var scroll: (Double) -> Void = { _ in }
         var sequence = NativeOverviewScrollSequence()
+        var noteAction: NativeOverviewNoteAction?
+        private var noteSwipe = NativeMokuSwipeSequence()
         private var monitor: Any?
         private var observers: [NSObjectProtocol] = []
         private var requiresNewSequence = false
@@ -135,9 +139,19 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
         func handle(_ event: NSEvent) -> NSEvent? {
             guard let window, event.window === window else { return event }
             if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
-                cancelSequence(); return event
+                interruptGestures(); return event
             }
             guard event.type == .scrollWheel else { return event }
+            // Note and camera share this monitor so a child viewport or the
+            // canvas cannot consume a qualifying swipe before Note sees it.
+            if let noteAction, let content = window.contentView,
+               noteSwipe.route(event, eligible: window.isVisible
+                && content.bounds.contains(content.convert(event.locationInWindow, from: nil))
+                && event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty
+                && NSEvent.pressedMouseButtons == 0 && noteAction.available(), open: noteAction.open) {
+                sequence.reset()
+                return nil
+            }
             guard enabled(), window.isVisible, !isHiddenOrHasHiddenAncestor else {
                 cancelSequence(); return event
             }
@@ -191,21 +205,25 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                 observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
                     MainActor.assumeIsolated {
                         if name == NSWindow.willCloseNotification { self?.stop() }
-                        else { self?.cancelSequence() }
+                        else { self?.interruptGestures() }
                     }
                 })
             }
             observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification,
                 object: NSApp, queue: .main) { [weak self] _ in
-                    MainActor.assumeIsolated { self?.cancelSequence() }
+                    MainActor.assumeIsolated { self?.interruptGestures() }
                 })
         }
         override func viewWillMove(toWindow newWindow: NSWindow?) {
             if newWindow !== window { stop() }
             super.viewWillMove(toWindow: newWindow)
         }
-        func stop() {
+        private func interruptGestures() {
+            noteSwipe = NativeMokuSwipeSequence()
             cancelSequence()
+        }
+        func stop() {
+            interruptGestures()
             if let monitor { NSEvent.removeMonitor(monitor); self.monitor = nil }
             for observer in observers { NotificationCenter.default.removeObserver(observer) }
             observers.removeAll()

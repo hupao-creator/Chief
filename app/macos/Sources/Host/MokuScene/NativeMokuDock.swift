@@ -108,7 +108,6 @@ public struct NativeMokuDock: View {
     @State private var noteTransitionGeneration = 0
     @State private var settingsPreferredHeight: CGFloat = 900
     @State private var settingsHeaderScroll: CGFloat = 0
-    @State private var stopControlsFrame = CGRect.zero
     @State private var talkScrollbarStyle = NSScroller.preferredScrollerStyle
     @State private var character = NativeMokuCharacterMotion()
     @State private var reasoningRequested = false
@@ -271,14 +270,6 @@ public struct NativeMokuDock: View {
                 .geometryGroup()
                 .transition(.opacity.animation(.easeInOut(duration: 0.22)))
         }
-    }
-    /// Note swipes belong to the original control row, outside selectable prose.
-    private var controlRowFrame: CGRect {
-        let surface = state.capsuleFrame
-        let height = noteExpanded
-            ? min(surface.height, NativeMokuCapsuleLayout.idleSize.height)
-            : surface.height
-        return CGRect(x: surface.minX, y: surface.maxY - height, width: surface.width, height: height)
     }
     private var ordinaryOverviewDock: Bool {
         state.overviewVisible && !state.readingPanelVisible && !landing && threadID == nil && sidecardComposer == nil
@@ -708,15 +699,6 @@ public struct NativeMokuDock: View {
                 NativeSettingsEscapeHandler { state.setNotePanelOpen(false) }
                     .frame(width: 0, height: 0)
             }
-            NativeMokuSwipeMonitor(
-                isActive: { rowControlAvailable },
-                isInside: { point in
-                    let row = controlRowFrame.offsetBy(dx: -horizontalOffset, dy: 0)
-                    return NativeMokuSwipeTarget.contains(point, row: row,
-                        eyesOnly: displayedMessage?.dispatch != nil,
-                        excluding: (stopControlPresent ? [stopControlsFrame] : []))
-                },
-                openNote: { state.openNotePanelFromUser() })
         }
         .allowsHitTesting(false)
     }
@@ -982,7 +964,6 @@ public struct NativeMokuDock: View {
                         .help(threadID == nil ? localize("停止 Chief", "Stop Chief") : localize("停止此 Thread", "Stop this thread"))
                         .accessibilityLabel(threadID == nil ? localize("停止 Chief", "Stop Chief") : localize("停止此 Thread", "Stop this thread"))
                         .accessibilityIdentifier("moku-stop")
-                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("native-moku-dock")) } action: { stopControlsFrame = $0 }
                 }
             }
             .padding(.trailing, composerStop ? 45 : (stopControlPresent ? 7 : 3))
@@ -1018,7 +999,11 @@ public struct NativeMokuDock: View {
             escapeInput()
         } : nil)
         .accessibilityElement(children: .contain).accessibilityLabel(state.settingsOpen ? localize("设置", "Settings") : "Chief")
-        .accessibilityHint(state.settingsOpen || !state.inputInteractionReady ? "" : localize("点击打开输入框，鼠标悬停时在触控板上向上滑动打开笔记", "Click to type; while hovering, swipe up on the trackpad for notes"))
+        .accessibilityHint(state.settingsOpen || !state.inputInteractionReady ? "" :
+            state.overviewVisible && rowControlAvailable && !state.notePanelOpen
+                ? localize("点击打开输入框，或在俯瞰中的任意位置双指上滑打开笔记",
+                           "Click to type, or swipe up with two fingers anywhere in Overview for Chief Note")
+                : localize("点击打开输入框", "Click to type"))
         .accessibilityValue(state.noteUnread(note) ? localize("笔记有尚未完整浏览的更新", "Note update not yet fully browsed") : "")
         .accessibilityIdentifier("moku-capsule")
     }

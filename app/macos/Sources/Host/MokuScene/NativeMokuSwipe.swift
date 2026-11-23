@@ -1,154 +1,74 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
-enum NativeMokuSwipeAction { case note }
-
-/// Physical trackpad deltas use a distance threshold and direction dominance.
-/// Each gesture can request one action only.
-private struct NativeMokuSwipeIntent {
-    static let minimumDistance: CGFloat = 24
-    private var upward: CGFloat = 0
-    private var horizontalTravel: CGFloat = 0
-    private(set) var triggered = false
-
-    mutating func sample(_ delta: CGPoint) -> NativeMokuSwipeAction? {
-        upward -= delta.y
-        horizontalTravel += abs(delta.x)
-        guard !triggered else { return nil }
-        let action: NativeMokuSwipeAction?
-        if upward >= Self.minimumDistance && upward > horizontalTravel * 1.5 { action = .note }
-        else { action = nil }
-        if action != nil { triggered = true }
-        return action
-    }
+/// The workspace supplies the user entry point to its Overview scroll router.
+struct NativeOverviewNoteAction {
+    let available: @MainActor () -> Bool
+    let open: @MainActor () -> Void
 }
 
-enum NativeMokuSwipeTarget {
-    static func contains(_ point: CGPoint, row: CGRect, eyesOnly: Bool,
-                         excluding controls: [CGRect] = []) -> Bool {
-        let region = eyesOnly
-            ? CGRect(x: row.minX + 9, y: row.midY - 18, width: 46, height: 36) : row
-        return region.contains(point) && !controls.contains { $0.contains(point) }
-    }
+extension EnvironmentValues {
+    @Entry var overviewNoteAction: NativeOverviewNoteAction? = nil
 }
 
-/// A gesture belongs to its starting target. Never acquire a scroll already in
-/// progress elsewhere, or let the opening gesture scroll the expanded note.
+/// Reserve upward travel before it moves the camera or a native scroller.
+/// Once another direction takes the gesture, leave its reversal and inertia
+/// with that owner. Only a fresh contact can open the Note again.
 struct NativeMokuSwipeSequence {
-    private var owned: Bool?
-    typealias Action = NativeMokuSwipeAction
-    private var intent = NativeMokuSwipeIntent()
+    private enum Stage { case idle, possible, opened, awaitingMomentum(TimeInterval), momentum }
+    private var stage = Stage.idle
+    private var upward: CGFloat = 0
+    private var horizontal: CGFloat = 0
 
-    mutating func reset() { self = Self() }
-
-    mutating func route(x: CGFloat, y: CGFloat, phase: NSEvent.Phase,
-                        momentum: NSEvent.Phase, precise: Bool, inverted: Bool,
-                        eligible: Bool, inside: Bool) -> (consume: Bool, action: Action?) {
-        if phase.contains(.began) || phase.contains(.mayBegin) { reset() }
-        if !momentum.isEmpty {
-            let consume = owned == true
-            if momentum.contains(.ended) || momentum.contains(.cancelled) { reset() }
-            return (consume, nil)
-        }
-        // Phased precision events identify direct trackpad contact; wheel
-        // ticks and orphan momentum cannot open the note.
-        guard precise, !phase.isEmpty, x.isFinite, y.isFinite else {
-            reset(); return (false, nil)
-        }
-        if phase.contains(.mayBegin) { return (false, nil) }
-        if owned == nil {
-            guard phase.contains(.began) || phase.contains(.changed) else { return (false, nil) }
-            owned = eligible && inside
-        }
-        guard owned == true else { return (false, nil) }
-        if phase.contains(.cancelled) { reset(); return (true, nil) }
-        if !intent.triggered && (!eligible || !inside) {
-            owned = false; return (true, nil)
-        }
-        // Natural Scrolling changes event signs, not the physical gesture.
-        let action = intent.sample(CGPoint(x: inverted ? x : -x, y: inverted ? y : -y))
-        // Retain ownership through the ended → momentum handoff. The next
-        // direct began/mayBegin starts a fresh gesture.
-        return (true, action)
-    }
-}
-
-struct NativeMokuSwipeMonitor: NSViewRepresentable {
-    var isActive: () -> Bool
-    var isInside: (CGPoint) -> Bool
-    var openNote: () -> Void
-
-    func makeNSView(context: Context) -> MonitorView {
-        let view = MonitorView()
-        updateNSView(view, context: context)
-        return view
-    }
-    func updateNSView(_ view: MonitorView, context: Context) {
-        view.isActive = isActive; view.isInside = isInside
-        view.openNote = openNote
-    }
-    static func dismantleNSView(_ view: MonitorView, coordinator: ()) { view.stop() }
-
-    @MainActor final class MonitorView: NSView {
-        var isActive: () -> Bool = { false }
-        var isInside: (CGPoint) -> Bool = { _ in false }
-        var openNote: () -> Void = {}
-        private var monitor: Any?
-        private var sequence = NativeMokuSwipeSequence()
-        override var isFlipped: Bool { true }
-        override func hitTest(_ point: NSPoint) -> NSView? { nil }
-
-        private func isOverScrollableContent(_ locationInWindow: CGPoint) -> Bool {
-            guard let content = window?.contentView else { return false }
-            let point = content.superview?.convert(locationInWindow, from: nil) ?? locationInWindow
-            var target = content.hitTest(point)
-            while let view = target {
-                if let scroll = view as? NSScrollView, let document = scroll.documentView,
-                   document.bounds.height > scroll.contentView.bounds.height + 1 {
-                    // The actual native viewport owns overflow, including at its
-                    // ends. Short Talk can use the same area to open the note.
-                    return true
-                }
-                target = view.superview
+    @MainActor mutating func route(_ event: NSEvent, eligible: @autoclosure () -> Bool, open: () -> Void) -> Bool {
+        let phase = event.phase
+        if !event.momentumPhase.isEmpty {
+            if case .awaitingMomentum(let end) = stage, event.timestamp - end > 0.25 { stage = .idle }
+            switch stage {
+            case .awaitingMomentum, .opened, .momentum:
+                stage = event.momentumPhase.contains(.ended) || event.momentumPhase.contains(.cancelled) ? .idle : .momentum
+                return true
+            default:
+                stage = .idle
+                return false
             }
+        }
+        if phase.contains(.began) || phase.contains(.mayBegin) {
+            stage = .possible
+            upward = 0
+            horizontal = 0
+        }
+        let reserved: Bool
+        switch stage {
+        case .opened: reserved = true
+        case .possible: reserved = upward > 0
+        default: reserved = false
+        }
+        if phase.contains(.ended) {
+            stage = reserved ? .awaitingMomentum(event.timestamp) : .idle
+            return reserved
+        }
+        if phase.isEmpty || phase.contains(.cancelled) {
+            stage = .idle
+            return !phase.isEmpty && reserved
+        }
+        if case .opened = stage { return true }
+        guard case .possible = stage, event.hasPreciseScrollingDeltas, eligible() else {
+            stage = .idle
             return false
         }
-
-        func handle(_ event: NSEvent) -> NSEvent? {
-            guard let window, event.window === window, !isHiddenOrHasHiddenAncestor else { return event }
-            if event.type != .scrollWheel { sequence.reset(); return event }
-            let modified = !event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty
-            let result = sequence.route(x: event.scrollingDeltaX, y: event.scrollingDeltaY,
-                phase: event.phase, momentum: event.momentumPhase,
-                precise: event.hasPreciseScrollingDeltas, inverted: event.isDirectionInvertedFromDevice,
-                eligible: isActive() && window.isVisible && !modified && NSEvent.pressedMouseButtons == 0,
-                inside: isInside(convert(event.locationInWindow, from: nil))
-                    && !isOverScrollableContent(event.locationInWindow))
-            switch result.action {
-            case .note: openNote()
-            case nil: break
-            }
-            return result.consume ? nil : event
+        if phase.contains(.mayBegin) { return false }
+        upward += event.isDirectionInvertedFromDevice ? -event.scrollingDeltaY : event.scrollingDeltaY
+        horizontal += abs(event.scrollingDeltaX)
+        if upward == 0 && horizontal == 0 { return false }
+        guard upward > horizontal * 1.5 else {
+            stage = .idle
+            return false
         }
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            stop()
-            guard window != nil else { return }
-            monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
-                let consumed = MainActor.assumeIsolated {
-                    guard let self else { return false }
-                    return self.handle(event) == nil
-                }
-                return consumed ? nil : event
-            }
+        if upward >= 24 {
+            stage = .opened
+            open()
         }
-        override func viewWillMove(toWindow newWindow: NSWindow?) {
-            if newWindow == nil { stop() }
-            super.viewWillMove(toWindow: newWindow)
-        }
-        func stop() {
-            if let monitor { NSEvent.removeMonitor(monitor); self.monitor = nil }
-            sequence.reset()
-        }
+        return true
     }
 }

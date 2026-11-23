@@ -841,6 +841,13 @@ public final class NativeWorkspacePresentation {
             && !onboarding.blocksWorkspace
             && workspace.catalog.hasMoku
     }
+    fileprivate var canSwipeOpenMokuNote: Bool {
+        canToggleMokuNote && scene.windowVisible && scene.inputInteractionReady
+            && !scene.inputOpen && !scene.inputLeaving && !scene.notePanelOpen
+            && !scene.dockInteractionVisible && moku.interaction == nil
+            && !browsingCollection && !messageMotion.active
+    }
+
     public func toggleMokuNote() {
         guard canToggleMokuNote else { return }
         scene.toggleNotePanelFromUser()
@@ -1115,6 +1122,9 @@ public struct NativeWorkspaceView: View {
                     interactionPaused: presentation.scene.interactionPaused || presentation.messageMotion.active,
                     landing: presentation.moku.landing,
                     chromeVisible: presentation.selected == nil)
+                    .environment(\.overviewNoteAction, NativeOverviewNoteAction(
+                        available: { presentation.canSwipeOpenMokuNote },
+                        open: { presentation.scene.openNotePanelFromUser() }))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen
                         && !presentation.onboarding.blocksWorkspace),
                         presentation: presentation.collectionPanel)

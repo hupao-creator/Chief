@@ -23,8 +23,8 @@ python3 demos/moku-landing/verify_header.py --capture --keyboard --output .build
 ```
 
 The replay mounts the production workspace and its nested reading host with
-a temporary fixture catalog. It starts at 5×, checks 1100pt and 600pt windows
-at actual size, visits 1.44× and 2.5×, and returns to 5× at two window heights.
+a temporary fixture catalog. The header cases start at 5×, check 1100pt and 600pt windows
+at actual size, visit 1.44× and 2.5×, and return to 5× at two window heights.
 The JSON records rendered filter bounds, native window button centers and
 hit tests, and whether a window-local click in the upper part of the
 Settings button opens Settings in both actual-size windows. It also records
@@ -44,5 +44,20 @@ boundary, when scrolling remains necessary, and when the window grows again.
 With `--keyboard`, the replay scrolls a column with each arrow key and opens the
 focused card with Return. It records both distances and the card identity in
 `overview-keyboard.json`. Optional captures show the isolated workspace.
-Wheel samples enter the mounted AppKit monitor. Pointer events go through the
-window. Physical trackpad delivery and system fullscreen need separate observation.
+### Overview Note swipe at actual size
+
+```sh
+python3 demos/moku-landing/verify_header.py --note-swipe --output .build/overview-note-swipe
+```
+
+This scenario keeps the workspace at 1× throughout, including its first frame.
+It checks the empty Overview with folded input as well as the populated canvas.
+The Note swipe cases post window-addressed pixel scrolls to the replay app's
+AppKit event queue over the background, a card, the overflowing filter scroller
+and Chief Bar. They check the opening generation, threshold, direct and momentum
+tails, downward and modified input, native tag and Note scrolling, camera travel
+and composer/Settings ownership. Their receipt is `overview-note-swipe.json`.
+An additional sample exercises inverted device deltas at the mounted handler.
+The reader case also checks that a fresh upward gesture leaves Note closed.
+The camera geometry cases send samples directly to the mounted AppKit monitor.
+Physical trackpad delivery and system fullscreen need separate observation.

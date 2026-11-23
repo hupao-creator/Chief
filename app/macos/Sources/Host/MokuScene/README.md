@@ -229,14 +229,9 @@ describes whether the message goes to Moku or directly to the current Thread.
 Selected directories are shown as chips. Browser annotation mode supplies its
 own editor instructions based on whether a page region is selected.
 
-On macOS, clicking the collapsed Moku row opens input; when a message is visible, only the eyes are the input target so prose remains selectable and controls retain their actions. Clicking the eyes beneath an open note switches to input. Physical two-finger upward swipe opens the note; horizontal swipes do not open input. [NativeMokuSwipe](NativeMokuSwipe.swift) requires a precise phased gesture, threshold and dominant direction, rejects inertia/outside-origin gestures, and respects input/interaction ownership. Its AppKit monitor routes trackpad scroll events; the shared target checks exclude microphone controls and note-reading content. The click entry uses the existing composer focus and draft-restoration path. Note scrolling, Escape, outside click and the close button reuse the ordinary note path without changing the media owner or saved composer restoration state.
+On macOS, clicking the collapsed Moku row opens input; when a message is visible, only the eyes are the input target so prose remains selectable and controls retain their actions. Clicking the eyes beneath an open note switches to input. The click entry uses the existing composer focus and draft-restoration path. A physical two-finger upward swipe anywhere in the exposed Overview opens Chief Note through the user reading-session entry point. This includes a long Talk message's scroll viewport and the dispatch row. Talk stays mounted while Note occupies its reading seat. Once open, Note owns its body scrolling. The shortcut toggles Note, and Escape, outside click and the close button dismiss it. See the [Overview scroll router](../Overview/README.md#overview-scroll-input) for gesture admission.
 
-Ordinary Talk also admits that upward gesture across the message row. Note
-temporarily replaces the message as the capsule's reading surface. A native
-viewport with vertical overflow keeps its scrolling ownership, including at either end; the eyes and surrounding
-row remain note entry points for a long message. The monitor checks the actual
-hit-tested AppKit viewport, so resizing and persistent scroller gutters do not
-depend on a predicted text height. Dispatch status is informational; clicking it does not open a detail sheet.
+Dispatch status is informational; clicking it does not open a detail sheet.
 
 The compact running fallback reuses [MokuRunningStory](../Moku/MokuRunningStory.swift): three rainbow beats, lift, a three-second orbit, landing and recovery, with the eyes following the same clock. The eyes retain their seat while the 5-point dots follow the capsule's outer contour, with 3 points of clear space. [NativeMokuRunningGeometry](NativeMokuRunningGeometry.swift) supplies that authored path to the persistent character host. Decorations paint outside the glass clip.
 

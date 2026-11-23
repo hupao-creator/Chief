@@ -36,6 +36,7 @@ private final class WheelSample: NSEvent {
     override var locationInWindow: CGPoint { point }
     override var type: NSEvent.EventType { .scrollWheel }
     override var hasPreciseScrollingDeltas: Bool { precise }
+    override var isDirectionInvertedFromDevice: Bool { true }
     override var scrollingDeltaX: CGFloat { x }
     override var scrollingDeltaY: CGFloat { y }
     override var phase: NSEvent.Phase { direct }
@@ -45,7 +46,7 @@ private final class WheelSample: NSEvent {
 }
 
 @main @MainActor private struct NestedHeaderReplay: App {
-    @State private var zoom = 5.0
+    @State private var zoom = 1.0
     private let workspace: NativeWorkspaceModel
     private let presentation: NativeWorkspacePresentation
 
@@ -79,15 +80,18 @@ private final class WheelSample: NSEvent {
     }
 
     private func installTasks(_ count: Int, revision: Int, authority: UUID, firstDirectoryCount: Int? = nil,
-                              reports: [JSONValue] = []) async throws {
+                              manyDirectories: Bool = false, reports: [JSONValue] = []) async throws {
         let ids = (0..<count).map { "task-\($0)" } + ["moku"]
+        let note = try ThreadNote(id: "fixture-note", text: JSONText(String(repeating: "A note paragraph.\n\n", count: 55)),
+                                  revision: 1, updatedAt: 2)
         let threads = try ids.enumerated().map { index, id in
             let other = firstDirectoryCount.map { index >= $0 && id != "moku" } ?? false
-            let scope: JSONText = other ? "/other" : "/fixture"
+            let directory: JSONText = manyDirectories ? JSONText("Project \(index)") : (other ? "Other" : "Fixture")
+            let scope: JSONText = manyDirectories ? JSONText("/fixture/\(index)") : (other ? "/other" : "/fixture")
             return try HarnessThread(id: JSONText(id), harnessID: "codex", revision: 0, sessionState: .null,
                 observation: .init(), cwd: scope, settings: .object([:]), createdAt: 1, updatedAt: 2,
-                title: JSONText(id), tags: [], moku: id == "moku" ? true : nil, transcript: id == "moku" ? .array([]) : nil,
-                directoryTag: other ? "Other" : "Fixture", directoryScope: scope).json
+                title: JSONText(id), tags: [], moku: id == "moku" ? true : nil, note: manyDirectories && id == "moku" ? note : nil, transcript: id == "moku" ? .array([]) : nil,
+                directoryTag: directory, directoryScope: scope).json
         }
         let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
             "defaultCwd": .text("/fixture"), "settings": .object([:]), "threads": .array(threads),
@@ -97,7 +101,8 @@ private final class WheelSample: NSEvent {
 
     private func replay() async throws {
         let authority = UUID()
-        try await installTasks(18, revision: 1, authority: authority)
+        let noteSwipeReplay = CommandLine.arguments.contains("--note-swipe")
+        try await installTasks(18, revision: 1, authority: authority, manyDirectories: noteSwipeReplay)
         guard workspace.hasInitialContent, let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "header-replay" }),
               let screen = NSScreen.screens.first else { throw ReplayError("Workspace did not mount") }
         window.collectionBehavior = [.auxiliary, .canJoinAllSpaces]
@@ -106,6 +111,25 @@ private final class WheelSample: NSEvent {
 
         let directory = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        if noteSwipeReplay {
+            window.setContentSize(CGSize(width: 900, height: 680))
+            window.center()
+            try await focusReplayWindow(window)
+            try await Task.sleep(for: .seconds(1))
+            try await noteSwipes(window, directory: directory)
+            try await cardInteraction(window, directory: directory, authority: authority)
+            try await fittingCards(window, directory: directory, authority: authority)
+            try await installTasks(0, revision: 9, authority: authority)
+            try await Task.sleep(for: .milliseconds(800))
+            guard presentation.moku.landing else { throw ReplayError("Empty Overview did not enter landing") }
+            presentation.scene.setInputOpen(false)
+            try await Task.sleep(for: .milliseconds(650))
+            try await postScroll(window, CGPoint(x: 80, y: 120), y: 40, phase: .began)
+            try await postScroll(window, CGPoint(x: 80, y: 120), y: 0, phase: .ended)
+            guard presentation.scene.notePanelOpen else { throw ReplayError("Empty Overview missed the Note swipe") }
+            try Data("true".utf8).write(to: directory.appending(path: "landing-note-swipe.json"))
+            return
+        }
         var records: [[String: Any]] = []
         // Filter tops are logical points. Settings probes use actual-size window points.
         let cases: [(size: CGSize, scale: CGFloat, filterTop: CGFloat, settingsProbe: CGPoint?, captureName: String?)] = [
@@ -152,9 +176,30 @@ private final class WheelSample: NSEvent {
         zoom = 1
         window.setContentSize(CGSize(width: 900, height: 680))
         try await Task.sleep(for: .seconds(1))
+        try await focusReplayWindow(window)
         try await cardInteraction(window, directory: directory, authority: authority)
         try await fittingCards(window, directory: directory, authority: authority)
         try await fittingCollection(window, directory: directory, authority: authority)
+    }
+
+    private func focusReplayWindow(_ window: NSWindow) async throws {
+        guard !window.isKeyWindow else { return }
+        // LaunchServices may leave the user's existing workspace in front
+        // during a replay. Reopen only this unique replay bundle.
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        configuration.createsNewApplicationInstance = false
+        configuration.addsToRecentItems = false
+        let app = try await NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration)
+        guard app.processIdentifier == getpid() else { throw ReplayError("Unexpected replay activation target") }
+        window.makeKeyAndOrderFront(nil)
+        let deadline = ContinuousClock.now + .seconds(3)
+        while !window.isKeyWindow {
+            guard ContinuousClock.now < deadline else {
+                throw ReplayError("Replay window could not acquire focus, policy=\(NSApp.activationPolicy().rawValue), frontmost=\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "none")")
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
     }
 
     private func capture(_ window: NSWindow, to url: URL) async throws {
@@ -218,6 +263,140 @@ private final class WheelSample: NSEvent {
         return blocked && camera.transform == before
     }
 
+    private func postScroll(_ window: NSWindow, _ point: CGPoint, y: Int32, phase: CGScrollPhase?,
+                            momentum: CGMomentumScrollPhase = .none, x: Int32 = 0,
+                            flags: CGEventFlags = []) async throws {
+        // A window-addressed AppKit event supplies the native window identity.
+        // Reuse its CGEvent envelope to enqueue a real phased pixel scroll.
+        guard window.isKeyWindow,
+              let event = NSEvent.mouseEvent(with: .mouseMoved, location: point, modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                context: nil, eventNumber: 0, clickCount: 0, pressure: 0)?.cgEvent else {
+            throw ReplayError("Cannot address the replay window")
+        }
+        event.type = .scrollWheel
+        event.flags = flags
+        event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        event.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: Int64(y))
+        event.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: Int64(x))
+        event.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase?.rawValue ?? 0))
+        event.setIntegerValueField(.scrollWheelEventMomentumPhase, value: Int64(momentum.rawValue))
+        guard let sample = NSEvent(cgEvent: event), sample.window === window, sample.locationInWindow == point,
+              sample.hasPreciseScrollingDeltas else { throw ReplayError("Pixel scroll lost its window target") }
+        NSApp.postEvent(sample, atStart: false)
+        try await Task.sleep(for: .milliseconds(55))
+    }
+
+    /// Post pixel scrolls to this replay process. AppKit chooses the responder
+    /// and invokes the installed monitors, including over the nested tag scroller.
+    private func noteSwipes(_ window: NSWindow, directory: URL) async throws {
+        guard let content = window.contentView,
+              let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content),
+              let parent = descendant(NativeReadingParentView.self, in: content),
+              let tags = descendant(NSScrollView.self, in: parent),
+              let card = presentation.canvas.presentedPlacements.compactMap({
+                  presentation.canvas.visibleFrame(for: $0.id)
+              }).first(where: { CGRect(origin: .zero, size: monitor.configuration.size).contains($0) }) else {
+            throw ReplayError("Missing Overview swipe targets")
+        }
+        let scene = presentation.scene
+        let camera = presentation.canvas.camera
+        let center: (CGRect) -> CGPoint = { CGPoint(x: $0.midX, y: $0.midY) }
+        let background = monitor.windowPoint(CGPoint(x: 8, y: monitor.configuration.size.height - 8))
+        let targets = [("background", background), ("card", monitor.windowPoint(center(card))),
+                       ("tag scroller", tags.convert(center(tags.bounds), to: nil)),
+                       ("Chief Bar", monitor.windowPoint(center(scene.capsuleFrame)))]
+        let startOffset = camera.scrollOffset
+        for (region, point) in targets {
+            let generation = scene.noteOpenGeneration
+            try await postScroll(window, point, y: 10, phase: .began)
+            guard !scene.notePanelOpen else { throw ReplayError("Subthreshold swipe opened Note at " + region) }
+            try await postScroll(window, point, y: 17, phase: .changed)
+            guard scene.notePanelOpen, scene.noteOpenGeneration == generation + 1 else {
+                throw ReplayError("Window swipe missed \(region) at \(point), eligible=\(String(describing: monitor.noteAction?.available())), generation=\(scene.noteOpenGeneration), input=\(scene.inputOpen), key=\(window.isKeyWindow)")
+            }
+            // Close before lifting. Neither continuing contact nor its momentum
+            // may reopen Note or move the canvas behind it.
+            presentation.toggleMokuNote()
+            try await postScroll(window, point, y: 42, phase: .changed)
+            try await postScroll(window, point, y: 0, phase: .ended)
+            try await postScroll(window, point, y: 35, phase: nil, momentum: .begin, x: -20)
+            try await postScroll(window, point, y: 0, phase: nil, momentum: .end)
+            guard !scene.notePanelOpen, scene.noteOpenGeneration == generation + 1,
+                  camera.scrollOffset == startOffset else { throw ReplayError("Swipe tail escaped at " + region) }
+            try await Task.sleep(for: .milliseconds(600))
+        }
+        // The queued CGEvents above carry non-inverted device deltas. The
+        // mounted handler also receives natural-scrolling samples in this replay.
+        let inverted = WheelSample(window: window, point: background, x: 0, y: -25)
+        let generationBeforeNatural = scene.noteOpenGeneration
+        guard monitor.handle(inverted) == nil, scene.notePanelOpen,
+              scene.noteOpenGeneration == generationBeforeNatural + 1 else {
+            throw ReplayError("Natural Scrolling changed the physical Note gesture")
+        }
+        _ = monitor.handle(WheelSample(window: window, point: background, x: 0, y: 0, phase: .ended))
+        presentation.toggleMokuNote()
+        try await Task.sleep(for: .milliseconds(650))
+        let tagPoint = tags.convert(center(tags.bounds), to: nil)
+        let tagOffset = tags.contentView.bounds.minX
+        try await postScroll(window, tagPoint, y: 0, phase: .began, x: tagOffset > 0 ? 40 : -40)
+        try await postScroll(window, tagPoint, y: 0, phase: .ended)
+        guard tags.contentView.bounds.minX != tagOffset, camera.scrollOffset == startOffset,
+              !scene.notePanelOpen else { throw ReplayError("The overflowing tags lost horizontal scrolling") }
+
+        presentation.toggleMokuNote()
+        try await Task.sleep(for: .milliseconds(850))
+        let notePoint = monitor.windowPoint(center(scene.capsuleFrame))
+        let hit = content.hitTest(content.superview?.convert(notePoint, from: nil) ?? notePoint)
+        guard let scroller = hit?.enclosingScrollView, let document = scroller.documentView,
+              document.bounds.height > scroller.contentView.bounds.height + 80 else {
+            throw ReplayError("Note swipe fixture missed the overflowing Note body")
+        }
+        let generation = scene.noteOpenGeneration
+        let original = scroller.contentView.bounds.minY
+        try await postScroll(window, notePoint, y: -70, phase: .began)
+        try await postScroll(window, notePoint, y: 0, phase: .ended)
+        let scrolled = scroller.contentView.bounds.minY
+        try await postScroll(window, notePoint, y: 40, phase: .began)
+        try await postScroll(window, notePoint, y: 0, phase: .ended)
+        guard scrolled > original, scroller.contentView.bounds.minY < scrolled,
+              scene.notePanelOpen, scene.noteOpenGeneration == generation else {
+            throw ReplayError("The open Note lost native scrolling or opened twice")
+        }
+        presentation.toggleMokuNote()
+        try await Task.sleep(for: .milliseconds(650))
+        try await postScroll(window, background, y: -40, phase: .began)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        try await postScroll(window, background, y: 40, phase: .began, flags: .maskShift)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        guard !scene.notePanelOpen else { throw ReplayError("Downward or modified swipe opened Note") }
+        try await postScroll(window, background, y: 3, phase: .began, x: startOffset > 0 ? 40 : -40)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        guard !scene.notePanelOpen, camera.scrollOffset != startOffset else {
+            throw ReplayError("Horizontal window scroll did not reach the camera")
+        }
+        scene.setInputOpen(true)
+        try await postScroll(window, background, y: 40, phase: .began)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        guard scene.inputOpen, !scene.notePanelOpen else { throw ReplayError("Swipe displaced the composer") }
+        scene.setInputOpen(false)
+        presentation.openSettings()
+        try await postScroll(window, background, y: 40, phase: .began)
+        try await postScroll(window, background, y: 0, phase: .ended)
+        guard scene.settingsOpen, !scene.notePanelOpen else { throw ReplayError("Swipe escaped Settings") }
+        scene.closeSettings()
+        let deadline = ContinuousClock.now + .seconds(4)
+        while scene.settingsOpen || !monitor.enabled() {
+            guard ContinuousClock.now < deadline else { throw ReplayError("Overview did not resume after Settings") }
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        try JSONSerialization.data(withJSONObject: ["regions": targets.map { $0.0 },
+            "singleOpenThroughMomentum": true, "horizontalScroll": true, "composerExcluded": true, "settingsExcluded": true,
+            "tagOffsets": [tagOffset, tags.contentView.bounds.minX], "noteOffsets": [original, scrolled],
+            "naturalScrolling": true])
+            .write(to: directory.appending(path: "overview-note-swipe.json"))
+    }
+
     private func cardInteraction(_ window: NSWindow, directory: URL, authority: UUID) async throws {
         guard window.isKeyWindow, let content = window.contentView,
               let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else {
@@ -243,7 +422,7 @@ private final class WheelSample: NSEvent {
         let atEnd = camera.scrollOffset
         try await Task.sleep(for: .milliseconds(200))
         guard atEnd == camera.maximumOffset, atEnd > 0, !initiallyOffscreen.isEmpty else {
-            throw ReplayError("Dense fixture did not reach its trailing boundary")
+            throw ReplayError("Dense fixture did not reach its trailing boundary: offset=\(atEnd)/\(camera.maximumOffset), offscreen=\(initiallyOffscreen.count), enabled=\(monitor.enabled()), canvasStart=\(monitor.canStart(at: monitor.canvasPoint(point))), owner=\(String(describing: monitor.sequence.owner)), buttons=\(NSEvent.pressedMouseButtons)")
         }
         let envelope = canvas.presentedPlacements.compactMap { canvas.displayedFrame(for: $0.id) }
             .reduce(CGRect.null) { $0.union($1) }
@@ -282,6 +461,11 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Click missed \(target.id), selected=\(String(describing: presentation.selected)), "
                 + "viewport=\(size), frame=\(frame), windowPoint=\(windowPoint), hit=\(String(describing: clickedView)), "
                 + "active=\(canvas.allowsActivation(cardID: target.id)), key=\(window.isKeyWindow)")
+        }
+        try await postScroll(window, windowPoint, y: 40, phase: .began)
+        try await postScroll(window, windowPoint, y: 0, phase: .ended)
+        guard !presentation.scene.notePanelOpen, presentation.selected?.threadID.string == target.id else {
+            throw ReplayError("A swipe in the reader activated Overview")
         }
         presentation.showOverview()
         try await Task.sleep(for: .seconds(1))

@@ -32,6 +32,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--capture", action="store_true", help="capture the own window at menu and maximum zoom")
 parser.add_argument("--keyboard", action="store_true", help="focus a card with system Accessibility and check arrow keys and Return")
+parser.add_argument("--note-swipe", action="store_true", help="run Note and scroll interactions entirely at actual size")
 args = parser.parse_args()
 with native_lease():
     args.output.mkdir(parents=True, exist_ok=False)
@@ -40,6 +41,8 @@ with native_lease():
     try:
         replay.compile([source / "NestedHeaderReplay.swift"])
         arguments = ["--capture"] if args.capture else []
+        if args.note_swipe:
+            arguments.append("--note-swipe")
         if args.keyboard:
             arguments.append("--keyboard")
         with keyboard_client(replay, args.output) if args.keyboard else nullcontext():
@@ -51,7 +54,8 @@ with native_lease():
             replay.close()
 # LaunchServices owns the foreground launch. The app writes each receipt
 # after its corresponding input and geometry assertions have passed.
-receipts = ["overview-scroll.json", "overview-fit.json", "collection-fit.json"]
+receipts = ["overview-scroll.json", "overview-fit.json"]
+receipts += ["overview-note-swipe.json", "landing-note-swipe.json"] if args.note_swipe else ["nested-header.json", "collection-fit.json"]
 if args.keyboard:
     receipts.append("overview-keyboard.json")
 sys.exit(status or int(not all((args.output / name).is_file() for name in receipts)))

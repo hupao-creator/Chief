@@ -236,7 +236,14 @@ live.
 
 [NativeOverviewStageCoordinator](NativeOverviewStageCoordinator.swift) serializes card spatial motion with Moku.
 
-[NativeOverviewScrollInput](NativeOverviewScrollInput.swift) routes AppKit wheel events.
+### Overview scroll input
+
+[NativeOverviewScrollInput](NativeOverviewScrollInput.swift) routes window-local AppKit wheel events.
+It checks a [physical upward swipe](../MokuScene/NativeMokuSwipe.swift) before canvas and native scroll dispatch.
+In the exposed Overview the background, cards (including the carousel cover), filter scrollers and Dock share this gesture.
+A precise, unmodified contact opens Chief Note once at 24 points of upward travel with more than 1.5 times the horizontal travel, under either Natural Scrolling setting. Its remaining samples and inertia are consumed.
+Open Note, active or leaving input, an intervention, onboarding, Settings, a collection member panel and a reader keep their own input.
+
 A trackpad contributes its horizontal delta, including native momentum. A line
 wheel uses its horizontal delta when available and otherwise its vertical delta,
 at 40 window points per line. Pointer presses interrupt inertia. Dragging the
@@ -529,7 +536,7 @@ focus loss, leaving the card and offscreen removal clear hover; keyboard focus
 and menu tracking never force the capsule visible. Carousel timing remains
 independent of hover.
 A native cover input region retains pointer drag and trackpad input instead of
-moving the canvas; its scroll/pinch region is intentionally reserved for the
+moving the canvas; its horizontal paging and pinch region remain reserved for the
 collection cover.
 
 The upper-right page count opens a scrollable, adaptive grid of the exact ordered

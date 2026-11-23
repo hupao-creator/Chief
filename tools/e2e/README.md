@@ -347,7 +347,7 @@ carousel member, execution identities and link position alongside the recording.
    Chinese. Record the capture rate. Track source revision, executable identity, scoped replies,
    input targets and returned state for each visit.
 
-The semantic Note toggle exercises the Note entrance. Mounted route identity
+The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size) exercises the window scroll-event path to Chief Note. The semantic Note toggle exercises the Note entrance. Mounted route identity
 and window frame recordings supply separate evidence.
 [Note and link behavior](../../app/macos/Sources/Host/MokuScene/README.md)
 
