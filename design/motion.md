@@ -40,6 +40,8 @@ or replaced route cannot hide its successor. Showing remains synchronous for
 return preparation; keyboard/focus behavior is not disabled to hide warnings.
 See [parent surface](../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingParentSurface.swift).
 
-No main-thread-hold decoration or native transition correctness replay is
-configured in this source tree. External pixel/resource benchmarks
-report capture uncertainty and capability limits separately from product outcome.
+The [mounted Dock visits](../demos/moku-panel-transition/remaining/README.md) exercise
+the reply read key, permissions, questionnaires, Timer acknowledgments and native
+input. The [transition study](research/chief-bar-remaining.md) records unshipped
+candidates and the boundaries of their measurements. Physical presentation and
+whole-workspace frame pacing require separate measurements.

@@ -109,7 +109,6 @@ public struct NativeMokuDock: View {
     @State private var settingsPreferredHeight: CGFloat = 900
     @State private var settingsHeaderScroll: CGFloat = 0
     @State private var stopControlsFrame = CGRect.zero
-    @State private var composerStopInset = CGPoint(x: 61, y: 29)
     @State private var talkScrollbarStyle = NSScroller.preferredScrollerStyle
     @State private var character = NativeMokuCharacterMotion()
     @State private var reasoningRequested = false
@@ -238,8 +237,6 @@ public struct NativeMokuDock: View {
     /// the shift returns to zero as the shell contracts.
     private func face(_ input: NativeMokuCharacterInput) -> some View {
         NativeMokuCharacterSurface(controller: character, input: input, seat: .face)
-            // The panel corner shows the eyes at their ordinary size, so the
-            // landing scale retires inside the same transaction.
             .scaleEffect(landing && expanded && !state.settingsExpanded ? NativeMokuCapsuleLayout.landingScale : 1)
             .frame(width: NativeMokuFaceLayout.canvas.width, height: NativeMokuFaceLayout.canvas.height)
             .frame(width: NativeMokuFaceLayout.seat.width, height: NativeMokuFaceLayout.seat.height)
@@ -249,7 +246,10 @@ public struct NativeMokuDock: View {
     @ViewBuilder private func rowMessage(_ message: NativeMokuTalkMessage, width: CGFloat) -> some View {
         if let dispatch = message.dispatch {
             NativeMokuDispatchContent(dispatch: dispatch, harness: dispatchHarness(dispatch))
-                .frame(width: max(1, width - NativeMokuTalkTypography.leading - 48), height: 32)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: 32)
+                .clipped()
+                .padding(.trailing, 48)
         } else {
             // The legacy scroller occupies the trailing gutter; extend its
             // viewport so the remaining text clip stays centered in the shell.
@@ -946,6 +946,7 @@ public struct NativeMokuDock: View {
                     .accessibilityHidden(!messageInkVisible || state.notePanelOpen || noteMounted || state.settingsOpen)
                     .frame(height: rowHeight)
                     .padding(.leading, message.dispatch == nil ? NativeMokuTalkTypography.centeredInset : NativeMokuTalkTypography.leading)
+                    .transition(message.dispatch == nil ? .opacity : .identity)
             }
         }
         .overlay(alignment: .topLeading) {
@@ -964,28 +965,37 @@ public struct NativeMokuDock: View {
                 .position(x: faceCenter.x + faceShift.width, y: faceCenter.y + faceShift.height)
         }
         .overlay(alignment: .bottomTrailing) {
-            if stopControlPresent {
-                Button(action: onCancel) {
-                    // Keep the Button in accessibility while hiding its ink.
-                    RoundedRectangle(cornerRadius: 1).fill(.foreground).frame(width: 10, height: 10)
-                        .animation(.easeInOut(duration: 0.12)) { $0.opacity(stopVisible ? 1 : 0) }
-                        .geometryGroup()
-                        .frame(width: composerStop ? 32 : 30, height: composerStop ? 32 : 30)
-                        .contentShape(Circle())
-                }.buttonStyle(.plain)
-                    .disabled(disabled || (ordinaryOverviewDock && inputPresent &&
-                        (!composerVisible || draft.submitting || draft.clearing || draft.isDisposed)))
-                    .accessibilityHidden(ordinaryOverviewDock && inputPresent && !composerVisible)
-                    .focused($stopFocused)
-                    .accessibilityFocused($stopAccessibilityFocused)
-                    .allowsHitTesting(stopVisible && (!inputPresent || composerVisible))
-                    .help(threadID == nil ? localize("停止 Chief", "Stop Chief") : localize("停止此 Thread", "Stop this thread"))
-                    .accessibilityLabel(threadID == nil ? localize("停止 Chief", "Stop Chief") : localize("停止此 Thread", "Stop this thread"))
-                    .accessibilityIdentifier("moku-stop")
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("native-moku-dock")) } action: { stopControlsFrame = $0 }
-                .padding(.trailing, composerStop ? composerStopInset.x - 16 : 7)
-                .frame(height: composerStop ? 2 * composerStopInset.y : rowHeight)
+            // Keep the footer layout alive across insertion and retirement.
+            // The expanded seat is 61pt from the trailing edge, 29pt from the bottom.
+            // Measuring the editor during insertion would animate the endpoint itself.
+            HStackLayout(spacing: 4) {
+                if stopControlPresent {
+                    Button(action: onCancel) {
+                        // Keep the Button in accessibility while hiding its ink.
+                        RoundedRectangle(cornerRadius: 1).fill(.foreground).frame(width: 10, height: 10)
+                            // The hover fade owns only ink. The moving button's
+                            // position and hit seat follow the shell's transaction.
+                            .animation(.easeInOut(duration: 0.12)) {
+                                $0.opacity(stopVisible ? 1 : 0)
+                            }
+                            .geometryGroup()
+                            .frame(width: composerStop ? 32 : 30, height: composerStop ? 32 : 30)
+                            .contentShape(Circle())
+                    }.buttonStyle(.plain)
+                        .disabled(disabled || (ordinaryOverviewDock && inputPresent &&
+                            (!composerVisible || draft.submitting || draft.clearing || draft.isDisposed)))
+                        .accessibilityHidden(ordinaryOverviewDock && inputPresent && !composerVisible)
+                        .focused($stopFocused)
+                        .accessibilityFocused($stopAccessibilityFocused)
+                        .allowsHitTesting(stopVisible && (!inputPresent || composerVisible))
+                        .help(threadID == nil ? localize("停止 Chief", "Stop Chief") : localize("停止此 Thread", "Stop this thread"))
+                        .accessibilityLabel(threadID == nil ? localize("停止 Chief", "Stop Chief") : localize("停止此 Thread", "Stop this thread"))
+                        .accessibilityIdentifier("moku-stop")
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("native-moku-dock")) } action: { stopControlsFrame = $0 }
+                }
             }
+            .padding(.trailing, composerStop ? 45 : (stopControlPresent ? 7 : 3))
+            .frame(height: composerStop ? 58 : rowHeight)
         }
         .background {
             ZStack {
@@ -1059,7 +1069,7 @@ public struct NativeMokuDock: View {
             retainedAttachments: retaining ? state.retainedAttachments : nil,
             retainedDirectories: retaining ? state.retainedDirectories : nil,
             running: running, onCancel: onCancel,
-            onReservedStopSeatChange: ordinaryOverviewDock ? { inset in composerStopInset = inset } : nil,
+            reservesDockStopSeat: ordinaryOverviewDock,
             selectionRequest: mentions?.selectionRequest,
             initialSelection: state.selectionForReopening(text: retaining ? state.retainedText : draft.text),
             onEditorStateChange: { editor in

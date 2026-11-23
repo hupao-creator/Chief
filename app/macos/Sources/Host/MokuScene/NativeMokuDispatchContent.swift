@@ -30,13 +30,13 @@ struct NativeMokuDispatchContent: View {
         .lineLimit(1).truncationMode(.tail)
         .frame(maxWidth: .infinity, minHeight: 32)
         .accessibilityElement(children: .contain)
-        .animation(.easeInOut(duration: 0.22), value: dispatch)
+        .transaction(value: dispatch) { $0.animation = nil }
     }
 
     private var status: some View {
         Text(dispatch.sentence(chinese: chinese))
             .font(.system(size: 13, weight: .medium))
-            .contentTransition(.opacity)
+            .contentTransition(.identity)
             .accessibilityIdentifier("moku-dispatch-status")
     }
 

@@ -41,9 +41,12 @@ def journey(session, app):
     session.app = session.spawn([app, "--runtime", session.binary, "--data-dir", session.profile,
                                  "--automation-socket", session.root / "ui.sock"], "app")
     activate(session)
+    connection = json.loads((session.profile / "runtime/connection.json").read_text())
+    assert connection["pid"] == session.process.pid and Path(connection["dataDir"]).resolve() == session.profile
     trace = output / "onboarding-ax.jsonl"
     with trace.open("wb") as stream:
-        result = subprocess.run([driver, str(session.app.pid), app.parents[2], session.nonce],
+        result = subprocess.run([driver, str(session.app.pid), app.parents[2], session.nonce,
+                                 str(session.process.pid), connection["epoch"]],
                                 stdout=stream, check=False, timeout=205)
     rows = [json.loads(line) for line in trace.read_text().splitlines()]
     confirmations = [r for r in rows if r["kind"] == "confirmation"]

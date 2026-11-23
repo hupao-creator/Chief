@@ -62,6 +62,11 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
     private var activeAxes: [String: Int] = [:]
     private var travelling: Bool { !activeAxes.isEmpty }
 
+    var presentationCorrection: CGPoint {
+        let transform = surface.layer?.presentation()?.transform ?? CATransform3DIdentity
+        return CGPoint(x: transform.m41, y: transform.m42)
+    }
+
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { false }
 
@@ -99,8 +104,7 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
                    onSettled: @escaping (NativeMokuHorizontalDestination) -> Void) {
         let previous = destination
         self.hitRects = hitRects; self.onSettled = onSettled; destination = next
-        let layer = surface.layer!
-        let visible = layer.presentation()?.transform ?? CATransform3DIdentity
+        let visible = presentationCorrection
         guard previous != next else { return }
 
         let immediate = previous == nil || next.inactive || next.dragging || previous?.viewport != next.viewport
@@ -108,8 +112,8 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
            previous?.verticalOffset == next.verticalOffset, travelling { return }
         generation += 1
         let current = generation
-        let delta = CGPoint(x: visible.m41 + (previous?.offset ?? next.offset) - next.offset,
-            y: visible.m42 + (previous?.verticalOffset ?? next.verticalOffset) - next.verticalOffset)
+        let delta = CGPoint(x: visible.x + (previous?.offset ?? next.offset) - next.offset,
+            y: visible.y + (previous?.verticalOffset ?? next.verticalOffset) - next.verticalOffset)
         // Commit the horizontal model seat with its presentation correction.
         // A separate SwiftUI offset can show the destination a frame early.
         CATransaction.begin(); CATransaction.setDisableActions(true)
@@ -174,9 +178,9 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
         if travelling {
             // The controls already have destination coordinates. Absorb presses
             // on both seats so a moving bar cannot click the reading backdrop.
-            let visible = surface.layer?.presentation()?.transform ?? CATransform3DIdentity
+            let visible = presentationCorrection
             return hitRects.contains(where: {
-                $0.contains(local) || $0.offsetBy(dx: visible.m41, dy: visible.m42).contains(local)
+                $0.contains(local) || $0.offsetBy(dx: visible.x, dy: visible.y).contains(local)
             }) ? self : nil
         }
         guard hitRects.contains(where: { $0.contains(local) }),

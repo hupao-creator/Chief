@@ -96,7 +96,7 @@ struct NativeMokuComposerInput: View {
     var retainedDirectories: [NativeComposerDirectory]?
     var running = false
     var onCancel: () -> Void = {}
-    var onReservedStopSeatChange: ((CGPoint) -> Void)?
+    var reservesDockStopSeat = false
     var showsEyes = false
     var selectionRequest: NativeComposerSelectionRequest?
     var initialSelection: NSRange?
@@ -253,16 +253,9 @@ struct NativeMokuComposerInput: View {
     }
     @ViewBuilder private var actions: some View {
         if running && !targetsThread {
-            if let onReservedStopSeatChange {
-                // The bottom Dock owns one Stop through the whole morph. Report
-                // its final seat in row-local coordinates, including recovery UI.
+            if reservesDockStopSeat {
                 Color.clear.frame(width: 32, height: 32)
                     .allowsHitTesting(false).accessibilityHidden(true)
-                    .onGeometryChange(for: CGPoint?.self) { geometry in
-                        guard let row = geometry.bounds(of: .named("moku-composer-input")) else { return nil }
-                        return CGPoint(x: row.maxX - geometry.size.width / 2,
-                                       y: row.maxY - geometry.size.height / 2)
-                    } action: { if let inset = $0 { onReservedStopSeatChange(inset) } }
             } else { stopButton }
         }
         // Retain the editor's width as the draft and its action change.

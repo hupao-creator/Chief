@@ -31,7 +31,8 @@ The composer layout reserves attachment/action seats and the resident eye seat
 the remaining width to the editor; long placeholder text cannot displace Stop.
 Dispatch status remains a single line with tail truncation and retains the
 Dock's separate trailing control inset. Its configuration adapts within that
-reserved content seat as described below.
+reserved content seat as described below. A dispatch phase change replaces the
+status text in one frame, including when it coincides with the first Thread card.
 
 Moku’s Dock (idle, landing, composer, Talk, dispatch and Note), interaction
 panel use a dark SwiftUI environment.
@@ -106,9 +107,14 @@ Its measured height changes the shell without replacing the editor or its
 selection owner through entry, exit and rapid reversal. The pending-send replay
 selects the same directory in two consecutive drafts using Return.
 
-The bottom Overview Dock carries one Stop button while the running Chief's
-eyes and capsule move between their compact and input positions. The input
-row reserves its measured seat beside Send. Stop is visible while editing
+From the empty Landing through the first Thread card and ordinary Overview
+folds, the eyes occupy one fixed-size seat inside the shell. Moving or scaling
+the shell carries that seat with it.
+
+The running Chief's Stop button and visible square share one trailing seat.
+Its center moves between 22 points from the compact edge and 61 points from
+the editor edge. The expanded button center sits 29 points above the bottom. The editor
+reserves space for the Dock button throughout the transition. Stop is visible while editing
 and on hover or focus in the compact capsule. The editor uses its final
 width throughout the 420ms motion. Its ink fades in during the last tenth
 of expansion and fades out over the same part of the return. Closing ends
@@ -234,7 +240,7 @@ depend on a predicted text height. Dispatch status is informational; clicking it
 
 The compact running fallback reuses [MokuRunningStory](../Moku/MokuRunningStory.swift): three rainbow beats, lift, a three-second orbit, landing and recovery, with the eyes following the same clock. The eyes retain their seat while the 5-point dots follow the capsule's outer contour, with 3 points of clear space. [NativeMokuRunningGeometry](NativeMokuRunningGeometry.swift) supplies that authored path to the persistent character host. Decorations paint outside the glass clip.
 
-[NativeMokuCharacterMotion](NativeMokuCharacterMotion.swift) owns one AppKit display link and logical clock for the persistent eye and decoration seats. Ordinary expression changes take 420ms; running/thinking handoffs take 550ms. Interrupted transitions inherit the currently sampled geometry and derivative, without an intermediate idle pose or overlapping eye views. Same-segment text updates do not redirect a role. Inactive, hidden and occluded scenes pause the clock. The Dock and composer use the same [native blink layers](NativeMokuCapsuleBlink.swift). Each eye keeps its centre, tilt and rounded outline as its height follows the blink.
+[NativeMokuCharacterMotion](NativeMokuCharacterMotion.swift) owns the logical clock for the persistent eye and decoration seats. Ordinary expression changes take 420ms and running/thinking handoffs take 550ms. Interrupted transitions inherit the sampled geometry and velocity. Same-segment text updates keep their current role. Inactive, hidden and occluded scenes pause the clock. The Dock and composer use the same [native blink layers](NativeMokuCapsuleBlink.swift). Each eye keeps its centre, tilt and rounded outline as its height follows the blink.
 
 Static character targets are cached until their input changes. Core Animation plays the 320ms blink on the original 4.2-second wall-clock phase. Its path keyframes trace the original sine down to 9% height and back to open; corner radii use the original eye shape at each height. The display link stays asleep throughout an idle blink. The
 [first-run handoff](../Onboarding/README.md) schedules a single blink on the
@@ -292,12 +298,13 @@ cannot expand it past the control row.
 
 Text shorter than the Talk viewport is vertically centered in its row.
 The Dock's Stop
-square is revealed by pointer hover, keyboard focus or VoiceOver focus and fades
-out otherwise. The Button itself stays in the accessibility tree, while pointer
+square is revealed by pointer hover, keyboard focus or VoiceOver focus. A scoped 120ms SwiftUI ease-in/out animation fades the square.
+The surrounding Button owns cancellation and stays in the accessibility tree, while pointer
 hit testing follows the visual state so an invisible square cannot be clicked.
 Running messages reserve a 48-point trailing inset even before hover/focus,
 keeping text and dispatch content clear of the 30-point Stop target and its
 7-point edge inset. Revealing the square therefore does not rewrap the message.
+See the [mounted Stop replay](../../../../../demos/moku-panel-transition/README.md#overview-dock-replay).
 This is cancellation (`moku:cancel`), with no pause/resume action. Composer Stop
 shares the Send seat for an active Thread execution; other composer routes retain
 their separate Stop item. Blink/cloud clock pauses are animation lifecycle state,
@@ -542,8 +549,12 @@ control at its invisible destination.
 
 Switching columns can also change input width. The editor adopts that width
 once, inside its own geometry group, while the shell retains its existing size
-and vertical animation. The complete Dock owns its state and geometry within
-one hosting tree, including Settings height preferences and input hit regions.
+and vertical animation. The eyes and Harness mark flip in a single shell-local seat.
+The live glass, mark and editor share the shell's bottom-anchored SwiftUI
+layout through Landing, Overview and reader transitions. A busy main thread
+can delay shell layout. The complete Dock owns its
+state and geometry within one hosting tree, including Settings height
+preferences and input hit regions.
 The hosting root stays fixed while observable content carries outer updates;
 replacing the root can settle the shell before its content finishes moving.
 

@@ -16,12 +16,65 @@ transaction. The production [composer contract](../../design/composer.md)
 owns pinned Agent input and its single active-execution action seat; fixture
 route toggles cannot establish real Runtime or receipt behavior.
 
+## Joint workspace replay
+
+Use a Chinese, dark macOS desktop with a 2× display large enough for an
+1885×1125pt window, Accessibility and Screen Recording permission, Xcode and
+the Codex CLI. From the repository root, capture a fresh campaign:
+
+```sh
+python3 demos/moku-panel-transition/workspace/capture.py /tmp/chief-bar-visit
+```
+
+The runner builds one Debug app and Runtime, links the mounted preview against
+the same Swift modules and records binary digests. It uses a private profile
+and a loopback peer. The workspace starts empty, creates its first Agent cards,
+opens the dispatch row for editing, hovers the compact capsule and focuses its Stop button, reverses a
+fold and presses Stop via its unique AX control. A second running Chief turn on the populated Overview
+exercises click-to-open, Escape, outside click and a 120ms Compose reversal.
+Two completed card visits use the reader's Close control. The mounted preview
+also drives narrow right-column visits with short and long titles. A separate
+first-run profile measures the 780ms contraction and the focused editor.
+
+The window driver records the exact app PID, nonce bundle, executable, focused
+workspace window number, private profile and runtime PID/epoch in
+`input-target.json`. It checks these before each event. Pointer and key events
+are addressed to the test PID. AXPress resolves a unique enabled control in
+the focused test window. The macOS-only helper uses the Accessibility window-ID
+bridge and Quartz window-local event coordinates. These APIs are confined to the
+replay executable. The run withdraws its own window and probes focus
+loss, a different window number, runtime PID and bundle. Each must be rejected.
+The onboarding driver checks its button, focused window and runtime identity
+before each confirmation.
+
+Inspect `first-card/window.mp4` and select one zero-based frame with the
+pending dispatch label and a later frame with the started label. Run the joint
+check with Python, OpenCV, NumPy, FFmpeg and ffprobe. For example, if the two
+labels are visible at frames 189 and 213:
+
+```sh
+python3 demos/moku-panel-transition/workspace/check.py /tmp/chief-bar-visit 189 213
+```
+
+The frames supply the two text templates. All encoded frames, including the
+start of each close, enter the measurements. The checker saves center and
+width per Overview frame, flip positions, label and Stop samples, and all
+native phase results. It checks the Stop execution identity and compares
+workspace and onboarding build receipts. For first-card Stop insets it locates the square
+and the bright outer rim on independent scanlines of the original 2× frame.
+The sample file retains the dark-cap estimate alongside the rim positions.
+Review unresolved mark frames
+against the movie. The screen-recording variant accepts a vertical search
+band in source pixels, for example `check_workspace_folds.py screen.mov
+positions.csv --band 2180 2350` for a 4096×2514 recording. This locates
+the silhouette within the window without trimming the time interval.
+
 ## Overview Dock replay
 
 Build the preview as below and run its executable under the shared desktop
 verification lease with `--capture-overview`. A small isolated panel mounts
-the running Chief's production Dock over a plain backdrop. It records two
-open/close cycles at production speed. Use `--english` for English (the default
+the running Chief's production Dock over a plain backdrop. It opens and folds
+the editor, reverses another fold after 120ms, then opens from a dispatch notification. Use `--english` for English (the default
 is Chinese). The replay writes `overview-*/window.mp4` and
 `observations.json` next to the temporary bundle. Use a fresh output directory.
 
@@ -31,12 +84,45 @@ activate **Open Chief input** via AXPress, then click or AXPress **Stop Chief**.
 The replay checks the open/closed/open sequence and the
 fixture's cancellation callback. Run
 `python3 demos/moku-panel-transition/check_overview.py <capture-directory>`
-on the system-input movie using FFmpeg and ffprobe. With the pointer over the
+on either movie using FFmpeg, ffprobe, NumPy and OpenCV. The checker measures
+every encoded frame against the fixed center and detects width steps of at
+least half the full travel. It looks for both eye cores across the entire Dock
+band, including outside the glass during a fold. In the scene-driven movie it
+requires an intermediate reversal and independently matches the settled model
+name and input placeholder to catch simultaneous ink. It also checks for text
+in the reserved Stop seat and measures the square’s clearance from the rim.
+On the system-input movie, with the pointer over the
 compact eyes before each opening, the square must remain visible as the
 capsule widens. Its measured distance from the right edge stays between
 the compact and open seats, including while it fades on outside click.
 Review the input ink as the capsule folds.
 The fixture uses an in-memory draft and a simulated running task.
+
+### First card in the full workspace
+
+Use a fresh dark, Chinese workspace at 1885×1125 points (2× capture). Start
+the full-window recording on empty Landing before submitting to Chief. Have a
+deterministic peer create two Threads and hold the Chief turn open. Keep
+recording through the first card, pending and started dispatch, opening the
+editor, normal folds, rapid reversal and Stop. Click the displayed Stop and
+check that the same execution changes from running to interrupted.
+
+Inspect the two settled labels to select a pending and a started reference
+frame with readable text at the ordinary Dock scale. Frame numbers are
+zero-based. With OpenCV, NumPy and ffprobe, run:
+
+```sh
+python3 demos/moku-panel-transition/check_landing_handoff.py running.mp4 PENDING_FRAME STARTED_FRAME samples.json
+```
+
+The reference indices select glyphs. The checker searches **every encoded
+frame** for both labels at the same origin, and independently searches the
+whole window for eye pairs. It checks signed eye clearance, a centered shell,
+and the 22–61pt trailing Stop seats with 2pt optical tolerance. It requires
+the Landing descent and observations of both Stop positions and both labels.
+The JSON lists every frame, including unresolved eye pairs. Review these
+frames for blinks or occlusion before reporting containment. Use the smaller
+system-input replay above to check continuous hover ink and accessible clicks.
 
 ## Collapse replay
 
@@ -160,9 +246,28 @@ On all four returns the checker measures from the Close marker to the first
 frame showing 10% of the width change from expanded to idle. That frame must
 fall within the first half of the 420ms panel return. Until the shell reaches
 idle width, its center must stay at the source column within two points. The compact shell must then
-appear between columns and finish at the initial idle center and width.
-The silhouette includes both vertical seats so its rounded corners remain
-measurable during travel.
+show intermediate horizontal and vertical positions as it returns and
+finish at the initial height and width. The checker retains movie PTS, center
+x, top y and width for compact frames. At 2× the two-point edge tolerance is four pixels.
+
+Two additional real-time visits use a centered Agent editor without an
+Execution column. The checker measures the visible Codex mark against the glass
+edges throughout each return, with a two-point tolerance. It requires the mark
+in the expanded editor and during intermediate widths, and verifies the compact
+Overview endpoint after the mark retires. On the second visit the fixture occupies the main thread for
+120ms during expansion and again during folding. The marker changes before and
+after each hold. During each marked hold the checker measures shell and mark progress separately.
+The SwiftUI shell can hold its last layout while the main thread is occupied.
+The mark must stay inside the shell through the hold and subsequent fold. During the
+fold it also requires at least three positions of the reading panel’s visible
+left edge. The result includes per-frame width, mark and panel position, and
+the largest interval between recorded frames. This controlled workload measures
+already-submitted motion. Attributing a stall to a particular reader operation
+requires a trace of that session.
+
+Two further visits reopen the reader from an observed intermediate presentation
+position, once on each return axis. Each must restore one editable, focused
+editor in the right column beyond the previous return's completion.
 
 For each geometry visit the check matches the first placeholder glyphs against their
 settled pixels and measures each returning glass silhouette against both the
@@ -190,6 +295,40 @@ After capture, the focused Agent editor sends via Return and commits a new
 draft through AppKit marked text. The fixture returns to Overview and rejects
 the earlier send. It checks the exact restored Agent draft and that Overview
 keeps its own draft and focus.
+
+### Production centered return
+
+To verify centered entry and return in the production workspace, use an
+[isolated desktop session](../../tools/native-interaction/README.md) with a
+completed Codex Thread. Start recording the entire window on Overview and
+open its card. Keep the Execution sidecard folded and wait for the centered
+editor to expand. Click the reader's upper-left Close button or activate it
+through AXPress. Inspect the full window during the initial descent and after
+the reading surface releases its route. Visible eyes must stay in the capsule.
+Inspect the intermediate widths in both directions. The visible Harness mark
+must stay within the glass as the editor expands and folds. The return must
+finish at the compact Overview capsule with the resident eyes.
+For a single completed Codex card visit from the compact Dock in a dark
+1885×1125pt workspace at 2×, run the whole-window pixel check on its recording.
+
+```sh
+python3 demos/moku-panel-transition/check_centered_handoff.py window.mp4 positions.csv
+```
+
+The checker measures both directions independently on either side of the widest
+reader frame. It requires intermediate glass widths, the eyes and logo in
+sequence, and a visibly tilted logo on each leg. It reports any localized ink
+more than 2pt outside the capsule and saves all frame positions. Inspect the
+listed unresolved frames for an edge-on flip, blink or occlusion.
+
+Repeat with the workspace already mounted when Chief starts a new Codex Thread.
+Keep the new Thread running. Confirm the **Thread started** notification in
+the wide Overview capsule, then click the visible card before the notification
+expires. Verify the centered reader exposes the editor and Stop. Check the
+first frames of expansion as the editor reports its vertical inset. Also click
+Close during expansion, reopen the card and check the mark on both legs.
+
+Keep the executable digest, revision, displayed layout, input backend and movie.
 
 ## Chief input replay
 

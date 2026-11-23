@@ -25,6 +25,8 @@ class ComposerReplayPanel: NSPanel {
     var thread = true
     var collapseCapture = false
     var agentEntranceCapture = false
+    var centeredAgent = false
+    var talk: String?
     var overviewCapture = false
     var language = "zh-Hans"
     @ObservationIgnored var overviewInputChanges: [Bool] = []
@@ -127,7 +129,7 @@ private struct Surface: View {
             landing: model.landing,
             threadID: model.thread ? "fixture-agent" : nil,
             threadHarness: model.collapseCapture || (model.agentEntranceCapture && model.thread) ? model.harness : nil,
-            mode: model.running ? .running : .idle, running: model.running,
+            mode: model.running ? .running : .idle, running: model.running, talk: model.talk,
             loadMentionDirectories: { ["Chief", "Design", "Research"].map {
                 NativeComposerDirectory(name: JSONText($0), path: JSONText("/fixture/" + $0))
             } }, onSend: { submission in
@@ -156,7 +158,7 @@ private struct ColumnMarker: View {
         GeometryReader { proxy in
             let width = min(404, proxy.size.width / 2)
             let frame = CGRect(x: proxy.size.width - width, y: 0, width: width, height: proxy.size.height)
-            let active = columnMounted && !model.readingMotion.active
+            let active = columnMounted && !model.readingMotion.active && !model.centeredAgent
             Color.white.overlay(alignment: .topLeading) {
                 Text(model.title).font(.title2.bold()).padding(48)
             }.background {
@@ -170,7 +172,13 @@ private struct ColumnMarker: View {
                     .destinationFrame(active ? frame : nil)
             }
             .onChange(of: entranceReady, initial: true) { _, ready in
-                if ready { columnMounted = true }
+                if ready {
+                    columnMounted = true
+                    if model.centeredAgent {
+                        model.scene.setComposerContext(model.draft, opensInput: true, keepsInputOpen: true,
+                            waitsForHarnessIdentity: true)
+                    }
+                }
             }
         }
     }
@@ -350,16 +358,37 @@ private struct Controls: View {
                         try await Task.sleep(for: .milliseconds(50))
                     }
                 } else {
-                    for _ in 0..<2 {
-                        try await Task.sleep(for: .milliseconds(650))
-                        model.scene.setInputOpen(true)
-                        try await Task.sleep(for: .milliseconds(750))
-                        model.scene.setInputOpen(false)
+                    try await Task.sleep(for: .milliseconds(650))
+                    model.scene.toggleInput(focusOnOpening: true)
+                    try await Task.sleep(for: .milliseconds(750))
+                    model.scene.setInputOpen(false)
+                    try await Task.sleep(for: .milliseconds(650))
+
+                    // Reverse an in-flight fold, then fold fully before the dispatch arrives.
+                    model.scene.toggleInput(focusOnOpening: true)
+                    try await Task.sleep(for: .milliseconds(750))
+                    model.scene.setInputOpen(false)
+                    try await Task.sleep(for: .milliseconds(120))
+                    model.scene.toggleInput(focusOnOpening: true)
+                    try await Task.sleep(for: .milliseconds(750))
+                    model.scene.setInputOpen(false)
+                    try await Task.sleep(for: .milliseconds(650))
+
+                    let operation: JSONValue = .object(["name": .text("create_thread"), "arguments": .object([
+                        "target": .object(["codex": .object(["model": .text("gpt-6.1-terra"),
+                            "thinking": .object(["mode": .text("effort"), "effort": .text("medium")])])])
+                    ])])
+                    let dispatch = NativeMokuDispatch(operation: operation, executionIsActive: true)!
+                    model.scene.receiveTalk(.init(id: "overview-dispatch", text: dispatch.sentence(chinese: true), dispatch: dispatch))
+                    try await Task.sleep(for: .milliseconds(750))
+                    guard model.scene.talkPresentation.message?.id == "overview-dispatch" else {
+                        throw NSError(domain: "Dispatch dismissed before input handoff", code: 1)
                     }
+                    model.scene.toggleInput(focusOnOpening: true)
                 }
                 try await Task.sleep(for: .milliseconds(650))
                 try await movie.finish()
-                let expected = systemInput ? [true, false, true] : [true, false, true, false]
+                let expected = systemInput ? [true, false, true] : [true, false, true, false, true, false, true]
                 let observed: [String: Any] = ["inputChanges": model.overviewInputChanges,
                     "running": model.running, "locale": language]
                 try JSONSerialization.data(withJSONObject: observed, options: .prettyPrinted)
@@ -399,7 +428,8 @@ private struct Controls: View {
         Task {
             do {
                 try await captureAgentEntrance(window: panel, scene: model.scene, overviewDraft: model.overviewDraft,
-                    enterAgent: model.enterAgent, closeAgent: model.readingMotion.close)
+                    enterAgent: model.enterAgent, closeAgent: model.readingMotion.close,
+                    setCentered: { model.centeredAgent = $0 }, publishTalk: { model.talk = $0 })
                 try await replay.verifyHandoff(window: panel, scene: model.scene, agent: model.draft,
                     overview: model.overviewDraft, closeAgent: model.readingMotion.close)
             } catch {

@@ -24,7 +24,7 @@ if CommandLine.arguments.dropFirst() == ["--probe"] {
     exit(trusted ? 0 : 2)
 }
 
-guard CommandLine.arguments.count == 4, let pid = Int32(CommandLine.arguments[1]),
+guard CommandLine.arguments.count == 6, let pid = Int32(CommandLine.arguments[1]), let runtimePID = Int32(CommandLine.arguments[4]),
       let application = NSRunningApplication(processIdentifier: pid),
       let bundle = application.bundleURL?.resolvingSymlinksInPath(),
       bundle == URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true).resolvingSymlinksInPath(),
@@ -81,18 +81,38 @@ func requireForeground(_ window: AXUIElement) {
           CFEqual(focused, window) else { stop("Isolated Chief lost the foreground window") }
 }
 
+func requirePressTarget(_ button: AXUIElement, in window: AXUIElement) {
+    requireForeground(window)
+    let profile = bundle.deletingLastPathComponent().appendingPathComponent("profile")
+    var owner: pid_t = 0
+    guard let data = try? Data(contentsOf: profile.appendingPathComponent("runtime/connection.json")),
+          let info = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+          info["pid"] as? pid_t == runtimePID, kill(runtimePID, 0) == 0,
+          info["epoch"] as? String == CommandLine.arguments[5], let dir = info["dataDir"] as? String,
+          URL(fileURLWithPath: dir).resolvingSymlinksInPath().path == profile.resolvingSymlinksInPath().path,
+          AXUIElementGetPid(button, &owner) == .success, owner == pid,
+          let parent = element(button, kAXWindowAttribute), CFEqual(parent, window)
+    else { stop("Confirmation no longer belongs to the isolated runtime and window") }
+}
+
 func ready(_ id: String, in window: AXUIElement) -> AXUIElement? {
     control(in: window) { $0 == id }
 }
 
 func dockReady(in window: AXUIElement) -> Bool {
-    guard ready("moku-add-attachment", in: window) != nil,
-          let editor = element(app, kAXFocusedUIElementAttribute),
+    // Do not traverse the changing onboarding tree on every poll while the
+    // editor is unfocused. Both the enabled attachment and editable focus
+    // still have to be observed before stopping the confirmation clock.
+    guard let editor = element(app, kAXFocusedUIElementAttribute),
           let editorWindow = element(editor, kAXWindowAttribute), CFEqual(editorWindow, window),
           attribute(editor, kAXRoleAttribute) as? String == kAXTextAreaRole,
           attribute(editor, kAXValueAttribute) as? String == "" else { return false }
     var editable = DarwinBoolean(false)
-    return AXUIElementIsAttributeSettable(editor, kAXValueAttribute as CFString, &editable) == .success && editable.boolValue
+    guard AXUIElementIsAttributeSettable(editor, kAXValueAttribute as CFString, &editable) == .success, editable.boolValue else { return false }
+    let observed = now()
+    guard ready("moku-add-attachment", in: window) != nil else { return false }
+    record(["kind": "dock-readiness", "focusedEditorNS": observed, "attachmentVerifiedNS": now()])
+    return true
 }
 
 guard let window = waitFor(until: now() + preparation, {
@@ -110,7 +130,7 @@ for (index, step) in steps.enumerated() {
         guard let button = waitFor(until: now() + preparation, { ready(choice, in: window) }) else {
             stop("Configure separately is unavailable on \(step)")
         }
-        requireForeground(window)
+        requirePressTarget(button, in: window)
         guard AXUIElementPerformAction(button, kAXPressAction as CFString) == .success else {
             stop("AXPress failed for Configure separately on \(step)")
         }
@@ -124,7 +144,7 @@ for (index, step) in steps.enumerated() {
     guard let button = waitFor(until: now() + preparation, { ready(confirm, in: window) }) else {
         stop("Confirmation is unavailable on \(step)")
     }
-    requireForeground(window)
+    requirePressTarget(button, in: window)
     let destination = index + 1 < steps.count ? steps[index + 1] : "dock"
     // The Dock handoff adds 560ms of authored motion to the confirmation.
     let budget: UInt64 = destination == "dock" ? 1_560_000_000 : 1_000_000_000

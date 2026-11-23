@@ -8,7 +8,9 @@ Click **Show work** when it appears for a summary, including the number of reaso
 
 A Codex task continues normally when a command returns binary data. You can follow the agent’s next step in the same conversation.
 
-When a conversation opens with an **Execution** sidecard on the right, the input bar glides beneath it and opens there. Click the blank margin outside the conversation to return to Overview. The bar folds in place before it glides back to the center.
+When you open a Codex task, the eyes flip to the Codex logo inside the input bar. Closing the conversation brings the eyes back.
+
+When a conversation opens with an **Execution** sidecard on the right, the input bar glides beneath it and opens there. Click the blank margin outside the conversation to return to Overview. The bar folds beneath the sidecard, glides back to its resting position at the bottom center of Overview.
 
 ## Respond to a request or stop a run
 

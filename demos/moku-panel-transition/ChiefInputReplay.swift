@@ -86,18 +86,18 @@ private struct ChiefInputReplayFailure: Error, CustomStringConvertible {
     try require(sent == [textInput("@")], "\(surface) did not send a bare @ on Return")
 
     scene.setInputOpen(true)
-    let reopened = try await focusEditor()
-    reopened.insertText("@", replacementRange: reopened.selectedRange())
+    let reopenedEditor = try await focusEditor()
+    reopenedEditor.insertText("@", replacementRange: reopenedEditor.selectedRange())
 
     // Use a private pasteboard so the replay leaves the clipboard alone.
     let pasteboard = NSPasteboard.withUniqueName()
     defer { pasteboard.releaseGlobally() }
     try require(pasteboard.setString("draft@example.com", forType: .string)
-        && reopened.readSelection(from: pasteboard, type: .string), "\(surface) could not paste text")
-    reopened.setSelectedRange(NSRange(location: 1, length: 5))
-    reopened.insertText("team", replacementRange: reopened.selectedRange())
+        && reopenedEditor.readSelection(from: pasteboard, type: .string), "\(surface) could not paste text")
+    reopenedEditor.setSelectedRange(NSRange(location: 1, length: 5))
+    reopenedEditor.insertText("team", replacementRange: reopenedEditor.selectedRange())
     try require(draft.text == "@team@example.com" && draft.directories.isEmpty, "\(surface) changed pasted or edited @ text")
-    reopened.keyDown(with: key("\r", code: 36, panel: panel))
+    reopenedEditor.keyDown(with: key("\r", code: 36, panel: panel))
     try require(sent == [textInput("@"), textInput("@team@example.com")], "\(surface) did not send literal @ text on Return")
     try require(draft.text.isEmpty, "\(surface) did not consume its submitted draft")
 

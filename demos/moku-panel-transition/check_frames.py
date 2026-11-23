@@ -30,7 +30,15 @@ def dock_frame(movie, phase_count):
     if marked.size != 1:
         raise ValueError("Missing or ambiguous capture phase marker")
     dock = cv2.cvtColor(frame[-176:], cv2.COLOR_BGR2GRAY)
-    return dock, focused, int(marked[0])
+    # The edge of the white reading panel remains measurable as its ink fades
+    # and its backdrop brightens. Near equal contrast there is no visible edge.
+    line = frame[frame.shape[0] // 2, :, 0].astype(np.int16)
+    contrast = np.abs(line[61:500] - line[55:494])
+    panel_left = int(np.argmax(contrast)) + 58 if contrast.max() > 8 else None
+    blue, green, red = cv2.split(frame[-151:-31].astype(np.int16))
+    mark_x = np.nonzero((blue - red > 25) & (blue - green > 15))[1]
+    mark = (int(mark_x.min()), float(np.median(mark_x)), int(mark_x.max())) if mark_x.size else None
+    return dock, focused, int(marked[0]), panel_left, mark
 
 
 def capture_phases(events, codes, times):
@@ -54,7 +62,10 @@ def glass_edges(frame):
     dark = np.flatnonzero((band < backdrop * 0.67).any(axis=0))
     if not dark.size:
         raise ValueError("Capsule silhouette is missing")
-    return int(dark[0]) + 20, int(dark[-1]) + 20
+    # A detached dark logo can also cross the threshold. Measure the largest
+    # continuous span so the logo cannot enlarge its own containment boundary.
+    silhouette = max(np.split(dark, np.flatnonzero(np.diff(dark) > 1) + 1), key=len)
+    return int(silhouette[0]) + 20, int(silhouette[-1]) + 20
 
 
 def check_visit(frames, times, phases, index, next_visit, reference_index):
@@ -138,23 +149,107 @@ def check_return(frames, codes, times, close, open_width, idle_width, name):
     source_center = sum(glass_edges(frames[close - 1])) / 2
     idle_center = sum(glass_edges(frames[0])) / 2
     max_fold_drift = 0.0
-    travel_frames = 0
+    fold_widths = []
+    samples = []
+    def compact_top(frame, center):
+        # Follow the top of the warm finish, away from the mark and end caps.
+        x = int(center + idle_width / 4)
+        ink = np.flatnonzero(frame[10:150, x] < np.median(frame[10:150, :40], axis=1) * 0.67)
+        if not ink.size:
+            raise ValueError("Missing compact silhouette")
+        return int(ink[0]) + 10
+
+    idle_top = compact_top(frames[0], idle_center)
+    reading_top = idle_top + 32  # The full-size fixture lowers the seat by 16pt at 2×.
     for i in range(close, len(frames)):
         if codes[i] != codes[close]:
             break
         left, right = glass_edges(frames[i])
         width = right - left + 1
         center = (left + right) / 2
+        fold_widths.append(width)
         if delay is None and width <= threshold:
             delay = float(times[i] - times[close])
         if width > idle_width + 4:
             max_fold_drift = max(max_fold_drift, abs(center - source_center))
-        elif idle_center + 4 < center < source_center - 4:
-            travel_frames += 1
+        else:
+            top = compact_top(frames[i], center)
+            samples.append([float(times[i]), center, top, width])
+    centers = np.array([row[1] for row in samples])
+    tops = np.array([row[2] for row in samples])
+    regrowth = int(max(fold_widths - np.minimum.accumulate(fold_widths)))
+    # Both axes retarget independently. Require intermediate positions and
+    # bounded travel on each axis, including when the lift overlaps the glide.
+    horizontal = centers[(centers > idle_center + 4) & (centers < source_center - 4)]
+    vertical = tops[(tops > idle_top + 4) & (tops < reading_top - 4)]
     return dict(visit=name, secondsToTenPercentFold=delay, maxExpandedCenterDriftPx=max_fold_drift,
-                compactTravelFrames=travel_frames, finalCenterErrorPx=abs(center - idle_center),
-                passed=delay is not None and delay <= 0.210 and max_fold_drift <= 4
-                and travel_frames > 0 and abs(center - idle_center) <= 4 and abs(width - idle_width) <= 4)
+                horizontalFrames=len(horizontal), verticalFrames=len(vertical), maxReturnRegrowthPx=regrowth,
+                finalCenterErrorPx=abs(center - idle_center), compactSamples=samples,
+                passed=bool(delay is not None and delay <= 0.210 and max_fold_drift <= 4 and regrowth <= 4
+                            and len(set(horizontal)) >= 3 and len(set(vertical)) >= 3
+                            and np.all((centers >= idle_center - 4) & (centers <= source_center + 4))
+                            and np.all((tops >= idle_top - 4) & (tops <= reading_top + 4))
+                            and abs(top - idle_top) <= 4 and abs(center - idle_center) <= 4
+                            and abs(width - idle_width) <= 4))
+
+
+
+def check_centered_visit(frames, times, marks, phases, index, next_phase, idle_width):
+    center = frames[0].shape[1] / 2
+    opening = phases[f"center-expanding-{index}"]
+    settled = phases[f"center-open-{index}"]
+    close = phases[f"center-close-{index}"]
+    end = phases[next_phase]
+    samples = []
+    return_marks = []
+    for i in range(opening, end):
+        left, right = glass_edges(frames[i])
+        samples.append((times[i], right - left + 1, (left + right) / 2))
+        if i >= close and marks[i] is not None:
+            mark_left, _, mark_right = marks[i]
+            return_marks.append(dict(pts=times[i], glass=[left, right], mark=[mark_left, mark_right],
+                                     widthPx=right - left + 1,
+                                     outsidePx=max(0, left - mark_left, mark_right - right)))
+    widths = np.array([row[1] for row in samples])
+    open_width = widths[close - opening - 1]
+    closing = widths[close - opening:]
+    intermediate = lambda values: values[(values > idle_width + 4) & (values < open_width - 4)]
+    drift = max(abs(row[2] - center) for row in samples)
+    visible_during_fold = any(idle_width + 4 < row['widthPx'] < open_width - 4 for row in return_marks)
+    overflow = max((row['outsidePx'] for row in return_marks), default=0)
+    return dict(visit=index, maxCenterDriftPx=drift, openWidthPx=int(open_width), idleWidthPx=int(closing[-1]),
+                maxMarkOverflowPx=overflow, returnMarkSamples=return_marks,
+                passed=bool(drift <= 4 and abs(open_width - 1120) <= 4 and abs(closing[-1] - idle_width) <= 4
+                            and marks[close - 1] is not None and marks[end - 1] is None
+                            and visible_during_fold and overflow <= 4
+                            and len(set(intermediate(widths[:settled - opening]))) >= 3
+                            and len(set(intermediate(closing))) >= 3))
+
+
+def check_center(frames, times, panels, marks, phases, name, opening):
+    start = phases[name]
+    end = phases[name + "-released"]
+    samples = []
+    for i in range(start, end):
+        left, right = glass_edges(frames[i])
+        samples.append([float(times[i]), right - left + 1, (left + right) / 2,
+                        marks[i][1] if marks[i] is not None else None, panels[i]])
+    widths = [sample[1] for sample in samples]
+    gaps = np.diff(times[start:end + 1])
+    steps = np.diff(widths) * (1 if opening else -1)
+    moving_panel = {row[4] for row in samples if row[4] is not None}
+    # The reader panel keeps its submitted return during a main-thread hold.
+    # Record compositor independence separately from shell continuity. The
+    # SwiftUI reference can hold its last width until the next layout pass.
+    contained = all(mark is not None and abs(mark - center) < width / 2
+                    for _, width, center, mark, _ in samples)
+    moving_marks = len({row[3] for row in samples if row[3] is not None})
+    width_steps = int(np.count_nonzero(steps > 2))
+    return dict(phase=name, samples=samples, maxFrameIntervalMs=round(float(max(gaps)) * 1000, 2),
+                movingWidthSteps=width_steps, movingPanelSeats=len(moving_panel), movingMarkSeats=moving_marks,
+                independentShellProgress=width_steps >= 3 and moving_marks >= 3,
+                passed=bool(len(samples) >= 3 and np.all(steps >= -3) and contained
+                            and (opening or len(moving_panel) >= 3)))
 
 
 def check_focus(frames, focus, times, start, end, x, y, name, *, reference_index=None, explicit=False):
@@ -216,15 +311,17 @@ def main():
     try:
         # ScreenCaptureKit omits identical frames. Decode in presentation
         # order and use only the phase carried by each recorded frame.
-        frames, focus, codes = [], [], []
+        frames, focus, codes, panels, marks = [], [], [], [], []
         for i, pts in enumerate(times):
             try:
-                frame, focused, phase = dock_frame(movie, len(phase_events))
+                frame, focused, phase, panel, mark = dock_frame(movie, len(phase_events))
             except ValueError as error:
                 raise ValueError(f"Frame {i} at {pts}s: {error}") from error
             frames.append(frame)
             focus.append(focused)
             codes.append(phase)
+            panels.append(panel)
+            marks.append(mark)
     finally:
         movie.release()
     phases, mapping = capture_phases(phase_events, codes, times)
@@ -257,9 +354,14 @@ def main():
     left, _ = glass_edges(frames[end])
     command = check_focus(frames, focus, times, phases["explicit-enter"], end, left + 181, 69, "compose",
                           explicit=True)
-    print(json.dumps(dict(phases=mapping, geometry=visits, returns=returns, autofocus=acquisitions, realtimeAutofocus=realtime,
+    centered = [check_center(frames, times, panels, marks, phases, "center-busy-opening", True),
+                check_center(frames, times, panels, marks, phases, "center-busy-folding", False)]
+    centered_visits = [check_centered_visit(frames, times, marks, phases, index, next_phase, idle_width)
+                       for index, next_phase in enumerate(["center-enter-1", "interrupt-horizontal-visit"])]
+    print(json.dumps(dict(phases=mapping, geometry=visits, returns=returns, centered=centered,
+                          centeredVisits=centered_visits, autofocus=acquisitions, realtimeAutofocus=realtime,
                           explicitCompose=command), indent=2))
-    return all(visit["passed"] for visit in visits + returns + acquisitions + realtime) and command["passed"]
+    return all(visit["passed"] for visit in visits + returns + centered + centered_visits + acquisitions + realtime) and command["passed"]
 
 
 if __name__ == "__main__":

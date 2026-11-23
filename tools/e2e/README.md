@@ -32,7 +32,7 @@ contains every requested ID, including blocked and unreached entries.
 
 | ID | Implemented interaction and criterion | Prerequisite / evidence | Coverage boundary |
 | --- | --- | --- | --- |
-| `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Page changes take under 1,000ms each. The final Dock handoff takes under 1,560ms. | Fresh profile, authorized system AX driver, exclusive desktop. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
+| `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Page changes take under 1,000ms each. The final Dock handoff takes under 1,560ms. | Fresh profile, authorized system AX driver, exclusive desktop. Each press verifies the private runtime PID/epoch, target button and focused test window. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
 | `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve completed tasks in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
 | `E2E-CHIEF-001` | Open Note and switch to Compose. The legacy command is rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
@@ -160,6 +160,10 @@ composer. Record the contours at native resolution, the time of minimum area
 and the open interval between blinks. To isolate compositor progress, hold the
 fixture's main thread during a second blink and read complete window frames
 on an independent capture queue.
+
+The [mounted Dock replay](../../demos/moku-panel-transition/remaining/README.md) exercises reply read state,
+permission and questionnaire controls, Timer acknowledgment and editor reversal
+with ordinary and reduced motion.
 
 ### OpenCode cold discovery
 
@@ -313,8 +317,7 @@ carousel member, execution identities and link position alongside the recording.
    Repeat the comparison for an ordinary Thread and an individual Report.
    After a brief Report visit, type an unsent draft in its source conversation
    and close the report. From the same window recording, check that the input
-   folds in its source column, travels while compact and settles at the canvas
-   center. Check the carousel page, collapsed Note and retired editor focus.
+   folds in its source column and travels back to the resting canvas center. Check the carousel page, collapsed Note and retired editor focus.
    Reopen the Note and follow the same citation to recover the focused draft.
    Check the separate Overview draft through its Compose shortcut. On the ordinary
    Thread route, use Escape to check the restored Note’s scroll position.
