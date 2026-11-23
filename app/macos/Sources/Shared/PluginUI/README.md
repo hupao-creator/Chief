@@ -250,14 +250,16 @@ presentation while each plugin validates the response. [Adapter inventory](../..
 ## Reading placeholders
 
 [NativeReadingPlaceholder](Conversation/NativeReadingPlaceholder.swift) separates
-whole-surface loading from inline loading. Host resource admission and Codex's
-initial state decode center their placeholder within the available reader
+whole-surface loading from inline loading. Host resource admission and initial Harness
+manifest or materialized-state decoding center their placeholder within the available reader
 viewport; scoped turn loading stays inside the timeline's existing reading
 column. Inline placeholders reserve only their text/padding height, independent
 of eventual short or overflowing content. Neither form imposes a fixed width.
 
-Loading text appears after a cancellable 180ms grace period, without animation,
-focus changes or pointer interception. Its layout is reserved during the delay,
+The shared [surface loading view](Design/NativeSurfaceLoading.swift) centers the
+96 pt high-toss skillet on a transparent canvas, preserves the surface's localized status caption where
+present, and holds a still frame with Reduce Motion. The reading placeholder
+shows it after a cancellable 180ms grace period without taking focus or pointer input. Its layout is reserved during the delay,
 and it is absent from accessibility until visible. Unmounting cancels the delay
 and resets visibility; errors and retry controls appear immediately. The shared
 semantic palette and locale follow the reader. This is presentation state only:
@@ -1437,7 +1439,7 @@ later streaming updates retain their own scroll and rendering policies. A
 completed execution promoted from a Sidecard still acknowledges destination
 content readiness before the retained source retires.
 
-Initial conversation admission uses an inline loading placeholder until its entry
+Initial conversation admission uses a full-reader leaf placeholder until its entry
 request is consumed. It must not use the surface placeholder: with an identity
 visit, that placeholder builds `NativeThreadOpeningContent`, itself a conversation,
 causing recursive mounting before the initial `onChange` can run. The outer

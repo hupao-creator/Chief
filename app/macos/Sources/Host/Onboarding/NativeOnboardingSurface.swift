@@ -101,9 +101,8 @@ struct NativeOnboardingSurface: View {
                                     }
                                 }.buttonStyle(.borderless))).padding(.bottom, 12)
                         }
-                        if !state.admitted { ProgressView().padding(.top, 80) }
-                        else if panelStep == .discovery { discovery.padding(.top, 22) }
-                        else {
+                        if state.admitted && panelStep == .discovery { discovery.padding(.top, 22) }
+                        else if state.admitted {
                             NativeRoleConfigurationPanel(role: panelStep == .moku ? .moku : panelStep == .tag ? .tag : .report,
                                 harnesses: state.installed, locale: locale, showsHeading: true) {
                                 configurationForStep(panelStep).disabled(state.busy)
@@ -116,6 +115,11 @@ struct NativeOnboardingSurface: View {
                     .frame(maxWidth: 560).padding(.horizontal, 30).padding(.bottom, 20).frame(maxWidth: .infinity)
                 }
             }.scrollIndicators(.never)
+            .overlay {
+                if !state.admitted && state.error == nil && state.settings.draft.error == nil && discoveryError == nil {
+                    NativeSurfaceLoading()
+                }
+            }
             HStack {
                 if panelStep != .discovery {
                     Button(action: state.back) { Label(locale.text("返回", "Back"), systemImage: "chevron.left") }

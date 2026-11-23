@@ -156,3 +156,5 @@ is interactive when its own enabled confirmation is available. The final
 destination requires the workspace's enabled attachment control and its focused,
 editable composer. Both background roles are configured separately in the UI;
 the run checks their saved settings and the completion marker after the handoff.
+
+While the setup panel is waiting for admission, the shared skillet loading mark is centered in its content area. Setup errors retain their recovery controls.
