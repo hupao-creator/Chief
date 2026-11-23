@@ -31,6 +31,10 @@ extension EnvironmentValues {
 }
 
 extension View {
+    public func nativeCanvasNavigationRegion(in regions: NativeCanvasInputRegions) -> some View {
+        background { CanvasInputRegion(regions: regions) }
+    }
+
     /// No effect outside a canvas that provides an input-region registry.
     public func nativeCanvasNavigationRegion() -> some View { modifier(CanvasInputRegionModifier()) }
 }

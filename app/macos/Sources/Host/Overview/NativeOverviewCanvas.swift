@@ -484,7 +484,10 @@ public struct NativeOverviewCanvas<Content: View>: View {
 
     private func reconcile(_ viewport: CGSize, items: [NativeOverviewItem],
                            revisions: [NativeOverviewLayoutRevision], token: UUID) async {
-        guard viewport.width > 0, viewport.height > 0, state.hostOwner == ownership else { return }
+        // Geometry reuse can cancel a queued worker before its first actor turn.
+        // Only the current worker may suspend scrolling and card activation.
+        guard !Task.isCancelled, layoutToken == token, state.hostOwner == ownership,
+              viewport.width > 0, viewport.height > 0 else { return }
         state.isLayingOut = true
         defer {
             if state.hostOwner == ownership, layoutToken == token {

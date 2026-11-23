@@ -16,6 +16,7 @@ import ChiefPluginUI
     /// One registry spans the canvas and its overlaid Moku surfaces. A drag
     /// over the capsule must retain control ownership on touch and pointer.
     let canvasInputRegions = NativeCanvasInputRegions()
+    let swipeRegions = NativeOverviewSwipeRegions()
     let executionDockPlacement = NativeExecutionDockPlacement()
     private var landingActive = false
     // The handoff can cue only the Dock currently mounted in this scene.

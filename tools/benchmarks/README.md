@@ -98,7 +98,7 @@ The collector records the actual input and original frames. The measured
 interval contains no semantic polling. The AppKit horizontal and wrong-axis
 controls check that measurement; the SwiftUI and AppKit drag controls exercise
 the drag collector used by older artifacts. On the product Overview, a physical two-finger
-upward swipe opens Chief Note. Keep pan and tail probes horizontal. The
+vertical swipe changes the status filter on the canvas. Keep pan and tail probes horizontal. The
 wrong-axis control exercises the collector against the control app. The
 [workspace replay](../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
 covers the product gesture.

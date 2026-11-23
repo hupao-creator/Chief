@@ -1,0 +1,311 @@
+[
+  {
+    "agents" : [
+      "Executing",
+      "Permission",
+      "Background",
+      "Submitting",
+      "Delivered",
+      "Stopped",
+      "Idle"
+    ],
+    "collectionMembers" : [
+      "Report-1",
+      "Report-2",
+      "Report-3",
+      "Report-4",
+      "Report-5",
+      "Report-6",
+      "Report-7",
+      "Report-8"
+    ],
+    "individualReports" : [
+
+    ],
+    "mountedCardCount" : 8,
+    "noteOpen" : false,
+    "selectedTag" : "",
+    "status" : "all",
+    "step" : "all",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+      "Executing",
+      "Permission",
+      "Background",
+      "Submitting"
+    ],
+    "collectionMembers" : [
+
+    ],
+    "individualReports" : [
+
+    ],
+    "mountedCardCount" : 4,
+    "noteOpen" : false,
+    "selectedTag" : "",
+    "status" : "running",
+    "step" : "up",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+      "Executing",
+      "Permission",
+      "Background",
+      "Submitting"
+    ],
+    "collectionMembers" : [
+
+    ],
+    "individualReports" : [
+
+    ],
+    "mountedCardCount" : 4,
+    "noteOpen" : false,
+    "selectedTag" : "",
+    "status" : "running",
+    "step" : "upper-limit",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+      "Executing",
+      "Permission",
+      "Background",
+      "Submitting",
+      "Delivered",
+      "Stopped",
+      "Idle"
+    ],
+    "collectionMembers" : [
+      "Report-1",
+      "Report-2",
+      "Report-3",
+      "Report-4",
+      "Report-5",
+      "Report-6",
+      "Report-7",
+      "Report-8"
+    ],
+    "individualReports" : [
+
+    ],
+    "mountedCardCount" : 8,
+    "noteOpen" : false,
+    "selectedTag" : "",
+    "status" : "all",
+    "step" : "back-from-running",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+      "Delivered"
+    ],
+    "collectionMembers" : [
+      "Report-1",
+      "Report-2",
+      "Report-3",
+      "Report-4",
+      "Report-5",
+      "Report-6"
+    ],
+    "individualReports" : [
+      "Report-7",
+      "Report-8"
+    ],
+    "mountedCardCount" : 4,
+    "noteOpen" : false,
+    "selectedTag" : "",
+    "status" : "completed",
+    "step" : "down",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+      "Delivered"
+    ],
+    "collectionMembers" : [
+      "Report-1",
+      "Report-2",
+      "Report-3",
+      "Report-4",
+      "Report-5",
+      "Report-6"
+    ],
+    "individualReports" : [
+      "Report-7",
+      "Report-8"
+    ],
+    "mountedCardCount" : 4,
+    "noteOpen" : false,
+    "selectedTag" : "",
+    "status" : "completed",
+    "step" : "lower-limit",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+      "Executing",
+      "Permission",
+      "Background",
+      "Submitting",
+      "Delivered",
+      "Stopped",
+      "Idle"
+    ],
+    "collectionMembers" : [
+      "Report-1",
+      "Report-2",
+      "Report-3",
+      "Report-4",
+      "Report-5",
+      "Report-6",
+      "Report-7",
+      "Report-8"
+    ],
+    "individualReports" : [
+
+    ],
+    "mountedCardCount" : 8,
+    "noteOpen" : false,
+    "selectedTag" : "",
+    "status" : "all",
+    "step" : "back-from-completed",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+      "Delivered"
+    ],
+    "collectionMembers" : [
+
+    ],
+    "individualReports" : [
+
+    ],
+    "mountedCardCount" : 1,
+    "noteOpen" : false,
+    "selectedTag" : "Shipping",
+    "status" : "all",
+    "step" : "tag",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+
+    ],
+    "collectionMembers" : [
+
+    ],
+    "individualReports" : [
+
+    ],
+    "mountedCardCount" : 0,
+    "noteOpen" : false,
+    "selectedTag" : "Shipping",
+    "status" : "running",
+    "step" : "empty-tag",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+      "Delivered"
+    ],
+    "collectionMembers" : [
+
+    ],
+    "individualReports" : [
+
+    ],
+    "mountedCardCount" : 1,
+    "noteOpen" : false,
+    "selectedTag" : "Shipping",
+    "status" : "running",
+    "step" : "live-admit",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+
+    ],
+    "collectionMembers" : [
+
+    ],
+    "individualReports" : [
+
+    ],
+    "mountedCardCount" : 0,
+    "noteOpen" : false,
+    "selectedTag" : "Shipping",
+    "status" : "running",
+    "step" : "live-remove",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  },
+  {
+    "agents" : [
+      "Delivered"
+    ],
+    "collectionMembers" : [
+
+    ],
+    "individualReports" : [
+
+    ],
+    "mountedCardCount" : 1,
+    "noteOpen" : false,
+    "selectedTag" : "Shipping",
+    "status" : "all",
+    "step" : "tag-restored",
+    "visibleTags" : [
+      "directory:\/fixture:fixture",
+      "semantic:\/fixture:development",
+      "semantic:\/fixture:shipping"
+    ]
+  }
+]
