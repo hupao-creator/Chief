@@ -1010,7 +1010,7 @@ public struct NativeWorkspaceView: View {
                     presentation.dockInputAvailable && $0.observation.isExecutionActive
                         && (execution == nil || execution?.executionID == $0.observation.latestExecution?.executionID)
                 }
-                NativeMokuDock(state: presentation.scene, draft: presentation.dockDraft, cwd: detail?.cwd ?? JSONText(model.catalog.defaultCwd),
+                NativeMokuDock(state: presentation.scene, draft: presentation.dockDraft, cwd: detail?.cwd ?? "",
                     landing: detail == nil && superThreadID == nil && presentation.moku.landing,
                     threadID: detail?.id,
                     threadHarness: detail.flatMap { try? model.plugins.harnesses.require($0.harnessID) },

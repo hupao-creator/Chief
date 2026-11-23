@@ -784,13 +784,18 @@ defines focus ownership and admission.
 ### Chief file picker
 
 Use a uniquely bundled production build and an isolated online profile with a
-configured Chief. The [Dock contract](../../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer)
+configured Chief. Hold the shared desktop lease and operate only the isolated
+app. The [Dock contract](../../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer)
 and [shared composer](../../app/macos/Sources/Shared/PluginUI/README.md#cards-composer-and-forms)
 own the control and its draft import. Start on Overview and click the plus next
 to the eyes with the system mouse. Check that the native chooser opens on the
-first click, cancel it, and check that the draft text and chips are still present.
-Use AXPress on the same button and confirm the chooser opens directly. Select a
-known text file, image and empty folder together. Check the two ready file chips
+first click and that it shows the current user's Desktop. Navigate to a
+different folder and cancel. Check that the draft text and chips are still
+present, then click the plus again and verify the chooser starts on the Desktop.
+Cancel, use AXPress on the same button, and confirm the chooser opens directly
+on the Desktop. In an Agent composer with a known explicit working directory,
+check that its plus opens the chooser in that directory. In the default Chief
+composer, select a known text file, image and empty folder together. Check the two ready file chips
 and the single folder chip. Open and dismiss the image preview, then send. Independently read the current Chief transcript through
 Runtime and match the user message, attachment names and sizes. Check the
 managed file bytes against the fixtures, verify the selected folder path in the

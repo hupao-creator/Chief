@@ -837,7 +837,7 @@ Only the submitting dot pulses (opacity only, 2.4 seconds per cycle); viewport,
 window and host animation gates pause it. A mounted initial body gives way immediately to real content with a single 120ms
 opacity entrance; remounts and later excerpt revisions keep the existing policy.
 
-Composer state and submitted revision belong to the workspace. Attachment upload, file selection and send receipts are shared by the Dock and conversation surfaces. The Host’s `NativeMokuComposerInput` composes the shared text input, attachment chips and host file picker for the Dock; PluginUI owns those primitives and draft persistence. Harness and Moku interaction owners compose `InteractionQuestionField` with their own validation, submission and cancellation controls, sending through injected actions rather than bypassing Runtime admission.
+Composer state and submitted revision belong to the workspace. Attachment upload, file selection and send receipts are shared by the Dock and conversation surfaces. The Host’s `NativeMokuComposerInput` composes the shared text input, attachment chips and host file picker for the Dock; PluginUI owns those primitives and draft persistence. The device picker sets the initial directory on each presentation from the supplied native working directory or, when the path is empty, the system's user-domain Desktop URL. Harness and Moku interaction owners compose `InteractionQuestionField` with their own validation, submission and cancellation controls, sending through injected actions rather than bypassing Runtime admission.
 
 The device open panel reserves the draft import while it is open. Cancelling
 releases the reservation without staging files. Confirmed selections join the

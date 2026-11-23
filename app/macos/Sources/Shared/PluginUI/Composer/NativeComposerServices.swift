@@ -75,7 +75,11 @@ public struct NativeComposerServices {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
         panel.resolvesAliases = true
-        if !cwd.codeUnits.isEmpty { panel.directoryURL = URL(fileURLWithPath: cwd.string, isDirectory: true) }
+        // Set the initial directory on every open so AppKit's remembered
+        // location does not override the composer's default.
+        panel.directoryURL = cwd.codeUnits.isEmpty
+            ? FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+            : URL(fileURLWithPath: cwd.string, isDirectory: true)
         return panel
     }
 }

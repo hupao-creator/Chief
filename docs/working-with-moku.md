@@ -18,7 +18,7 @@ To check your OpenCode Go allowance, ask Chief how much of your subscription is 
 
 Tell Chief what you want it to do in your project folder. You can select the folder with **+** or type its full path. You can type or paste `@` as part of your message.
 
-Click **+** just to the right of Chief's eyes to open the file chooser on your Mac. Select a folder to give Chief its path. You can Command-click to select several files and folders together. Each selection appears above the input. Click **Cancel** to keep your draft as it is. You can also drop files into the input box.
+Click **+** just to the right of Chief's eyes to open the file chooser. It starts on your Mac's desktop each time. Select a folder to give Chief its path. You can Command-click to select several files and folders together. Each selection appears above the input. Click **Cancel** to keep your draft as it is. You can also drop files into the input box.
 
 To browse the connected host, Control-click **+** and choose **Choose host files** to attach files or **Choose a host directory** to reference a folder.
 
