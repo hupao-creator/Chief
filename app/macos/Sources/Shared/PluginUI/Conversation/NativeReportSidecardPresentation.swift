@@ -51,6 +51,30 @@ public final class NativeReportSidecardPresentation {
         let text: String?
         let emoji: String
     }
+    private enum Connection {
+        case submitted(request: UUID, selection: UUID, harness: String)
+        case arriving(visit: UUID, harness: String)
+    }
+    private var connection: Connection?
+    public var connectingHarness: String? {
+        guard active == .relatedExecutions, !retainingForReturn else { return nil }
+        switch connection {
+        case let .submitted(_, selection, harness) where selection == selectionID: return harness
+        case let .arriving(visit, harness) where visit == executionVisit && !executionReady: return harness
+        default: return nil
+        }
+    }
+
+    public func beginConnection(request: UUID, from source: ApplicationExecutionRef, harness: String) {
+        guard inputExecution == source, inputReady, executionReady, active == .relatedExecutions,
+              !retainingForReturn else { return }
+        connection = .submitted(request: request, selection: selectionID, harness: harness)
+    }
+
+    public func endConnection(request: UUID) {
+        if case let .submitted(owner, _, _) = connection, owner == request { connection = nil }
+    }
+
     public enum Card { case relatedExecutions, browser }
     public private(set) var active: Card?
     public private(set) var pending: Card? = .relatedExecutions
@@ -76,6 +100,7 @@ public final class NativeReportSidecardPresentation {
 
     public func selectExecution(_ reference: ApplicationExecutionRef?, position: HarnessReadingTarget.Position = .start) {
         guard !retainingForReturn else { return }
+        connection = nil
         selectionID = UUID(); executionVisit = UUID()
         selectedExecution = reference; inputExecution = nil; inputReady = false; entryPosition = position
         continuedExecution = false; executionReady = false
@@ -90,7 +115,7 @@ public final class NativeReportSidecardPresentation {
         }
     }
 
-    public func continueExecution(_ reference: ApplicationExecutionRef, from source: ApplicationExecutionRef, selection: UUID, text: String) {
+    public func continueExecution(_ reference: ApplicationExecutionRef, from source: ApplicationExecutionRef, selection: UUID, text: String, request: UUID? = nil) {
         guard !retainingForReturn, !suppressed, active == .relatedExecutions,
               selectionID == selection, inputExecution == source else { return }
         let text = NativeComposerSubmissionPolicy.trimmedText(text).split(whereSeparator: \.isWhitespace).joined(separator: " ")
@@ -100,12 +125,17 @@ public final class NativeReportSidecardPresentation {
             ?? ["🌿", "🪐", "🧩", "🎨", "🦊", "🌊", "🍋", "🪁", "💡", "🌻", "🐳", "🏕️"].randomElement()!
         sendTitles[reference] = SendTitle(text: text.isEmpty ? nil : text, emoji: emoji)
         guard reference != source else { return }
+        let submission = connection
         selectExecution(reference)
+        if case let .submitted(owner, origin, harness) = submission, owner == request, origin == selection {
+            connection = .arriving(visit: executionVisit, harness: harness)
+        }
         continuedExecution = true
     }
 
     public func admitExecution(visit: UUID) {
         guard executionVisit == visit, selectedExecution != nil else { return }
+        if case .arriving = connection { connection = nil }
         executionReady = true
     }
 
@@ -120,6 +150,7 @@ public final class NativeReportSidecardPresentation {
         if retainingForReturn {
             // Close preparation must revoke admission/input without folding the
             // visible selection. Unmounting the completed visit calls cancel().
+            connection = nil
             self.retainingForReturn = true
             generation = UUID(); admission?.cancel(); admission = nil
             return
@@ -143,12 +174,14 @@ public final class NativeReportSidecardPresentation {
         guard !suppressed, !retainingForReturn else { return }
         if active == card || pending == card { return }
         selectionID = UUID()
+        connection = nil
         if admitted { pending = nil; active = card }
         else { active = nil; pending = card }
     }
 
     public func close() {
         guard !retainingForReturn else { return }
+        connection = nil
         selectionID = UUID(); active = nil; pending = nil
     }
 
@@ -160,6 +193,7 @@ public final class NativeReportSidecardPresentation {
     }
 
     private func invalidateAdmission() {
+        connection = nil
         generation = UUID(); admission?.cancel(); admission = nil; admitted = false
         selectionID = UUID()
         pending = active ?? pending; active = nil

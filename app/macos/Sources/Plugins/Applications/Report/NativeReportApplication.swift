@@ -129,7 +129,13 @@ struct NativeReportDetail: View {
                             execution(selected).id(selected)
                         }
                             .overlay(alignment: .topTrailing) {
-                                if sidecards.continuedExecution && !sidecards.executionReady {
+                                if let harness = sidecards.connectingHarness {
+                                    ThreadConnectionLabel(harness: harness)
+                                        .padding(.horizontal, 12).padding(.vertical, 7)
+                                        .background(.regularMaterial, in: Capsule())
+                                        .padding(12)
+                                        .allowsHitTesting(false)
+                                } else if sidecards.continuedExecution && !sidecards.executionReady {
                                     ProgressView().controlSize(.small).padding(18)
                                 }
                             }

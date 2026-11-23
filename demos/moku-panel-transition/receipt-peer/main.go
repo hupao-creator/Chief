@@ -171,6 +171,10 @@ func run() error {
 	if err := writeSteerState("initial", state); err != nil {
 		return err
 	}
+	working := codex.ReduceEvent(state, "E", codex.Map{"type": "status", "label": "Processing request"})
+	if err := writeSteerState("working", working); err != nil {
+		return err
+	}
 	server, err := transport.Start(transport.Options{Profile: p, Epoch: owner.Epoch, Host: &host{calls: calls, state: state, initial: state}})
 	if err != nil {
 		return err

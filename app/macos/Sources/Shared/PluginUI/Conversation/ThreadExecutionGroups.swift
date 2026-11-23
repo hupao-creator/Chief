@@ -198,6 +198,20 @@ private extension ThreadReasoningUsage {
     }
 }
 
+public struct ThreadConnectionLabel: View {
+    let harness: String
+    @Environment(\.locale) private var locale
+
+    public init(harness: String) { self.harness = harness }
+
+    public var body: some View {
+        Text(verbatim: locale.language.languageCode?.identifier == "zh"
+            ? "正在连接 \(harness)" : "Connecting to \(harness)")
+            .font(.callout)
+            .modifier(ThreadLoadingTextStyle(loading: true))
+    }
+}
+
 /// Share the summary's text treatment and motion gates with pending connection labels.
 struct ThreadLoadingTextStyle: ViewModifier {
     let loading: Bool
