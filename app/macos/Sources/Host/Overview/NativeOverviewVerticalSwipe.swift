@@ -4,7 +4,6 @@ import SwiftUI
 
 @MainActor final class NativeOverviewSwipeRegions {
     let bar = NativeCanvasInputRegions()
-    let note = NativeCanvasInputRegions()
     let controls = NativeCanvasInputRegions()
 }
 
@@ -13,7 +12,7 @@ struct NativeOverviewSwipeActions {
     let available: @MainActor () -> Bool
     let canFilter: @MainActor () -> Bool
     let canReturnWithWheel: @MainActor (Bool) -> Bool
-    let openNote: @MainActor () -> Void
+    let openNoteFromBar: @MainActor () -> Bool
     let stepSemanticFilter: @MainActor (Bool) -> Void
     let stepStatusFilter: @MainActor (Bool) -> Void
 }
@@ -26,9 +25,7 @@ extension EnvironmentValues {
 /// keep the rest of the contact and its momentum even if the surface changes.
 struct NativeOverviewVerticalSwipe {
     enum Target {
-        case note, semanticFilter, statusFilter
-
-        var isFilter: Bool { self != .note }
+        case semanticFilter, statusFilter
     }
     private enum Stage { case idle, possible(Target), claimed, awaitingMomentum(TimeInterval), momentum }
     private var stage = Stage.idle
@@ -80,7 +77,7 @@ struct NativeOverviewVerticalSwipe {
         if case .claimed = stage { return true }
         // Both halves are one filtering surface. Keep the half captured at
         // contact start even if the pointer crosses the midpoint before recognition.
-        guard case .possible(let origin) = stage, starting || target()?.isFilter == origin.isFilter else {
+        guard case .possible(let origin) = stage, starting || target() != nil else {
             stage = .idle
             return false
         }
@@ -88,7 +85,7 @@ struct NativeOverviewVerticalSwipe {
         vertical += deltaY
         horizontal += abs(event.scrollingDeltaX)
         if vertical == 0 && horizontal == 0 { return false }
-        guard abs(vertical) > horizontal * 1.5, origin.isFilter || vertical > 0 else {
+        guard abs(vertical) > horizontal * 1.5 else {
             stage = .idle
             return false
         }

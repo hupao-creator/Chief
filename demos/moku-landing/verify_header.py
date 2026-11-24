@@ -35,13 +35,13 @@ parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--capture", action="store_true", help="save images of the wide, narrow and four-column layouts")
 parser.add_argument("--keyboard", action="store_true", help="focus a card with system Accessibility and check arrow keys and Return")
 scenario = parser.add_mutually_exclusive_group()
-scenario.add_argument("--note-swipe", action="store_true", help="run Note and scroll interactions entirely at actual size")
+scenario.add_argument("--note-click", action="store_true", help="run Note and scroll interactions entirely at actual size")
 scenario.add_argument("--note-link", action="store_true", help="follow Chief Note execution links across and within tag spaces")
 scenario.add_argument("--status-only", action="store_true", help="run only the mounted status-filter and idle illustration scenario")
 parser.add_argument("--header-glass", action="store_true", help="capture and measure the production directory row over gray")
 parser.add_argument("--rail-hover", action="store_true", help="capture the mounted semantic rail during hover")
 args = parser.parse_args()
-if (args.header_glass or args.rail_hover) and (args.status_only or args.note_swipe or args.note_link):
+if (args.header_glass or args.rail_hover) and (args.status_only or args.note_click or args.note_link):
     parser.error("choose dedicated chrome captures or the workspace scenario")
 if (args.note_link or args.status_only or args.header_glass or args.rail_hover) and args.keyboard:
     parser.error("--keyboard requires the card interaction scenario")
@@ -70,14 +70,14 @@ with native_lease():
         arguments = ["--capture"] if args.capture else []
         if args.note_link:
             arguments.append("--note-link")
-        if args.note_swipe:
-            arguments.append("--note-swipe")
+        if args.note_click:
+            arguments.append("--note-click")
         if args.status_only:
             arguments.append("--status-only")
         if args.keyboard:
             arguments.append("--keyboard")
         with keyboard_client(replay, args.output) if args.keyboard else nullcontext():
-            status = replay.run(arguments, timeout=75 if args.note_swipe or args.status_only else 60)
+            status = replay.run(arguments, timeout=75 if args.note_click or args.status_only else 60)
     finally:
         try:
             replay.export(args.output)
@@ -95,7 +95,7 @@ if args.note_link:
 if args.status_only:
     sys.exit(status or int(not (args.output / "overview-status.json").is_file()))
 receipts = ["overview-scroll.json", "overview-fit.json"]
-receipts += ["overview-status.json", "overview-note-swipe.json", "landing-note-swipe.json", "reminder-note-ownership.json"] if args.note_swipe else ["nested-header.json", "collection-fit.json"]
+receipts += ["overview-status.json", "overview-note-click.json", "landing-note-click.json", "reminder-note-ownership.json"] if args.note_click else ["nested-header.json", "collection-fit.json"]
 if args.keyboard:
     receipts.append("overview-keyboard.json")
 sys.exit(status or int(not all((args.output / name).is_file() for name in receipts)))

@@ -65,17 +65,17 @@ position. For ordinary Threads it also checks the loaded historical row and
 its scroll position against an offline two-run fixture. System-wide accessibility
 activation and live Report content use the [product replay](../../tools/e2e/README.md#chief-note-execution-link).
 
-### Overview Note swipe at actual size
+### Overview Note click at actual size
 
 ```sh
-python3 demos/moku-landing/verify_header.py --note-swipe --output .build/overview-note-swipe
+python3 demos/moku-landing/verify_header.py --note-click --output .build/overview-note-click
 ```
 
 This scenario keeps the workspace at 1× throughout, including its first frame.
 It checks the empty Overview with folded input as well as the populated canvas.
-The replay posts window-addressed, phased pixel scrolls over the background, a card, the overflowing tag bar and Chief Bar. It checks the Note threshold and hit region, direct and momentum tails, native tag and Note scrolling, camera travel, composer/Settings ownership and inverted device deltas. The reader and landing cases check Note ownership on their respective surfaces. See `overview-note-swipe.json` and `landing-note-swipe.json`.
+The replay posts window-addressed AppKit mouse events to the mounted workspace. It checks that right-click opens Chief Note once in Overview and that Control-click opens it on Landing. A click on the canvas leaves Note closed, an outside primary click dismisses an open Note, and a primary click on Chief Bar opens Compose. Phased pixel scrolls verify that an upward swipe and its momentum over Chief Bar leave Note closed. They also exercise filter swipes, native tag and Note scrolling, camera travel, composer and Settings ownership, and inverted device deltas. The reminder fixture checks native scrolling and acknowledgment. See `overview-note-click.json`, `landing-note-click.json` and `reminder-note-ownership.json`. The posted events cover AppKit delivery to the window. Physical trackpad configuration remains a system-input check.
 
-Use `--status-only` in place of `--note-swipe` to run the mixed catalog scenario
+Use `--status-only` in place of `--note-click` to run the mixed catalog scenario
 independently. It mounts the [production Overview](../../app/macos/Sources/Host/Overview/README.md)
 with ordinary tasks, running interactions, completed work and eight reports.
 `overview-status.json` records the selected scope, tag and status, card area,

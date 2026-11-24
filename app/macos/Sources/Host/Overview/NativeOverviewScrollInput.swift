@@ -158,7 +158,6 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                    document.bounds.height > scroll.contentView.bounds.height + 1 { return nil }
                 view = current.superview
             }
-            if actions.regions.note.contains(point, in: window) { return .note }
             if actions.regions.bar.contains(point, in: window) || !actions.canFilter() { return nil }
             return contentPoint.x < content.bounds.midX ? .semanticFilter : .statusFilter
         }
@@ -167,14 +166,23 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
         func handle(_ event: NSEvent) -> NSEvent? {
             guard let window, event.window === window else { return event }
             if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
-                interruptGestures(); return event
+                interruptGestures()
+                // A system secondary click arrives as rightMouseDown. AppKit
+                // can also deliver Control-click as a modified leftMouseDown.
+                let secondaryClick = event.type == .rightMouseDown
+                    || (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
+                let point = event.locationInWindow
+                if secondaryClick, window.isVisible, let swipeActions,
+                   swipeActions.regions.bar.contains(point, in: window),
+                   !swipeActions.regions.controls.contains(point, in: window),
+                   swipeActions.openNoteFromBar() { return nil }
+                return event
             }
             guard event.type == .scrollWheel else { return event }
             if let swipeActions, verticalSwipe.route(event, target: { verticalTarget(event, actions: swipeActions) },
                 canReturnWithWheel: swipeActions.canReturnWithWheel,
                 perform: { target, up in
                     switch target {
-                    case .note: swipeActions.openNote()
                     case .semanticFilter: swipeActions.stepSemanticFilter(up)
                     case .statusFilter: swipeActions.stepStatusFilter(up)
                     }

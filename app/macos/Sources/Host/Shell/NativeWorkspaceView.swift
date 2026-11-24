@@ -1139,7 +1139,12 @@ public struct NativeWorkspaceView: View {
                         available: { presentation.overviewSwipeAvailable },
                         canFilter: { !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
                         canReturnWithWheel: { presentation.overview.canReturnToAllWithWheel(up: $0) },
-                        openNote: { if presentation.canToggleMokuNote { presentation.scene.openNotePanelFromUser() } },
+                        openNoteFromBar: {
+                            guard presentation.overviewSwipeAvailable, presentation.canToggleMokuNote,
+                                  model.timer.current == nil else { return false }
+                            presentation.scene.openNotePanelFromUser()
+                            return true
+                        },
                         stepSemanticFilter: { presentation.overview.stepSemanticFilter(up: $0) },
                         stepStatusFilter: { presentation.overview.stepStatusFilter(up: $0) }))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen

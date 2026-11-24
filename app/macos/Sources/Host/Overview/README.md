@@ -251,7 +251,7 @@ vertical swipe keeps both selections.
 
 The background, cards, carousel cover and filter controls accept these gestures.
 Horizontal starts retain their original owner through reversals. The
-[Chief Bar](../MokuScene/README.md) reserves its Note target. Vertically
+[Chief Bar](../MokuScene/README.md) keeps its scroll input local. Vertically
 overflowing native viewports keep scrolling at either limit. Open Note, editing,
 interventions, onboarding, Settings, readers and collection panels keep their input.
 
@@ -269,7 +269,7 @@ right half of the Overview filter surface, a vertical line-wheel event can exit 
 filter in its return direction. Scroll up from Running or down from Completed
 to return to All while keeping the selected tag. An empty All status shows a
 localized title and tag-switch hint on an opaque surface. A left-half wheel event keeps the selected status.
-The [status replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
+The [status replay](../../../../../demos/moku-landing/README.md#overview-note-click-at-actual-size)
 exercises empty and populated states and both input types.
 
 The outlined right-hand emoji identifies the status, including when the view is
@@ -847,7 +847,7 @@ statuses on return. The supported suite includes tagged project and Inbox tasks
 and an untagged Inbox task. The
 Collection suite uses two project directories. `overview-filters.json` records
 the public scope oracle and the mounted snapshots after each action. The
-[window replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
+[window replay](../../../../../demos/moku-landing/README.md#overview-note-click-at-actual-size)
 exercises native pointer input, distinguishes similarly named tags and folders,
 and checks the selected tint.
 
