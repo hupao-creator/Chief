@@ -163,6 +163,9 @@ public struct NativeOverviewWorkspaceView: View {
             }
             .onChange(of: geometry.size, initial: true) { _, size in model.setCollectionWindowSize(size) }
         }
+        .coordinateSpace(name: OverviewTagActivityIndicator.Space.workspace)
+        .environment(\.overviewTagActivityVisible, chromeVisible && !landing && model.facts.overviewVisible
+            && model.facts.documentVisible && !model.facts.settingsOpen)
         .environment(\.nativeCanvasInputRegions, inputRegions)
         .environment(\.locale, Locale(identifier: locale.rawValue))
         .accessibilityElement(children: .contain)

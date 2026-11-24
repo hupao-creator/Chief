@@ -360,20 +360,28 @@ layout or 2pt below the bar in the two-row layout. See the
 
 ## Tag activity
 
-Directory and semantic tag chips show an 11pt native status ring when their
-browsing membership contains a Thread whose public `isExecutionActive` is true
-(running or waiting for user). Background work alone does not qualify. The selection border, task counts,
-membership, ordering and Runtime filter context remain independent.
-Archive/visibility and Report-coverage exclusions come from the
-same membership used to browse each tag; a Report does not itself become an active
-Agent Thread. A changed-ID activity cache refreshes these booleans when active
-participation changes, without rebuilding membership or reacting to every streamed
-payload. Membership changes also refresh the markers, including the existing lazy
-All membership for its accessibility value. The All chip has no visible activity
-ring. A semantic chip places its activity ring in the lower-trailing corner of the glyph. The production
-spinner owns native window visibility. Accessibility values announce active
-presence in the selected UI language. The
-shared slot is implemented in [NativeOverviewTagActivity](NativeOverviewTagActivity.swift).
+Directory and semantic tag chips show a diagonal sweep across a field of tiny
+dots when their browsing membership contains a Thread whose public
+`isExecutionActive` is true (running or waiting for user). Background work
+alone does not qualify. The selection border and unread count remain visible
+independently of activity.
+
+A transparent 26pt disk sits behind the folder icon in the top bar. A 36pt
+disk sits behind the individual semantic tag’s emoji on the left. Core
+Animation sweeps the Overview accent across fixed perforations in the same
+pattern as the running Agent badge. The icon and emoji stay still, including
+while a tag title is expanded. Reduce Motion holds a single lit diagonal.
+Hiding the workspace, scrolling the chip out of view, hiding or occluding the
+window, or detaching the view stops the sweep.
+
+The indicator follows the same archive, visibility and Report-coverage rules as
+the browsing membership. A Report itself contributes no active Agent Thread.
+A changed-ID cache refreshes activity when execution participation or membership
+changes. Streaming content updates can reuse the cache. Global All and Any tag
+expose active presence in their localized accessibility value. The visible
+indicators belong to directory and individual semantic chips.
+[Tag activity rendering](NativeOverviewTagActivity.swift) and
+[shared badge renderer](../../Shared/PluginUI/Cards/RunningThreadBadge.swift).
 
 ## Verification boundary
 

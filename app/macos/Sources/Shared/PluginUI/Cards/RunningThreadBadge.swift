@@ -2,15 +2,31 @@ import AppKit
 import QuartzCore
 import SwiftUI
 
-/// Only the perforations animate. The card keeps ownership of the glyph, status and hit target.
+/// The transparent pattern behind an active Overview filter's stationary glyph.
+public struct NativeTagActivityPerforations: View {
+    public init() {}
+    public var body: some View {
+        RunningThreadBadge(transparentFace: true, surfaceID: "OverviewTagActivityPerforations")
+            .environment(\.threadCardProviderColor, NativePalette.overview.accent.swiftUI)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+}
+
+/// Only the perforations animate. The caller owns the glyph, status and hit target.
 struct RunningThreadBadge: NSViewRepresentable {
     let transparentFace: Bool
+    var surfaceID: String?
     @Environment(\.threadCardAnimationVisibility) private var visibility
     @Environment(\.threadCardCloudAnimationsEnabled) private var enabled
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    func makeNSView(context: Context) -> RunningThreadBadgeSurface { .init(frame: .zero) }
+    func makeNSView(context: Context) -> RunningThreadBadgeSurface {
+        let surface = RunningThreadBadgeSurface(frame: .zero)
+        if let surfaceID { surface.identifier = NSUserInterfaceItemIdentifier(surfaceID) }
+        return surface
+    }
 
     func updateNSView(_ view: RunningThreadBadgeSurface, context: Context) {
         let env = context.environment
@@ -96,6 +112,8 @@ final class RunningThreadBadgeSurface: NSView {
         super.layout()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        let scale = min(bounds.width, bounds.height) / Self.diameter
+        disk.setAffineTransform(CGAffineTransform(scaleX: scale, y: scale))
         disk.position = CGPoint(x: bounds.midX, y: bounds.midY)
         CATransaction.commit()
         synchronize()
