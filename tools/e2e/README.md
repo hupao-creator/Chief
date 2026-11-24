@@ -576,6 +576,10 @@ can exercise this visually with synthetic data and a window recording.
 
 ### Overview unread bookmarks
 
+The [native tag press replay](../../demos/moku-landing/README.md#mark-a-tag-as-read)
+checks bulk acknowledgment from the left rail, pointer cancellation, shared
+counts, saved version receipts and a later completed run.
+
 Use a private profile with an individual Super Thread and an ordinary completed
 Agent Thread. In the native window, capture the two emoji badges, open each
 reader, wait for its content in the key window and return to Overview. The red

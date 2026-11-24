@@ -237,7 +237,7 @@ private struct SideTintFixture: View {
     @State var tag: String?
 
     var body: some View {
-        NativeOverviewTagRail(choices: choices, selectedID: tag, maximumWidth: 145, strings: .init(), onSelect: { tag = $0.id })
+        NativeOverviewTagRail(choices: choices, selectedID: tag, maximumWidth: 145, strings: .init(), onSelect: { tag = $0.id }, onClearUnread: { _ in })
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

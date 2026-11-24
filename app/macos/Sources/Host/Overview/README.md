@@ -561,6 +561,14 @@ in the accessibility value independently of member count and activity. It
 does not change chip width, selection, ordering or the Runtime filter context.
 Receipt and catalog version changes update counts even for unselected spaces.
 
+A primary press on a left-side semantic tag selects it on a short release.
+After at least half a second, releasing on that tag acknowledges the current
+unread versions in its browsing membership and preserves the selection.
+Dragging outside the capsule or more than 10pt, scrolling, pressing Escape,
+losing the key window or removing the control cancels the pending press.
+The tag also exposes a mark-all-as-read accessibility action when unread.
+Shared members update every containing count through the same version receipts.
+
 The emoji badge shows a system-red bookmark for each unseen Report content revision
 and for an ordinary Agent Thread whose latest execution completed and has no read
 receipt. Collection members use their own document revisions. An open route,

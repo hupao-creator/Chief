@@ -180,6 +180,12 @@ private final class WheelSample: NSEvent {
             try await conversationOpening(window, directory: directory)
             return
         }
+        if CommandLine.arguments.contains("--tag-read") {
+            window.center()
+            try await focusReplayWindow(window)
+            try await tagRead(window, directory: directory, authority: authority)
+            return
+        }
         if CommandLine.arguments.contains("--note-link") {
             window.center()
             try await focusReplayWindow(window)
@@ -881,6 +887,7 @@ private final class WheelSample: NSEvent {
         let frame: CGRect
         let title: String
         let label: String
+        let value: String
     }
 
     private func accessibilityAttribute(_ node: NSObject, _ key: String) -> Any? {
@@ -903,7 +910,8 @@ private final class WheelSample: NSEvent {
                 if identifier == id, let frame = accessibilityAttribute(node, "accessibilityFrame") as? NSValue {
                     return AccessibleControl(frame: frame.rectValue,
                         title: accessibilityAttribute(node, "accessibilityTitle") as? String ?? "",
-                        label: accessibilityAttribute(node, "accessibilityLabel") as? String ?? "")
+                        label: accessibilityAttribute(node, "accessibilityLabel") as? String ?? "",
+                        value: accessibilityAttribute(node, "accessibilityValue") as? String ?? "")
                 }
             }
             for child in accessibilityAttribute(node, "accessibilityChildren") as? [Any] ?? [] {
@@ -1705,6 +1713,163 @@ private final class WheelSample: NSEvent {
             "offsetBeforeFilter": beforeFilter, "offsetBeforeResize": beforeResize, "finalOffset": camera.scrollOffset]
         try JSONSerialization.data(withJSONObject: record, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "overview-fit.json"))
+    }
+
+    private func tagRead(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+        let model = presentation.overview
+        func completed(_ id: JSONText, tags: [JSONText], run: JSONText, revision: Int = 1) throws -> JSONValue {
+            let execution = try PublicExecution(executionID: run, status: .completed, startedAt: 1, finishedAt: 2)
+            return try HarnessThread(id: id, harnessID: "codex", revision: revision, sessionState: .null,
+                observation: .init(latestExecution: execution), cwd: "/fixture", settings: .object([:]),
+                createdAt: 1, updatedAt: 2, title: id, tags: tags,
+                tagEmojis: Dictionary(uniqueKeysWithValues: tags.map { ($0, $0 == "Development" ? "🔧" : "📌") }),
+                directoryTag: "Fixture", directoryScope: "/fixture").json
+        }
+        let unrelated = try completed("Other", tags: ["Review"], run: "unrelated")
+        let reports = reportFixtures(["Report"])
+        func install(_ revision: Int, run: JSONText, documents: [JSONValue]) async throws {
+            try await installTasks(0, revision: revision, authority: authority, reports: documents,
+                extraThreads: [completed("Shared", tags: ["Development", "Review"], run: run, revision: revision), unrelated])
+        }
+        try await install(2, run: "first", documents: reports)
+        guard let folder = model.visibleFilters.first(where: { $0.scope == "/fixture" }),
+              let target = folder.children.first(where: { $0.tag == "Development" }),
+              let other = folder.children.first(where: { $0.tag == "Review" }) else {
+            throw ReplayError("Missing shared-tag fixture")
+        }
+        model.selectTag(target)
+        try await Task.sleep(for: .milliseconds(650))
+        func point(_ id: String) throws -> CGPoint {
+            let frame = window.convertFromScreen(try filterButton(id, in: window).frame)
+            return CGPoint(x: frame.minX + OverviewTagMetrics.railDiameter / 2, y: frame.midY)
+        }
+        func mouse(_ type: NSEvent.EventType, _ p: CGPoint) throws {
+            guard let event = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [],
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1) else {
+                throw ReplayError("Could not create tag pointer input")
+            }
+            window.sendEvent(event)
+        }
+        var samples = [[String: Any]]()
+        func check(_ step: String, _ expected: [Int], selection: String?) throws {
+            guard let folder = model.selectedDirectory else { throw ReplayError("Lost folder during " + step) }
+            let counts = [folder.unreadCount] + [target.id, other.id].map { id in
+                folder.children.first(where: { $0.id == id })?.unreadCount ?? -1
+            }
+            guard counts == expected, model.selectedRailID == selection else {
+                throw ReplayError("\(step): counts \(counts), selection \(String(describing: model.selectedRailID)), expected \(expected) / \(String(describing: selection))")
+            }
+            samples.append(["step": step, "folder": counts[0], "development": counts[1], "review": counts[2],
+                            "selected": selection ?? "folder"])
+        }
+        func checkCardBookmarks(_ stage: String, sharedUnread: Bool) async throws {
+            let canvas = presentation.canvas
+            let deadline = ContinuousClock.now + .seconds(3)
+            while canvas.isLayingOut || canvas.mountedCardIDs != ["Shared", "Other"] {
+                guard ContinuousClock.now < deadline else { throw ReplayError("Review cards did not settle") }
+                try await Task.sleep(for: .milliseconds(30))
+            }
+            try await Task.sleep(for: .milliseconds(400))
+            let image = directory.appending(path: stage + ".png")
+            try await capture(window, to: image)
+            guard let pixels = NSBitmapImageRep(data: try Data(contentsOf: image)),
+                  let content = window.contentView,
+                  let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else {
+                throw ReplayError("Cannot inspect card bookmark image")
+            }
+            let scale = CGFloat(pixels.pixelsWide) / window.frame.width
+            var counts = [String: Int]()
+            for id in ["Shared", "Other"] {
+                guard let frame = canvas.displayedFrame(for: id) else { throw ReplayError("Missing card " + id) }
+                let corner = monitor.windowPoint(CGPoint(x: frame.maxX, y: frame.minY))
+                let x = Int(corner.x * scale), y = Int((window.frame.height - corner.y) * scale)
+                var redPixels = 0
+                // Both fixture badges have neutral glyphs. Sample the upper trailing
+                // badge seat of each card, away from the rail's own red numerals.
+                let left = x - Int(72 * scale), bottom = y + Int(58 * scale)
+                guard left >= 0, y >= 0, x <= pixels.pixelsWide, bottom <= pixels.pixelsHigh else {
+                    throw ReplayError("Bookmark outside the window: " + id)
+                }
+                for px in left..<x {
+                    for py in y..<bottom {
+                        if let c = pixels.colorAt(x: px, y: py)?.usingColorSpace(.sRGB),
+                           c.redComponent > 0.7, c.greenComponent < 0.45, c.blueComponent < 0.5 { redPixels += 1 }
+                    }
+                }
+                counts[id] = redPixels
+            }
+            samples.append(["step": stage, "bookmarkRedPixels": counts])
+            guard counts["Other", default: 0] >= 20,
+                  sharedUnread ? counts["Shared", default: 0] >= 20 : counts["Shared"] == 0 else {
+                throw ReplayError("Unexpected bookmark pixels at \(stage): \(counts)")
+            }
+        }
+        let railPoint = try point(target.id)
+        try await postScroll(window, railPoint, y: -40, phase: .began)
+        try await postScroll(window, railPoint, y: 0, phase: .ended)
+        guard model.selectedRailID != target.id else { throw ReplayError("Scrolling over the tag did not navigate") }
+        try click(window, at: point(target.id))
+        try check("short click target", [3, 2, 2], selection: target.id)
+        try click(window, at: point(other.id))
+        try check("short click", [3, 2, 2], selection: other.id)
+        try await checkCardBookmarks("before-hold", sharedUnread: true)
+        let p = try point(target.id)
+        try mouse(.leftMouseDown, p)
+        let away = CGPoint(x: p.x + 60, y: p.y)
+        try mouse(.leftMouseDragged, away)
+        try mouse(.leftMouseDragged, p)
+        try await Task.sleep(for: .milliseconds(550))
+        try mouse(.leftMouseUp, p)
+        try check("drag out and return", [3, 2, 2], selection: other.id)
+
+        try mouse(.leftMouseDown, p)
+        try await pressKey("\u{1b}", code: 53, in: window)
+        try await Task.sleep(for: .milliseconds(550))
+        try mouse(.leftMouseUp, p)
+        try check("escape", [3, 2, 2], selection: other.id)
+
+        try mouse(.leftMouseDown, p)
+        try await postScroll(window, p, y: 1, phase: .began)
+        try await postScroll(window, p, y: 0, phase: .ended)
+        try await Task.sleep(for: .milliseconds(550))
+        try mouse(.leftMouseUp, p)
+        try check("scroll during press", [3, 2, 2], selection: other.id)
+        try mouse(.leftMouseDown, p)
+        try await Task.sleep(for: .milliseconds(600))
+        try mouse(.leftMouseUp, p)
+        try check("hold unselected tag", [1, 0, 1], selection: other.id)
+
+        let suffix = workspace.locale.text("条未读", "unread")
+        let deadline = ContinuousClock.now + .seconds(2)
+        while try filterButton(target.id, in: window).value.contains(suffix)
+            || !filterButton(other.id, in: window).value.contains("1 " + suffix) {
+            guard ContinuousClock.now < deadline else { throw ReplayError("Mounted tag unread values did not update") }
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        try await checkCardBookmarks("after-hold", sharedUnread: false)
+        let disk = NativeThreadReadHistory(profile: directory.deletingLastPathComponent())
+        func unread(_ id: JSONText, _ version: JSONText, type: JSONText = "agent") -> Bool {
+            disk.isUnread(.init(threadID: id, typeID: type), version: version)
+        }
+        guard !unread("Shared", "first"), !unread("Report", "body", type: "report.document"),
+              unread("Other", "unrelated") else { throw ReplayError("Unexpected saved receipts") }
+        try await install(3, run: "second", documents: reports)
+        try check("new completed execution", [2, 1, 2], selection: other.id)
+        try await checkCardBookmarks("new-result", sharedUnread: true)
+        guard var report = reports.first?.objectValue, var document = report["view"]?.objectValue else {
+            throw ReplayError("Missing report document fixture")
+        }
+        report["revision"] = .integer(2)
+        document["contentRevision"] = .text("edited")
+        report["view"] = .object(document)
+        try await install(4, run: "second", documents: [.object(report)])
+        try check("updated Super Thread", [3, 2, 2], selection: other.id)
+        guard unread("Shared", "second"), unread("Report", "edited", type: "report.document") else {
+            throw ReplayError("New content inherited an earlier receipt")
+        }
+        try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "tag-read.json"))
     }
 
     private func statusFilters(_ window: NSWindow, directory: URL, authority: UUID) async throws {

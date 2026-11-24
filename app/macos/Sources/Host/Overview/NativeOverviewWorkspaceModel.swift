@@ -886,10 +886,34 @@ public final class NativeOverviewWorkspaceModel {
     }
 
     func markRead(_ ref: ApplicationThreadRef, version: JSONText) throws {
+        if try recordReadReceipt(ref, version: version) { refreshUnreadIndicators() }
+    }
+
+    func clearUnread(inTag id: String) {
+        // Resolve the mounted choice again so a hold cannot acknowledge a tag
+        // that moved out of the rail while the catalog or selection changed.
+        guard let filter = selectedDirectory?.children.first(where: { $0.id == id }),
+              filter.unreadCount > 0, let members = filterMembers[filter.selectionKey] else { return }
+        let agents = members.threads.map { ApplicationThreadRef(threadID: $0, typeID: "agent") }
+        var changed = false
+        for ref in agents + members.applications {
+            guard let version = unreadVersions[ref] else { continue }
+            do {
+                if try recordReadReceipt(ref, version: version) { changed = true }
+            } catch { workspace.report(error) }
+        }
+        if changed { refreshUnreadIndicators() }
+    }
+
+    private func recordReadReceipt(_ ref: ApplicationThreadRef, version: JSONText) throws -> Bool {
         try workspace.preferences.threadReadHistory.markRead(ref, version: version)
         // A ready reader can still acknowledge an older document during a revision change.
-        guard unreadVersions[ref] == version else { return }
+        guard unreadVersions[ref] == version else { return false }
         unreadVersions.removeValue(forKey: ref)
+        return true
+    }
+
+    private func refreshUnreadIndicators() {
         refreshFilterIndicators(filters)
         selectedFilter = matchingFilter(tag: selectedTag, scope: selectedScope, kind: tagSelection?.kind)
     }

@@ -19,6 +19,7 @@ struct NativeOverviewTagRail: View {
     let maximumWidth: CGFloat
     let strings: NativeOverviewChromeStrings
     let onSelect: (NativeOverviewRailChoice) -> Void
+    let onClearUnread: (String) -> Void
     var interactions: NativeOverviewChromeInteractions?
 
     var body: some View {
@@ -27,10 +28,16 @@ struct NativeOverviewTagRail: View {
                 switch choice {
                 case .tag(let filter):
                     let activity = filter.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
+                    let clear = { onClearUnread(filter.id) }
                     button(choice, title: filter.tag, emoji: filter.semanticEmoji, group: .semantic,
-                           hasActiveTasks: filter.hasActiveTasks, unreadCount: filter.unreadCount)
+                           hasActiveTasks: filter.hasActiveTasks, unreadCount: filter.unreadCount, onHold: clear)
                         .accessibilityLabel(Text(filter.displayTag))
                         .accessibilityValue(Text("\(filter.count)\(activity)\(strings.unreadSuffix(filter.unreadCount))"))
+                        .accessibilityActions {
+                            if filter.unreadCount > 0 {
+                                Button(strings.clearUnread, action: clear)
+                            }
+                        }
                 case .status(let status):
                     let (title, emoji) = switch status {
                     case .running: (strings.runningOnly, "⏳")
@@ -48,12 +55,13 @@ struct NativeOverviewTagRail: View {
     }
 
     private func button(_ choice: NativeOverviewRailChoice, title: String, emoji: String,
-                        group: NativeOverviewControlGroup, hasActiveTasks: Bool = false, unreadCount: Int = 0) -> some View {
+                        group: NativeOverviewControlGroup, hasActiveTasks: Bool = false, unreadCount: Int = 0,
+                        onHold: (() -> Void)? = nil) -> some View {
         let select = { onSelect(choice) }
         let selected = choice.id == selectedID
         return OverviewRailButton(selected: selected) { expansion in
             OverviewRailCapsule(title: title, emoji: emoji, hasActiveTasks: hasActiveTasks, selected: selected,
-                unreadCount: unreadCount, maximumWidth: maximumWidth, expansion: expansion, action: select)
+                unreadCount: unreadCount, maximumWidth: maximumWidth, expansion: expansion, action: select, onHold: onHold)
         }
         .overviewTagAnchor(choice.id)
         .accessibilityIdentifier(group == .status ? "overview-status-" + choice.id : choice.id)
@@ -89,6 +97,7 @@ private struct OverviewRailCapsule: View, @MainActor Animatable {
     var expansion: CGFloat
     @Environment(\.pixelLength) var pixelLength
     let action: () -> Void
+    let onHold: (() -> Void)?
 
     var animatableData: CGFloat {
         get { expansion }
@@ -109,6 +118,12 @@ private struct OverviewRailCapsule: View, @MainActor Animatable {
             }
             .buttonStyle(OverviewTagButtonStyle(glass: .clear, selected: selected, emoji: emoji))
             .accessibilityAddTraits(selected ? .isSelected : [])
+            .overlay {
+                if let onHold {
+                    OverviewTagPointerPress(onClick: action, onHold: onHold)
+                        .accessibilityHidden(true)
+                }
+            }
         }
         // The unread count follows the presented width while the title expands.
         .overlay(alignment: .topTrailing) {

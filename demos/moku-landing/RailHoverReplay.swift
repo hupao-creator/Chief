@@ -130,7 +130,7 @@ private func rowInk(_ frame: HoverFrame, roi: CGRect, centerY: CGFloat, leading:
     }
     var measured = [String: CGRect]()
     let rail = NativeOverviewTagRail(choices: children.map(NativeOverviewRailChoice.tag), selectedID: nil,
-                                     maximumWidth: cap, strings: .init(), onSelect: { _ in })
+                                     maximumWidth: cap, strings: .init(), onSelect: { _ in }, onClearUnread: { _ in })
     let root = ZStack(alignment: .leading) {
         Color(white: 0.45)
         rail.padding(.leading, 20)
