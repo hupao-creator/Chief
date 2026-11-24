@@ -48,6 +48,10 @@ public struct NativeOverviewLayoutRevision: Sendable {
 /// Navigation retains camera and layout state across SwiftUI presentation changes.
 @MainActor @Observable
 public final class NativeOverviewCanvasState {
+    // A swipe owns only the layout produced by its selection. Catalog refreshes and
+    // direct selections continue to use the ordinary card transition.
+    @ObservationIgnored var pendingRailSwipe: (scene: String, revision: UInt64, up: Bool)?
+    @ObservationIgnored var observeCardMotion: ((String, OverviewCardMotion) -> Void)?
     public let camera = NativeOverviewCamera()
     public let motionStages: NativeOverviewStageCoordinator
     @ObservationIgnored public fileprivate(set) var sceneSnapshotCount = 0
@@ -345,6 +349,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         let items = suppliedItems ?? contentStore.items
         let pendingRevisions = revisions.filter { $0.sceneKey == sceneKey && $0.revision > consumedRevision }
         if canReuseGeometry(items, viewport: viewport) {
+            state.pendingRailSwipe = nil
             // Returning to the displayed geometry supersedes a different
             // snapshot still waiting for the spatial stage. Reuse must revoke
             // that worker's publication authority just like a new solve does.
@@ -523,7 +528,10 @@ public struct NativeOverviewCanvas<Content: View>: View {
         let geometry = try NativeOverviewLayout.solve(members: members, windowSize: viewport)
         try Task.checkCancellation()
         guard layoutToken == token, state.hostOwner == ownership else { throw CancellationError() }
-        let initial = mountedScene == nil || (!replaceScene && displayed.isEmpty && outgoingPlacements.isEmpty)
+        let swipe = state.pendingRailSwipe
+        state.pendingRailSwipe = nil
+        let swipeUp = swipe?.scene == sceneKey && swipe?.revision == contentStore.structureRevision ? swipe?.up : nil
+        let initial = mountedScene == nil || (swipeUp == nil && !replaceScene && displayed.isEmpty && outgoingPlacements.isEmpty)
         let animated = state.visible && !initial
         let now = ProcessInfo.processInfo.systemUptime
         let oldPlacements = displayed + outgoingPlacements
@@ -564,12 +572,14 @@ public struct NativeOverviewCanvas<Content: View>: View {
         // Start every motion at its sampled window position in the new camera plane.
         let camera = state.camera.transform
         let startPoses = oldPoses.mapValues { $0.reproject(from: sampledCamera, to: camera) }
-        if replaceScene {
+        if replaceScene || swipeUp != nil {
+            let entryOffset = (swipeUp == false ? -12.0 : 12.0) / camera.scale
+            let exitOffset = swipeUp == nil ? 0 : -entryOffset
             let preparation = UUID()
             presentationToken = preparation
             for placement in outgoingPlacements {
                 guard let from = startPoses[placement.id] else { continue }
-                setMotion(placement.id, from: from, to: from.transformed(scale: 0.88, opacity: 0),
+                setMotion(placement.id, from: from, to: from.transformed(scale: 0.88, dy: exitOffset, opacity: 0),
                           duration: 0.14, curve: .filter, layoutSize: placement.cardFrame.size, start: .infinity)
             }
             for placement in geometry.placements {
@@ -580,7 +590,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
                               layoutSize: target.frame.size, start: .infinity)
                 } else {
                     setMotion(placement.id,
-                              from: target.transformed(scale: 0.94, dy: 12 / camera.scale, opacity: 0), to: target,
+                              from: target.transformed(scale: 0.94, dy: entryOffset, opacity: 0), to: target,
                               duration: 0.23, delay: 0.15, curve: .filter,
                               layoutSize: target.frame.size, start: .infinity)
                 }
@@ -663,8 +673,10 @@ public struct NativeOverviewCanvas<Content: View>: View {
                            duration: Double, delay: Double = 0, curve: OverviewCardMotion.Curve,
                            layoutSize: CGSize?, start: TimeInterval = ProcessInfo.processInfo.systemUptime) {
         cardPoses[id] = to
-        cardMotions[id] = .init(from: from, to: to, start: start, delay: delay, duration: duration,
-                               curve: curve, layoutSize: layoutSize)
+        let motion = OverviewCardMotion(from: from, to: to, start: start, delay: delay, duration: duration,
+                                        curve: curve, layoutSize: layoutSize)
+        cardMotions[id] = motion
+        state.observeCardMotion?(id, motion)
     }
     private func waitForMotion(_ seconds: Double) async throws {
         if state.visible { try await Task.sleep(for: .seconds(seconds)) }

@@ -34,7 +34,7 @@ When you choose an Inbox tag at the top, the left column offers three choices fo
 
 **Running** includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. Cards enter and leave as the work changes. When the last running task leaves, a sleeping skillet appears above **No running conversations**.
 
-In a window or full screen, move two fingers up on a card or empty canvas to select the choice above the current one in the left column. From the first choice, swipe up to reach the last. Swipe down to select the choice below, wrapping from the last choice to the first. These directions work with Natural Scrolling on or off. Each gesture moves one choice. If the column has only one choice, it stays selected. From the whole folder, swipe up to enter the first choice. A vertical mouse-wheel step follows the same order.
+In a window or full screen, move two fingers up on a card or empty canvas to select the choice below the current one in the left column. From the last choice, swipe up to reach the first. Swipe down to select the choice above, wrapping from the first choice to the last. These directions work with Natural Scrolling on or off. Each gesture moves one choice. If the column has only one choice, it stays selected. From the whole folder, swipe up to enter the first choice. A vertical mouse-wheel step follows the same order.
 
 ## Move around the canvas
 

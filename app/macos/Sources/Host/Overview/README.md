@@ -248,8 +248,10 @@ live.
 The [vertical gesture router](NativeOverviewVerticalSwipe.swift) recognizes an
 unmodified, precise trackpad contact after at least 24 points of vertical travel
 and more than 1.5 times its horizontal travel. Across the windowed or full-screen canvas, a physical
-up swipe selects the preceding visible left choice and a down swipe selects the
-following one. The router compensates for AppKit’s inverted deltas when
+up swipe selects the next visible left choice and a down swipe selects the
+preceding one. New cards enter from below on an up swipe and from above on a
+down swipe. Retiring cards travel in the opposite direction from the entry edge,
+including when the selection wraps. The router compensates for AppKit’s inverted deltas when
 Natural Scrolling is enabled, so both settings follow finger movement. From the whole
 directory, up enters the first choice. Stepping past either end wraps to the
 opposite end. An empty rail or a single already-selected choice stays put. Recognition claims
