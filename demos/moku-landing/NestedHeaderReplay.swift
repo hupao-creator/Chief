@@ -1089,6 +1089,9 @@ private final class WheelSample: NSEvent {
         try await swipe(up: true)
         try await check("lower-limit", .completed, ["Delivered"] + reportIDs)
         let allButton = try filterButton("overview-directory-all", in: window)
+        guard [allButton.title, allButton.label].contains(workspace.locale.text("全部", "All")) else {
+            throw ReplayError("The global All button lost its localized accessibility name")
+        }
         let shippingButton = try filterButton(inboxShipping.id, in: window)
         let inboxButton = try filterButton(inboxLabel.id, in: window)
         guard [shippingButton, inboxButton].allSatisfy({ abs($0.frame.midY - allButton.frame.midY) <= 1 }),

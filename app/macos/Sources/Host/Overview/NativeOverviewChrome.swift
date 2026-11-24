@@ -63,7 +63,6 @@ public struct NativeOverviewChrome: View {
     @State private var presentedFilters: [NativeOverviewFilter]
     @State private var hasPresentedFilters: Bool
     @State private var settingsAnchor = OverviewSettingsAnchor()
-    @State private var measuredAllWidth: CGFloat = 0
     @State private var measuredTagsWidth: CGFloat = 0
     @State private var interactionOwner = UUID()
 
@@ -211,18 +210,14 @@ public struct NativeOverviewChrome: View {
             Button {
                 onTagChange(nil)
             } label: {
-                HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
-                    OverviewAllTagGlyph().accessibilityHidden(true)
-                    OverviewTagTitle(title: strings.all)
-                }
-                .padding(.horizontal, OverviewTagMetrics.chipLabelInset)
-                .frame(height: OverviewTagMetrics.chipHeight)
+                OverviewAllTagGlyph()
+                    .frame(width: OverviewTagMetrics.chipHeight, height: OverviewTagMetrics.chipHeight)
             }
             .buttonStyle(OverviewTagButtonStyle(glass: .regular, selected: selectedTag.isEmpty))
             .overviewTagAnchor("__all__")
             .accessibilityIdentifier("overview-directory-all")
             .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .directory, id: "all", action: { onTagChange(nil) }))
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measuredAllWidth = $0 }
+            .accessibilityLabel(Text(strings.all))
             .accessibilityAddTraits(selectedTag.isEmpty ? .isSelected : [])
             .accessibilityValue(Text(allHasActiveTasks ? strings.containsActiveTasks : ""))
             OverviewHorizontalScroll(interactions: interactions, owner: interactionOwner, ids: presentedFilters.map(\.id),
@@ -230,7 +225,7 @@ public struct NativeOverviewChrome: View {
                 // Keep the effect container inside the scroll viewport. A
                 // container outside it can draw captured labels beyond its clip.
                 GlassEffectContainer(spacing: OverviewTagMetrics.spacing) {
-                    scrollingTagButtons(maximumButtonWidth: max(0, maximumWidth - measuredAllWidth
+                    scrollingTagButtons(maximumButtonWidth: max(0, maximumWidth - OverviewTagMetrics.chipHeight
                         - OverviewTagMetrics.barInset * 2 - OverviewTagMetrics.directorySpacing))
                 }
             }
@@ -281,11 +276,10 @@ public struct NativeOverviewChrome: View {
     }
 
     private var naturalFilterWidth: CGFloat {
-        if presentedFilters.isEmpty, measuredAllWidth > 0 {
-            return measuredAllWidth + OverviewTagMetrics.barInset * 2
-        }
-        return measuredAllWidth > 0 && measuredTagsWidth > 0
-            ? measuredAllWidth + measuredTagsWidth + OverviewTagMetrics.barInset * 2 + OverviewTagMetrics.directorySpacing : 10000
+        let pinnedWidth = OverviewTagMetrics.chipHeight + OverviewTagMetrics.barInset * 2
+        if presentedFilters.isEmpty { return pinnedWidth }
+        return measuredTagsWidth > 0
+            ? pinnedWidth + measuredTagsWidth + OverviewTagMetrics.directorySpacing : 10000
     }
 
     private func iconButton(_ name: String, size: CGFloat = 16, title: String, active: Bool = false,

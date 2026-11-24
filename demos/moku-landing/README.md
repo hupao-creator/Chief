@@ -112,8 +112,9 @@ python3 demos/moku-landing/verify_header.py --header-glass --output .build/overv
 ```
 
 Each appearance produces a 618 × 174-pixel crop at 2× and a second crop with
-3-point stripes behind the controls. The replay reads the top-row labels
-and both badge numerals, checks the unread badge color, and compares
+3-point stripes behind the controls. The replay checks that All stays square and that OCR finds
+no All title or ellipsis. It reads the folder and tag labels and both badge
+numerals, checks the unread badge color, and compares
 texture variation inside the glass with the exposed backdrop. It samples
 adjacent pixels at the lower and trailing edges of the header viewport to
 catch a hard cut through the shadow. `header-glass.json` records those

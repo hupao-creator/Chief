@@ -360,7 +360,7 @@ project directories and Inbox tags use native regular interactive Liquid Glass
 and system primary foreground in the top row. The left tag and right status
 buttons use native clear interactive Liquid Glass. Each selected button tints its glass. The unselected
 buttons keep the base material.
-Global All displays the same asterisk glyph as the left column's Any tag.
+Global All is a 42pt icon-only button with a centered asterisk and the localized accessibility name All.
 
 Semantic tags and status choices take their tint from the dominant color of
 the displayed emoji, including the 🏷️ fallback for a tag without its own
