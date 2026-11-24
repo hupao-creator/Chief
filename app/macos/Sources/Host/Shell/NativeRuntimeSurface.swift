@@ -2,15 +2,13 @@ import ChiefCore
 import ChiefPluginUI
 import SwiftUI
 
-/// ApplicationStatus owns startup and recovery, independently of plugin content.
+/// Shows startup and recovery until the workspace can present a catalog.
 public struct NativeRuntimeSurface<Content: View>: View {
     @Bindable private var model: NativeWorkspaceModel
-    private let showsConnectionNotice: Bool
     private let content: Content
 
-    public init(model: NativeWorkspaceModel, showsConnectionNotice: Bool = true,
-                @ViewBuilder content: () -> Content) {
-        self.model = model; self.showsConnectionNotice = showsConnectionNotice
+    public init(model: NativeWorkspaceModel, @ViewBuilder content: () -> Content) {
+        self.model = model
         self.content = content()
     }
 
@@ -26,24 +24,6 @@ public struct NativeRuntimeSurface<Content: View>: View {
                     onReconnect: { Task { await model.retry() } },
                     announcementsEnabled: !model.settingsOpen)
             }
-        }
-        .overlay(alignment: .top) {
-            if showsConnectionNotice { NativeRuntimeConnectionNotice(model: model).padding(.top, 12) }
-        }
-    }
-}
-
-/// Place above the whole scene when Moku or Settings can cover the outside page.
-/// Settings makes this inert and AX-hidden, while its visual status stays shown.
-public struct NativeRuntimeConnectionNotice: View {
-    @Bindable private var model: NativeWorkspaceModel
-    public init(model: NativeWorkspaceModel) { self.model = model }
-    public var body: some View {
-        if model.hasInitialContent && !model.waitingForInitialCatalog {
-            RuntimeConnectionNotice(state: model.connection, synchronizing: model.synchronizing,
-                error: model.connectionError ?? "", reconnecting: model.reconnecting,
-                locale: model.locale, onReconnect: { Task { await model.retry() } },
-                announcementsEnabled: !model.settingsOpen)
         }
     }
 }
@@ -96,58 +76,7 @@ private struct RuntimeStartupScreen: View {
     }
 }
 
-private struct RuntimeConnectionNotice: View {
-    let state: RuntimeConnectionStatus
-    let synchronizing: Bool
-    let error: String
-    let reconnecting: Bool
-    let locale: DesktopLocale
-    let onReconnect: () -> Void
-    var announcementsEnabled = true
-    private var visible: Bool { state != .connected || synchronizing || !error.isEmpty || reconnecting }
-    private var canReconnect: Bool { state == .stopped || state == .disconnected || !error.isEmpty }
-    private var message: String {
-        if reconnecting { return locale.text("正在重新连接后台服务…", "Reconnecting to the background service…") }
-        if state == .stopped { return locale.text("后台服务已停止", "The background service has stopped") }
-        // Trust/protocol failures stop automatic retry. Their reason must be
-        // visible on touch devices, where a hover help tag is not reachable.
-        if !error.isEmpty { return error }
-        if state == .disconnected { return locale.text("与后台服务的连接已断开，正在重连…", "Disconnected from the background service. Reconnecting…") }
-        return locale.text("正在同步后台服务…", "Syncing with the background service…")
-    }
-    var body: some View {
-        if visible {
-            HStack(spacing: 12) {
-                Text(message).fixedSize(horizontal: false, vertical: true).allowsHitTesting(false)
-                if canReconnect {
-                    Button(locale.text("重新连接", "Reconnect"), action: onReconnect)
-                        .buttonStyle(RuntimeTextButtonStyle()).disabled(reconnecting)
-                }
-            }
-            .font(NativeTypography.inter(size: 12))
-            .foregroundStyle(NativePalette.overview.muted.swiftUI)
-            .padding(.horizontal, 12).padding(.vertical, 6)
-            .frame(maxWidth: 640)
-            // --surface-bg has no definition in the renderer: CSS Canvas is
-            // the fallback, not the warm overview card surface.
-            .background {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(NativePalette.pair(0xffffff, 0x121212).swiftUI)
-                    .allowsHitTesting(false)
-            }
-            .help(error)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("workspace.runtime.connection-notice")
-            .background {
-                RuntimeStatusAnnouncements(status: message, error: "", enabled: announcementsEnabled)
-                    .frame(width: 0, height: 0)
-            }
-        }
-    }
-}
-
-/// Native equivalent of the source's live status and alert regions. Settings
-/// keeps the status visually present while suppressing background announcements.
+/// Announces startup status changes while the startup surface is active.
 private struct RuntimeStatusAnnouncements: View {
     let status: String
     let error: String

@@ -956,19 +956,6 @@ public struct NativeWorkspaceView: View {
             onDismiss: { model.dismissOperationError() }) {
             workspaceScene
         }
-        .overlay {
-            GeometryReader { geometry in
-                let top = presentation.scene.overviewVisible
-                    ? OverviewTagMetrics.headerBottom(in: geometry.size,
-                        hasFilters: !presentation.overview.visibleFilters.isEmpty)
-                    : 0
-                NativeRuntimeConnectionNotice(model: model).padding(.top, top + 12)
-                    .frame(maxWidth: .infinity, alignment: .top)
-                    .blur(radius: presentation.scene.settingsExpanded ? 12 : 0)
-                    .allowsHitTesting(!presentation.scene.settingsOpen)
-                    .accessibilityHidden(presentation.scene.settingsOpen)
-            }
-        }
         .modifier(NativeMokuTimerPlacement(timer: model.timer, scene: presentation.scene,
             dockAvailable: { model.catalog.hasMoku && presentation.onboarding.mountDock
                 && presentation.onboarding.dockVisible && !presentation.onboarding.blocksWorkspace
@@ -1004,7 +991,7 @@ public struct NativeWorkspaceView: View {
     private var workspaceScene: some View {
         let routeID = presentation.navigationRouteID
         return NativeMokuScene(state: presentation.scene) {
-            NativeRuntimeSurface(model: model, showsConnectionNotice: false) {
+            NativeRuntimeSurface(model: model) {
                 if presentation.onboarding.blocksWorkspace { Color.clear }
                 else { outside }
             }

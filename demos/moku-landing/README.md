@@ -117,7 +117,11 @@ Selecting a top-row Inbox tag mounts Running, All statuses and Completed on the
 left. The replay checks their order, wheel wraparound in both directions, window positions, tag-scoped cards and
 state on entry. It distinguishes an Inbox tag named Inbox from a real directory
 of the same name. It removes and assigns tags while checking retained reader
-and catalog state. A Runtime notice leaves top-row controls clickable.
+and catalog state. With the fixture catalog visible while the workspace model
+is still synchronizing, the replay checks that the Runtime status banner is
+absent from the window's accessibility tree and clicks the top-row Inbox tag.
+The fixture supplies catalog data directly and exercises mounted presentation
+and input without a live Runtime reconnect.
 
 At the 860 × 600 pt minimum, five semantic tags and the built-in Running button
 fit in one column. The replay measures their accessible frames, clicks a button
