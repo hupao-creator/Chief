@@ -88,7 +88,11 @@ public struct NativeOverviewWorkspaceView: View {
                     .allowsHitTesting(!landing)
                     .accessibilityHidden(landing)
                 if !landing && model.content.isEmpty && model.error == nil {
-                    NativeOverviewEmptyState(title: emptyTitle, detail: emptyDetail)
+                    if model.statusFilter == .running {
+                        NativeOverviewIdleMark(label: emptyTitle, hint: emptyDetail)
+                    } else {
+                        NativeOverviewEmptyState(title: emptyTitle, detail: emptyDetail)
+                    }
                 }
                 if let error = model.error ?? model.canvasState.layoutError {
                     VStack {

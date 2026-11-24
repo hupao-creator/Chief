@@ -236,6 +236,13 @@ On a fresh, precise, unmodified contact, the [vertical gesture router](NativeOve
 
 Status filters apply to the selected tag's eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and visible interruptions with no ongoing work appear only in All. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
 
+When Running has no matching cards, the workspace centers a static, transparent
+[sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
+at up to 312 × 136 pt. Its single accessibility element carries the localized
+empty status and the two-finger swipe-down hint. The illustration passes input
+through to the canvas. The [status replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
+exercises this state as a tagged conversation starts and finishes.
+
 A trackpad contributes its horizontal delta, including native momentum. A line
 wheel uses its horizontal delta when available and otherwise its vertical delta,
 at 40 window points per line. Pointer presses interrupt inertia. Dragging the
