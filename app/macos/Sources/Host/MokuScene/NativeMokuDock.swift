@@ -892,8 +892,8 @@ public struct NativeMokuDock: View {
             if !visible { state.dockMentionHitRect = nil }
         }
         .overlay(alignment: .top) {
-            if conversationVisible, let workspace = presentation?.workspace, let owner = workspace.catalog.moku?.id {
-                NativeMokuConversation(client: workspace.client, owner: owner)
+            if conversationVisible, let presentation, let owner = presentation.workspace.catalog.moku?.id {
+                NativeMokuConversation(presentation: presentation, owner: owner)
                     .id(owner)
                     .frame(width: width, height: max(0, surface.height - rowHeight))
                     .transition(.opacity)

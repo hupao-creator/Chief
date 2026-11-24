@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import Observation
 import ChiefCore
@@ -27,6 +28,22 @@ public struct NativeMokuDockIntervention: Equatable, Sendable {
 /// and its audited operations.
 @MainActor @Observable
 public final class NativeMokuWorkspacePresentation {
+    private(set) var pendingConversationSend: NativeMokuConversationSend?
+    let acceptedConversationSends = PassthroughSubject<NativeMokuConversationSend, Never>()
+
+    func showConversationSend(_ submission: NativeComposerSubmission, input: JSONValue,
+                              perform: () async throws -> Void) async throws {
+        // Admission still owns concurrency and receipt recovery across Chief drafts.
+        guard pendingConversationSend == nil, let owner = workspace.catalog.moku?.id else {
+            return try await perform()
+        }
+        let outgoing = NativeMokuConversationSend(owner: owner, submission: submission, input: input)
+        pendingConversationSend = outgoing
+        defer { pendingConversationSend = nil }
+        try await perform()
+        acceptedConversationSends.send(outgoing)
+    }
+
     public let workspace: NativeWorkspaceModel
     public let overview: NativeOverviewWorkspaceModel
     public var dockMode: MokuCharacterMode {

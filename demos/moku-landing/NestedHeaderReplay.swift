@@ -255,8 +255,8 @@ private final class WheelSample: NSEvent {
         let stage = restart ? "restart" : "send"
         let evidence = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
         try FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
-        func wait(_ description: String, _ check: () -> Bool) async throws {
-            let deadline = ContinuousClock.now + .seconds(35)
+        func wait(_ description: String, timeout: Duration = .seconds(35), _ check: () -> Bool) async throws {
+            let deadline = ContinuousClock.now + timeout
             while !check() {
                 guard ContinuousClock.now < deadline else { throw ReplayError(description) }
                 try await Task.sleep(for: .milliseconds(50))
@@ -279,6 +279,7 @@ private final class WheelSample: NSEvent {
                 let bar = scene.capsuleFrame
                 eyePoint = monitor.windowPoint(CGPoint(x: bar.minX + 32, y: bar.maxY - min(30, bar.height / 2)))
             } else {
+                try await wait("Folded Bar did not expose its input target") { (try? filterButton("moku-open-input", in: window)) != nil }
                 // A retained Talk can place the eyes beside selectable prose on restart.
                 let button = window.convertFromScreen(try filterButton("moku-open-input", in: window).frame)
                 eyePoint = CGPoint(x: button.midX, y: button.midY)
@@ -304,6 +305,96 @@ private final class WheelSample: NSEvent {
         guard let field = descendant(NSTextView.self, in: content, matching: { $0.isEditable && !$0.isHiddenOrHasHiddenAncestor })
             else { throw ReplayError("Missing native composer") }
         try await wait("Swipe did not focus the native editor") { window.firstResponder === field }
+        if let argument = CommandLine.arguments.firstIndex(of: "--send-refresh"),
+           let pid = Int32(CommandLine.arguments[argument + 1]) {
+            let connection = try RuntimeProfile(dataDirectory: profile).readConnection()
+            guard connection?.pid == Int(pid), pid > 1 else { throw ReplayError("Unexpected isolated Runtime PID") }
+            let outgoing = workspace.locale.text("你, ", "You, ") + fixture.messages[2]
+            let first = initial + [outgoing], second = first + [outgoing + ", " + fixture.attachment]
+            func scroller() async throws -> NSScrollView {
+                let bar = scene.capsuleFrame
+                return try await conversationScroller(in: content, at: monitor.windowPoint(CGPoint(x: bar.midX, y: bar.midY)))
+            }
+            func endDistance(_ scroll: NSScrollView) -> CGFloat {
+                (scroll.documentView?.bounds.maxY ?? 0) - scroll.documentVisibleRect.maxY
+            }
+            let panelScroll = try await scroller()
+            let originalEnd = panelScroll.documentVisibleRect.maxY
+            field.insertText(fixture.messages[2], replacementRange: field.selectedRange())
+            // Suspend only the child owned by this replay, after the history is mounted.
+            guard kill(pid, SIGSTOP) == 0 else { throw ReplayError("Could not hold Runtime admission") }
+            defer { kill(pid, SIGCONT) }
+            let panelReturnTime = ProcessInfo.processInfo.systemUptime
+            try await pressKey("\r", code: 36, in: window)
+            let deadline = ContinuousClock.now + .seconds(2)
+            while labels() != first && ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
+            let captured = labels()
+            let panelObservedMS = (ProcessInfo.processInfo.systemUptime - panelReturnTime) * 1000
+            try JSONEncoder().encode(captured).write(to: evidence.appending(path: "panel-before-admission.json"))
+            guard scene.conversationOpen, field.string.isEmpty, captured == first else {
+                throw ReplayError("Open panel after Return with admission held: \(captured)")
+            }
+            try await wait("Reader at the end did not follow the captured message", timeout: .seconds(2)) {
+                panelScroll.documentVisibleRect.maxY > originalEnd + 10 && endDistance(panelScroll) < 24
+            }
+            let followed = endDistance(panelScroll)
+            kill(pid, SIGCONT)
+            try await wait("First send did not settle before Talk") { !presentation.dockDraft.submitting && labels() == first }
+            let draft = presentation.dockDraft
+            field.insertText(fixture.messages[2], replacementRange: field.selectedRange())
+            await draft.importFiles([NativeComposerFile(url: profile.deletingLastPathComponent().appending(path: fixture.attachment))])
+            guard let file = draft.attachments.first?.attachment,
+                  file.path.string.hasPrefix(profile.path + "/") else { throw ReplayError("Missing private staged attachment") }
+            // Exercise a definite pre-admission rejection with a missing staged file.
+            let bytes = URL(filePath: file.path.string), held = bytes.appendingPathExtension("held")
+            try FileManager.default.moveItem(at: bytes, to: held)
+            try await pressKey("\r", code: 36, in: window)
+            try await wait("Rejected send left a bubble or lost the draft") {
+                !draft.submitting && draft.error != nil && field.string == fixture.messages[2] &&
+                    draft.attachments.first?.attachment == file && labels() == first
+            }
+            let rejection = draft.error ?? ""
+            try JSONEncoder().encode(["error": rejection, "draft": field.string]).write(to: evidence.appending(path: "rejected-send.json"))
+            try FileManager.default.moveItem(at: held, to: bytes)
+            try await pressKey("\u{1b}", code: 53, in: window)
+            try await wait("Panel did not dismiss") { !scene.conversationOpen && !scene.inputOpen }
+            try await wait("Folded Bar did not expose Compose") { (try? filterButton("moku-open-input", in: window)) != nil }
+            let eyes = window.convertFromScreen(try filterButton("moku-open-input", in: window).frame)
+            try await postClick(window, at: CGPoint(x: eyes.midX, y: eyes.midY))
+            try await wait("Compact input did not gain focus") { scene.inputOpen && (window.firstResponder as? NSTextView)?.isEditable == true }
+            guard let compact = window.firstResponder as? NSTextView else { throw ReplayError("Missing compact editor") }
+            guard compact.string == fixture.messages[2], draft.canSubmit else { throw ReplayError("Retry draft missing") }
+            guard kill(pid, SIGSTOP) == 0 else { throw ReplayError("Could not hold compact send") }
+            let compactReturnTime = ProcessInfo.processInfo.systemUptime
+            try await pressKey("\r", code: 36, in: window)
+            try await swipe()
+            try await wait("Compact send missing on immediate swipe", timeout: .seconds(3)) { labels() == second && draft.submitting }
+            let compactCapture = labels()
+            let compactObservedMS = (ProcessInfo.processInfo.systemUptime - compactReturnTime) * 1000
+            try JSONEncoder().encode(compactCapture).write(to: evidence.appending(path: "compact-before-admission.json"))
+            kill(pid, SIGCONT)
+            try await wait("Compact send missing or duplicated before Talk") { labels() == second && !presentation.dockDraft.submitting }
+            let beforeTalk = labels()
+            try JSONEncoder().encode(beforeTalk).write(to: evidence.appending(path: "compact-before-talk.json"))
+            let compactScroll = try await scroller()
+            let point = compactScroll.convert(CGPoint(x: compactScroll.bounds.midX, y: compactScroll.bounds.midY), to: nil)
+            try await postScroll(window, point, y: 100, phase: .began)
+            try await postScroll(window, point, y: 0, phase: .ended)
+            guard endDistance(compactScroll) > 24 else { throw ReplayError("Did not scroll back before Talk") }
+            let readingY = compactScroll.documentVisibleRect.minY
+            try Data().write(to: profile.deletingLastPathComponent().appending(path: "allow-reply"))
+            let finished = second + Array(expected.suffix(2))
+            try await wait("Talk changed the outgoing rows") { labels() == finished }
+            let afterTalkY = compactScroll.documentVisibleRect.minY
+            guard abs(afterTalkY - readingY) < 1 else { throw ReplayError("Talk moved the earlier reading position") }
+            let observations: [String: Any] = ["beforeAdmission": captured, "rejection": rejection,
+                "compactBeforeAdmission": compactCapture, "beforeTalk": beforeTalk, "afterTalk": labels(),
+                "panelReturnToObservationMS": panelObservedMS, "compactReturnToObservationMS": compactObservedMS,
+                "distanceFromEndAfterSend": followed, "readingY": readingY, "readingYAfterTalk": afterTalkY]
+            try JSONSerialization.data(withJSONObject: observations, options: [.prettyPrinted, .sortedKeys])
+                .write(to: evidence.appending(path: "conversation-refresh.json"))
+            return
+        }
         if !restart {
             field.insertText(fixture.messages[2], replacementRange: field.selectedRange())
             try await wait("Chief draft did not receive native text") { presentation.dockDraft.text == fixture.messages[2] }

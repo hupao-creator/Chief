@@ -1,4 +1,5 @@
 import ChiefCore
+import ChiefPluginUI
 import Foundation
 import SwiftUI
 
@@ -10,10 +11,16 @@ struct NativeMokuConversationPage {
         let text: String
         let attachments: [String]
     }
-    let messages: [Message]
+    var messages: [Message]
     let before: JSONText?
 
+    // Older live services and offline pages use independent audit identities.
+    let commandRowIDs: Bool
+
+    init() { messages = []; before = nil; commandRowIDs = true }
+
     init(_ value: JSONValue) throws {
+        commandRowIDs = value["commandRowIds"] == .bool(true)
         let invalid = RuntimeError("INVALID_RESPONSE", "Invalid Chief conversation page")
         guard let rows = value["messages"]?.arrayValue else { throw invalid }
         messages = try rows.map { row in
@@ -31,17 +38,35 @@ struct NativeMokuConversationPage {
     }
 }
 
+struct NativeMokuConversationSend {
+    let owner: JSONText
+    let message: NativeMokuConversationPage.Message
+
+    init(owner: JSONText, submission: NativeComposerSubmission, input: JSONValue) {
+        self.owner = owner
+        let parts = input["parts"]?.arrayValue ?? []
+        let text = parts.compactMap { $0["text"]?.stringValue }.joined(separator: "\n")
+        let mentions = parts.compactMap { part -> String? in
+            guard let path = part["path"], let quoted = try? path.encodedData() else { return nil }
+            return "@" + String(decoding: quoted, as: UTF8.self)
+        }
+        message = .init(id: JSONText(owner.string + "/steer:" + submission.commandID), fromUser: true,
+                        date: Date(), text: text + mentions.joined(separator: " "),
+                        attachments: submission.attachments.map { $0.name.string })
+    }
+}
+
 /// The page is a live, profile-owned reading resource. The Dock owns the glass
 /// and the single native editor below it, including while earlier pages are read.
 struct NativeMokuConversation: View {
-    let client: RuntimeClient
+    let presentation: NativeMokuWorkspacePresentation
     let owner: JSONText
     @State private var cursors: [JSONText] = []
     @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(spacing: 0) {
-            ConversationMessages(client: client, owner: owner, before: cursors.last, chinese: chinese,
+            ConversationMessages(presentation: presentation, owner: owner, before: cursors.last, chinese: chinese,
                                  showEarlier: { cursors.append($0) }, showNewer: { _ = cursors.popLast() })
                 .id(cursors.last)
             Divider()
@@ -55,13 +80,16 @@ struct NativeMokuConversation: View {
 }
 
 private struct ConversationMessages: View {
-    let client: RuntimeClient
+    let presentation: NativeMokuWorkspacePresentation
+    private var client: RuntimeClient { presentation.workspace.client }
     let owner: JSONText
     let before: JSONText?
     let chinese: Bool
     let showEarlier: (JSONText) -> Void
     let showNewer: () -> Void
     @State private var page: NativeMokuConversationPage?
+    // Only the mounted latest page bridges an accepted send to its content revision.
+    @State private var awaitingPublication: [NativeMokuConversationPage.Message] = []
     @State private var failure: String?
     @State private var disconnected = false
     @State private var retry = 0
@@ -75,7 +103,23 @@ private struct ConversationMessages: View {
                     .buttonStyle(.plain).font(.caption).padding(8)
             }
         }
+        .onReceive(presentation.acceptedConversationSends) { send in
+            guard before == nil, send.owner == owner, page?.commandRowIDs != false,
+                  page?.messages.contains(where: { $0.id == send.message.id }) != true else { return }
+            awaitingPublication.append(send.message)
+        }
         .task(id: retry) { await read() }
+    }
+
+    private var displayedPage: NativeMokuConversationPage? {
+        guard before == nil, page?.commandRowIDs != false else { return page }
+        var local = awaitingPublication
+        if let send = presentation.pendingConversationSend, send.owner == owner { local.append(send.message) }
+        guard !local.isEmpty else { return page }
+        var result = page ?? NativeMokuConversationPage()
+        var seen = Set(result.messages.map(\.id))
+        result.messages.append(contentsOf: local.filter { seen.insert($0.id).inserted })
+        return result
     }
 
     @ViewBuilder private var content: some View {
@@ -84,7 +128,7 @@ private struct ConversationMessages: View {
                 Text(chinese ? "无法读取消息" : "Couldn’t load messages").help(failure)
                 Button(chinese ? "重试" : "Try again") { retry += 1 }
             }
-        } else if let page {
+        } else if let page = displayedPage {
             if page.messages.isEmpty {
                 Text(chinese ? "还没有消息" : "No messages yet")
                     .font(.callout).foregroundStyle(.secondary)
@@ -114,7 +158,14 @@ private struct ConversationMessages: View {
                     switch event {
                     case .threadContent(let received, let state) where received == id:
                         switch state {
-                        case .ready(let value): page = try NativeMokuConversationPage(value); failure = nil
+                        case .ready(let value):
+                            let received = try NativeMokuConversationPage(value)
+                            let ids = Set(received.messages.map(\.id))
+                            if let last = awaitingPublication.lastIndex(where: { ids.contains($0.id) }) {
+                                awaitingPublication.removeFirst(last + 1)
+                            }
+                            page = received
+                            failure = nil
                         case .error(let description): failure = description
                         case .loading: break
                         }

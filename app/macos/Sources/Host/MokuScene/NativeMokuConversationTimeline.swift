@@ -26,7 +26,9 @@ struct NativeMokuConversationTimeline: View {
             let width = bounds.size.width
             ScrollViewReader { proxy in
                 ScrollView([.horizontal, .vertical]) {
-                    LazyVStack(alignment: .leading, spacing: 0) {
+                    // A bounded page needs exact bubble heights when a send changes the scroll offset.
+                    // Lazy height estimates can repeatedly reposition a page with a tall offscreen bubble.
+                    VStack(alignment: .leading, spacing: 0) {
                         if let cursor = page.before {
                             pageButton(chinese ? "较早消息" : "Earlier messages", width: width) { showEarlier(cursor) }
                                 .accessibilityIdentifier("moku-conversation-earlier")

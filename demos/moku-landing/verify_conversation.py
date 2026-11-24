@@ -3,6 +3,7 @@ import argparse
 import json
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import uuid
@@ -34,7 +35,7 @@ def verify_layout(visit):
         raise AssertionError(f"Resized message list did not make room for the draft: {small}, {multiline}")
 
 
-def run(binary, output):
+def run(binary, output, send_refresh):
     output.mkdir(parents=True, exist_ok=False)
     save(output / "runtime.json", validate(binary))
     save(output / "native-build.json", validate(ROOT / "app/macos/.build/debug/Chief"))
@@ -52,6 +53,8 @@ def run(binary, output):
         "两个标签已经改为「运行中」和「已完成」，英文也同步为 Running 和 Completed。接下来会缩小窗口，检查多行消息和下方的输入框能否同时看清。",
         "截图中标注的两处都已核对，附件仍然跟着这条消息。",
     ]
+    if send_refresh:
+        messages[0] += "\n" + "\n".join(f"核对项目 {n}" for n in range(1, 19))
     attachment = "界面标注.png"
     try:
         replay.compile([HERE / "NestedHeaderReplay.swift", HERE / "FilterFacePixels.swift"])
@@ -74,16 +77,26 @@ def run(binary, output):
             talk = find_tool(tools, "talk")
             if not talk:
                 return original(request)
-            inputs = json.dumps(request.get("input", []), ensure_ascii=False)
+            inputs = [part.get("text", "") for item in request.get("input", [])
+                      for part in item.get("content", []) if isinstance(part, dict)]
+            completed = {item.get("call_id") for item in request.get("input", [])
+                         if item.get("type") == "function_call_output"}
+            if send_refresh and any(messages[2] in text for text in inputs):
+                # The native reader releases Talk only after observing both sends.
+                wait_for(lambda: (session.root / "allow-reply").exists() or peer.stopping.is_set(), bool, 45)
             create = find_tool(tools, "create_thread")
             calls = [("review", create, peer.creation_arguments(1), messages[0]),
                      ("first", talk, {"text": messages[1]}, messages[0]),
                      ("second", talk, {"text": messages[3]}, messages[2]),
                      ("detail", talk, {"text": messages[4]}, messages[2])]
             for key, tool, args, trigger in calls:
-                if trigger in inputs and key not in called:
+                # A steer can supersede an in-flight model response before its tool runs.
+                # Advance the held exchange only on tool outputs in the native request.
+                call_id = "chief_" + key
+                done = call_id in completed if send_refresh and key in ("second", "detail") else key in called
+                if not done and any(trigger.splitlines()[0] in text for text in inputs):
                     called.add(key)
-                    return peer.response_events("", {"type": "function_call", "call_id": "chief_" + key,
+                    return peer.response_events("", {"type": "function_call", "call_id": call_id,
                         "name": tool[0], "namespace": tool[1], "arguments": json.dumps(args)})
             return peer.response_events("Internal execution summary.", None)
 
@@ -97,6 +110,21 @@ def run(binary, output):
 
         initial = wait_for(page, lambda rows: [m["text"] for m in rows] == messages[:2], 50)
         save(output / "previous-messages.json", initial)
+        if send_refresh:
+            try:
+                status = replay.run(["--live-conversation", session.profile, "--send-refresh", session.process.pid], timeout=95)
+            finally:
+                session.process.send_signal(signal.SIGCONT)
+                (session.root / "allow-reply").touch()
+            if status or not (replay.workspace / "evidence/conversation-refresh.json").exists():
+                raise RuntimeError("Send refresh replay failed: " + (replay.root / "stdout.log").read_text()[-1500:])
+            rows = page()
+            save(output / "runtime-refresh.json", rows)
+            if ([r["text"] for r in rows] != [*messages[:3], *messages[2:]]
+                    or [r.get("attachments", []) for r in rows] != [[], [], [], [attachment], [], []]
+                    or len({r["id"] for r in rows}) != len(rows)):
+                raise AssertionError("Repeated sends or their Talk replies did not persist exactly once")
+            return
         for stage in ("send", "restart"):
             if stage == "restart":
                 session.stop(session.process, "runtime before restart")
@@ -134,6 +162,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", type=Path, default=ROOT / ".build/e2e/chief-runtime")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--send-refresh", action="store_true", help="hold admission and replies across panel and compact sends")
     args = parser.parse_args()
     with lease(), native_lease():
-        run(args.runtime.resolve(), args.output.resolve())
+        run(args.runtime.resolve(), args.output.resolve(), args.send_refresh)

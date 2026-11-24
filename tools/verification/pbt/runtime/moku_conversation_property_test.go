@@ -99,7 +99,8 @@ func TestMokuConversationProperties(t *testing.T) {
 		}
 		prompt := "Check the draft " + rapid.StringMatching("[a-z]{1,12}").Draw(t, "request")
 		input := model.AgentInput{Parts: []model.AgentInputPart{{Kind: "text", Text: prompt}}}
-		coordinator, talk := openChiefTool(t, ctx, r, dir, harnesses, peer, input, "talk")
+		commandID := "1788000000000_" + rapid.StringMatching("[a-zA-Z0-9_-]{16,80}").Draw(t, "command-id")
+		coordinator, talk := openChiefTool(t, model.WithFollowUpCommand(ctx, commandID), r, dir, harnesses, peer, input, "talk")
 		want = append(want, visible{Role: "user", Text: prompt})
 		for i := 0; i < 2; i++ {
 			_, err := talk.Execute(ctx, plugin.ToolCall{CallID: fmt.Sprint(i), Arguments: raw(map[string]string{"text": "Same reply."})})
@@ -121,7 +122,8 @@ func TestMokuConversationProperties(t *testing.T) {
 				result, err := r.ReadThreadContent(ctx, id, scope, nil)
 				check(err)
 				var page struct {
-					Messages []struct {
+					CommandRowIDs bool `json:"commandRowIds"`
+					Messages      []struct {
 						visible
 						ID        string
 						CreatedAt int64
@@ -129,12 +131,15 @@ func TestMokuConversationProperties(t *testing.T) {
 					Before string
 				}
 				check(json.Unmarshal(result.Value, &page))
-				if strings.Contains(string(result.Value), "PRIVATE-") || len(page.Messages) > end {
+				if !page.CommandRowIDs || strings.Contains(string(result.Value), "PRIVATE-") || len(page.Messages) > end {
 					t.Fatal("conversation exposed unrelated content")
 				}
 				start := end - len(page.Messages)
 				for i, m := range page.Messages {
 					want := expected[start+i]
+					if start+i == count && m.ID != chief.ID+"/steer:"+commandID {
+						t.Fatalf("admitted user message lost its command identity: %s", m.ID)
+					}
 					if seen[m.ID] || m.ID == "" || m.CreatedAt <= 0 || m.Text != want.Text || m.Role != want.Role || !slices.Equal(m.Attachments, want.Attachments) {
 						t.Fatalf("conversation differs at %d: %+v, want %+v", start+i, m, want)
 					}

@@ -50,7 +50,7 @@ In Overview, swipe up with two fingers over Chief’s eyes to read your conversa
 
 The panel opens at the latest messages. A larger gap marks a change of speaker. In a smaller window, the input stays at the bottom while you scroll through the messages above it. Scroll up to read earlier ones. At the top of a page, **Earlier messages** takes you further back. **Newer messages** at the bottom takes you forward.
 
-Use the input at the bottom to reply. A draft you started in the compact bar is already there. Press **Return** or click **Send**. The panel stays open for Chief’s reply. Press **Esc** or click outside the bar to close it and keep your draft.
+Use the input at the bottom to reply. A draft you started in the compact bar is already there. Press **Return** or click **Send**. Your message appears on the right as soon as you send it, and the panel stays open for Chief’s reply. You can also send from the compact bar and swipe up over the eyes to see your message while Chief is working. Press **Esc** or click outside the bar to close it and keep your draft.
 
 You can revisit these messages after restarting Chief in the same profile, including saved exchanges with a previous coordinating agent. A message can be recovered as long as Chief still has its conversation record. Clearing the history removes those exchanges. Messages you sent directly to a task stay in that task’s conversation.
 

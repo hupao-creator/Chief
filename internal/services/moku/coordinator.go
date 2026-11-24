@@ -438,10 +438,11 @@ func (c *Coordinator) Submit(ctx context.Context, request SubmitRequest) error {
 					return errors.New("Chief admission owner replaced")
 				}
 
-				if appendErr := c.appendTranscript(context.WithoutCancel(admissionCtx), record.ID, userMessage(request.Input, newID(), time.Now().UnixMilli())); appendErr != nil {
-					return appendErr
+				rowID := model.FollowUpRowID(admissionCtx)
+				if rowID == "" {
+					rowID = newID()
 				}
-				return nil
+				return c.appendTranscript(context.WithoutCancel(admissionCtx), record.ID, userMessage(request.Input, rowID, time.Now().UnixMilli()))
 			})
 			return err
 		})

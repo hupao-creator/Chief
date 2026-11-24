@@ -99,9 +99,10 @@ func mokuConversationPage(ctx context.Context, threads []model.ThreadRecord, bef
 		advance(i)
 	}
 	page := struct {
-		Messages []conversationMessage `json:"messages"`
-		Before   string                `json:"before,omitempty"`
-	}{Messages: []conversationMessage{}}
+		CommandRowIDs bool                  `json:"commandRowIds"`
+		Messages      []conversationMessage `json:"messages"`
+		Before        string                `json:"before,omitempty"`
+	}{CommandRowIDs: true, Messages: []conversationMessage{}}
 	size, cursor := 0, ""
 	for {
 		if err := ctx.Err(); err != nil {

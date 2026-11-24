@@ -557,9 +557,11 @@ public final class NativeWorkspacePresentation {
         let input = submission.input(knownDirectoryReferencesAsText: true)
         request["input"] = input
         workspace.dismissOperationError()
-        try await mokuSubmission.send(input: input, source: source, commandID: submission.commandID) {
-            await overview.recordUserAction(kind: "moku-input", text: JSONText(submission.text))
-            return .object(request)
+        try await moku.showConversationSend(submission, input: input) {
+            try await mokuSubmission.send(input: input, source: source, commandID: submission.commandID) {
+                await overview.recordUserAction(kind: "moku-input", text: JSONText(submission.text))
+                return .object(request)
+            }
         }
     }
 
