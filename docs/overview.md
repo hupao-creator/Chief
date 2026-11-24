@@ -22,6 +22,8 @@ Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find
 
 A red number on a folder counts conversations with an unread completed result or Super Thread document among its tagged cards. A red number on a tag counts unread conversations in that tag. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
+To mark a tag’s conversations as read together, press and hold its button on the left for half a second, then release. You can do this while viewing another tag. The red bookmarks clear and every tag containing those conversations updates its count. A newly completed run or an updated Super Thread document can bring a bookmark back.
+
 If a Super Thread in the same view cites a task's latest run, its card can stand in for the task card. Open **Related executions** in the Super Thread to reach the task. A newer run can make the task card appear again. [See the work behind a Super Thread](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 
 ## Find running work

@@ -180,6 +180,8 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                 return event
             }
             guard event.type == .scrollWheel else { return event }
+            // The router may consume this contact before AppKit dispatches it to the pressed tag.
+            if event.momentumPhase.isEmpty { swipeActions?.regions.pressedTag?.cancelPress() }
             if let swipeActions, verticalSwipe.route(event, target: { verticalTarget(event, actions: swipeActions) },
                 perform: { target, up in
                     switch target {

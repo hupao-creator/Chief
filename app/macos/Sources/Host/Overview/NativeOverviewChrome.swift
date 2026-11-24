@@ -344,6 +344,7 @@ public struct NativeOverviewChromeStrings: Sendable {
     public var statusFilter = "按状态筛选"
     public var containsActiveTasks = "包含活跃任务"
     public var unread = "条未读"
+    var clearUnread = "将标签内全部标为已读"
     func unreadSuffix(_ count: Int) -> String {
         count > 0 ? " · \(count) \(unread)" : ""
     }

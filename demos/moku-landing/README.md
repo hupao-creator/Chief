@@ -47,6 +47,23 @@ With `--keyboard`, the replay scrolls a column with each arrow key and opens the
 focused card with Return. It records both distances and the card identity in
 `overview-keyboard.json`. Optional captures show the isolated workspace.
 
+### Mark a tag as read
+
+After building the Debug package, run the pointer replay in a fresh directory.
+
+```sh
+python3 demos/moku-landing/verify_header.py --tag-read --output .build/tag-read
+```
+
+The mounted project has two tags sharing a completed task, a Super Thread in
+Development and a separate completed task in Review. Window-local AppKit input
+exercises clicks, scrolling over a tag, a drag out and back, Escape, a wheel
+contact during a press and a hold on the unselected tag. The replay checks the
+selection and unread counts, reads the mounted tag accessibility values, samples bookmark pixels on both visible cards and
+reopens the receipt store from the isolated profile. A new completed execution
+must reappear in both tag counts, and a document revision must relight its own tag. `tag-read.json` records the observed counts
+and selection. `source.json` identifies the checkout and platform.
+
 ### Chief Note execution links
 
 After building the current Debug package, run the mounted workspace replay.

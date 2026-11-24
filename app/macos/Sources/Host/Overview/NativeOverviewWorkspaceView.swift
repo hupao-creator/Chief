@@ -132,7 +132,8 @@ public struct NativeOverviewWorkspaceView: View {
                 if !landing {
                     NativeOverviewTagRail(choices: model.railChoices, selectedID: model.selectedRailID,
                         maximumWidth: min(OverviewTagMetrics.railMaximumWidth, railWidth),
-                        strings: chromeStrings, onSelect: model.selectRailChoice, interactions: model.chromeInteractions)
+                        strings: chromeStrings, onSelect: model.selectRailChoice, onClearUnread: model.clearUnread(inTag:),
+                        interactions: model.chromeInteractions)
                         .padding(.leading, railEdgeInset)
                         .modifier(chromePresentation(edge: .leading))
                 }
@@ -199,6 +200,7 @@ public struct NativeOverviewWorkspaceView: View {
             strings.filter = "Filter by tag"
             strings.containsActiveTasks = "Contains active tasks"
             strings.unread = "unread"
+            strings.clearUnread = "Mark all in tag as read"
         }
         return strings
     }

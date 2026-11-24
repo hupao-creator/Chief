@@ -38,14 +38,15 @@ scenario = parser.add_mutually_exclusive_group()
 scenario.add_argument("--note-click", action="store_true", help="run Note and scroll interactions entirely at actual size")
 scenario.add_argument("--conversation-opening", action="store_true", help="record Chief Bar opening and verify the native reading position")
 scenario.add_argument("--note-link", action="store_true", help="follow Chief Note execution links across and within tag spaces")
+scenario.add_argument("--tag-read", action="store_true", help="check tag read receipts with window-local pointer input")
 scenario.add_argument("--status-only", action="store_true", help="run the mounted folder and Inbox rail scenario, including full screen")
 scenario.add_argument("--completed-card", action="store_true", help="capture the completed Inbox card in both languages")
 parser.add_argument("--header-glass", action="store_true", help="capture and measure the production directory row over gray")
 parser.add_argument("--rail-hover", action="store_true", help="capture the mounted semantic rail during hover")
 args = parser.parse_args()
-if (args.header_glass or args.rail_hover) and (args.status_only or args.completed_card or args.note_click or args.note_link or args.conversation_opening):
+if (args.header_glass or args.rail_hover) and (args.tag_read or args.status_only or args.completed_card or args.note_click or args.note_link or args.conversation_opening):
     parser.error("choose dedicated chrome captures or the workspace scenario")
-if (args.note_link or args.status_only or args.completed_card or args.conversation_opening or args.header_glass or args.rail_hover) and args.keyboard:
+if (args.tag_read or args.note_link or args.status_only or args.completed_card or args.conversation_opening or args.header_glass or args.rail_hover) and args.keyboard:
     parser.error("--keyboard requires the card interaction scenario")
 with native_lease():
     args.output.mkdir(parents=True, exist_ok=False)
@@ -76,6 +77,8 @@ with native_lease():
             arguments.append("--note-click")
         if args.conversation_opening:
             arguments.append("--conversation-opening")
+        if args.tag_read:
+            arguments.append("--tag-read")
         if args.status_only:
             arguments.append("--status-only")
         if args.completed_card:
@@ -96,6 +99,8 @@ if args.header_glass or args.rail_hover:
     passed = all((args.output / receipt).is_file() and
                  json.loads((args.output / receipt).read_text()).get("status") == "passed" for receipt in receipts)
     sys.exit(status or int(not passed))
+if args.tag_read:
+    sys.exit(status or int(not (args.output / "tag-read.json").is_file()))
 if args.note_link:
     sys.exit(status or int(not (args.output / "note-links.json").is_file()))
 if args.completed_card:
