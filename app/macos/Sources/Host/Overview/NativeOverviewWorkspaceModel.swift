@@ -298,16 +298,23 @@ public final class NativeOverviewWorkspaceModel {
 
     func stepRail(up: Bool) {
         let choices = railChoices
-        guard let selectedRailID else {
-            if up, let first = choices.first { selectRailChoice(first) }
-            return
+        let target: NativeOverviewRailChoice
+        if let selectedRailID {
+            guard choices.count > 1, let index = choices.firstIndex(where: { $0.id == selectedRailID }) else { return }
+            target = choices[(index + (up ? 1 : choices.count - 1)) % choices.count]
+        } else {
+            guard up, let first = choices.first else { return }
+            target = first
         }
-        guard choices.count > 1, let index = choices.firstIndex(where: { $0.id == selectedRailID }) else { return }
-        let next = (index + (up ? choices.count - 1 : 1)) % choices.count
-        selectRailChoice(choices[next])
+        let previousScene = sceneKey, previousRevision = content.structureRevision
+        selectRailChoice(target)
+        if sceneKey != previousScene || content.structureRevision != previousRevision {
+            canvasState.pendingRailSwipe = (sceneKey, content.structureRevision, up)
+        }
     }
 
     func selectRailChoice(_ choice: NativeOverviewRailChoice) {
+        canvasState.pendingRailSwipe = nil
         switch choice {
         case .tag(let filter):
             selectTag(filter)
@@ -529,6 +536,7 @@ public final class NativeOverviewWorkspaceModel {
     }
 
     private func selectTagValue(_ tag: String, scope: String = "", kind: NativeOverviewTagKind? = nil, runningTag: Bool = false) {
+        canvasState.pendingRailSwipe = nil
         let filter = matchingFilter(tag: tag, scope: scope, kind: kind)
         let resolvedKind = kind ?? (filter?.isDirectory == true ? .directory : .semantic)
         tagSelection = tag.isEmpty ? filters.first(where: { $0.count > 0 })?.selection
