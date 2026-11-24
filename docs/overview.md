@@ -26,7 +26,7 @@ You can also swipe up or down with two fingers over the cards or background. Sta
 
 **Running only** includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. **Completed only** includes tasks whose latest run finished successfully and have no pending input or background work. It also includes Super Threads and their collections. Completed task cards show when the latest run finished. Super Thread cards show when the document was last updated. Idle tasks and visible interrupted tasks with no ongoing work appear under **All statuses**.
 
-When no cards match **Completed only**, you’ll see Chief’s skillet with its bowl centered above **No completed conversations**. The skillet gently bobs with three floating z’s. With **Reduce Motion** on, the illustration stays still. If no cards match either status filter, click 🗂️ on the right to see all statuses for the same folder or tag. With a mouse wheel, scroll up on the right half to leave an empty **Running only** view, or down there to leave an empty **Completed only** view.
+When no cards match **Running only** or **Completed only**, you’ll see Chief’s sleeping skillet centered above **No running conversations** or **No completed conversations**. The skillet gently bobs with three floating z’s. With **Reduce Motion** on, the illustration stays still. Click 🗂️ on the right to see all statuses for the same folder or tag. With a mouse wheel, scroll up on the right half to leave an empty **Running only** view, or down there to leave an empty **Completed only** view.
 
 ## Move around the canvas
 

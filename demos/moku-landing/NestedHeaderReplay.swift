@@ -1111,12 +1111,14 @@ private final class WheelSample: NSEvent {
             return faces
         }
         func checkEmptyCopy(in url: URL, mode: NativeOverviewStatusFilter) throws -> [String] {
-            let expected = mode == .running
-                ? [workspace.locale.text("没有运行中的会话", "No running conversations"),
-                   workspace.locale.text("在右半区上滑可查看全部状态", "Scroll up on the right to show all statuses")]
-                : [workspace.locale.text("没有已完成的会话", "No completed conversations")]
-            let removedHint = workspace.locale.text("在右半区下滑可查看全部状态", "Scroll down on the right to show all statuses")
-            return try checkStatusText(in: url, expected: expected, absent: mode == .completed ? [removedHint] : [])
+            let running = workspace.locale.text("没有运行中的会话", "No running conversations")
+            let completed = workspace.locale.text("没有已完成的会话", "No completed conversations")
+            let isRunning = mode == .running
+            return try checkStatusText(in: url, expected: [isRunning ? running : completed], absent: [
+                isRunning ? completed : running,
+                workspace.locale.text("在右半区上滑可查看全部状态", "Scroll up on the right to show all statuses"),
+                workspace.locale.text("在右半区下滑可查看全部状态", "Scroll down on the right to show all statuses")
+            ])
         }
         func checkStatusText(in url: URL, expected: [String], absent: [String] = [], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [String] {
             let request = VNRecognizeTextRequest()
@@ -1158,32 +1160,26 @@ private final class WheelSample: NSEvent {
                   !presentation.scene.notePanelOpen else {
                 throw ReplayError("Unexpected \(name): mode=\(model.statusFilter), agents=\(agents), reports=\(documents), grouped=\(collected), tags=\(visibleTags), selected=\(model.selectedTag)")
             }
-            let expectsIdle = mode == .running && expected.isEmpty
-            let expectsCompletedLogo = mode == .completed && expected.isEmpty
-            var idle = logoImage("overview.idle")
-            var completedLogo = logoImage("overview.completed.logo")
-            while ((idle != nil) != expectsIdle || (completedLogo != nil) != expectsCompletedLogo),
-                  ContinuousClock.now < deadline {
+            let expectsStatusEmpty = mode != .all && expected.isEmpty
+            var logo = logoImage("overview.status.empty.logo")
+            while (logo != nil) != expectsStatusEmpty, ContinuousClock.now < deadline {
                 try await Task.sleep(for: .milliseconds(30))
-                idle = logoImage("overview.idle")
-                completedLogo = logoImage("overview.completed.logo")
+                logo = logoImage("overview.status.empty.logo")
             }
-            let logoSize = expectsCompletedLogo ? CGSize(width: 195, height: 85) : CGSize(width: 156, height: 68)
-            guard (idle != nil) == expectsIdle,
-                  (completedLogo != nil) == expectsCompletedLogo,
-                  [idle, completedLogo].compactMap({ $0 }).allSatisfy({
-                      !$0.isAccessibilityElement() && $0.image != nil && $0.bounds.size == logoSize
-                  }) else {
+            let invalidLogo = logo.map {
+                $0.isAccessibilityElement() || $0.image == nil || $0.bounds.size != CGSize(width: 195, height: 85)
+            } ?? false
+            guard (logo != nil) == expectsStatusEmpty, !invalidLogo else {
                 if CommandLine.arguments.contains("--capture") {
                     try await capture(window, to: directory.appending(path: "failed-" + name + ".png"))
                 }
-                throw ReplayError("Unexpected logo at \(name): running=\(String(describing: idle?.bounds.size)), completed=\(String(describing: completedLogo?.bounds.size))")
+                throw ReplayError("Unexpected logo at \(name): \(String(describing: logo?.bounds.size))")
             }
             var sample: [String: Any] = ["step": name, "status": mode.rawValue, "selectedTag": selected, "scope": model.selectedScope, "visibleTags": visibleTags,
                 "agents": agents, "individualReports": documents, "collectionMembers": collected,
                 "mountedCardCount": canvas.mountedCardIDs.count, "noteOpen": presentation.scene.notePanelOpen,
                 "cardViewport": [canvas.cardRegionInWindow.minX, canvas.cardRegionInWindow.width]]
-            if let logo = idle ?? completedLogo {
+            if let logo {
                 let frame = logo.convert(logo.bounds, to: content)
                 // At y=200 in the 624 px source, the bowl spans x=60…404.
                 let bowlCenter = frame.minX + frame.width * 232 / 624
@@ -1196,7 +1192,7 @@ private final class WheelSample: NSEvent {
             }
             if CommandLine.arguments.contains("--capture") {
                 let url = directory.appending(path: "status-" + name + ".png")
-                if expectsIdle || expectsCompletedLogo || checkCompletedCopy { try await Task.sleep(for: .milliseconds(450)) }
+                if expectsStatusEmpty || checkCompletedCopy { try await Task.sleep(for: .milliseconds(450)) }
                 try await capture(window, to: url)
                 if ["all", "down", "up", "directory-selected", "inbox-label"].contains(name) {
                     var expectedFaces = Dictionary(uniqueKeysWithValues: [NativeOverviewStatusFilter.running, .all, .completed].map {
@@ -1207,7 +1203,7 @@ private final class WheelSample: NSEvent {
                     }
                     sample["faceRGB"] = try readFaces(expectedFaces, in: url)
                 }
-                if expectsIdle || expectsCompletedLogo {
+                if expectsStatusEmpty {
                     sample["emptyText"] = try checkEmptyCopy(in: url, mode: mode)
                 } else if checkCompletedCopy {
                     let locale = workspace.locale
@@ -1372,7 +1368,7 @@ private final class WheelSample: NSEvent {
         try await check("empty-tag", .running, [], selected: "Shipping")
         if CommandLine.arguments.contains("--capture") {
             defer { captureScheme = nil }
-            for (scheme, filename) in [(ColorScheme.light, "idle-light"), (.dark, "idle-dark")] {
+            for (scheme, filename) in [(ColorScheme.light, "running-empty-light"), (.dark, "running-empty-dark")] {
                 captureScheme = scheme
                 try await Task.sleep(for: .milliseconds(450))
                 let url = directory.appending(path: filename + ".png")

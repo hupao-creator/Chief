@@ -112,10 +112,14 @@ source changes, macOS version and architecture.
 With Shipping selected, a catalog update admits and removes a card in each
 status filter. Line-wheel events on the right return to All statuses from
 either empty filter. A left-side line-wheel event keeps the empty Running
-selection. The Running illustration measures 156 × 68 pt and the Completed illustration measures 195 × 85 pt. The replay checks that each full image fits inside the content area and its bowl center is within 1 pt of the content centerline. With `--capture`,
-the replay reads the localized empty titles, checks that only Running shows its scroll hint,
-and reads the completed task's timestamp. It captures both empty states in Aqua and
-Dark Aqua and records a full sleep animation cycle in `sleeping-skillet.mp4` when motion is enabled. It does not exercise a hardware trackpad or system fullscreen.
+selection. Both empty states use a 195 × 85 pt illustration. The replay checks
+that the full image fits inside the content area and its bowl center is within
+1 pt of the content centerline. With `--capture`, the replay reads both localized
+empty titles and the completed task's timestamp, and verifies the absence of
+scroll hints in both empty states. The `running-empty-*.png` and
+`completed-empty-*.png` captures show both states in Aqua and Dark Aqua.
+`sleeping-skillet.mp4` spans a full sleep animation cycle when motion is enabled.
+It does not exercise a hardware trackpad or system fullscreen.
 The fixture has no Runtime connection.
 
 A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas switches status, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.

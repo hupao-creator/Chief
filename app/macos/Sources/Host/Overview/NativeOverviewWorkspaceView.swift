@@ -94,11 +94,8 @@ public struct NativeOverviewWorkspaceView: View {
                     .accessibilityHidden(landing)
                 if !landing && model.content.isEmpty && model.error == nil, model.globalConversationCount != nil {
                     switch model.statusFilter {
-                    case .completed:
-                        NativeOverviewStatusEmptyState(title: emptyTitle, scrollHint: nil)
-                    case .running:
-                        NativeOverviewStatusEmptyState(title: emptyTitle, scrollHint:
-                            locale.text("在右半区上滑可查看全部状态。", "Scroll up on the right to show all statuses."))
+                    case .running, .completed:
+                        NativeOverviewStatusEmptyState(title: emptyTitle)
                     case .all:
                         NativeOverviewEmptyState(title: emptyTitle, detail: model.selectedFilter == nil
                             ? locale.text("Thread 获得语义标签后会显示在这里。", "Threads appear here once they have a tag.")

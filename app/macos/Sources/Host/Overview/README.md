@@ -257,15 +257,14 @@ interventions, onboarding, Settings, readers and collection panels keep their in
 
 Status filters apply to the selected tag's eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and visible interruptions with no ongoing work appear only in All. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
 
-The [status empty states](NativeOverviewStatusPresentation.swift) center the
+The [Running and Completed empty states](NativeOverviewStatusPresentation.swift) center the
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
 with its bowl on the title and viewport centerline and its handle extending fully
-to the right. The skillet gently bobs while three lowercase z’s drift above it.
-Reduce Motion holds both still. Completed displays the illustration at up to
-195 × 85 pt directly on the canvas. Running uses up to 156 × 68 pt and
-includes a scroll hint inside a regular Liquid Glass panel with adaptive tint
-and an opaque fallback for Reduce Transparency. Both states expose the visible
-text to accessibility and pass input through to Overview. On the
+to the right. Both display the illustration at up to 195 × 85 pt directly on the
+canvas above the localized status title, with no panel or scroll hint. The
+skillet gently bobs while three lowercase z’s drift above it. Reduce Motion
+holds both still. Each title is exposed to accessibility and the empty
+presentation passes input through to Overview. On the
 right half of the Overview filter surface, a vertical line-wheel event can exit an empty status
 filter in its return direction. Scroll up from Running or down from Completed
 to return to All while keeping the selected tag. An empty All status shows a
