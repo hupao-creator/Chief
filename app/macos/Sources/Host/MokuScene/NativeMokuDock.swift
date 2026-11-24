@@ -855,7 +855,9 @@ public struct NativeMokuDock: View {
     private func capsule(width: CGFloat, room: CGFloat, surface: CGRect, sizesRow: Bool, messageWidth: CGFloat, rowHeight: CGFloat,
                          noteHeight: CGFloat, noteAvailableHeight: CGFloat, decorationPadding: CGFloat, settingsSize: CGSize) -> some View {
         let composerStop = ordinaryOverviewDock && composerVisible
-        let retiringOverviewInk = ordinaryOverviewDock && inputPresent && state.inputLeaving && state.inputInteractionReady
+        // The conversation retires both message and editor ink before the eyes
+        // cross the row. Keep the native draft mounted through its normal fold.
+        let retiringOverviewInk = ordinaryOverviewDock && inputPresent && state.retiringInput == .composer && state.inputInteractionReady
         let followsEditor = (inputPresent && displayedMessage == nil) || composerSeatHeld || continuationPresenting
         // Settings always settles the composer expansion at 1 and retires the
         // row above the face, so the seat it lands on is known without reading
