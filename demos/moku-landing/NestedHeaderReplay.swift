@@ -897,12 +897,13 @@ private final class WheelSample: NSEvent {
             }
             return faces
         }
-        func emptyCopy(_ mode: NativeOverviewStatusFilter) -> [String] {
-            mode == .running
+        func checkEmptyCopy(in url: URL, mode: NativeOverviewStatusFilter) throws -> [String] {
+            let expected = mode == .running
                 ? [workspace.locale.text("没有运行中的会话", "No running conversations"),
                    workspace.locale.text("在右半区上滑可查看全部状态", "Scroll up on the right to show all statuses")]
-                : [workspace.locale.text("没有已完成的会话", "No completed conversations"),
-                   workspace.locale.text("在右半区下滑可查看全部状态", "Scroll down on the right to show all statuses")]
+                : [workspace.locale.text("没有已完成的会话", "No completed conversations")]
+            let removedHint = workspace.locale.text("在右半区下滑可查看全部状态", "Scroll down on the right to show all statuses")
+            return try checkStatusText(in: url, expected: expected, absent: mode == .completed ? [removedHint] : [])
         }
         func checkStatusText(in url: URL, expected: [String], absent: [String] = [], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [String] {
             let request = VNRecognizeTextRequest()
@@ -954,7 +955,7 @@ private final class WheelSample: NSEvent {
                 idle = logoImage("overview.idle")
                 completedLogo = logoImage("overview.completed.logo")
             }
-            let logoSize = CGSize(width: 156, height: 68)
+            let logoSize = expectsCompletedLogo ? CGSize(width: 195, height: 85) : CGSize(width: 156, height: 68)
             guard (idle != nil) == expectsIdle,
                   (completedLogo != nil) == expectsCompletedLogo,
                   [idle, completedLogo].compactMap({ $0 }).allSatisfy({
@@ -987,7 +988,7 @@ private final class WheelSample: NSEvent {
                     sample["faceRGB"] = try readFaces(expectedFaces, in: url)
                 }
                 if expectsIdle || expectsCompletedLogo {
-                    sample["emptyText"] = try checkStatusText(in: url, expected: emptyCopy(mode))
+                    sample["emptyText"] = try checkEmptyCopy(in: url, mode: mode)
                 } else if checkCompletedCopy {
                     let locale = workspace.locale
                     let title = locale.text("仅已完成", "Completed only")
@@ -1144,7 +1145,7 @@ private final class WheelSample: NSEvent {
                 try await Task.sleep(for: .milliseconds(450))
                 let url = directory.appending(path: filename + ".png")
                 try await capture(window, to: url)
-                _ = try checkStatusText(in: url, expected: emptyCopy(.running))
+                _ = try checkEmptyCopy(in: url, mode: .running)
             }
         }
         try await updateDelivered(.running, revision: 9)
@@ -1171,7 +1172,7 @@ private final class WheelSample: NSEvent {
                 try await Task.sleep(for: .milliseconds(450))
                 let url = directory.appending(path: filename + ".png")
                 try await capture(window, to: url)
-                _ = try checkStatusText(in: url, expected: emptyCopy(.completed))
+                _ = try checkEmptyCopy(in: url, mode: .completed)
             }
         }
         try await swipe(up: false)

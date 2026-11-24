@@ -2,10 +2,11 @@ import AppKit
 import SwiftUI
 
 package struct NativeOverviewIdleMark: NSViewRepresentable {
-    private static let size = CGSize(width: 156, height: 68)
+    private let size: CGSize
     let identifier: String
 
-    package init(identifier: String) {
+    package init(identifier: String, scale: CGFloat = 1) {
+        size = CGSize(width: 156 * scale, height: 68 * scale)
         self.identifier = identifier
     }
 
@@ -23,7 +24,6 @@ package struct NativeOverviewIdleMark: NSViewRepresentable {
     }
 
     package func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSImageView, context: Context) -> CGSize? {
-        let size = Self.size
         let scale = min(1, (proposal.width ?? size.width) / size.width, (proposal.height ?? size.height) / size.height)
         return CGSize(width: size.width * scale, height: size.height * scale)
     }

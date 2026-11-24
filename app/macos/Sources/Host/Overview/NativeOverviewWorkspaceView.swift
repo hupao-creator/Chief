@@ -91,10 +91,15 @@ public struct NativeOverviewWorkspaceView: View {
                     .allowsHitTesting(!landing)
                     .accessibilityHidden(landing)
                 if !landing && model.content.isEmpty && model.error == nil {
-                    if model.statusFilter != .all {
-                        NativeOverviewStatusEmptyState(title: emptyTitle, scrollHint: emptyDetail, isCompleted: model.statusFilter == .completed)
-                    } else {
-                        NativeOverviewEmptyState(title: emptyTitle, detail: emptyDetail)
+                    switch model.statusFilter {
+                    case .completed:
+                        NativeOverviewStatusEmptyState(title: emptyTitle, scrollHint: nil)
+                    case .running:
+                        NativeOverviewStatusEmptyState(title: emptyTitle, scrollHint:
+                            locale.text("在右半区上滑可查看全部状态。", "Scroll up on the right to show all statuses."))
+                    case .all:
+                        NativeOverviewEmptyState(title: emptyTitle, detail:
+                            locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads."))
                     }
                 }
                 if let error = model.error ?? model.canvasState.layoutError {
@@ -181,14 +186,6 @@ public struct NativeOverviewWorkspaceView: View {
                      bottomReservedHeight: hasDock ? size.height - dock.minY : 0)
     }
 
-    private var emptyDetail: String {
-        switch model.statusFilter {
-        case .running: return locale.text("在右半区上滑可查看全部状态。", "Scroll up on the right to show all statuses.")
-        case .completed: return locale.text("在右半区下滑可查看全部状态。", "Scroll down on the right to show all statuses.")
-        case .all: break
-        }
-        return locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads.")
-    }
     private var emptyTitle: String {
         switch model.statusFilter {
         case .running: return locale.text("没有运行中的会话", "No running conversations")
