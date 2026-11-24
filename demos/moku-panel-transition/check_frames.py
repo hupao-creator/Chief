@@ -252,7 +252,7 @@ def check_center(frames, times, panels, marks, phases, name, opening):
                 movingWidthSteps=width_steps, movingPanelSeats=len(moving_panel), movingMarkSeats=moving_marks,
                 independentShellProgress=width_steps >= 3 and moving_marks >= 3,
                 passed=bool(len(samples) >= 3 and np.all(steps >= -3) and contained
-                            and (opening or len(moving_panel) >= 3)))
+                            and (opening or len(moving_panel) == 1)))
 
 
 def check_focus(frames, focus, times, start, end, x, y, name, *, reference_index=None, explicit=False):
@@ -359,6 +359,10 @@ def main():
                           explicit=True)
     centered = [check_center(frames, times, panels, marks, phases, "center-busy-opening", True),
                 check_center(frames, times, panels, marks, phases, "center-busy-folding", False)]
+    start, end = phases["center-busy-panel-return"], phases["center-busy-panel-return-released"]
+    panel_seats = {p for p in panels[start:end] if p is not None}
+    centered.append(dict(phase="center-busy-panel-return", movingPanelSeats=len(panel_seats),
+                         passed=len(panel_seats) >= 3))
     centered_visits = [check_centered_visit(frames, times, marks, phases, index, next_phase, idle_width)
                        for index, next_phase in enumerate(["center-enter-1", "interrupt-horizontal-visit"])]
     print(json.dumps(dict(phases=mapping, geometry=visits, returns=returns, centered=centered,

@@ -80,6 +80,7 @@ public struct NativeMokuDock: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.nativeExecutionDockPlacement) private var executionPlacement
+    @Environment(\.nativeMokuHorizontalTravel) private var travelHost
     @Environment(\.nativeMokuDockTimer) private var timer
     @State private var timerHeight: CGFloat = 58
     @State private var hovered = false
@@ -94,6 +95,7 @@ public struct NativeMokuDock: View {
     }
     @State private var inputColumn: InputColumn?
     @State private var shellIsCompact = true
+    @State private var settledDestination: NativeMokuHorizontalDestination?
     @State private var capsuleHeight: CGFloat = 58
     @State private var completionHeight: CGFloat = 0
     @State private var focusGeneration: UUID?
@@ -175,6 +177,8 @@ public struct NativeMokuDock: View {
         return NativeMokuTalkMessage(id: JSONText(talk), text: talk)
     }
     private var visibleTalk: NativeMokuTalkMessage? {
+        // A Report may release its Thread before its outgoing mark finishes.
+        if state.readingPanelReturning, state.harnessSeat != nil { return nil }
         guard threadID == nil, !state.inputOpen, interaction == nil, !state.dockCovered, state.dockRouteVisible,
               state.windowVisible, !disabled, !draft.submitting else { return nil }
         return state.talkPresentation.message
@@ -200,7 +204,7 @@ public struct NativeMokuDock: View {
     // The outgoing draft stays open until route release. Its shell starts
     // folding when the reading panel withdraws input, alongside its ink.
     private var rowExpanded: Bool {
-        (state.inputOpen && state.inputInteractionReady) || continuationPresenting || displayedMessage != nil
+        (state.inputOpen && state.inputInteractionReady) || (continuationPresenting && !state.readingPanelReturning) || displayedMessage != nil
     }
     private var expanded: Bool { state.settingsExpanded || noteExpanded || rowExpanded }
     private var capsuleFraction: CGFloat { expanded ? 1 : 0 }
@@ -398,7 +402,8 @@ public struct NativeMokuDock: View {
                 && executionPlacement?.threadID == threadID
                 ? executionPlacement?.frame : nil
             let immediate = scenePhase != .active || settlingNoteDock || reduceMotion
-            let holdingColumn = !expanded && !shellIsCompact && !immediate
+            let returningHarness = state.readingPanelReturning && state.harnessSeat != nil
+            let holdingColumn = !expanded && (!shellIsCompact || returningHarness) && !immediate
                 && inputColumn?.viewport == geometry.size && executionPlacement?.dragging != true
             let openColumn = expanded && (state.inputOpen || continuationPresenting)
                 ? requestedFrame.map { InputColumn(frame: $0, viewport: geometry.size) } : nil
@@ -462,7 +467,9 @@ public struct NativeMokuDock: View {
                     } else {
                         capsule(width: width, room: max(58, frame.height - 18),
                             surface: surface, sizesRow: sizesRow, messageWidth: messageWidth, rowHeight: rowHeight, noteHeight: noteHeight,
-                            noteAvailableHeight: noteAvailableHeight, decorationPadding: placement.decorationPadding, settingsSize: settingsSize)
+                            noteAvailableHeight: noteAvailableHeight, decorationPadding: placement.decorationPadding, settingsSize: settingsSize,
+                            holdsMark: state.readingPanelReturning && !immediate
+                                && (!shellIsCompact || (travelHost != nil && settledDestination != destination)))
                             .modifier(CapsuleSurfaceFrame(size: surface.size, sizesRow: sizesRow) { shellIsCompact = $0 })
                     }
                 }
@@ -540,6 +547,7 @@ public struct NativeMokuDock: View {
                     hitRects: [placement.surface.insetBy(dx: -5, dy: -5)]
                         + (interaction != nil && !state.settingsOpen ? [panel] : []),
                     onSettled: { arrived in
+                        settledDestination = arrived
                         guard arrived.frame == requestedFrame,
                               state.composerGeneration == arrived.composer else { return }
                         executionPlacement?.completeTravel(revision: arrived.revision)
@@ -829,7 +837,8 @@ public struct NativeMokuDock: View {
         }
     }
     private func capsule(width: CGFloat, room: CGFloat, surface: CGRect, sizesRow: Bool, messageWidth: CGFloat, rowHeight: CGFloat,
-                         noteHeight: CGFloat, noteAvailableHeight: CGFloat, decorationPadding: CGFloat, settingsSize: CGSize) -> some View {
+                         noteHeight: CGFloat, noteAvailableHeight: CGFloat, decorationPadding: CGFloat, settingsSize: CGSize,
+                         holdsMark: Bool) -> some View {
         let composerStop = ordinaryOverviewDock && composerVisible
         let retiringOverviewInk = ordinaryOverviewDock && inputPresent && state.inputLeaving && state.inputInteractionReady
         let followsEditor = (inputPresent && displayedMessage == nil) || composerSeatHeld || continuationPresenting
@@ -1010,8 +1019,8 @@ public struct NativeMokuDock: View {
             let generation = state.composerGeneration
             let returning = state.readingPanelReturning
             let showsHarness = threadID != nil && !state.settingsOpen && !returning
-            NativeMokuDockIdentity(harness: threadHarness,
-                showsHarness: showsHarness,
+            NativeMokuDockIdentity(state: state, harness: threadHarness,
+                showsHarness: showsHarness, holdsMark: holdsMark,
                 entranceReady: state.inputAdmissionReady, generation: generation,
                 animation: state.windowVisible && !reduceMotion
                     ? NativeReadingPageTiming.openingAnimation : nil,

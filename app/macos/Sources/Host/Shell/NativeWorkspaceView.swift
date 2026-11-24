@@ -400,6 +400,7 @@ public final class NativeWorkspacePresentation {
     }
 
     fileprivate func prepareOverviewReturn() async {
+        await scene.waitForReturningEyes()
         guard !Task.isCancelled else { return }
         if readingCollectionMember {
             readingPanelSource = collectionPanel.memberFrame ?? readingPanelSource

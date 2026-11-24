@@ -5,8 +5,10 @@ import SwiftUI
 /// Only the passive mark flips. The editor, its layout seat and native input
 /// lifecycle are independent of Thread/Harness identity changes.
 struct NativeMokuDockIdentity<Face: View>: View {
+    let state: NativeMokuSceneState
     let harness: AnyHarnessPlugin?
     let showsHarness: Bool
+    let holdsMark: Bool
     let entranceReady: Bool
     let generation: UUID
     let animation: Animation?
@@ -21,6 +23,7 @@ struct NativeMokuDockIdentity<Face: View>: View {
     @State private var transitionGeneration = 0
     @State private var nextMark: Mark?
     @State private var pendingCompletion: (() -> Void)?
+    @State private var seat = UUID()
 
     private enum Identity: Equatable { case moku, harness(JSONText?) }
     private struct Mark {
@@ -30,6 +33,7 @@ struct NativeMokuDockIdentity<Face: View>: View {
     }
     private struct Request: Equatable {
         let identity: Identity
+        let holdsMark: Bool
         let entranceReady: Bool
         let generation: UUID
         let immediate: Bool
@@ -43,17 +47,16 @@ struct NativeMokuDockIdentity<Face: View>: View {
     var body: some View {
         NativeMokuIdentityFlip(progress: showingBack ? 1 : 0,
             front: artwork(front ?? (back == nil ? initialMark : nil)), back: artwork(back))
-            // The shell can resize and release its reading column in this same
-            // transaction. Its geometry curve must not accelerate the turn
-            // through the edge or change the timing of the incoming face.
+            // Keep the turn's own timing when a visit is interrupted.
             .transaction(value: showingBack) { $0.animation = animation }
             .id(snapGeneration)
             .frame(width: NativeMokuFaceLayout.seat.width, height: NativeMokuFaceLayout.seat.height)
-            .onChange(of: Request(identity: identity, entranceReady: entranceReady, generation: generation,
+            .onChange(of: Request(identity: identity, holdsMark: holdsMark, entranceReady: entranceReady, generation: generation,
                 immediate: animation == nil || scenePhase != .active), initial: true) { _, request in
                 update(request)
             }
             .onDisappear {
+                releaseSeat()
                 transitionGeneration &+= 1
                 pendingCompletion = nil
                 nextMark = nil
@@ -86,9 +89,18 @@ struct NativeMokuDockIdentity<Face: View>: View {
     private func update(_ request: Request) {
         // A new visit can borrow a flip to the same mark. Only its waiter may
         // admit the editor, and only after the angle has reached its endpoint.
-        pendingCompletion = showsHarness && request.entranceReady ? onSettled : nil
+        pendingCompletion = nil
         nextMark = nil
+        // Keep the actual outgoing artwork even if Report withdraws its Thread
+        // while the glass is still folding around the execution column.
+        if request.holdsMark && !request.immediate { return }
         let target = showsHarness && !request.entranceReady ? destination ?? .eyes : initialMark
+        if target.identity == .moku {
+            pendingCompletion = releaseSeat
+        } else {
+            state.harnessSeat = seat
+            if showsHarness && request.entranceReady { pendingCompletion = onSettled }
+        }
         if destination == nil || request.immediate {
             transitionGeneration &+= 1
             var transaction = Transaction(animation: nil)
@@ -139,6 +151,10 @@ struct NativeMokuDockIdentity<Face: View>: View {
         let completion = pendingCompletion
         pendingCompletion = nil
         completion?()
+    }
+
+    private func releaseSeat() {
+        if state.harnessSeat == seat { state.harnessSeat = nil }
     }
 }
 
