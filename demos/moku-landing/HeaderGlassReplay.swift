@@ -140,7 +140,8 @@ private struct HeaderGlassFixture: View {
             observations.append(receipt)
             let text = labels.joined()
             guard red > 80, semanticBadge > 80, contrast > 0.20,
-                  ["全部", "Chief", "Blue", "8", "3"].allSatisfy(text.contains),
+                  bounds[0].width == bounds[0].height, !text.contains("全部"), !text.contains("…"),
+                  ["Chief", "Blue", "8", "3"].allSatisfy(text.contains),
                   textured || clippingSteps.allSatisfy({ $0 < 0.018 }),
                   !textured || modulation(selected.minY + 6) < modulation(selected.minY - 5) else {
                 try save("failed")

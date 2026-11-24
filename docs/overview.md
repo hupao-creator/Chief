@@ -4,7 +4,7 @@
 
 Press **⌘K** to open **Overview**. Click a folder icon at the top to see that project’s work. Folders with the same name appear separately.
 
-Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. Choose **All**, marked with an asterisk (`*`), to see work across projects and Inbox, including Inbox tasks that have no tag.
+Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. Click the asterisk-only **All** button in the top row to see work across projects and Inbox, including Inbox tasks that have no tag.
 
 When a folder has tags to choose from, look for their emoji along the left edge. Hover over an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. When you switch tags, the new tag shows its name for five seconds.
 
