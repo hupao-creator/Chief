@@ -204,7 +204,8 @@ and height before the editor mounts. In the wide layout, input ink appears to
 the right of the Harness logo after the logo clears the final text seat. Below
 260pt of capsule width, text and attachments occupy the row above the identity
 and actions. The editor fades in during the last tenth of shell expansion.
-The retiring shell keeps its bottom center in the reading column. The same
+The retiring shell keeps its bottom center in the reading column. With no
+sidecard expanded, it folds and lifts on the workspace midline. The same
 interpolated frame sizes the glass and releases the column when it reaches
 the compact size, even when a Super Thread withdraws its execution marker or
 releases the route during the fold. The compact Dock returns horizontally at

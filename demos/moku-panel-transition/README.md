@@ -400,7 +400,8 @@ python3 demos/moku-panel-transition/check_centered_handoff.py window.mp4 positio
 
 The checker measures both directions independently on either side of the widest
 reader frame. It requires intermediate glass widths, the eyes and logo in
-sequence, and a visibly tilted logo on each leg. It reports any localized ink
+sequence, and a visibly tilted logo on each leg. Across both legs the center
+of the visible glass must stay within 2pt of the window midline. It reports any localized ink
 more than 2pt outside the capsule and saves all frame positions. Inspect the
 listed unresolved frames for an edge-on flip, blink or occlusion.
 
