@@ -214,7 +214,7 @@ public struct NativeMokuDock: View {
     }
     private var surfaceAnimation: Animation? {
         if reduceMotion || settlingNoteDock { return nil }
-        guard state.readingPanelVisible else { return .smooth(duration: 0.42, extraBounce: 0) }
+        guard state.readingPanelVisible else { return NativeMokuCapsuleLayout.overviewExpansionAnimation }
         if state.inputOpen && !rowExpanded { return .easeOut(duration: NativeReadingPageTiming.duration) }
         if let readingInputAnimation, state.inputOpen, state.inputInteractionReady { return readingInputAnimation }
         return NativeReadingPageTiming.openingAnimation

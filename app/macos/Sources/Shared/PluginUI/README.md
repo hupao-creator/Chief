@@ -1063,7 +1063,7 @@ and require no per-frame SwiftUI updates. See the [mounted badge comparison](../
 
 Overview reuses the perforation renderer behind active folder icons and
 semantic-tag emoji. The chips use a transparent face and the Overview accent.
-Their glyph, selection border and unread count stay still.
+Only the dots animate. The chip owns its glyph, glass selection tint and red unread count.
 [Tag activity](../../Host/Overview/README.md#tag-activity).
 
 [NativeStatusSpinner](Design/NativeStatusSpinner.swift) supplies the production

@@ -123,7 +123,7 @@ public struct NativeOverviewWorkspaceView: View {
             .overlay(alignment: .leading) {
                 if chromeVisible && !landing {
                     NativeOverviewTagRail(parent: directory, selectedID: model.selectedFilter?.id,
-                        expandedWidth: min(172, geometry.size.width * 0.15), strings: chromeStrings,
+                        maximumWidth: min(172, geometry.size.width * 0.15), strings: chromeStrings,
                         onTagChange: model.selectTag, interactions: model.chromeInteractions)
                         .padding(.leading, railEdgeInset)
                 }

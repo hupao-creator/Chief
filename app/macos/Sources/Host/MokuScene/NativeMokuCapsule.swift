@@ -4,6 +4,7 @@ import SwiftUI
 /// Point geometry shared by the SwiftUI capsule and its interaction regions.
 /// Coordinates are local to the flipped scene, including a scrolled shell.
 enum NativeMokuCapsuleLayout {
+    static let overviewExpansionAnimation = Animation.smooth(duration: 0.42, extraBounce: 0)
     static let idleSize = CGSize(width: 168, height: 44)
     static let landingScale: CGFloat = 76.0 / 58.0
     /// Shared by the capsule glass, its clip shape and the nested composer

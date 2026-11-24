@@ -330,23 +330,42 @@ global All. A change in status-filtered results alone keeps both selections.
 
 The left and right Liquid Glass columns sit at the window's edges, each group
 vertically centered. Compact controls are 42pt circles. The left controls show
-the semantic emoji, 🏷️ for a tag without an emoji, or an asterisk for Any tag. Hover expands that button inward to
-show its title. Selecting another tag shows its title for five seconds.
-A subsequent selection starts a fresh five-second interval for the latest
-choice. A hovered tag keeps its title until pointer exit, including after the
-selection interval expires.
+the semantic emoji, 🏷️ for a tag without an emoji, or an asterisk for Any tag.
+Hover expands that button inward. Its natural width is the 42pt glyph seat
+plus the measured single-line title and 12pt trailing padding. The expanded
+button is capped at 172pt or 15% of the window width, whichever is smaller.
+A long title truncates at the trailing edge. The same title stays mounted as
+the capsule reveals or clips it, including when a hover reverses mid-animation.
+Selecting another tag shows its title for five seconds. A subsequent selection starts a
+fresh five-second interval for the latest choice. A hovered tag keeps its title
+until pointer exit, including after the selection interval expires. Expansion
+and contraction use the Chief Bar’s 420ms smooth Overview capsule animation
+with zero extra bounce. Reduce Motion applies the width change immediately
+and preserves the display interval.
 
 The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
-(Completed only). Hover help gives the localized status name. All, directory,
-tag and status controls apply native `.clear.interactive()` Liquid Glass
-directly to their capsule. The backdrop is unfilled and the glass is untinted.
-The folder icon, asterisk and text use a contrasting edge so they stay legible over
-light or dark content. Reduce Transparency uses an opaque fill. The selected control draws a 2pt
-inset accent border above its surface (3pt with Increased Contrast). Folder
-icons and emoji stay visible. Accessibility exposes the full name and selected
-state even when the visible title is hidden or
-truncated. Member counts are available in tag accessibility values. Unread
-counts appear on their own folder or semantic tag.
+(Completed only). Hover help gives the localized status name. Global All and
+the directory buttons use native regular interactive Liquid Glass and system
+primary foreground. The left tag and right status buttons use native clear
+interactive Liquid Glass. Each selected button tints its glass. The unselected
+buttons keep the base material.
+
+Semantic tags and status choices take their tint from the dominant color of
+the displayed emoji, including the 🏷️ fallback for a tag without its own
+emoji. The renderer samples the system glyph in sRGB and averages pixels in
+its most common hue cluster. When colored detail covers less than one sixth
+of the visible glyph, the tint uses its average luminance as a neutral gray.
+This keeps the 🏁 status tint neutral. The top folder buttons, global All,
+the Any tag asterisk and glyphs that yield no visible sample use the Overview
+accent. The emoji keeps its original colors.
+[Emoji tint sampling](NativeOverviewTagTint.swift).
+
+Each tag's red unread count follows the upper trailing corner of the glass
+at its current animated width. Increased Contrast and Reduce Transparency
+strengthen the selection tint. Reduce Transparency also supplies an opaque
+background. Accessibility exposes the full name and selected trait even when
+the visible title is hidden or truncated. Member counts are available in tag
+accessibility values.
 
 [NativeOverviewChrome](NativeOverviewChrome.swift) keeps All pinned beside
 a horizontally scrollable directory row. The centered bar leaves space for the
@@ -364,7 +383,7 @@ layout or 2pt below the bar in the two-row layout. See the
 Directory and semantic tag chips show a diagonal sweep across a field of tiny
 dots when their browsing membership contains a Thread whose public
 `isExecutionActive` is true (running or waiting for user). Background work
-alone does not qualify. The selection border and unread count remain visible
+alone does not qualify. The selection tint and red unread count remain visible
 independently of activity.
 
 A transparent 26pt disk sits behind the folder icon in the top bar. A 36pt
@@ -490,7 +509,9 @@ Folder and semantic chips show a system-red unread count at the upper trailing
 edge for their exact browsing membership. Each eligible Thread contributes once
 per space, after visibility, archive and execution coverage filtering and before
 collection grouping. A directory chip always uses the whole directory’s count. Each
-semantic tag shows its own count in the left column. All and zero-count chips have no badge. The count is included
+semantic tag shows its own count in the left column. Its badge follows the upper
+trailing corner of the capsule as the title appears and disappears. All and
+zero-count chips have no badge. The count is included
 in the accessibility value independently of member count and activity. It
 does not change chip width, selection, ordering or the Runtime filter context.
 Receipt and catalog version changes update counts even for unselected spaces.
