@@ -1127,6 +1127,7 @@ public struct NativeWorkspaceView: View {
                         regions: presentation.scene.swipeRegions,
                         available: { presentation.overviewSwipeAvailable },
                         canFilter: { !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
+                        canReturnWithWheel: { presentation.overview.canReturnToAllWithWheel(up: $0) },
                         openNote: { if presentation.canToggleMokuNote { presentation.scene.openNotePanelFromUser() } },
                         stepFilter: { presentation.overview.stepStatusFilter(up: $0) }))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen

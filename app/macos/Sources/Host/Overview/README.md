@@ -236,32 +236,29 @@ On a fresh, precise, unmodified contact, the [vertical gesture router](NativeOve
 
 Status filters apply to the selected tag's eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and visible interruptions with no ongoing work appear only in All. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
 
-Outside landing, every empty Overview shows a localized title and hint for
-the current status. When Running has no matching cards, a static, transparent
+The [status empty states](NativeOverviewStatusPresentation.swift) put the
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
-appears above the text at up to 156 × 68 pt, regardless of the selected
-folder or tag. The All status shows the same text treatment without the
-illustration. The centered text uses adaptive Overview ink on an opaque
-surface for contrast over window material, and wraps within the available
-width. The illustration exposes the same title and swipe hint
-as a single accessibility element. Input passes through to the canvas.
+at up to 156 × 68 pt inside one regular Liquid Glass panel with the localized
+title and scroll hint. The text provides the group's accessibility label.
+An adaptive tint strengthens contrast behind the text, and Reduce Transparency
+uses an opaque panel. The panel passes input through to Overview. On the
+Overview filter surface, a vertical line-wheel event can exit an empty status
+filter in its return direction. Scroll down from Running or up from Completed
+to return to All while keeping the selected tag. An empty All status shows a
+localized title and tag-switch hint on an opaque surface.
 The [status replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
-exercises this state as a tagged conversation starts and finishes.
+exercises empty and populated states and both input types.
 
-The [Completed presentation](NativeOverviewCompletedPresentation.swift) centers
-the same skillet above its empty status and two-finger swipe-up hint. The text
-provides the accessible status and hint. Its adaptive fill sits above the
-frosted material and becomes opaque under Reduce Transparency. The whole group
-passes input through to the canvas. With matches, a **Completed only** capsule
+With matches, a **Completed only** capsule
 identifies the filter. The existing plugin cards keep their layout and
 activation. Hover outlines emphasize cards and keyboard focus outlines Agent
 cards. Agent cards show the localized time of the latest successful execution
 from its public `finishedAt` in addition to its duration. Super Threads retain
 their document update time and collection selection.
 
-A trackpad contributes its horizontal delta, including native momentum. A line
-wheel uses its horizontal delta when available and otherwise its vertical delta,
-at 40 window points per line. Pointer presses interrupt inertia. Dragging the
+A trackpad contributes its horizontal delta, including native momentum. For
+canvas travel, a line wheel uses its horizontal delta when available and
+otherwise its vertical delta, at 40 window points per line. Pointer presses interrupt inertia. Dragging the
 window header moves the window. Empty canvas presses leave the offset alone.
 Native editors, filter menus, the Dock and carousel cover retain their own input.
 Settings, readers and active text entry gate canvas scrolling. Card focus keeps

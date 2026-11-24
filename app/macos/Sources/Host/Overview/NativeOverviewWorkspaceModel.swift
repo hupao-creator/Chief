@@ -252,6 +252,10 @@ public final class NativeOverviewWorkspaceModel {
                        kind: filter.map { $0.isDirectory ? .directory : .semantic })
     }
 
+    func canReturnToAllWithWheel(up: Bool) -> Bool {
+        content.isEmpty && error == nil && statusFilter == (up ? .completed : .running)
+    }
+
     func stepStatusFilter(up: Bool) {
         let next: NativeOverviewStatusFilter = switch (statusFilter, up) {
         case (.completed, true), (.running, false): .all

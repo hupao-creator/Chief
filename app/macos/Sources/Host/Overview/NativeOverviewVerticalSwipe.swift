@@ -12,6 +12,7 @@ struct NativeOverviewSwipeActions {
     let regions: NativeOverviewSwipeRegions
     let available: @MainActor () -> Bool
     let canFilter: @MainActor () -> Bool
+    let canReturnWithWheel: @MainActor (Bool) -> Bool
     let openNote: @MainActor () -> Void
     let stepFilter: @MainActor (Bool) -> Void
 }
@@ -29,7 +30,8 @@ struct NativeOverviewVerticalSwipe {
     private var vertical: CGFloat = 0
     private var horizontal: CGFloat = 0
 
-    @MainActor mutating func route(_ event: NSEvent, target: () -> Target?, perform: (Target, Bool) -> Void) -> Bool {
+    @MainActor mutating func route(_ event: NSEvent, target: () -> Target?,
+                                  canReturnWithWheel: (Bool) -> Bool, perform: (Target, Bool) -> Void) -> Bool {
         let phase = event.phase
         if !event.momentumPhase.isEmpty {
             if case .awaitingMomentum(let end) = stage, event.timestamp - end > 0.25 { stage = .idle }
@@ -41,6 +43,14 @@ struct NativeOverviewVerticalSwipe {
                 stage = .idle
                 return false
             }
+        }
+        let deltaY = event.isDirectionInvertedFromDevice ? -event.scrollingDeltaY : event.scrollingDeltaY
+        if phase.isEmpty && !event.hasPreciseScrollingDeltas {
+            stage = .idle
+            let up = deltaY > 0
+            guard abs(deltaY) > abs(event.scrollingDeltaX) * 1.5, canReturnWithWheel(up), target() == .filter else { return false }
+            perform(.filter, up)
+            return true
         }
         let starting = phase.contains(.began) || phase.contains(.mayBegin)
         if starting {
@@ -67,7 +77,7 @@ struct NativeOverviewVerticalSwipe {
             return false
         }
         if phase.contains(.mayBegin) { return false }
-        vertical += event.isDirectionInvertedFromDevice ? -event.scrollingDeltaY : event.scrollingDeltaY
+        vertical += deltaY
         horizontal += abs(event.scrollingDeltaX)
         if vertical == 0 && horizontal == 0 { return false }
         guard abs(vertical) > horizontal * 1.5, origin == .filter || vertical > 0 else {

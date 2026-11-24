@@ -170,6 +170,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             }
             guard event.type == .scrollWheel else { return event }
             if let swipeActions, verticalSwipe.route(event, target: { verticalTarget(event, actions: swipeActions) },
+                canReturnWithWheel: swipeActions.canReturnWithWheel,
                 perform: { target, up in
                     switch target {
                     case .note: swipeActions.openNote()

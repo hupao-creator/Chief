@@ -16,11 +16,13 @@ Resize the window to adjust how many cards you can see. Overview arranges the ca
 
 Overview starts with all statuses visible. Swipe up with two fingers over the cards, the background, or the tag bar to see **Running only**. Swipe down to return to all statuses. From there, swipe down again for **Completed only**. Each swipe moves one step. Your selected tag and the other tag choices stay in place, even when no cards match.
 
-When nothing is running in your current folder, tag, or **All** view, **No running conversations** appears below Chief’s skillet. Swipe down with two fingers over the skillet or its text to see all statuses in that same view.
+If you see **No running conversations** below Chief’s skillet, scroll down over the glass panel with a trackpad or mouse wheel to see all statuses for the same tag.
+
+If there are no conversations in the **All** status, choose another folder or tag in the filter bar to look for conversations there.
 
 Running includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. Completed includes tasks whose latest run finished successfully and have no pending input or background work. Super Threads and their collections also appear here. Idle tasks and visible interrupted tasks with no ongoing work appear in the full view.
 
-In **Completed only**, look for the checkmark label at the bottom left. Each completed task card shows when its latest run finished. Super Thread cards show when the document was last updated. Move the pointer over a card to highlight it, or use Tab to focus a task card and Return to open it. If the current tag has no completed conversations, look for the message below Chief’s skillet in the center of Overview. Swipe up with two fingers over the skillet to see all statuses for the same tag.
+In **Completed only**, look for the checkmark label at the bottom left. Each completed task card shows when its latest run finished. Super Thread cards show when the document was last updated. Move the pointer over a card to highlight it, or use Tab to focus a task card and Return to open it. If you see **No completed conversations** below Chief’s skillet, scroll up over the glass panel with a trackpad or mouse wheel to see all statuses for the same tag.
 
 With the input box closed, swipe up over the eyes on Chief Bar to open **Chief Note**. Scroll inside an open note or a long Chief Bar message to read more.
 

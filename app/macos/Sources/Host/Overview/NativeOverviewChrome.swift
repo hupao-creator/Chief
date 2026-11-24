@@ -655,30 +655,20 @@ public struct NativeOverviewChromeStrings: Sendable {
 public struct NativeOverviewEmptyState: View {
     public var title: String
     public var detail: String
-    private let showsIdleMark: Bool
-    public init(title: String = "还没有会话", detail: String = "切换视图或标签筛选以查看其他 Thread。",
-                showsIdleMark: Bool = false) {
+    public init(title: String = "还没有会话", detail: String = "切换视图或标签筛选以查看其他 Thread。") {
         self.title = title; self.detail = detail
-        self.showsIdleMark = showsIdleMark
     }
     public var body: some View {
-        VStack(spacing: 12) {
-            if showsIdleMark {
-                NativeOverviewIdleMark(label: title, hint: detail)
-            }
-            VStack(spacing: 5) {
-                Text(title).font(NativeTypography.inter(size: 14, weight: 590))
-                Text(detail).font(NativeTypography.inter(size: 12))
-            }
-            .foregroundStyle(NativePalette.overview.ink.swiftUI)
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(NativePalette.overview.surface.swiftUI, in: RoundedRectangle(cornerRadius: 10))
-            // The illustration already exposes the same title and hint to VoiceOver.
-            .accessibilityHidden(showsIdleMark)
+        VStack(spacing: 5) {
+            Text(title).font(NativeTypography.inter(size: 14, weight: 590))
+            Text(detail).font(NativeTypography.inter(size: 12))
         }
+        .foregroundStyle(NativePalette.overview.ink.swiftUI)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(NativePalette.overview.surface.swiftUI, in: RoundedRectangle(cornerRadius: 10))
         .padding(.horizontal, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .allowsHitTesting(false)

@@ -88,11 +88,10 @@ public struct NativeOverviewWorkspaceView: View {
                     .allowsHitTesting(!landing)
                     .accessibilityHidden(landing)
                 if !landing && model.content.isEmpty && model.error == nil {
-                    if model.statusFilter == .completed {
-                        NativeOverviewCompletedState(title: emptyTitle, swipeHint: emptyDetail)
+                    if model.statusFilter != .all {
+                        NativeOverviewStatusEmptyState(title: emptyTitle, scrollHint: emptyDetail, up: model.statusFilter == .completed)
                     } else {
-                        NativeOverviewEmptyState(title: emptyTitle, detail: emptyDetail,
-                            showsIdleMark: model.statusFilter == .running)
+                        NativeOverviewEmptyState(title: emptyTitle, detail: emptyDetail)
                     }
                 }
                 if let error = model.error ?? model.canvasState.layoutError {
@@ -174,8 +173,8 @@ public struct NativeOverviewWorkspaceView: View {
 
     private var emptyDetail: String {
         switch model.statusFilter {
-        case .running: return locale.text("双指下滑查看全部会话。", "Swipe down with two fingers to show all conversations.")
-        case .completed: return locale.text("双指上滑查看全部会话。", "Swipe up with two fingers to show all conversations.")
+        case .running: return locale.text("下滑查看全部会话。", "Scroll down to show all conversations.")
+        case .completed: return locale.text("上滑查看全部会话。", "Scroll up to show all conversations.")
         case .all: break
         }
         return locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads.")

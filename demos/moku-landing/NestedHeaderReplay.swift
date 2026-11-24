@@ -294,12 +294,12 @@ private final class WheelSample: NSEvent {
 
     private func postScroll(_ window: NSWindow, _ point: CGPoint, y: Int32, phase: CGScrollPhase?,
                             momentum: CGMomentumScrollPhase = .none, x: Int32 = 0,
-                            flags: CGEventFlags = []) async throws {
+                            flags: CGEventFlags = [], precise: Bool = true) async throws {
         if !window.isKeyWindow && NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) {
             try await focusReplayWindow(window)
         }
         // A window-addressed AppKit event supplies the native window identity.
-        // Reuse its CGEvent envelope to enqueue a real phased pixel scroll.
+        // Reuse its CGEvent envelope to enqueue a window-local pixel or line scroll.
         guard let event = NSEvent.mouseEvent(with: .mouseMoved, location: point, modifierFlags: [],
                 timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
                 context: nil, eventNumber: 0, clickCount: 0, pressure: 0)?.cgEvent else {
@@ -307,13 +307,13 @@ private final class WheelSample: NSEvent {
         }
         event.type = .scrollWheel
         event.flags = flags
-        event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        event.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: Int64(y))
-        event.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: Int64(x))
+        event.setIntegerValueField(.scrollWheelEventIsContinuous, value: precise ? 1 : 0)
+        event.setIntegerValueField(precise ? .scrollWheelEventPointDeltaAxis1 : .scrollWheelEventDeltaAxis1, value: Int64(y))
+        event.setIntegerValueField(precise ? .scrollWheelEventPointDeltaAxis2 : .scrollWheelEventDeltaAxis2, value: Int64(x))
         event.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase?.rawValue ?? 0))
         event.setIntegerValueField(.scrollWheelEventMomentumPhase, value: Int64(momentum.rawValue))
         guard let sample = NSEvent(cgEvent: event), sample.window === window, sample.locationInWindow == point,
-              sample.hasPreciseScrollingDeltas else { throw ReplayError("Pixel scroll lost its window target") }
+              sample.hasPreciseScrollingDeltas == precise else { throw ReplayError("Scroll lost its window target or precision") }
         NSApp.postEvent(sample, atStart: false)
         try await Task.sleep(for: .milliseconds(55))
     }
@@ -625,7 +625,7 @@ private final class WheelSample: NSEvent {
         func settle(width: CGFloat, count: Int) async throws {
             let deadline = ContinuousClock.now + .seconds(4)
             while camera.viewport?.width != width || canvas.presentedPlacements.count != count
-                    || canvas.isLayingOut || canvas.layoutSolveCount == previousSolve {
+                    || !canvas.canScroll || canvas.layoutSolveCount == previousSolve {
                 guard ContinuousClock.now < deadline else { throw ReplayError("Fit fixture did not settle at \(width)pt") }
                 try await Task.sleep(for: .milliseconds(25))
             }
@@ -640,7 +640,10 @@ private final class WheelSample: NSEvent {
             let point = CGPoint(x: monitor.configuration.size.width - 8, y: 220)
             guard monitor.handle(WheelSample(window: window, point: monitor.windowPoint(point), x: x, y: y,
                     precise: precise, phase: phase, momentum: momentum)) == nil else {
-                throw ReplayError("Fit fixture wheel missed the canvas")
+                throw ReplayError("Fit fixture wheel missed the canvas: size=\(monitor.configuration.size), "
+                    + "delta=\(x),\(y), phase=\(phase), momentum=\(momentum), enabled=\(monitor.enabled()), "
+                    + "canStart=\(monitor.canStart(at: point)), owner=\(String(describing: monitor.sequence.owner)), "
+                    + "pause=\(canvas.interactionPauseReasons)")
             }
         }
         func checkFit(width: CGFloat) throws {
@@ -730,11 +733,14 @@ private final class WheelSample: NSEvent {
         func logoImage(_ identifier: String) -> NSImageView? {
             descendant(NSImageView.self, in: content) { $0.accessibilityIdentifier() == identifier }
         }
-        func completedEmptyCopy() -> [String] {
-            [workspace.locale.text("没有已完成的会话", "No completed conversations"),
-             workspace.locale.text("双指上滑查看全部会话", "Swipe up with two fingers to show all conversations")]
+        func emptyCopy(_ mode: NativeOverviewStatusFilter) -> [String] {
+            mode == .running
+                ? [workspace.locale.text("没有运行中的会话", "No running conversations"),
+                   workspace.locale.text("下滑查看全部会话", "Scroll down to show all conversations")]
+                : [workspace.locale.text("没有已完成的会话", "No completed conversations"),
+                   workspace.locale.text("上滑查看全部会话", "Scroll up to show all conversations")]
         }
-        func checkCompletedText(in url: URL, expected: [String]) throws -> [String] {
+        func checkStatusText(in url: URL, expected: [String]) throws -> [String] {
             let request = VNRecognizeTextRequest()
             request.recognitionLanguages = workspace.locale == .chinese ? ["zh-Hans", "en-US"] : ["en-US"]
             request.minimumTextHeight = 0.008
@@ -745,7 +751,7 @@ private final class WheelSample: NSEvent {
             }
             let actual = lines.map(normalized)
             guard expected.allSatisfy({ text in actual.contains { $0.contains(normalized(text)) } }) else {
-                throw ReplayError("Missing Completed text in \(url.lastPathComponent): expected=\(expected), found=\(lines)")
+                throw ReplayError("Missing status text in \(url.lastPathComponent): expected=\(expected), found=\(lines)")
             }
             return lines
         }
@@ -783,23 +789,17 @@ private final class WheelSample: NSEvent {
                 completedLogo = logoImage("overview.completed.logo")
             }
             let logoSize = CGSize(width: 156, height: 68)
-            let label = idle?.accessibilityLabel() ?? ""
-            let hint = idle?.accessibilityHelp() ?? ""
             guard (idle != nil) == expectsIdle,
-                  !expectsIdle || (idle?.isAccessibilityElement() == true && idle?.accessibilityRole() == .image && idle?.image != nil
-                    && idle?.bounds.size == logoSize
-                    && label == workspace.locale.text("没有运行中的会话", "No running conversations")
-                    && hint == workspace.locale.text("双指下滑查看全部会话。", "Swipe down with two fingers to show all conversations.")),
                   (completedLogo != nil) == expectsCompletedLogo,
-                  !expectsCompletedLogo || (completedLogo?.isAccessibilityElement() == false
-                    && completedLogo?.image != nil && completedLogo?.bounds.size == logoSize) else {
+                  [idle, completedLogo].compactMap({ $0 }).allSatisfy({
+                      !$0.isAccessibilityElement() && $0.image != nil && $0.bounds.size == logoSize
+                  }) else {
                 if CommandLine.arguments.contains("--capture") {
                     try await capture(window, to: directory.appending(path: "failed-" + name + ".png"))
                 }
-                throw ReplayError("Unexpected logo at \(name): running=\(String(describing: idle?.bounds.size)), completed=\(String(describing: completedLogo?.bounds.size)), \(label) / \(hint)")
+                throw ReplayError("Unexpected logo at \(name): running=\(String(describing: idle?.bounds.size)), completed=\(String(describing: completedLogo?.bounds.size))")
             }
             var sample: [String: Any] = ["step": name, "status": mode.rawValue, "selectedTag": selected, "visibleTags": visibleTags,
-                "idleLabel": label, "idleHint": hint,
                 "agents": agents, "individualReports": documents, "collectionMembers": collected,
                 "mountedCardCount": canvas.mountedCardIDs.count, "noteOpen": presentation.scene.notePanelOpen]
             if let logo = idle ?? completedLogo {
@@ -807,28 +807,47 @@ private final class WheelSample: NSEvent {
             }
             if CommandLine.arguments.contains("--capture") {
                 let url = directory.appending(path: "status-" + name + ".png")
-                if checkCompletedCopy { try await Task.sleep(for: .milliseconds(450)) }
+                if expectsIdle || expectsCompletedLogo || checkCompletedCopy { try await Task.sleep(for: .milliseconds(450)) }
                 try await capture(window, to: url)
-                if checkCompletedCopy {
+                if expectsIdle || expectsCompletedLogo {
+                    sample["emptyText"] = try checkStatusText(in: url, expected: emptyCopy(mode))
+                } else if checkCompletedCopy {
                     let locale = workspace.locale
                     let formattedFinish = Date(timeIntervalSince1970: finishedAt / 1_000)
                         .formatted(.dateTime.year().month(.abbreviated).day().hour().minute().locale(Locale(identifier: locale.rawValue)))
-                    let expectedText = expected.isEmpty
-                        ? completedEmptyCopy()
-                        : ["Delivered", locale.text("仅已完成", "Completed only"),
-                           locale.text("已完成", "Completed") + " · " + formattedFinish]
-                    sample["completedText"] = try checkCompletedText(in: url, expected: expectedText)
+                    let expectedText = ["Delivered", locale.text("仅已完成", "Completed only"),
+                                        locale.text("已完成", "Completed") + " · " + formattedFinish]
+                    sample["completedText"] = try checkStatusText(in: url, expected: expectedText)
                 }
             }
             samples.append(sample)
         }
+        func waitForFilterInput() async throws {
+            let deadline = ContinuousClock.now + .seconds(4)
+            while monitor.swipeActions?.available() != true || monitor.swipeActions?.canFilter() != true {
+                guard ContinuousClock.now < deadline else {
+                    throw ReplayError("Status input did not become available: pause=\(canvas.interactionPauseReasons), "
+                        + "inputReady=\(presentation.scene.inputInteractionReady), key=\(window.isKeyWindow)")
+                }
+                try await Task.sleep(for: .milliseconds(25))
+            }
+        }
         func swipe(_ y: Int32, over location: CGPoint = CGPoint(x: 12, y: 220)) async throws {
+            try await waitForFilterInput()
             let point = monitor.windowPoint(location)
             try await postScroll(window, point, y: y, phase: .began)
             try await postScroll(window, point, y: y * 2, phase: .changed)
             try await postScroll(window, point, y: 0, phase: .ended)
             try await postScroll(window, point, y: y, phase: nil, momentum: .begin)
             try await postScroll(window, point, y: 0, phase: nil, momentum: .end)
+        }
+        func logoPoint(_ identifier: String) throws -> CGPoint {
+            guard let logo = logoImage(identifier) else { throw ReplayError("Missing scroll target " + identifier) }
+            return logo.convert(CGPoint(x: logo.bounds.midX, y: logo.bounds.midY), to: nil)
+        }
+        func wheel(_ y: Int32, over logo: String) async throws {
+            try await waitForFilterInput()
+            try await postScroll(window, logoPoint(logo), y: y, phase: nil, precise: false)
         }
         func updateDelivered(_ status: PublicExecution.Status, revision: Int) async throws {
             let updated = try thread("Delivered", status, revision: revision)
@@ -866,7 +885,9 @@ private final class WheelSample: NSEvent {
             for (scheme, filename) in [(ColorScheme.light, "idle-light"), (.dark, "idle-dark")] {
                 captureScheme = scheme
                 try await Task.sleep(for: .milliseconds(450))
-                try await capture(window, to: directory.appending(path: filename + ".png"))
+                let url = directory.appending(path: filename + ".png")
+                try await capture(window, to: url)
+                _ = try checkStatusText(in: url, expected: emptyCopy(.running))
             }
         }
         try await updateDelivered(.running, revision: 9)
@@ -874,14 +895,14 @@ private final class WheelSample: NSEvent {
         workspace.updateSystemLocale(.english)
         try await updateDelivered(.completed, revision: 10)
         try await check("live-remove", .running, [], selected: "Shipping")
-        try await swipe(-40, over: CGPoint(x: monitor.configuration.size.width / 2, y: monitor.configuration.size.height / 2))
+        try await wheel(-1, over: "overview.idle")
         try await check("tag-restored", .all, ["Delivered"], selected: "Shipping")
         try await swipe(-40)
         try await check("completed-tag", .completed, ["Delivered"], selected: "Shipping", checkCompletedCopy: true)
         try await updateDelivered(.running, revision: 11)
-        try await check("completed-live-remove", .completed, [], selected: "Shipping", checkCompletedCopy: true)
+        try await check("completed-live-remove", .completed, [], selected: "Shipping")
         workspace.updateSystemLocale(.chinese)
-        try await check("completed-empty-zh", .completed, [], selected: "Shipping", checkCompletedCopy: true)
+        try await check("completed-empty-zh", .completed, [], selected: "Shipping")
         if CommandLine.arguments.contains("--capture") {
             defer { captureScheme = nil }
             for (scheme, filename) in [(ColorScheme.light, "completed-empty-light"), (.dark, "completed-empty-dark")] {
@@ -889,15 +910,16 @@ private final class WheelSample: NSEvent {
                 try await Task.sleep(for: .milliseconds(450))
                 let url = directory.appending(path: filename + ".png")
                 try await capture(window, to: url)
-                _ = try checkCompletedText(in: url, expected: completedEmptyCopy())
+                _ = try checkStatusText(in: url, expected: emptyCopy(.completed))
             }
         }
-        guard let completedLogo = logoImage("overview.completed.logo") else { throw ReplayError("Missing Completed swipe target") }
-        let center = CGPoint(x: completedLogo.bounds.midX, y: completedLogo.bounds.midY)
-        try await swipe(40, over: monitor.canvasPoint(completedLogo.convert(center, to: nil)))
+        try await swipe(40, over: monitor.canvasPoint(logoPoint("overview.completed.logo")))
         try await check("back-from-completed-empty", .all, ["Delivered"], selected: "Shipping")
         try await swipe(-40)
         try await check("completed-empty-again", .completed, [], selected: "Shipping")
+        try await wheel(1, over: "overview.completed.logo")
+        try await check("back-from-completed-wheel", .all, ["Delivered"], selected: "Shipping")
+        try await swipe(-40)
         try await updateDelivered(.completed, revision: 12)
         try await check("completed-live-admit", .completed, ["Delivered"], selected: "Shipping", checkCompletedCopy: true)
         try await swipe(40)

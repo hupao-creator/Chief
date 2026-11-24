@@ -3,13 +3,9 @@ import SwiftUI
 
 package struct NativeOverviewIdleMark: NSViewRepresentable {
     private static let size = CGSize(width: 156, height: 68)
-    let label: String?
-    let hint: String?
     let identifier: String
 
-    package init(label: String? = nil, hint: String? = nil, identifier: String = "overview.idle") {
-        self.label = label
-        self.hint = hint
+    package init(identifier: String) {
         self.identifier = identifier
     }
 
@@ -21,8 +17,7 @@ package struct NativeOverviewIdleMark: NSViewRepresentable {
         }
         view.image = image
         view.imageScaling = .scaleProportionallyUpOrDown
-        view.setAccessibilityElement(label != nil)
-        view.setAccessibilityRole(.image)
+        view.setAccessibilityElement(false)
         view.setAccessibilityIdentifier(identifier)
         return view
     }
@@ -34,8 +29,7 @@ package struct NativeOverviewIdleMark: NSViewRepresentable {
     }
 
     package func updateNSView(_ view: NSImageView, context: Context) {
-        view.setAccessibilityLabel(label)
-        view.setAccessibilityHelp(hint)
+        view.setAccessibilityIdentifier(identifier)
     }
 }
 

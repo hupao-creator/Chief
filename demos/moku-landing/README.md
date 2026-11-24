@@ -58,21 +58,17 @@ The replay posts window-addressed, phased pixel scrolls over the background, a c
 The mixed catalog scenario checks mounted cards in all three status filters, both endpoints, individual and collected Super Threads, semantic tag selection with zero matches, and incremental changes to the same execution while filtered. `overview-status.json` records the visible tag identities, selected tag, ordinary cards and report members at each step. Add `--capture` to save the corresponding window images. Physical trackpad delivery and system fullscreen require separate observation.
 
 Use `--status-only` in place of `--note-swipe` to run just the mixed catalog scenario.
-With Shipping selected, the replay reads the idle illustration’s Chinese accessibility
-label and swipe hint, admits a running card, then reads the English label and hint
-after completion. A downward scroll over the illustration restores the tagged card.
-With `--capture`, `idle-light.png` and `idle-dark.png` show the same empty state
-over native window backgrounds in Aqua and Dark Aqua. `status-empty-tag.png`
-captures the ordinary window material.
+With Shipping selected, a catalog update admits and removes a card in each status
+filter. The replay measures the mounted skillet in both empty filters at
+156 × 68 pt and sends window-addressed line-wheel events over both panels.
+It also sends a phased upward swipe over the Completed panel. Both paths
+return to all statuses with Shipping retained.
 
-A catalog update takes the selected tag from filled to empty in Completed.
-An upward scroll over the skillet returns all statuses with the tag retained.
-The replay reenters Completed and admits the card after a new completion.
-It measures the mounted skillet in both empty filters at 156 × 68 pt.
-With `--capture`, the replay recognizes the title and hint, capsule, Agent name
-and completion time in English and Chinese from the window images. It also
-checks the empty text in Aqua and Dark Aqua. These single-window captures do
-not sample desktop wallpapers or the system accessibility tree.
+With `--capture`, the replay recognizes both empty titles and hints and the
+Completed capsule, Agent name and completion time in English and Chinese
+from the window images. It also checks empty text in Aqua and Dark Aqua.
+These single-window captures do not sample desktop wallpapers or the system
+accessibility tree.
 
 The fixture runs without a Runtime connection, so its window shows the sync notice.
 
