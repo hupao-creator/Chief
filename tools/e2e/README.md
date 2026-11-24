@@ -22,7 +22,7 @@ checks the active decorations in the mounted workspace against a fixture Runtime
 
 The [mounted filter replay](../../demos/moku-panel-transition/remaining/README.md)
 checks [folder and tag activity](../../app/macos/Sources/Host/Overview/README.md#tag-activity)
-in a **Completed only** view. The fixture includes a running task in the
+in a **Completed** view. The fixture includes a running task in the
 selected folder and tag. The `tag-activity` and `tag-activity-reduced` cases
 inspect their dot pattern, its animation under each motion setting, and its
 removal when the task completes. The replay captures the production window.
