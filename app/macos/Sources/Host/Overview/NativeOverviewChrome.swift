@@ -150,9 +150,12 @@ public struct NativeOverviewChrome: View {
             .clipShape(Capsule())
             .overlayPreferenceValue(OverviewTagBounds.self) { anchors in
                 GeometryReader { reader in
+                    if selectedTag.isEmpty, let all = anchors["__all__"] {
+                        OverviewSelectionOutline(bounds: reader[all])
+                    }
                     if let scroll = anchors["__scroll__"] {
                         let viewport = reader[scroll]
-                        unreadBadges(presentedFilters, anchors: anchors, reader: reader, viewport: viewport)
+                        directoryDecorations(presentedFilters, anchors: anchors, reader: reader, viewport: viewport)
                         ForEach(presentedFilters) { filter in
                             if let anchor = anchors[filter.id], reader[anchor].intersects(viewport) {
                                 Color.clear.frame(width: 0, height: 0)
@@ -170,15 +173,18 @@ public struct NativeOverviewChrome: View {
             .accessibilityLabel(strings.filter)
     }
 
-    // Draw unread ink after the glass pass and clip scrolled chips at the viewport.
-    private func unreadBadges(_ filters: [NativeOverviewFilter], anchors: [String: Anchor<CGRect>],
-                              reader: GeometryProxy, viewport: CGRect) -> some View {
+    // Draw the selection and unread ink after the glass pass and clip both at the scroll viewport.
+    private func directoryDecorations(_ filters: [NativeOverviewFilter], anchors: [String: Anchor<CGRect>],
+                                      reader: GeometryProxy, viewport: CGRect) -> some View {
         let clip = viewport.insetBy(dx: 0, dy: -4)
         return ZStack(alignment: .topLeading) {
             ForEach(filters) { filter in
                 let count = filter.unreadCount
                 let chip = anchors[filter.id].map { reader[$0] } ?? .zero
                 let visible = count > 0 && !chip.isEmpty
+                if isActive(filter), !chip.isEmpty {
+                    OverviewSelectionOutline(bounds: chip.offsetBy(dx: -clip.minX, dy: -clip.minY))
+                }
                 ZStack {
                     if visible {
                         OverviewTagUnreadBadge(count: count)
@@ -209,12 +215,13 @@ public struct NativeOverviewChrome: View {
                 onTagChange(nil)
             } label: {
                 HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
-                    Text(strings.all).font(NativeTypography.inter(size: OverviewTagMetrics.chipFont, weight: 620))
+                    OverviewTagTitle(title: strings.all)
                 }
                 .padding(.horizontal, OverviewTagMetrics.chipLabelInset)
                 .frame(height: OverviewTagMetrics.chipHeight)
             }
-            .buttonStyle(OverviewTagButtonStyle(active: selectedTag.isEmpty))
+            .buttonStyle(OverviewTagButtonStyle())
+            .overviewTagAnchor("__all__")
             .accessibilityIdentifier("overview-directory-all")
             .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .directory, id: "all", action: { onTagChange(nil) }))
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measuredAllWidth = $0 }
@@ -243,21 +250,23 @@ public struct NativeOverviewChrome: View {
                     onTagChange(filter)
                 } label: {
                     HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
-                        if filter.isDirectory {
-                            OverviewTagPrefix(emoji: nil, selected: active)
-                        } else if let emoji = filter.emoji {
-                            OverviewTagPrefix(emoji: emoji, selected: active)
+                        if filter.isDirectory || filter.emoji != nil {
+                            OverviewTagPrefix(emoji: filter.isDirectory ? nil : filter.emoji)
+                                .background {
+                                    if filter.hasActiveTasks {
+                                        OverviewTagActivityIndicator(diameter: 26)
+                                    }
+                                }
+                        } else if filter.hasActiveTasks {
+                            OverviewTagActivityIndicator(diameter: 26)
                         }
                         OverviewTagTitle(title: !filter.isDirectory && filter.emoji != nil ? filter.tag : filter.displayTag)
-                        if filter.hasActiveTasks {
-                            OverviewTagActivityIndicator(hasActiveTasks: true)
-                        }
                     }
                     .padding(.horizontal, OverviewTagMetrics.chipLabelInset)
                     .frame(height: OverviewTagMetrics.chipHeight)
                     .frame(maxWidth: maximumButtonWidth)
                 }
-                .buttonStyle(OverviewTagButtonStyle(active: active))
+                .buttonStyle(OverviewTagButtonStyle())
                 .glassEffectID(filter.id, in: tagGlass)
                 .glassEffectTransition(.matchedGeometry)
                 .overviewTagAnchor(filter.id)
@@ -333,28 +342,34 @@ struct OverviewTagTitle: View {
             .font(NativeTypography.inter(size: OverviewTagMetrics.chipFont, weight: 620))
             .lineLimit(1)
             .truncationMode(.tail)
+            .modifier(OverviewTagInk())
+    }
+}
+
+// Clear glass can reveal a backdrop of either brightness in either appearance.
+// The contrasting edge belongs only to monochrome ink, including the Any glyph.
+struct OverviewTagInk: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        let edge: Color = scheme == .dark ? .black : .white
+        content
+            .foregroundStyle(.primary)
+            .shadow(color: edge.opacity(0.9), radius: 0.7, y: 0.5)
+            .shadow(color: edge.opacity(0.8), radius: 1)
     }
 }
 
 struct OverviewTagPrefix: View {
     var emoji: String?
-    var selected = false
     var body: some View {
-        ZStack {
-            // Both layers participate in layout even when invisible. Keep the
-            // complete emoji's native bounds so selection cannot resize the chip
-            // or clip wide/combined glyphs to the check's icon-sized square.
-            Group {
-                if let emoji, !emoji.isEmpty {
-                    Text(emoji).font(.system(size: OverviewTagMetrics.folderIcon))
-                        .id(emoji).transition(.opacity)
-                } else {
-                    NativeIcon(name: "Folder", size: OverviewTagMetrics.folderIcon).opacity(0.72)
-                }
+        Group {
+            if let emoji, !emoji.isEmpty {
+                Text(emoji).font(.system(size: OverviewTagMetrics.folderIcon))
+            } else {
+                NativeIcon(name: "Folder", size: OverviewTagMetrics.folderIcon)
+                    .modifier(OverviewTagInk())
             }
-            .opacity(selected ? 0 : 1)
-            NativeIcon(name: "Check", size: OverviewTagMetrics.folderIcon, strokeWidth: 2)
-                .opacity(selected ? 1 : 0)
         }
         .fixedSize()
         .frame(minWidth: OverviewTagMetrics.folderIcon)
@@ -468,20 +483,35 @@ enum OverviewTagMetrics {
 }
 
 struct OverviewTagButtonStyle: ButtonStyle {
-    let active: Bool
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.modifier(OverviewTagGlassSurface(active: active, shape: Capsule()))
+        configuration.label
+            .background {
+                if reduceTransparency { Capsule().fill(Color(white: scheme == .dark ? 0.16 : 0.94)) }
+            }
+            .contentShape(Capsule())
+            .glassEffect(.clear.interactive(), in: Capsule())
     }
 }
 
-/// The `.regular` glass variant draws a system shadow outside its shape. That
-/// shadow is composited by the system outside the SwiftUI view's layer, so a
-/// `clipShape` on the chip (or the bar's capsule clip) cannot trim it. The
-/// chips sit 4pt apart, so the untrimmed shadows overlap into a visible band.
-/// Use the `.clear` variant, which casts no shadow, and paint the frost in the
-/// view layer: a material fill follows the shape and stays clipped, while the
-/// tint and `.interactive()` response still come from the glass.
-private struct OverviewTagGlassSurface<S: Shape>: ViewModifier {
+/// GlassEffectContainer composites its surfaces above their contents. Draw
+/// the selected chip's outline in the container overlay at its presented bounds.
+struct OverviewSelectionOutline: View {
+    let bounds: CGRect
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        Capsule().strokeBorder(NativePalette.overview.accent.swiftUI, lineWidth: contrast == .increased ? 3 : 2)
+            .frame(width: bounds.width, height: bounds.height)
+            .position(x: bounds.midX, y: bounds.midY)
+            .allowsHitTesting(false).accessibilityHidden(true)
+    }
+}
+
+/// Settings and restart keep a frosted face beneath their interactive glass.
+private struct OverviewActionGlassSurface<S: Shape>: ViewModifier {
     let active: Bool
     let shape: S
     @Environment(\.colorScheme) private var scheme
@@ -524,7 +554,7 @@ private struct OverviewChromeIconBody: View {
     var settingsAnchor: OverviewSettingsAnchor?
     var onSettingsFrameChange: ((CGRect?) -> Void)?
     var body: some View {
-        OverviewTagButtonStyle(active: active).makeBody(configuration: configuration)
+        configuration.label.modifier(OverviewActionGlassSurface(active: active, shape: Capsule()))
             .background {
                 if let settingsAnchor {
                     OverviewSettingsFrameReader(anchor: settingsAnchor, onChange: onSettingsFrameChange)

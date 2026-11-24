@@ -241,9 +241,10 @@ and more than 1.5 times its horizontal travel. The initial pointer location in
 the Overview window chooses the column. On the left, a swipe steps among the
 current directory's visible tags, including its unrestricted first choice. On
 the right, it steps among Running, All (initial) and Completed. A physical up
-swipe selects the preceding choice and down selects the next, under either
-Natural Scrolling setting. The gesture stops at either end. Crossing the middle
-or receiving momentum cannot advance the other column. On the left with no
+swipe advances to the next choice below. A down swipe selects the preceding
+choice above. From All, up selects Completed and down selects Running under
+either Natural Scrolling setting. The gesture stops at either end. Crossing the
+middle or receiving momentum cannot advance the other column. On the left with no
 visible tags, a vertical swipe leaves both selections alone.
 
 The background, cards, carousel cover and filter controls accept these gestures.
@@ -255,9 +256,9 @@ interventions, onboarding, Settings, readers and collection panels keep their in
 Status filters apply to the selected tag's eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and visible interruptions with no ongoing work appear only in All. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
 
 The empty state names the current status and gives its right-half scroll
-direction. A vertical line-wheel event on the right returns from an empty
-Running or Completed view to All while keeping the tag. The left half preserves
-the selected status. The selected right-hand capsule stays highlighted when the
+direction. Turning the wheel up on the right returns from empty Running to
+All. Turning it down there returns from empty Completed to All. Both actions
+keep the selected tag. The left half preserves the selected status. The selected right-hand capsule stays highlighted when the
 card area is empty. The [mounted status replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
 checks empty and populated filter combinations with trackpad and wheel events.
 
@@ -316,11 +317,24 @@ selection while that directory exists. Removing the selected scope returns to
 global All. A change in status-filtered results alone keeps both selections.
 
 The left and right Liquid Glass columns sit at the window's edges, each group
-vertically centered. The selected option in each column shows a checkmark
-and accent tint. Each capsule exposes its selected state to accessibility. Full tag names remain available to accessibility when the visible label
-truncates. Member counts, activity and unread counts have distinct meanings.
-Member counts are available in tag accessibility values. Unread counts appear
-on their own folder or semantic tag.
+vertically centered. Compact controls are 42pt circles. The left controls show
+the semantic emoji, 🏷️ for a tag without an emoji, or an asterisk for Any tag. Hover expands that button inward to
+show its title. Selecting another tag shows its title for five seconds.
+A subsequent selection starts a fresh five-second interval for the latest
+choice. A hovered tag keeps its title until pointer exit, including after the
+selection interval expires.
+
+The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
+(Completed only). Hover help gives the localized status name. All, directory,
+tag and status controls apply native `.clear.interactive()` Liquid Glass
+directly to their capsule. The backdrop is unfilled and the glass is untinted.
+The folder icon, asterisk and text use a contrasting edge so they stay legible over
+light or dark content. Reduce Transparency uses an opaque fill. The selected control draws a 2pt
+inset accent border above its surface (3pt with Increased Contrast). Folder
+icons and emoji stay visible. Accessibility exposes the full name and selected
+state even when the visible title is hidden or
+truncated. Member counts are available in tag accessibility values. Unread
+counts appear on their own folder or semantic tag.
 
 [NativeOverviewChrome](NativeOverviewChrome.swift) keeps All pinned beside
 a horizontally scrollable directory row. The centered bar leaves space for the
@@ -335,21 +349,28 @@ layout or 2pt below the bar in the two-row layout. See the
 
 ## Tag activity
 
-Directory and semantic tag chips append an 11pt native status ring only when
-their existing browsing membership contains a Thread whose public
-`isExecutionActive` is true (running or waiting for user). Inactive tags omit both
-the ring and its adjacent HStack spacing. Background work alone does not redefine active. Selection tint, task counts,
-membership, ordering and Runtime filter context remain independent.
-Archive/visibility and Report-coverage exclusions come from the
-same membership used to browse each tag; a Report does not itself become an active
-Agent Thread. A changed-ID activity cache refreshes these booleans when active
-participation changes, without rebuilding membership or reacting to every streamed
-payload. Membership changes also refresh the markers, including the existing lazy
-All membership for its accessibility value. The All chip has no visible activity
-ring. Semantic tags use the same indicator as directory tags. Native window
-visibility remains owned by the production spinner. Tooltips and
-accessibility values announce active presence in the selected UI language. The
-shared slot is implemented in [NativeOverviewTagActivity](NativeOverviewTagActivity.swift).
+Directory and semantic tag chips show a diagonal sweep across a field of tiny
+dots when their browsing membership contains a Thread whose public
+`isExecutionActive` is true (running or waiting for user). Background work
+alone does not qualify. The selection border and unread count remain visible
+independently of activity.
+
+A transparent 26pt disk sits behind the folder icon in the top bar. A 36pt
+disk sits behind the individual semantic tag’s emoji on the left. Core
+Animation sweeps the Overview accent across fixed perforations in the same
+pattern as the running Agent badge. The icon and emoji stay still, including
+while a tag title is expanded. Reduce Motion holds a single lit diagonal.
+Hiding the workspace, scrolling the chip out of view, hiding or occluding the
+window, or detaching the view stops the sweep.
+
+The indicator follows the same archive, visibility and Report-coverage rules as
+the browsing membership. A Report itself contributes no active Agent Thread.
+A changed-ID cache refreshes activity when execution participation or membership
+changes. Streaming content updates can reuse the cache. Global All and Any tag
+expose active presence in their localized accessibility value. The visible
+indicators belong to directory and individual semantic chips.
+[Tag activity rendering](NativeOverviewTagActivity.swift) and
+[shared badge renderer](../../Shared/PluginUI/Cards/RunningThreadBadge.swift).
 
 ## Verification boundary
 

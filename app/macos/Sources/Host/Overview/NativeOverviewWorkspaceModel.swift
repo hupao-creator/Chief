@@ -45,6 +45,15 @@ public enum NativeOverviewCardSnapshot {
 enum NativeOverviewStatusFilter: String {
     case running, all, completed
 
+    // Moving the content up brings the option below the current one into view.
+    func stepped(swipeUp: Bool) -> Self {
+        switch self {
+        case .running: swipeUp ? .all : .running
+        case .all: swipeUp ? .completed : .running
+        case .completed: swipeUp ? .completed : .all
+        }
+    }
+
     func includes(_ thread: HarnessThread) -> Bool {
         switch self {
         case .all: true
@@ -258,16 +267,11 @@ public final class NativeOverviewWorkspaceModel {
     }
 
     func canReturnToAllWithWheel(up: Bool) -> Bool {
-        content.isEmpty && error == nil && statusFilter == (up ? .completed : .running)
+        content.isEmpty && error == nil && statusFilter.stepped(swipeUp: up) == .all
     }
 
     func stepStatusFilter(up: Bool) {
-        let next: NativeOverviewStatusFilter = switch (statusFilter, up) {
-        case (.completed, true), (.running, false): .all
-        case (_, true): .running
-        case (_, false): .completed
-        }
-        selectStatusFilter(next)
+        selectStatusFilter(statusFilter.stepped(swipeUp: up))
     }
 
     func stepSemanticFilter(up: Bool) {
@@ -275,7 +279,7 @@ public final class NativeOverviewWorkspaceModel {
               let selected = selectedFilter else { return }
         let options = [directory] + directory.children
         guard let index = options.firstIndex(where: { $0.selectionKey == selected.selectionKey }) else { return }
-        let next = index + (up ? -1 : 1)
+        let next = index + (up ? 1 : -1)
         guard options.indices.contains(next) else { return }
         selectTag(options[next])
     }
