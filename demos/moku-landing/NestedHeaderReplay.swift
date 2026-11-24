@@ -14,6 +14,22 @@ private struct ReplayError: Error, CustomStringConvertible {
     init(_ message: String) { description = message }
 }
 
+private extension RuntimeClient {
+    func publishReplayConversation(_ value: JSONValue) throws {
+        let scope = RuntimeContentScope.mokuConversation(before: nil)
+        let readers = contentResources.filter { _, resource in
+            resource.threadID == "moku" && resource.scope == scope && resource.retentionID == nil
+        }
+        guard !readers.isEmpty else { throw ReplayError("No mounted conversation subscription") }
+        // A remounted reader and one already observing must see the same fixture page.
+        try offlineStore.saveContent(value, thread: "moku", scope: scope)
+        for id in readers.keys {
+            contentResources[id]?.value = value
+            emit(.threadContent(subscriptionId: id, state: .ready(value)))
+        }
+    }
+}
+
 // Deliver a window-local wheel sample directly to the mounted event monitor.
 private final class WheelSample: NSEvent {
     let target: NSWindow
@@ -435,13 +451,6 @@ private final class WheelSample: NSEvent {
         } + [row(31, Array(repeating: paragraph, count: 15).joined(separator: "\n") + "\n" + ending)]
         let page = JSONValue.object(["messages": .array(rows)])
         try cache.saveContent(page, thread: "moku", scope: scope)
-        func subscription() async throws -> String {
-            let resources = await client.contentResources
-            guard let resource = resources.first(where: { $0.value.threadID == "moku" && $0.value.scope == scope }) else {
-                throw ReplayError("No conversation subscription")
-            }
-            return resource.key
-        }
         func barPoint() -> CGPoint {
             let frame = scene.capsuleFrame
             let x = scene.inputOpen ? frame.minX + 32 : frame.midX
@@ -460,40 +469,46 @@ private final class WheelSample: NSEvent {
         }
         var samples = [[String: Any]]()
         var failures = [String]()
-        func checkBottom(_ name: String) async throws -> NSScrollView {
+        struct CapturedViewport {
+            let visit: String
+            let gap: CGFloat
+            let horizontalOffset: CGFloat
+            let clip: CGRect
+            let windowSize: CGSize
+        }
+        var viewports: [CapturedViewport] = []
+        func captureViewport(_ name: String) async throws -> NSScrollView {
             let frame = scene.capsuleFrame
             let point = monitor.windowPoint(CGPoint(x: frame.midX, y: frame.midY))
             let timeline = try await conversationScroller(in: content, at: point)
-            let gap = bottomGap(timeline)
+            let clip = timeline.contentView
+            let viewport = CapturedViewport(visit: name, gap: bottomGap(timeline), horizontalOffset: clip.bounds.minX,
+                clip: clip.convert(clip.bounds, to: nil), windowSize: window.frame.size)
             let png = directory.appending(path: "conversation-\(name).png")
             try await capture(window, to: png)
-            let last = try recognizedLines(in: png, languages: ["en-US"]).first { $0.text.contains(ending) }
-            let clip = window.convertToScreen(timeline.contentView.convert(timeline.contentView.bounds, to: nil))
-            let lastFrame = last.map { CGRect(x: window.frame.minX + $0.frame.minX * window.frame.width,
-                y: window.frame.minY + $0.frame.minY * window.frame.height,
-                width: $0.frame.width * window.frame.width, height: $0.frame.height * window.frame.height) }
-            let visible = lastFrame.map { clip.insetBy(dx: -2, dy: -2).contains($0) } ?? false
-            samples.append(["visit": name, "bottomGap": gap, "lastLineInViewport": visible])
-            if abs(gap) >= 2 || !visible || timeline.contentView.bounds.minX >= 1 {
-                failures.append("\(name): gap=\(gap), lastLine=\(String(describing: lastFrame)), clip=\(clip)")
-            }
+            guard timeline.window === window else { throw ReplayError("Conversation scroller detached during capture: \(name)") }
+            viewports.append(viewport)
             return timeline
         }
         let outside = monitor.windowPoint(CGPoint(x: 100, y: 200))
+        func dismiss() async throws {
+            try await postClick(window, at: outside)
+            try await Task.sleep(for: .milliseconds(650))
+            guard !scene.conversationOpen, !scene.inputOpen else { throw ReplayError("Outside click did not dismiss Chief Bar") }
+        }
         try await recordWindow(window, to: directory.appending(path: "conversation-opening.mp4")) {
             try await Task.sleep(for: .milliseconds(250))
             try await open()
             try await Task.sleep(for: .milliseconds(550))
-            let timeline = try await checkBottom("first")
+            let timeline = try await captureViewport("first")
             let clip = timeline.contentView
             let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
             let initial = clip.bounds.minY
             try await postScroll(window, point, y: 240, phase: .began)
             try await postScroll(window, point, y: 0, phase: .ended)
             let reading = clip.bounds.minY
-            let id = try await subscription()
             let revised = JSONValue.object(["messages": .array(rows + [row(32, "A newer message arrived.")])])
-            await client.emit(.threadContent(subscriptionId: id, state: .ready(revised)))
+            try await client.publishReplayConversation(revised)
             try await Task.sleep(for: .milliseconds(200))
             let revisedY = clip.bounds.minY
             window.setContentSize(.init(width: content.bounds.width, height: 660))
@@ -503,30 +518,41 @@ private final class WheelSample: NSEvent {
             if reading >= initial - 40 || abs(revisedY - reading) >= 2 || abs(resized - reading) >= 2 {
                 failures.append("Reading moved from \(initial) to \(reading) to \(revisedY) to \(resized)")
             }
-            try await postClick(window, at: outside)
-            try await Task.sleep(for: .milliseconds(650))
-            guard !scene.conversationOpen else { throw ReplayError("Outside click did not dismiss Chief Bar") }
+            try await dismiss()
 
             // Start the mounted reader with no cached messages and deliver
             // its first nonempty page after the shell finishes expanding.
             try cache.saveContent(.object(["messages": .array([])]), thread: "moku", scope: scope)
             try await open()
             try await Task.sleep(for: .milliseconds(550))
-            await client.emit(.threadContent(subscriptionId: try await subscription(), state: .ready(page)))
+            try await client.publishReplayConversation(page)
             try await Task.sleep(for: .milliseconds(550))
-            _ = try await checkBottom("delayed-reopen")
-            try await postClick(window, at: outside)
-            try await Task.sleep(for: .milliseconds(650))
+            _ = try await captureViewport("delayed-reopen")
+            try await dismiss()
 
             try cache.saveContent(page, thread: "moku", scope: scope)
             try await postClick(window, at: barPoint())
             try await Task.sleep(for: .milliseconds(550))
             guard scene.inputOpen, !scene.conversationOpen else { throw ReplayError("Click did not open compact Compose") }
             try await open()
-            try await Task.sleep(for: .milliseconds(550))
-            _ = try await checkBottom("from-compose")
-            try await postClick(window, at: outside)
-            try await Task.sleep(for: .milliseconds(650))
+            // Also dismiss after the editor and its expression have settled.
+            try await Task.sleep(for: .seconds(2))
+            _ = try await captureViewport("from-compose")
+            try await dismiss()
+        }
+        // Vision can occupy the main thread for an entire fold. Analyze the
+        // captured windows once recording and input delivery have finished.
+        for viewport in viewports {
+            let png = directory.appending(path: "conversation-\(viewport.visit).png")
+            let last = try recognizedLines(in: png, languages: ["en-US"]).first { $0.text.contains(ending) }
+            let size = viewport.windowSize
+            let lastFrame = last.map { CGRect(x: $0.frame.minX * size.width, y: $0.frame.minY * size.height,
+                width: $0.frame.width * size.width, height: $0.frame.height * size.height) }
+            let visible = lastFrame.map { viewport.clip.insetBy(dx: -2, dy: -2).contains($0) } ?? false
+            samples.append(["visit": viewport.visit, "bottomGap": viewport.gap, "lastLineInViewport": visible])
+            if abs(viewport.gap) >= 2 || !visible || viewport.horizontalOffset >= 1 {
+                failures.append("\(viewport.visit): gap=\(viewport.gap), lastLine=\(String(describing: lastFrame)), clip=\(viewport.clip)")
+            }
         }
         try JSONSerialization.data(withJSONObject: ["samples": samples, "failures": failures], options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "conversation-opening.json"))
