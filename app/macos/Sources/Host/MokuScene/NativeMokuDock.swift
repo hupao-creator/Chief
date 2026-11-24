@@ -3,6 +3,8 @@ import ChiefPluginAPI
 import ChiefPluginUI
 import SwiftUI
 
+private let composerRevealStart: CGFloat = 0.9
+
 /// The editor uses its final layout throughout the morph. Reveal it in the
 /// last part of the shell's own travel, once the identity has cleared the row.
 private struct ComposerInk: ViewModifier, @preconcurrency Animatable {
@@ -15,10 +17,42 @@ private struct ComposerInk: ViewModifier, @preconcurrency Animatable {
         set { expansion = newValue }
     }
     func body(content: Content) -> some View {
-        let opacity = min(1, max(0, (expansion - 0.9) / 0.1))
+        let opacity = min(1, max(0, (expansion - composerRevealStart) / (1 - composerRevealStart)))
         content.opacity(opacity)
             .onChange(of: opacity >= 0.1 ? autofocusGeneration : nil, initial: true) { _, generation in
                 if let generation { requestFocus(generation) }
+            }
+    }
+}
+
+/// The first transcript layout can occupy the fast part of the shell
+/// animation. Admit it with editor ink, once the leading eye seat is clear.
+/// Keep that admission for the visit so resizing preserves the reader.
+private struct ConversationViewport: View {
+    let presentation: NativeMokuWorkspacePresentation
+    let owner: JSONText
+    let size: CGSize
+    let rowHeight: CGFloat
+    @State private var admitted = false
+
+    var body: some View {
+        Color.clear
+            .allowsHitTesting(false)
+            .onGeometryChange(for: Bool.self) { shell in
+                let idleWidth = min(size.width, NativeMokuCapsuleLayout.idleSize.width)
+                return shell.size.width >= idleWidth + (size.width - idleWidth) * composerRevealStart
+            } action: { ready in
+                if ready { admitted = true }
+            }
+            .overlay(alignment: .bottom) {
+                if admitted {
+                    NativeMokuConversation(presentation: presentation, owner: owner)
+                        .frame(width: size.width, height: size.height)
+                        .transaction(value: size) { $0.animation = nil }
+                        .geometryGroup()
+                        .offset(y: -rowHeight)
+                        .transition(.identity)
+                }
             }
     }
 }
@@ -840,7 +874,9 @@ public struct NativeMokuDock: View {
                          noteHeight: CGFloat, noteAvailableHeight: CGFloat, decorationPadding: CGFloat, settingsSize: CGSize,
                          holdsMark: Bool) -> some View {
         let composerStop = ordinaryOverviewDock && composerVisible
-        let retiringOverviewInk = ordinaryOverviewDock && inputPresent && state.inputLeaving && state.inputInteractionReady
+        // The conversation retires both message and editor ink before the eyes
+        // cross the row. Keep the native draft mounted through its normal fold.
+        let retiringOverviewInk = ordinaryOverviewDock && inputPresent && state.retiringInput == .composer && state.inputInteractionReady
         let followsEditor = (inputPresent && displayedMessage == nil) || composerSeatHeld || continuationPresenting
         // Settings always settles the composer expansion at 1 and retires the
         // row above the face, so the seat it lands on is known without reading
@@ -910,13 +946,19 @@ public struct NativeMokuDock: View {
         .onChange(of: completionVisible) { _, visible in
             if !visible { state.dockMentionHitRect = nil }
         }
-        .overlay(alignment: .top) {
-            if conversationVisible, let presentation, let owner = presentation.workspace.catalog.moku?.id {
-                NativeMokuConversation(presentation: presentation, owner: owner)
-                    .id(owner)
-                    .frame(width: width, height: max(0, surface.height - rowHeight))
-                    .transition(.opacity)
+        .overlay(alignment: .bottom) {
+            ZStack {
+                if conversationVisible, let presentation, let owner = presentation.workspace.catalog.moku?.id {
+                    let viewport = CGSize(width: width, height: max(0, surface.height - rowHeight))
+                    ConversationViewport(presentation: presentation, owner: owner, size: viewport, rowHeight: rowHeight)
+                        .id(owner)
+                        .transition(.identity)
+                }
             }
+            // Hide any outgoing layout before the folding shell can carry it
+            // across the input row, including when a Talk occupies that row.
+            .opacity(conversationVisible ? 1 : 0)
+            .animation(nil, value: conversationVisible)
         }
         .overlay(alignment: .top) {
             if completionVisible, let agentMentions {
@@ -1011,11 +1053,9 @@ public struct NativeMokuDock: View {
                             .animation(reduceMotion ? nil : .mokuInk)))
             }
         }
-        .overlay(alignment: .topLeading) {
-            // One numeric seat travels with the same transaction as the shell.
-            // Switching between an intrinsic-height row and a fixed-height row
-            // cannot interpolate, and a delayed expansion fraction starts the
-            // eyes a layout pass after the glass has already changed size.
+        .overlay(alignment: .bottomLeading) {
+            // The resident travels with the bottom row. Its local offset must
+            // stay independent of the height of the shell opening above it.
             let generation = state.composerGeneration
             let returning = state.readingPanelReturning
             let showsHarness = threadID != nil && !state.settingsOpen && !returning
@@ -1030,7 +1070,9 @@ public struct NativeMokuDock: View {
                 .onChange(of: returning) { _, returning in
                     if returning, threadID != nil { state.retireInputIdentity(generation: generation) }
                 }
-                .position(x: faceCenter.x + faceShift.width, y: faceCenter.y + faceShift.height)
+                .geometryGroup()
+                .offset(x: faceCenter.x + faceShift.width - NativeMokuFaceLayout.seat.width / 2,
+                        y: faceCenter.y + faceShift.height - surface.height + NativeMokuFaceLayout.seat.height / 2)
         }
         .overlay(alignment: .bottomTrailing) {
             // Keep the footer layout alive across insertion and retirement.

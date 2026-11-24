@@ -470,6 +470,13 @@ The [Note link replay](../../demos/moku-landing/README.md#chief-note-execution-l
 and window frame recordings supply separate evidence.
 [Note and link behavior](../../app/macos/Sources/Host/MokuScene/README.md)
 
+### Chief Bar opening
+
+The [mounted opening replay](../../demos/moku-landing/README.md#chief-bar-opening)
+checks the latest message’s visible end and retained reading position through
+the production scroll route. Its window movie supports frame-by-frame review of
+the eyes, composer and transcript during expansion and dismissal.
+
 ### Chief navigation
 
 Start with a private profile containing a Chief conversation and a completed task. A saved selection for the current Chief or a retained Chief archive must open Overview. Open Chief Note and inspect its accessible controls and the View menu. Compose and Chief Note have their own shortcuts. A plain Command-B leaves the current route in place. Check that the former history action is rejected, then open an ordinary task and a Super Thread from Overview.

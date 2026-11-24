@@ -9,7 +9,8 @@ struct NativeMokuConversationTimeline: View {
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var viewport
-    @State private var position = ScrollPosition()
+    // Target the inset below the last bubble when the timeline first mounts.
+    @State private var position = ScrollPosition(id: TimelineEnd.bottom, anchor: .bottomLeading)
     @State private var atBottom = true
     @State private var revealed: CGFloat = 0
 
@@ -17,6 +18,7 @@ struct NativeMokuConversationTimeline: View {
         let height: CGFloat
         let nearEnd: Bool
     }
+    private enum TimelineEnd: Hashable { case bottom }
 
     private let timeColumn: CGFloat = 78
     private var chinese: Bool { locale.language.languageCode?.identifier == "zh" }
@@ -68,9 +70,11 @@ struct NativeMokuConversationTimeline: View {
                             pageButton(chinese ? "较新消息" : "Newer messages", width: width, action: showNewer)
                                 .accessibilityIdentifier("moku-conversation-newer")
                         }
+                        Color.clear.frame(height: 12).id(TimelineEnd.bottom)
                     }
+                    .scrollTargetLayout()
                     .frame(width: width + timeColumn, alignment: .leading)
-                    .padding(.vertical, 12)
+                    .padding(.top, 12)
                     .reportMokuConversationHeight()
                 }
                 .scrollIndicators(.hidden, axes: .horizontal)

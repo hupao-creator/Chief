@@ -147,6 +147,33 @@ python3 demos/moku-landing/verify_header.py --completed-card --output .build/com
 
 A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas selects the Running tag, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
 
+### Chief Bar opening
+
+```sh
+xcrun swift build --package-path app/macos
+python3 demos/moku-landing/verify_header.py --conversation-opening --output .build/chief-bar-opening
+```
+
+The replay opens the production Chief Bar with phased AppKit scroll events
+and momentum. It checks the first visit with cached history, reopening after
+the first nonempty page arrives late, and swiping from the compact editor.
+The last bubble is longer than the viewport. The replay measures the native
+clip against the document bottom and saves its window-relative bounds with
+each capture. Vision checks the final line against those bounds after recording,
+outside the input and animation sequence. A new contact scrolls back, then a
+content revision and window shrink must preserve the native vertical offset.
+
+`conversation-opening.mp4` records the opening and outside-click dismissal.
+The compact-editor visit includes a two-second reading pause before dismissal.
+Inspect consecutive frames for both eyes staying inside the bottom row as they
+blink and travel between the center and editor seats. The replay also interrupts an opening with an outside click and swipes again
+as soon as the editor finishes folding. Check intermediate eye positions and a clear composer on
+each visit. The reopened viewport must show the final line.
+`source.json` binds the run to the source and `conversation-opening.json`
+records the scroll measurements. The fixture uses cached pages and delivers
+deterministic revisions through the client event stream. The event and
+recording checks cover the mounted workspace on macOS.
+
 The header replay mounts the 46.2-point production filters at the top of a
 real window in Aqua and Dark Aqua. The initial selection is the Chief folder
 with an unread count of 8. Beside it is the Inbox tag **🔵 Blue** with an

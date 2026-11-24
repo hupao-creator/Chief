@@ -44,7 +44,9 @@ import ChiefPluginUI
     public var inputInteractionReady: Bool {
         inputAdmissionReady && inputIdentityReady && (!readingPanelVisible || readingPanelMotion?.active != true)
     }
-    public private(set) var inputLeaving = false
+    enum RetiringInput { case composer, conversation }
+    private(set) var retiringInput: RetiringInput?
+    public var inputLeaving: Bool { retiringInput != nil }
     public private(set) var composerGeneration = UUID() {
         didSet { cancelComposerFocusRequest() }
     }
@@ -218,7 +220,7 @@ import ChiefPluginUI
                 // may cross the primary entrance into a replacement visit.
                 composerGeneration = UUID()
                 capsuleTask?.cancel(); capsuleTask = nil
-                inputOpen = false; inputLeaving = false; capsuleSealed = false
+                inputOpen = false; retiringInput = nil; capsuleSealed = false
             }
         }
         guard composerIdentity != identity else { return }
@@ -226,7 +228,7 @@ import ChiefPluginUI
         composerAutofocus = autofocus
         composerGeneration = UUID()
         capsuleTask?.cancel(); capsuleTask = nil
-        inputOpen = retainOpenInput; inputLeaving = false; capsuleSealed = false
+        inputOpen = retainOpenInput; retiringInput = nil; capsuleSealed = false
         retainedSelection = nil; retainedSelectionText = nil
         retainDraft(draft)
         setInputOpen(opensInput)
@@ -256,8 +258,8 @@ import ChiefPluginUI
         if openingEditor { focusOpenComposer(bufferOpeningKeys: true) }
     }
     func closeConversation() {
-        conversationOpen = false
         if !landingActive { setInputOpen(false) }
+        conversationOpen = false
     }
     public func setInputOpen(_ open: Bool) {
         guard !open || inputInteractionReady else { return }
@@ -271,14 +273,15 @@ import ChiefPluginUI
         if open {
             talkPresentation.setPresented(false)
             closeNotePanel()
-            inputLeaving = false; capsuleSealed = false; inputOpen = true
+            retiringInput = nil; capsuleSealed = false; inputOpen = true
         }
         else if inputOpen {
-            inputOpen = false; inputLeaving = true
+            retiringInput = conversationOpen ? .conversation : .composer
+            inputOpen = false
             capsuleTask = Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(420))
                 guard !Task.isCancelled, let self else { return }
-                self.inputLeaving = false
+                self.retiringInput = nil
             }
         }
         command?(.position)
