@@ -17,13 +17,16 @@ class Peer(Provider):
         self.holds, self.input_cancellations = [], []
         self.collection_projects = []
         self.overview_project = None
+        self.overview_project_count = 0
         self.tagged_ids = set()
+        self.tag_names = {}
         self.report_sources = {}
         self.request_context = threading.local()
         super().__init__(directory, 1)
 
-    def prepare_overview(self):
-        self.count = 14
+    def prepare_overview(self, count=14, project_count=12):
+        self.count = count
+        self.overview_project_count = project_count
         self.overview_project = self.directory / "Review"
         self.overview_project.mkdir()
 
@@ -38,7 +41,7 @@ class Peer(Provider):
         if self.collection_projects:
             library, studio = self.collection_projects
             args["cwd"] = str(library if index <= 9 else studio)
-        elif self.overview_project and index <= 12:
+        elif self.overview_project and index <= self.overview_project_count:
             args["cwd"] = str(self.overview_project)
         return args
 
@@ -60,11 +63,14 @@ class Peer(Provider):
             pending = sorted(self.tagged_ids.intersection(status["unassignedThreadIds"]))
             if not pending:
                 return self.response_events("Classification complete.", None)
-            if not status["tags"]:
-                name, args = "create_tag", {"name": "Review work", "emoji": "📌"}
+            label = self.tag_names.get(pending[0], "Review work")
+            tag = next((tag for tag in status["tags"] if tag["name"] == label), None)
+            if tag is None:
+                name, args = "create_tag", {"name": label, "emoji": "📌"}
             else:
                 name, args = "assign_threads", {"assignments": [
-                    {"threadId": ident, "tagId": status["tags"][0]["id"]} for ident in pending]}
+                    {"threadId": ident, "tagId": tag["id"]} for ident in pending
+                    if self.tag_names.get(ident, "Review work") == label]}
             args["expectedRevision"] = status["revision"]
         tool, namespace = find_tool(tools, name)
         return self.response_events("", {"type": "function_call", "call_id": "e2e_tag_" + uuid.uuid4().hex,

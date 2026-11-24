@@ -16,11 +16,12 @@ public struct NativeRuntimeSurface<Content: View>: View {
 
     public var body: some View {
         ZStack {
-            if model.hasInitialContent {
+            if model.hasInitialContent && !model.waitingForInitialCatalog {
                 content
             }
             else {
-                RuntimeStartupScreen(state: model.connection, error: model.connectionError ?? "",
+                RuntimeStartupScreen(state: model.waitingForInitialCatalog ? .connecting : model.connection,
+                    error: model.connectionError ?? "",
                     reconnecting: model.reconnecting, locale: model.locale,
                     onReconnect: { Task { await model.retry() } },
                     announcementsEnabled: !model.settingsOpen)
@@ -38,7 +39,7 @@ public struct NativeRuntimeConnectionNotice: View {
     @Bindable private var model: NativeWorkspaceModel
     public init(model: NativeWorkspaceModel) { self.model = model }
     public var body: some View {
-        if model.hasInitialContent {
+        if model.hasInitialContent && !model.waitingForInitialCatalog {
             RuntimeConnectionNotice(state: model.connection, synchronizing: model.synchronizing,
                 error: model.connectionError ?? "", reconnecting: model.reconnecting,
                 locale: model.locale, onReconnect: { Task { await model.retry() } },

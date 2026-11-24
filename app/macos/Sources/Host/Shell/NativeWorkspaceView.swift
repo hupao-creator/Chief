@@ -104,7 +104,7 @@ public final class NativeWorkspacePresentation {
         publishPresence()
     }
     @ObservationIgnored private var started = false
-    public var interactionReady: Bool { started && !workspace.stopping }
+    public var interactionReady: Bool { started && !workspace.stopping && !workspace.waitingForInitialCatalog }
     @ObservationIgnored private var restored = false
     @ObservationIgnored private var snapshotAuthority: UUID?
     @ObservationIgnored private var releaseTask: Task<Void, Never>?

@@ -71,6 +71,7 @@ contains every requested ID, including blocked and unreached entries.
 | `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Page changes take under 1,000ms each. The final Dock handoff takes under 1,560ms. | Fresh profile, authorized system AX driver, exclusive desktop. Each press verifies the private runtime PID/epoch, target button and focused test window. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
 | `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve tagged tasks in the selected folder in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
 | `E2E-OVERVIEW-004` | Select Running in the default folder. Switch spaces, select Completed and return to the folder. | Tagged project and Inbox tasks plus an untagged Inbox task in the supported suite, or tagged reports and tasks across two folders in the Collection suite. `overview-filters.json` records the Runtime scope and source references alongside the mounted pages. | Checks the tagged membership, empty Running view and status reset on navigation. The [window replay](../../demos/moku-landing/README.md) also checks live removal and assignment of the last and first tag. |
+| `E2E-OVERVIEW-005` | Launch, select filters through mounted controls, and relaunch the same isolated profile. | Three tagged project tasks with distinct tags and one tagged Inbox task. | Checks the first top-row default, folder entry defaults, directory child and non-first Inbox tag restoration, empty-catalog preference retention, late tags and unavailable-space fallback. |
 | `E2E-CHIEF-001` | Open Note and switch to Compose. The legacy command is rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
 | `E2E-SETTINGS-001` | Open Settings with Chief Agent selected and only Chief Agent, Auto-Categorization and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief Agent and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
@@ -677,6 +678,23 @@ the matching directory inode and owner. It coordinates cooperating runners, not 
 manual shared-desktop scheduling remains necessary. The App's existing explicit
 `--benchmark-scenario overview` prepares onboarding in the fresh profile; it
 does not certify first-run onboarding.
+
+### Overview space restoration
+
+Run the [desktop command](#build-and-run) with `--suite overview-spaces`. This
+suite starts the normal application with its private profile and automation
+socket. A prepared Runtime supplies completed tasks, with no desktop
+preferences at the first launch. Mounted filter buttons select the left tag,
+top folder and Inbox tag. The folder button exercises first entry, restoration,
+invalid-child fallback and return to the entire folder. Runtime archive and
+classification operations vary availability without editing desktop
+preferences. The final relaunch leaves an older saved catalog on disk and
+checks selection against the Runtime. The first observable
+populated Overview must already select the expected filter and project its
+exact card IDs. The settled state must also mount those cards and the selected
+control. `overview-spaces.json` records process IDs, preference values and
+snapshots for each stage. This semantic replay does not measure pixels or
+system pointer input.
 
 ### Collection member opening
 

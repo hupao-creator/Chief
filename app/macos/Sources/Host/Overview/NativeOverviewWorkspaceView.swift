@@ -150,7 +150,7 @@ public struct NativeOverviewWorkspaceView: View {
                     selectedTag: model.selectedTag,
                     selectedScope: model.selectedScope, selectedKind: model.tagSelection?.kind,
                     strings: chromeStrings,
-                    onTagChange: model.selectTag,
+                    onTagChange: model.selectTopFilter,
                     onSettings: callbacks.onSettings,
                     onRestart: callbacks.onRestart,
                     onSettingsWithOrigin: callbacks.onSettingsWithOrigin,

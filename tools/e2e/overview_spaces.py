@@ -1,0 +1,134 @@
+"""Reopen the normal Chief window against an isolated, populated profile."""
+import json
+
+from adapter import wait_for
+from collection import activate, enable_agent
+from report import save
+
+
+def launch(session, app):
+    socket = session.root / "ui.sock"
+    session.app = session.spawn([app, "--runtime", session.binary, "--data-dir", session.profile,
+                                 "--automation-socket", socket], "app")
+    wait_for(socket.exists, bool, 40)
+    activate(session)
+
+
+def journey(desktop, app):
+    session = desktop.session
+    preferences = session.profile / "desktop-preferences.json"
+    review, plan, ship, inbox = (session.peer.receipts[f"bench_create_{i:02}"]["threadId"] for i in range(1, 5))
+    project = {review, plan, ship}
+    scope = str(session.peer.overview_project.resolve())
+    evidence = {"projectScope": scope, "projectThreads": sorted(project), "inboxThread": inbox, "stages": {}}
+
+    def record(stage, snapshot):
+        evidence["stages"][stage] = {"pid": session.app.pid, "snapshot": snapshot,
+                                    "preference": json.loads(preferences.read_text())["overviewSelection"]}
+        save(session.output / "overview-spaces.json", evidence)
+
+    def capture(stage, scope, kind, expected, *, first=False, tag=None, top_count=None):
+        def ready(state):
+            overview = state["overview"]
+            if state["page"] != "overview" or not overview["filters"]:
+                return False
+            top = overview["filters"]
+            if first:
+                assert top[0]["scope"] == scope and top[0]["kind"] == kind, top
+            candidates = top + [child for folder in top for child in folder["children"]]
+            selected = next(f for f in candidates if f["scope"] == scope and f["kind"] == kind
+                            and (tag is None or f["tag"] == tag))
+            # Compare on the first observable nonempty Overview, before waiting
+            # for the canvas and asynchronous button registrations to settle.
+            assert state["selectedFilterId"] == selected["id"], state
+            assert overview["status"] == "all"
+            assert {card["ref"]["threadId"] for card in overview["cards"]} == expected, overview
+            return (selected["id"] in overview["controls"][kind] and not overview["layingOut"]
+                    and set(overview["mountedCardIds"]) == expected
+                    and (top_count is None or len(top) == top_count))
+
+        snapshot = desktop.stable(ready)
+        record(stage, snapshot)
+        saved = evidence["stages"][stage]["preference"]
+        assert saved["scope"] == scope and saved["kind"] == kind
+        if tag is not None:
+            assert saved["tag"] == tag
+        return snapshot
+
+    def choose(filter):
+        desktop.request({"name": "overview.filters.activate", "group": filter["kind"], "id": filter["id"]})
+
+    def stop():
+        desktop.close()
+        session.stop(session.app, "app")
+        (session.root / "ui.sock").unlink(missing_ok=True)
+
+    def reopen():
+        old_pid = session.app.pid
+        launch(session, app)
+        assert session.app.pid != old_pid
+        desktop.reconnect()
+
+    def archive(thread, archived):
+        session.runtime.invoke("thread:set-archived", [thread, archived])
+
+    initial = capture("firstLaunch", scope, "directory", project, first=True)
+    folder, inbox_tag = initial["overview"]["filters"]
+    assert inbox_tag["scope"] == "inbox" and inbox_tag["kind"] == "semantic"
+    assert folder["children"][0]["tag"] == "Plan work"
+    choose(inbox_tag)
+    capture("inboxFirstEntry", "inbox", "semantic", {inbox}, tag=inbox_tag["tag"])
+    choose(folder)
+    capture("firstFolderEntry", scope, "semantic", {plan}, tag="Plan work")
+    choose(next(tag for tag in folder["children"] if tag["tag"] == "Review work"))
+    capture("leftTag", scope, "semantic", {review}, tag="Review work")
+    stop()
+    reopen()
+    capture("leftTagRelaunch", scope, "semantic", {review}, tag="Review work")
+    choose(folder)
+    capture("folderExpanded", scope, "directory", project)
+    choose(inbox_tag)
+    capture("inbox", "inbox", "semantic", {inbox}, tag=inbox_tag["tag"])
+    choose(folder)
+    capture("folderReentry", scope, "semantic", {review}, tag="Review work")
+    choose(inbox_tag)
+    capture("inboxBeforeRelaunch", "inbox", "semantic", {inbox}, tag=inbox_tag["tag"])
+    stop()
+    reopen()
+    capture("inboxRelaunch", "inbox", "semantic", {inbox}, tag=inbox_tag["tag"])
+    archive(review, True)
+    desktop.stable(lambda state: any(f["id"] == folder["id"] and f["count"] == 2
+                                     for f in state["overview"]["filters"]))
+    choose(folder)
+    capture("unavailableFolderTag", scope, "semantic", {plan}, tag="Plan work")
+    choose(inbox_tag)
+    capture("inboxBeforeEmpty", "inbox", "semantic", {inbox}, tag=inbox_tag["tag"])
+
+    stop()
+    for thread in (plan, ship, inbox):
+        archive(thread, True)
+    reopen()
+    empty = desktop.stable(lambda state: state["runtimeAvailable"] and not state["overview"]["filters"])
+    assert empty["selectedFilterId"] is None and not empty["overview"]["cards"]
+    record("emptyRelaunch", empty)
+    assert evidence["stages"]["emptyRelaunch"]["preference"] == evidence["stages"]["inboxBeforeEmpty"]["preference"]
+    enable_agent(session, "tag", True)
+    archive(inbox, False)
+    capture("tagArrived", "inbox", "semantic", {inbox}, tag=inbox_tag["tag"])
+    for thread in sorted(project):
+        archive(thread, False)
+    wait_for(session.runtime.state, lambda state: project <= {
+        row["id"] for row in state["threads"] if row.get("tags")})
+    enable_agent(session, "tag", False)
+    restored = capture("moreSpacesArrived", "inbox", "semantic", {inbox}, tag=inbox_tag["tag"], top_count=2)
+    assert restored["overview"]["filters"][0]["id"] == folder["id"]
+
+    stop()
+    cached = json.loads((session.profile / "client-reading-cache/state.json").read_text())["value"]
+    assert any(row["id"] == inbox and row.get("tags") and not row.get("archived") for row in cached["threads"])
+    archive(inbox, True)
+    live = session.runtime.state()
+    assert next(row for row in live["threads"] if row["id"] == inbox)["archived"] is True
+    evidence["fallbackCatalog"] = {"cachedRevision": cached["revision"], "runtimeRevision": live["revision"]}
+    reopen()
+    capture("unavailableRelaunch", scope, "directory", project, first=True)

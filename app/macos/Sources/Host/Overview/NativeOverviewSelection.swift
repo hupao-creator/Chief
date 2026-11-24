@@ -4,7 +4,7 @@ import ChiefCore
 import ChiefPluginAPI
 import ChiefPluginUI
 
-public struct NativeOverviewTagSelection: Equatable, Sendable {
+public struct NativeOverviewTagSelection: Codable, Equatable, Sendable {
     public let tag: String
     public let kind: NativeOverviewTagKind
     public let scope: String
@@ -361,11 +361,8 @@ enum NativeOverviewSelection {
         }
     }
 
-    static func resolve(_ selection: NativeOverviewTagSelection?, redirects: JSONValue,
-                        directoryTags: [String]) -> NativeOverviewTagSelection? {
-        guard let selection, let redirects = redirects.objectValue else { return selection }
-        let directory = directoryTags.first { key($0) == key(selection.tag) }
-        if selection.kind == .directory, directory != nil { return selection }
+    static func resolve(_ selection: NativeOverviewTagSelection, redirects: JSONValue) -> NativeOverviewTagSelection? {
+        guard selection.kind == .semantic, let redirects = redirects.objectValue else { return selection }
         var tag = selection.tag
         var seen = Set<String>()
         while true {
@@ -373,11 +370,11 @@ enum NativeOverviewSelection {
             let scopedKey = selection.scope.isEmpty ? tagKey : selection.scope + "\u{0}" + tagKey
             guard let target = redirects[JSONText(scopedKey)] ?? redirects[JSONText(tagKey)] else { break }
             if !seen.insert(scopedKey).inserted { break }
-            if target == .null { return directory.map { .init(tag: $0, kind: .directory, scope: selection.scope) } }
+            if target == .null { return nil }
             guard let name = target.stringValue else { break }
             tag = name
         }
-        return selection.kind == .directory || tag == selection.tag ? selection
+        return tag == selection.tag ? selection
             : .init(tag: tag, kind: selection.kind, scope: selection.scope)
     }
     static func candidates(threads: [HarnessThread], applications: [NativeOverviewApplicationEntry]) -> NativeOverviewCollection {

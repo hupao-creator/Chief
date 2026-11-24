@@ -16,6 +16,9 @@ public final class NativeWorkspaceModel {
     public let timer: NativeMokuTimerController
     public let catalog = NativeWorkspaceCatalog()
     public var hasInitialContent: Bool { hasSnapshot && catalog.hasMoku }
+    var waitingForInitialCatalog: Bool {
+        snapshotAuthority == client.cachedSnapshotAuthority && connectionError == nil
+    }
     private var hasSnapshot = false
     public private(set) var connection: RuntimeConnectionStatus = .connecting
     private(set) var supportsFollowUpRowIdentity = false

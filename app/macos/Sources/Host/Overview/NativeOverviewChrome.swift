@@ -1,7 +1,7 @@
 import ChiefPluginUI
 import SwiftUI
 
-public enum NativeOverviewTagKind: String, Sendable { case directory, semantic }
+public enum NativeOverviewTagKind: String, Codable, Sendable { case directory, semantic }
 
 public struct NativeOverviewFilter: Identifiable, Equatable, Sendable {
     public var tag: String
@@ -19,6 +19,9 @@ public struct NativeOverviewFilter: Identifiable, Equatable, Sendable {
     var semanticEmoji: String { emoji.flatMap { $0.isEmpty ? nil : $0 } ?? "🏷️" }
     // Membership changes counts and selectionKey, not the identity of this control.
     public var id: String { "\(isDirectory ? "directory" : "semantic"):\(scope):\(Self.key(tag))" }
+    var selection: NativeOverviewTagSelection {
+        .init(tag: tag, kind: isDirectory ? .directory : .semantic, scope: scope)
+    }
 
     public init(tag: String, displayTag: String? = nil, emoji: String? = nil, scope: String = "", count: Int, aliases: [String] = [],
                 isDirectory: Bool = false, selectionKey: String = "", children: [NativeOverviewFilter] = [], hasActiveTasks: Bool = false) {
@@ -202,6 +205,7 @@ public struct NativeOverviewChrome: View {
 
     private func filterButtons(maximumWidth: CGFloat) -> some View {
         OverviewHorizontalScroll(interactions: interactions, owner: interactionOwner, ids: presentedFilters.map(\.id),
+                                 selectedID: presentedFilters.first(where: isActive)?.id,
                                  overflows: naturalFilterWidth > maximumWidth) {
             GlassEffectContainer(spacing: OverviewTagMetrics.spacing) {
                 scrollingTagButtons(maximumButtonWidth: max(0, maximumWidth - OverviewTagMetrics.barInset * 2))
@@ -520,6 +524,7 @@ private struct OverviewHorizontalScroll<Content: View>: View {
     let interactions: NativeOverviewChromeInteractions?
     let owner: UUID
     let ids: [String]
+    let selectedID: String?
     let overflows: Bool
     @ViewBuilder var content: () -> Content
     var body: some View {
@@ -532,6 +537,9 @@ private struct OverviewHorizontalScroll<Content: View>: View {
             // At rest the glass can cast its shadow beyond all four edges.
             .clipShape(OverviewDirectoryViewport(overflows: overflows))
             .scrollBounceBehavior(.basedOnSize)
+            .onChange(of: ids.isEmpty, initial: true) { _, empty in
+                if !empty, overflows, let selectedID { proxy.scrollTo(selectedID) }
+            }
             .modifier(NativeOverviewFilterScrollRegistration(registry: interactions, root: owner, ids: ids, enabled: !ids.isEmpty,
                 scroll: { id in proxy.scrollTo(id, anchor: .center) }))
         }

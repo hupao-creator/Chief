@@ -198,6 +198,11 @@ public final class NativeOverviewWorkspaceModel {
 
     private func acceptAuthority(_ authority: UUID) {
         if snapshotAuthority != authority {
+            if snapshotAuthority == workspace.client.cachedSnapshotAuthority {
+                // A fallback shown offline is provisional. The live catalog
+                // resolves the saved preference again.
+                tagSelection = nil
+            }
             snapshotAuthority = authority
             catalogGeneration = nil; membershipFacts = nil
             overviewEntries.removeAll()
@@ -254,6 +259,20 @@ public final class NativeOverviewWorkspaceModel {
         }
         pruneSnapshots()
         publishContext()
+    }
+
+    func selectTopFilter(_ filter: NativeOverviewFilter?) {
+        guard let filter, filter.isDirectory, filter.scope != selectedScope,
+              let directory = filters.first(where: { $0.isDirectory && $0.scope == filter.scope && $0.count > 0 }) else {
+            selectTag(filter)
+            return
+        }
+        let children = visibleDirectory(directory).children
+        let saved = workspace.preferences.overviewDirectoryTags[directory.scope].flatMap { tag in
+            redirected(.init(tag: tag, kind: .semantic, scope: directory.scope))
+        }
+        let child = saved.flatMap { selection in children.first { $0.matches(selection.tag) } }
+        selectTag(child ?? children.first ?? directory)
     }
 
     public func selectTag(_ filter: NativeOverviewFilter?) {
@@ -491,8 +510,9 @@ public final class NativeOverviewWorkspaceModel {
     private func selectTagValue(_ tag: String, scope: String = "", kind: NativeOverviewTagKind? = nil) {
         let filter = matchingFilter(tag: tag, scope: scope, kind: kind)
         let resolvedKind = kind ?? (filter?.isDirectory == true ? .directory : .semantic)
-        tagSelection = tag.isEmpty ? nil : .init(tag: tag, kind: resolvedKind, scope: filter?.scope ?? scope)
-        reconcile(captureMutation: false)
+        tagSelection = tag.isEmpty ? filters.first(where: { $0.count > 0 })?.selection
+            : .init(tag: tag, kind: resolvedKind, scope: filter?.scope ?? scope)
+        reconcile(captureMutation: false, explicitSelection: true)
     }
 
     private var allFilters: [NativeOverviewFilter] {
@@ -504,7 +524,28 @@ public final class NativeOverviewWorkspaceModel {
         return allFilters.first { $0.matches(tag, kind: kind, scope: scope.isEmpty ? nil : scope) }
     }
 
-    private func reconcile(captureMutation: Bool, refreshSelection: Bool = true) {
+    private func redirected(_ selection: NativeOverviewTagSelection) -> NativeOverviewTagSelection? {
+        NativeOverviewSelection.resolve(selection, redirects: workspace.catalog.tagRedirects)
+    }
+
+    private func resolveSelection(refreshRedirects: Bool) -> NativeOverviewFilter? {
+        // Use the same top-row order and eligibility as the mounted chrome.
+        // An unloaded or temporarily empty catalog must leave the saved choice intact.
+        guard let first = filters.first(where: { $0.count > 0 }) else { return nil }
+        guard let selection = tagSelection ?? workspace.preferences.overviewSelection else { return first }
+        let directory = filters.first { $0.isDirectory && $0.scope == selection.scope && $0.count > 0 }
+        if selection.kind == .directory { return directory ?? first }
+        let candidate = refreshRedirects ? redirected(selection) : selection
+        if let candidate, let match = matchingFilter(tag: candidate.tag, scope: candidate.scope, kind: candidate.kind),
+           match.count > 0 {
+            return match
+        }
+        // Keep the existing in-session child-removal behavior. A saved child
+        // missing on first admission falls back in top-row order.
+        return (tagSelection != nil ? directory : nil) ?? first
+    }
+
+    private func reconcile(captureMutation: Bool, refreshSelection: Bool = true, explicitSelection: Bool = false) {
         do {
             if try applyCatalogChanges(captureMutation: captureMutation) { return }
             let previousCatalogIDs = catalogIDs
@@ -559,27 +600,16 @@ public final class NativeOverviewWorkspaceModel {
             }
             // Redirects depend on selection too; selecting another tag must not
             // wait for the next catalog transaction.
-            if let selection = tagSelection {
-                let candidate = refreshSelection
-                    ? NativeOverviewSelection.resolve(selection, redirects: workspace.catalog.tagRedirects,
-                        directoryTags: filters.filter { $0.isDirectory && $0.scope == selection.scope }.map(\.tag))
-                    : selection
-                if let candidate, matchingFilter(tag: candidate.tag, scope: candidate.scope, kind: candidate.kind)?.count ?? 0 > 0 {
-                    tagSelection = candidate
-                } else {
-                    // If a child disappears, keep browsing the same directory while it exists.
-                    tagSelection = filters.first { $0.isDirectory && $0.count > 0 && $0.scope == selection.scope }
-                        .map { .init(tag: $0.tag, kind: .directory, scope: $0.scope) }
-                }
-            }
-            if tagSelection == nil, let first = filters.first(where: { $0.count > 0 }) {
-                tagSelection = .init(tag: first.tag, kind: first.isDirectory ? .directory : .semantic, scope: first.scope)
-            }
+            let nextFilter = resolveSelection(refreshRedirects: refreshSelection || tagSelection == nil)
+            tagSelection = nextFilter?.selection
             selectedTag = tagSelection?.tag ?? ""
             selectedScope = tagSelection?.scope ?? ""
-            let nextFilter = matchingFilter(tag: selectedTag, scope: selectedScope, kind: tagSelection?.kind)
             if selectedFilter?.id != nextFilter?.id { statusFilter = .all }
             selectedFilter = nextFilter
+            if let tagSelection, explicitSelection || snapshotAuthority != workspace.client.cachedSnapshotAuthority {
+                do { try workspace.preferences.selectOverviewSpace(tagSelection) }
+                catch { workspace.report(error) }
+            }
             guard presentationActive else {
                 presentationDirty = true
                 publishContext()

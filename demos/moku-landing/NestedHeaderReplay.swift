@@ -1338,6 +1338,9 @@ private final class WheelSample: NSEvent {
         try await check("directory-named-inbox", .all, [namedFolderTask], selected: namedFolder.tag)
         guard model.selectedFilter?.id == namedFolder.id else { throw ReplayError("Inbox tag shadowed the real directory") }
         try await activate(.directory, parent.id)
+        try await check("directory-entry-first-tag", .all, ordinary.filter { $0 != "Delivered" } + reportIDs,
+                        selected: development.tag)
+        try await activate(.directory, parent.id)
         try await check("directory-selected", .all, ordinary + reportIDs, selected: parent.tag)
         let twoRailFrame = canvas.cardRegionInWindow
         guard twoRailFrame == CGRect(origin: .zero, size: content.bounds.size) else {

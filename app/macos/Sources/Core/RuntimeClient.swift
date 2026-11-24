@@ -4,6 +4,8 @@ import CryptoKit
 /// One client owns its subscriptions; only explicit start/retry can launch the shared service.
 public actor RuntimeClient {
     public nonisolated let storageDirectory: URL
+    /// The disk catalog has its own authority until the first live hydration.
+    public nonisolated let cachedSnapshotAuthority = UUID()
     let manager: any RuntimeConnectionSource
     let transport = RuntimeTransport()
     var connection: RuntimeConnection?

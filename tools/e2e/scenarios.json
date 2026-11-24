@@ -29,6 +29,13 @@
       "evidence": ["overview-filters.json"]
     },
     {
+      "id": "E2E-OVERVIEW-005",
+      "implementation": "implemented",
+      "title": "Restore the selected Overview space on normal launch",
+      "doc": "app/macos/Sources/Host/Overview/README.md#mounted-filter-e2e",
+      "evidence": ["overview-spaces.json", "overview-spaces-bundle.json"]
+    },
+    {
       "id": "E2E-CHIEF-001",
       "implementation": "implemented",
       "title": "Open Chief Note and Compose while coordinator conversations stay outside reading navigation",

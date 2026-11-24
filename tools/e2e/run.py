@@ -30,6 +30,7 @@ from lease import DesktopLease
 import collection
 import onboarding
 import operator_input
+import overview_spaces
 from report import save, sha256, finish, verify
 
 
@@ -95,7 +96,8 @@ def run(args):
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     specs = json.loads((Path(__file__).parent / "scenarios.json").read_text())["scenarios"]
     suites = {"supported": {"E2E-CHIEF-001", "E2E-OVERVIEW-002", "E2E-OVERVIEW-004", "E2E-READ-001", "E2E-SETTINGS-001"}, "composer": {"E2E-COMPOSER-001"},
-              "collection": {"E2E-OVERVIEW-002", "E2E-OVERVIEW-004", "E2E-COLLECTION-001"}, "onboarding": {"E2E-ONBOARDING-001"}}
+              "collection": {"E2E-OVERVIEW-002", "E2E-OVERVIEW-004", "E2E-COLLECTION-001"}, "onboarding": {"E2E-ONBOARDING-001"},
+              "overview-spaces": {"E2E-OVERVIEW-005"}}
     suites["all"] = suites["supported"] | suites["composer"] | suites["collection"]
     specs = [s for s in specs if s["id"] in suites[args.suite]]
     requested = {s["id"] for s in specs}
@@ -157,6 +159,13 @@ def run(args):
         save(output / "ui-artifact.json", ui_artifact)
         return app
 
+    def acquire_exclusive_desktop():
+        try:
+            host.enter_context(performance_lease())
+        except RuntimeError as error:
+            raise Blocked(str(error)) from error
+        return acquire_desktop()
+
     for sig in (signal.SIGALRM, signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, alarm)
     signal.setitimer(signal.ITIMER_REAL, args.timeout)
@@ -168,14 +177,12 @@ def run(args):
             raise Blocked(str(error)) from error
         save(output / "artifact.json", artifact)
         session = Session(args.runtime.resolve(), output, uuid.uuid4().hex, event)
+        app = None
+        if args.suite in ("onboarding", "overview-spaces") and not args.prepare_only:
+            app = acquire_exclusive_desktop()
         if args.suite == "onboarding":
             if args.prepare_only:
                 raise Blocked("onboarding requires the first-run desktop")
-            try:
-                host.enter_context(performance_lease())
-            except RuntimeError as error:
-                raise Blocked(str(error)) from error
-            app = acquire_desktop()
             session.prepare()
             session.start()
             report["validity"] = "valid"
@@ -186,6 +193,8 @@ def run(args):
             session.configure()
             if "E2E-COLLECTION-001" in requested:
                 session.peer.prepare_collection()
+            elif "E2E-OVERVIEW-005" in requested:
+                session.peer.prepare_overview(count=4, project_count=3)
             elif "E2E-OVERVIEW-002" in requested:
                 session.peer.prepare_overview()
             report["validity"] = "valid"
@@ -203,7 +212,10 @@ def run(args):
             save(output / "initial-oracle.json", read_turn(session, thread, initial, session.peer.body(1), "initial-content.json"))
             peer = session.peer
             peer.tagged_ids = {r["threadId"] for r in peer.receipts.values()}
-            if peer.overview_project:
+            if "E2E-OVERVIEW-005" in requested:
+                peer.tag_names.update({peer.receipts["bench_create_02"]["threadId"]: "Plan work",
+                                       peer.receipts["bench_create_03"]["threadId"]: "Ship work"})
+            elif peer.overview_project:
                 peer.tagged_ids.remove(peer.receipts["bench_create_14"]["threadId"])
             collection.enable_agent(session, "tag", True)
             catalog = wait_for(session.runtime.state, lambda state: peer.tagged_ids <= {
@@ -219,12 +231,18 @@ def run(args):
             report["preparation"] = "ready"
             if args.prepare_only:
                 raise Blocked("preparation ready; no desktop interactions requested or covered")
-            app = acquire_desktop()
-            if args.operator_composer or "E2E-COLLECTION-001" in requested:
-                app = operator_input.bundle(app, session)
-            session.app = session.spawn([app, "--runtime", session.binary, "--data-dir", session.profile,
-                "--automation-socket", session.root / "ui.sock", "--benchmark-scenario", "overview"], "app")
-            wait_for(lambda: (session.root / "ui.sock").exists(), bool, 40)
+            if app is None:
+                app = acquire_desktop()
+            if "E2E-OVERVIEW-005" in requested:
+                assert not (session.profile / "desktop-preferences.json").exists()
+                app = operator_input.bundle(app, session, "overview-spaces-bundle.json")
+                overview_spaces.launch(session, app)
+            else:
+                if args.operator_composer or "E2E-COLLECTION-001" in requested:
+                    app = operator_input.bundle(app, session)
+                session.app = session.spawn([app, "--runtime", session.binary, "--data-dir", session.profile,
+                    "--automation-socket", session.root / "ui.sock", "--benchmark-scenario", "overview"], "app")
+                wait_for(lambda: (session.root / "ui.sock").exists(), bool, 40)
             desktop = Desktop(session)
             if args.operator_composer:
                 save(output / "operator-request.json", {"stage": "activate", "pid": session.app.pid,
@@ -247,6 +265,8 @@ def run(args):
                 execute("E2E-OVERVIEW-002", lambda: desktop.overview_scroll(thread))
             if "E2E-OVERVIEW-004" in requested:
                 execute("E2E-OVERVIEW-004", lambda: desktop.overview_filters(thread))
+            if "E2E-OVERVIEW-005" in requested:
+                execute("E2E-OVERVIEW-005", lambda: overview_spaces.journey(desktop, app))
             if "E2E-COLLECTION-001" in requested:
                 execute("E2E-COLLECTION-001", lambda: collection.journey(desktop, reports))
                 if args.suite == "all":
@@ -319,7 +339,7 @@ def main():
     execute = sub.add_parser("run")
     execute.add_argument("--runtime", type=Path, required=True)
     execute.add_argument("--output", type=Path, required=True, help="new evidence directory; never overwrite")
-    execute.add_argument("--suite", choices=("supported", "all", "composer", "collection", "onboarding"), default="supported")
+    execute.add_argument("--suite", choices=("supported", "all", "composer", "collection", "onboarding", "overview-spaces"), default="supported")
     execute.add_argument("--timeout", type=int)
     execute.add_argument("--prepare-only", action="store_true", help="do not launch GUI; exits 2 because interactions remain uncovered")
     execute.add_argument("--app", type=Path)

@@ -2,7 +2,7 @@
 
 ## Find a task by folder or tag
 
-Press **⌘K** to open **Overview**. Overview opens the first available folder or Inbox tag when you have no current selection. Click a folder icon at the top to see that project’s tagged work. Folders with the same name appear separately.
+Press **⌘K** to open **Overview**. Chief highlights your last folder or tag and shows its cards, even after you quit and reopen the app. On your first visit, or if that choice is unavailable when you reopen Chief, Overview selects the first available folder or Inbox tag in the top row. Click a folder icon at the top to see that project’s tagged work. Folders with the same name appear separately.
 
 Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. A task appears once it has a tag from Tag Agent. With only untagged tasks, Overview shows **No tagged conversations yet**. Your conversations stay saved.
 
@@ -10,7 +10,7 @@ When a folder has tags to choose from, look for their emoji along the left edge.
 
 A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Selected folders have a muted gold tint.
 
-Click the folder at the top again to see all its tagged work. Switching to a different folder or tag shows all statuses in that space. Selecting the same space again keeps your status filter. If a folder and its only tag show the same cards, choosing the folder is enough.
+When you switch to another folder at the top, Chief selects the last left-side tag you used there. If that tag is unavailable or you haven't chosen one, Chief selects the first visible tag on the left. If there's no tag to choose from, you'll see all the folder's tagged work. Click the current folder at the top again to see all its tagged work. Switching to a different folder or tag shows all statuses in that space. Selecting the same space again keeps your status filter.
 
 Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find a task that’s running or waiting for your response. Choose that folder or tag, then click ⏳ on the right to see its running tasks. With **Reduce Motion** turned on in macOS, the dots stay still.
 

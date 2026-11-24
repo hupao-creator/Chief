@@ -308,22 +308,35 @@ An untagged Report cannot hide a tagged source through execution coverage.
 
 Inbox groups work without a persistent directory, including managed temporary
 roots. Each exposed Inbox tag has its own button with an emoji and title.
-With no current selection, Overview selects the first nonempty top-row filter
-in catalog display order. A populated workspace without a space shows a
-tag-specific empty message and hides the tag and status controls. Assigning the
-first tag selects its space automatically. Choosing a project directory shows
-its tagged members. Its top button keeps its name and folder-wide unread count when
+Overview restores the profile's last folder, Inbox tag or directory child when
+the catalog first offers spaces. With no eligible saved match, it selects the
+first nonempty top-row filter in display order. The selection, card membership
+and published context resolve together. The startup surface waits for the
+live catalog while the initial connection is in progress. When startup falls
+back to the disk cache, a provisional automatic selection leaves the preference
+intact. An explicit choice is saved and live hydration resolves the preference
+again. The header reveals the selected chip
+when its filters first appear. A populated workspace without a space shows a
+tag-specific empty message and hides the tag and status controls. An empty or
+unloaded catalog leaves the saved choice intact for the next nonempty catalog.
+The directory-wide selection shows its tagged members. Its top button keeps its name and folder-wide unread count when
 a child is selected. A project directory named Inbox and a semantic tag named
 Inbox have distinct identities, icons and memberships.
 
 The left column contains the selected directory's visible semantic tags, ordered
-by descending member count and localized name for ties. Clicking the top folder
-restores the full tagged directory selection. The column appears only
+by descending member count and localized name for ties. Clicking a different
+top folder restores its last visible tag, then falls back to the first visible
+tag in that order or to the directory when the rail is empty. Clicking the
+current top folder restores the full tagged directory selection and retains the
+last child for the next entry. An Inbox chip selects its own tag directly.
+The column appears only
 for project directories with visible children, including when a child is
 selected. The three status choices on the right are shared across all scopes. Changing the resolved filter identity (kind, scope and tag) restores All statuses before projecting cards. Re-selecting the same space and refreshing its membership preserve the status.
 
-Semantic tag identity is a plain name with separately validated emoji. Each
-scope exposes up to five semantic tags. Directory membership uses persistent
+Saved choices use filter kind and canonical scope. Semantic choices also use
+the catalog's normalized name matching and scoped redirects. Display labels,
+emoji and positions can change independently. Each scope exposes up to five
+semantic tags. Directory membership uses persistent
 scope identity and excludes managed temporary roots. A symlink alias or linked
 checkout with another label remains in its canonical directory, and
 same-named directories stay separate.
@@ -837,6 +850,17 @@ the public scope oracle and the mounted snapshots after each action. The
 [window replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
 exercises native pointer input, distinguishes similarly named tags and folders,
 and checks the selected tint.
+
+`E2E-OVERVIEW-005` opens the normal application with a fresh desktop preference
+file and a populated, isolated Runtime profile. It compares selection and
+card IDs on the first observable populated Overview, then checks mounted
+controls and cards. It uses the top folder to enter with the first tag,
+reenter with the saved child, return to full directory membership, and fall
+back when the saved child is unavailable. It relaunches with a saved
+directory child and a non-first Inbox tag, verifies the saved preference through a launch with no spaces,
+then observes tags arriving from the Runtime. It archives the saved Inbox
+tag's only visible member before a final relaunch and checks the top-row
+fallback with a stale disk catalog still present. See the [run and evidence](../../../../../tools/e2e/README.md#overview-space-restoration).
 
 ## Camera interaction e2e
 

@@ -86,7 +86,9 @@ The left-half gesture enters the first semantic tag from the directory and then 
 checks a contact that crosses the midpoint before recognition, the endpoints
 and momentum. The replay selects a top-level Inbox tag and checks its exact
 cards, restored All statuses and absence of a left column. It distinguishes a top-row
-tag named Inbox from a real directory named Inbox. It opens the sole tagged
+tag named Inbox from a real directory named Inbox. Entering a directory with
+two visible tags selects its first tag, and clicking that directory again shows
+all its tagged cards. It opens the sole tagged
 card and removes its tag through a catalog delta while the reader is open.
 The selection clears while the covered canvas retains its old scene. Returning
 to Overview shows an empty canvas with no filter controls. Both untagged

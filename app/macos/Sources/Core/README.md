@@ -8,7 +8,8 @@ accounting budget); the consumer ID retires immediately and its live wire can
 transfer to a fresh reader. Idle entries continue receiving patches and expire on
 stream retirement/reset, errors, gaps or budget pressure. Pending reads never
 transfer. Connected reads await fresh snapshots; persisted content is an offline
-fallback. Route-owned prefetch uses the same production subscription path; opening a reading view does not start an agent process.
+fallback. The cached catalog has a distinct authority from live hydration.
+Route-owned prefetch uses the same production subscription path; opening a reading view does not start an agent process.
 
 Catalog arrays are admitted once into [persistent ordered records](RuntimeRecordCollection.swift).
 An ordinary upsert copies logarithmic index paths and retains earlier event
