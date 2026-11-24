@@ -303,7 +303,7 @@ public final class NativeOverviewWorkspaceModel {
             return
         }
         guard choices.count > 1, let index = choices.firstIndex(where: { $0.id == selectedRailID }) else { return }
-        let next = (index + (up ? 1 : choices.count - 1)) % choices.count
+        let next = (index + (up ? choices.count - 1 : 1)) % choices.count
         selectRailChoice(choices[next])
     }
 

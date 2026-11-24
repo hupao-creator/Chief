@@ -99,8 +99,13 @@ mounted Agent cards and individual or collected report members at each step.
 Window-addressed AppKit gestures from both halves traverse one left column.
 The mixed-catalog replay steps through the folder's semantic tags and the final
 Running tag, including a switch from a tag with no running tasks to running
-work elsewhere in the folder. It swipes from Running to the first tag and back,
-checks that further contact and momentum events keep the same selection, and
+work elsewhere in the folder. On the three-choice rail (Development, Shipping,
+Running), a finger swipe up from Development selects Running, a swipe down
+returns to Development, and another swipe down selects Shipping. The replay
+posts non-inverted events to the window and delivers inverted samples to its
+mounted scroll monitor. Each `rail-swipe` entry records finger direction,
+inversion, signed recognition delta, rail order and observed start and end IDs.
+The replay checks that further contact and momentum events keep the same selection, and
 swipes both ways on a single selected choice and an empty rail. It also checks
 cross-center contacts, inverted device deltas, horizontal camera travel, live
 status changes, and reentry to a folder whose sole left choice is empty Running.

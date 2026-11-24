@@ -14,6 +14,12 @@ private struct ReplayError: Error, CustomStringConvertible {
     init(_ message: String) { description = message }
 }
 
+private enum FingerSwipe: String {
+    case up, down
+
+    var deviceDeltaY: Int32 { self == .up ? 40 : -40 }
+}
+
 // Deliver a window-local wheel sample directly to the mounted event monitor.
 private final class WheelSample: NSEvent {
     let target: NSWindow
@@ -801,8 +807,11 @@ private final class WheelSample: NSEvent {
             event.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase?.rawValue ?? 0))
             event.setIntegerValueField(.scrollWheelEventMomentumPhase, value: Int64(momentum.rawValue))
             guard let sample = NSEvent(cgEvent: event) else { throw ReplayError("Cannot decode window scroll event") }
-            guard sample.window === window, sample.hasPreciseScrollingDeltas == precise else {
-                throw ReplayError("Scroll window=\(sample.windowNumber)/\(window.windowNumber), precise=\(sample.hasPreciseScrollingDeltas)/\(precise)")
+            guard sample.window === window, sample.hasPreciseScrollingDeltas == precise, !sample.isDirectionInvertedFromDevice else {
+                throw ReplayError("Scroll window=\(sample.windowNumber)/\(window.windowNumber), precise=\(sample.hasPreciseScrollingDeltas)/\(precise), inverted=\(sample.isDirectionInvertedFromDevice)")
+            }
+            guard !precise || sample.scrollingDeltaY == CGFloat(y) else {
+                throw ReplayError("Expected a pixel delta of \(y), decoded \(sample.scrollingDeltaY)")
             }
             let delivered = sample.locationInWindow
             if pixel(delivered) == targetPixel, hit(delivered) === targetHit {
@@ -818,9 +827,9 @@ private final class WheelSample: NSEvent {
     }
 
     private func swipeWithNaturalScrolling(_ monitor: NativeOverviewScrollInput.MonitorView, in window: NSWindow,
-                                          at point: CGPoint, up: Bool) throws {
+                                          at point: CGPoint, direction: FingerSwipe) throws {
         // The same finger movement reports the opposite delta with Natural Scrolling enabled.
-        let sample = WheelSample(window: window, point: point, x: 0, y: up ? -40 : 40)
+        let sample = WheelSample(window: window, point: point, x: 0, y: -CGFloat(direction.deviceDeltaY))
         guard monitor.handle(sample) == nil else { throw ReplayError("Inverted-device swipe escaped the active filter") }
         _ = monitor.handle(WheelSample(window: window, point: point, x: 0, y: 0, phase: .ended))
     }
@@ -1073,7 +1082,7 @@ private final class WheelSample: NSEvent {
             try model.chromeInteractions.activate(.directory, id: model.selectedDirectory!.id)
             try await Task.sleep(for: .milliseconds(600))
         }
-        try swipeWithNaturalScrolling(monitor, in: window, at: background, up: true)
+        try swipeWithNaturalScrolling(monitor, in: window, at: background, direction: .up)
         guard !scene.notePanelOpen, model.statusFilter == .running else {
             throw ReplayError("Natural Scrolling changed the physical filter gesture")
         }
@@ -1729,21 +1738,33 @@ private final class WheelSample: NSEvent {
             let bounds = content.convert(content.bounds, to: nil)
             return CGPoint(x: bounds.minX + bounds.width * (right ? 0.76 : 0.24), y: bounds.midY)
         }
-        func swipe(up: Bool, right: Bool = true, crossCenter: Bool = false) async throws {
-            let y: Int32 = up ? 40 : -40
+        func swipe(_ direction: FingerSwipe, right: Bool = true, crossCenter: Bool = false,
+                   naturalScrolling: Bool = false, overButton buttonID: String? = nil) async throws {
             try await waitForFilterInput()
-            let start = windowPoint(right: right)
-            let end = crossCenter ? windowPoint(right: !right) : start
-            // Cross the midpoint before reaching the recognition threshold.
-            try await postScroll(window, start, y: y > 0 ? 8 : -8, phase: .began)
-            try await postScroll(window, end, y: y, phase: .changed)
-            let selection = model.selectedRailID
-            try await postScroll(window, end, y: y * 2, phase: .changed)
-            guard model.selectedRailID == selection else { throw ReplayError("A held swipe stepped the rail twice") }
-            try await postScroll(window, end, y: 0, phase: .ended)
-            try await postScroll(window, end, y: y, phase: nil, momentum: .begin)
-            try await postScroll(window, end, y: 0, phase: nil, momentum: .end)
-            guard model.selectedRailID == selection else { throw ReplayError("Swipe momentum stepped the rail") }
+            let start = try buttonID.map { id in
+                let frame = try filterButton(id, in: window).frame
+                return window.convertPoint(fromScreen: CGPoint(x: frame.midX, y: frame.midY))
+            } ?? windowPoint(right: right)
+            let before = model.selectedRailID
+            let y = direction.deviceDeltaY
+            if naturalScrolling {
+                try swipeWithNaturalScrolling(monitor, in: window, at: start, direction: direction)
+            } else {
+                let end = crossCenter ? windowPoint(right: !right) : start
+                // Cross the midpoint before reaching the recognition threshold.
+                try await postScroll(window, start, y: y > 0 ? 8 : -8, phase: .began)
+                try await postScroll(window, end, y: y, phase: .changed)
+                let selection = model.selectedRailID
+                try await postScroll(window, end, y: y * 2, phase: .changed)
+                guard model.selectedRailID == selection else { throw ReplayError("A held swipe stepped the rail twice") }
+                try await postScroll(window, end, y: 0, phase: .ended)
+                try await postScroll(window, end, y: y, phase: nil, momentum: .begin)
+                try await postScroll(window, end, y: 0, phase: nil, momentum: .end)
+                guard model.selectedRailID == selection else { throw ReplayError("Swipe momentum stepped the rail") }
+            }
+            samples.append(["step": "rail-swipe", "finger": direction.rawValue, "invertedFromDevice": naturalScrolling,
+                            "recognitionDeltaY": naturalScrolling ? -y : y, "rail": model.railChoices.map(\.id),
+                            "from": before ?? "whole-folder", "to": model.selectedRailID ?? "whole-folder"])
         }
         func wheel(_ y: Int32, right: Bool) async throws {
             try await waitForFilterInput()
@@ -1786,28 +1807,28 @@ private final class WheelSample: NSEvent {
         try await postScroll(window, panPoint, y: 0, phase: nil, x: 2, precise: false)
         samples.append(["step": "populated-wheel", "windowPoint": [panPoint.x, panPoint.y],
                         "startOffset": startOffset, "wheelOffset": wheelOffset])
-        try await swipe(up: false, right: false)
-        try await check("directory-left-upper-limit", .all, allCards)
+        try await swipe(.down, right: false)
+        try await check("whole-folder-down", .all, allCards)
         let semanticIDs = parent.children.map(\.id)
         guard model.railChoices.map(\.id) == semanticIDs + ["running"],
               model.chromeInteractions.mountedIDs(in: .status) == ["running"] else {
             throw ReplayError("Directory Running did not follow its semantic tags")
         }
-        try await swipe(up: true, crossCenter: true)
+        try await swipe(.up, crossCenter: true)
         try await check("right-to-development", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: development.tag)
-        try await swipe(up: true, right: false)
+        try await swipe(.down, right: false)
         try await check("left-to-shipping", .all, ["Delivered"], selected: shipping.tag)
-        try await swipe(up: true)
+        try await swipe(.down)
         try await check("directory-running", .running, running)
-        try await swipe(up: true, right: false)
+        try await swipe(.down, overButton: "overview-status-running")
         try await check("last-to-first-tag", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: development.tag)
-        try await swipe(up: false)
+        try await swipe(.up, overButton: development.id)
         try await check("first-to-last-tag", .running, running)
         try await updateThread("Delivered", .running, revision: 9)
         try await check("directory-live-admit", .running, running + ["Delivered"])
         try await updateThread("Delivered", .completed, revision: 10)
         try await check("directory-live-remove", .running, running)
-        try await swipe(up: false, crossCenter: true)
+        try await swipe(.up, crossCenter: true)
         try await check("right-to-shipping", .all, ["Delivered"], selected: shipping.tag)
         let windowedSize = window.frame.size
         window.collectionBehavior = [.fullScreenPrimary]
@@ -1830,9 +1851,9 @@ private final class WheelSample: NSEvent {
         let bounds = content.convert(content.bounds, to: nil)
         for x in [bounds.maxX - 8, bounds.minX + 8] {
             let point = CGPoint(x: x, y: bounds.midY + bounds.height * 0.32)
-            try await postScroll(window, point, y: 40, phase: .began)
+            try await postScroll(window, point, y: -40, phase: .began)
             try await postScroll(window, point, y: 0, phase: .ended)
-            try await postScroll(window, point, y: -60, phase: nil, momentum: .begin)
+            try await postScroll(window, point, y: 60, phase: nil, momentum: .begin)
             try await postScroll(window, point, y: 0, phase: nil, momentum: .end)
             if model.statusFilter != .running {
                 try await capture(window, to: directory.appending(path: "failed-fullscreen.png"))
@@ -1845,9 +1866,9 @@ private final class WheelSample: NSEvent {
             try await check("fullscreen-running-" + (x > bounds.midX ? "right" : "left"), .running, running)
             guard let card = canvas.visibleFrame(for: "Executing") else { throw ReplayError("Missing fullscreen running card") }
             let cardPoint = monitor.windowPoint(CGPoint(x: card.midX, y: card.midY))
-            try await postScroll(window, cardPoint, y: -40, phase: .began)
+            try await postScroll(window, cardPoint, y: 40, phase: .began)
             try await postScroll(window, cardPoint, y: 0, phase: .ended)
-            try await check("fullscreen-card-down", .all, ["Delivered"], selected: shipping.tag)
+            try await check("fullscreen-card-up", .all, ["Delivered"], selected: shipping.tag)
         }
         try await fullscreen(false)
         try await activate(.directory, parent.id)
@@ -1890,18 +1911,18 @@ private final class WheelSample: NSEvent {
             let frame = window.convertFromScreen(try filterButton("overview-status-" + id, in: window).frame)
             guard abs(frame.minX - 12) <= 1 else { throw ReplayError("Inbox control is outside the left column") }
         }
-        try await swipe(up: true, right: false)
+        try await swipe(.down, right: false)
         try await check("inbox-left-completed", .completed, ["Inbox tagged"], selected: inboxShipping.tag)
         try await activate(.semantic, inboxLabel.id)
         try await check("inbox-label", .all, ["Inbox label"], selected: inboxLabel.tag)
         try await activate(.directory, namedFolder.id)
         try await check("directory-named-inbox", .all, [namedFolderTask], selected: namedFolder.tag)
         guard model.railChoices.map(\.id) == ["running"] else { throw ReplayError("Expected a running-only directory rail") }
-        try await swipe(up: true)
+        try await swipe(.up)
         try await check("empty-directory-running", .running, [], selected: namedFolder.tag)
-        for up in [true, false] {
-            try await swipe(up: up)
-            try await check(up ? "single-choice-up" : "single-choice-down", .running, [], selected: namedFolder.tag)
+        for direction in [FingerSwipe.up, .down] {
+            try await swipe(direction)
+            try await check(direction == .up ? "single-choice-up" : "single-choice-down", .running, [], selected: namedFolder.tag)
         }
         try await activate(.directory, parent.id)
         try await check("directory-restores-shipping", .all, ["Delivered"], selected: shipping.tag)
@@ -1912,9 +1933,12 @@ private final class WheelSample: NSEvent {
         let developmentFrame = try filterButton(development.id, in: window).frame
         try click(window, at: window.convertPoint(fromScreen: CGPoint(x: developmentFrame.midX, y: developmentFrame.midY)))
         try await check("mouse-development", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: development.tag)
-        try await waitForFilterInput()
-        try swipeWithNaturalScrolling(monitor, in: window, at: windowPoint(right: true), up: true)
-        try await check("shipping-natural-scrolling", .all, ["Delivered"], selected: shipping.tag)
+        try await swipe(.up, naturalScrolling: true)
+        try await check("natural-up-first-to-last", .running, running)
+        try await swipe(.down, naturalScrolling: true)
+        try await check("natural-down-last-to-first", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: development.tag)
+        try await swipe(.down, naturalScrolling: true)
+        try await check("natural-down-first-to-middle", .all, ["Delivered"], selected: shipping.tag)
         try await activate(.directory, namedFolder.id)
         try await check("restore-empty-running", .running, [], selected: namedFolder.tag)
         try await activate(.semantic, inboxShipping.id)
@@ -1922,7 +1946,7 @@ private final class WheelSample: NSEvent {
         let originalLocale = workspace.locale
         defer { workspace.updateSystemLocale(originalLocale) }
         workspace.updateSystemLocale(.chinese)
-        try await swipe(up: false)
+        try await swipe(.up)
         try await check("empty-tag", .running, [], selected: "Shipping")
         if CommandLine.arguments.contains("--capture") {
             defer { captureScheme = nil }
@@ -1934,14 +1958,14 @@ private final class WheelSample: NSEvent {
                 _ = try checkEmptyCopy(in: url, mode: .running)
             }
         }
-        try await wheel(-1, right: true)
+        try await wheel(1, right: true)
         try await check("first-to-last-status", .completed, ["Inbox tagged"], selected: "Shipping")
-        try await wheel(1, right: false)
+        try await wheel(-1, right: false)
         try await check("last-to-first-status", .running, [], selected: "Shipping")
-        try await wheel(1, right: false)
+        try await wheel(-1, right: false)
         workspace.updateSystemLocale(.english)
         try await check("inbox-all", .all, ["Inbox tagged"], selected: "Shipping", checkDeliveredLayout: true)
-        try await swipe(up: true)
+        try await swipe(.down)
         try await check("completed-tag", .completed, ["Inbox tagged"], selected: "Shipping", checkDeliveredLayout: true)
         try await updateThread("Inbox tagged", .running, revision: 11)
         try await check("completed-live-remove", .completed, [], selected: "Shipping")
@@ -1962,19 +1986,19 @@ private final class WheelSample: NSEvent {
                 }
             }
         }
-        try await wheel(1, right: true)
+        try await wheel(-1, right: true)
         try await check("wrap-from-empty-completed", .running, ["Inbox tagged"], selected: "Shipping")
-        try await wheel(1, right: true)
+        try await wheel(-1, right: true)
         try await check("back-from-running-wheel", .all, ["Inbox tagged"], selected: "Shipping")
-        try await swipe(up: false)
+        try await swipe(.up)
         try await check("inbox-running", .running, ["Inbox tagged"], selected: "Shipping")
         try await updateThread("Inbox tagged", .completed, revision: 12)
         try await check("inbox-running-live-remove", .running, [], selected: "Shipping")
-        try await swipe(up: true)
-        try await swipe(up: true)
+        try await swipe(.down)
+        try await swipe(.down)
         if CommandLine.arguments.contains("--capture") { captureScheme = .dark }
         try await check("completed-live-admit", .completed, ["Inbox tagged"], selected: "Shipping", checkDeliveredLayout: true)
-        try await swipe(up: false)
+        try await swipe(.up)
         try await check("completed-finished", .all, ["Inbox tagged"], selected: "Shipping", checkDeliveredLayout: true)
         captureScheme = nil
         guard canvas.cardRegionInWindow == cardViewport else {
@@ -2019,11 +2043,11 @@ private final class WheelSample: NSEvent {
         if captureFilters {
             try await recordWindow(window, to: directory.appending(path: "filter-switches.mp4")) {
                 try await Task.sleep(for: .milliseconds(400))
-                try await swipe(up: false)
+                try await swipe(.down)
                 try await Task.sleep(for: .milliseconds(600))
-                try await swipe(up: true)
+                try await swipe(.up)
                 try await Task.sleep(for: .milliseconds(600))
-                try await swipe(up: true, right: false)
+                try await swipe(.down, right: false)
                 try await Task.sleep(for: .milliseconds(600))
                 try await activate(.directory, compactFolder.id)
                 try await Task.sleep(for: .milliseconds(600))
@@ -2232,10 +2256,10 @@ private final class WheelSample: NSEvent {
         workspace.updateSystemLocale(.english)
         try await Task.sleep(for: .milliseconds(450))
         try await observe("selected-running", expanded: [:], runningExpanded: true)
-        try await swipe(up: false)
+        try await swipe(.up)
         try await Task.sleep(for: .milliseconds(500))
         guard model.statusFilter == .all, model.selectedTag == "Support" else {
-            throw ReplayError("Swiping down from Running did not select the preceding semantic tag")
+            throw ReplayError("Swiping up from Running did not select the preceding semantic tag")
         }
         try await activate(.semantic, shortChild.id)
         try await Task.sleep(for: .milliseconds(550))
