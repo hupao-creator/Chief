@@ -776,8 +776,10 @@ including when the card resizes; Report descriptions keep their explicit three-l
 limit. The bounded source preview and streaming batch policy remain unchanged.
 `HarnessThreadCard` and the Overview semantic boundary supply
 `threadCardUsesFlatMaterials`: terminal badges and provider badges without an
-emoji use static palette fills, and the in-progress plan row uses the accent-soft
-surface without a glass container or effect. The 44pt badge shows a stationary 21pt emoji, or the conversation glyph
+emoji use static palette fills, and the in-progress plan row uses a soft green
+fill without a glass container or effect. The in-progress plan marker, completed
+plan check and running tool indicator use the green work status color. The 44pt
+badge shows a stationary 21pt emoji, or the conversation glyph
 while the emoji is unavailable. A running status fills the disc with the
 [perforated running badge](Cards/RunningThreadBadge.swift). Idle uses a neutral
 fill and completed uses a green completion fill with a check mark. Status precedence

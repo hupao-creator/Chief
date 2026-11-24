@@ -305,7 +305,7 @@ public struct ThreadCardLatestTool: View {
             // that change is animated too; only the schedule pauses at its source.
             TimelineView(.animation(minimumInterval: NativeFrameRate.interval, paused: !animates)) { context in
                 NativeIcon(name: statusIcon, size: 13)
-                    .foregroundStyle(tool.status == .failed ? NativePalette.overview.danger.swiftUI : tool.status == .running ? NativePalette.overview.accent.swiftUI : NativePalette.overview.faint.swiftUI)
+                    .foregroundStyle(tool.status == .failed ? NativePalette.overview.danger.swiftUI : tool.status == .running ? NativePalette.overviewWorkStatusMark.swiftUI : NativePalette.overview.faint.swiftUI)
                     .rotationEffect(.degrees(rotation(at: context.date)))
             }
             .accessibilityLabel(cardLocalized(statusLabel, locale))

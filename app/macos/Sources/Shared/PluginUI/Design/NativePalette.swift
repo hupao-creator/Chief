@@ -32,8 +32,8 @@ public enum NativePalette {
         danger: pair(0xb44841, 0xe69a92), warning: pair(0x986b32, 0xd4ac76),
         success: pair(0x47785b, 0x8aba9b), agentRun: pair(0x6d28d9, 0xc4b5fd))
 
-    static let overviewCompletionMark = pair(0x19725f, 0x78cdb3)
-    static let overviewCompletionFill = pair(0xe3f0eb, 0x283e35)
+    static let overviewWorkStatusMark = pair(0x19725f, 0x78cdb3)
+    static let overviewWorkStatusFill = pair(0xe3f0eb, 0x283e35)
 
     public static let settings = Settings()
 

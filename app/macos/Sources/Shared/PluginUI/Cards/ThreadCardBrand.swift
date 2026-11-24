@@ -83,13 +83,13 @@ private struct ThreadCardBadgeMaterial: ViewModifier {
 
     @ViewBuilder func body(content: Content) -> some View {
         if usesRegularGlass {
-            content.nativeRegularCardGlass(in: Circle(), opaque: NativePalette.overviewCompletionFill.swiftUI,
+            content.nativeRegularCardGlass(in: Circle(), opaque: NativePalette.overviewWorkStatusFill.swiftUI,
                 tint: .mint.opacity(0.12), interactive: true)
         } else if emojiUsesLiquidGlass && hasEmoji {
             content.nativeRegularCardGlass(in: Circle(), opaque: completed
-                ? NativePalette.overviewCompletionFill.swiftUI : NativePalette.overview.surfaceStrong.swiftUI)
+                ? NativePalette.overviewWorkStatusFill.swiftUI : NativePalette.overview.surfaceStrong.swiftUI)
         } else if flatMaterials && hasEmoji {
-            content.background(completed ? NativePalette.overviewCompletionFill.swiftUI
+            content.background(completed ? NativePalette.overviewWorkStatusFill.swiftUI
                 : NativePalette.overview.surfaceStrong.swiftUI, in: Circle())
         } else if flatMaterials {
             content
