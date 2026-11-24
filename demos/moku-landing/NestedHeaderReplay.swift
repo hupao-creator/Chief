@@ -149,6 +149,15 @@ private final class WheelSample: NSEvent {
 
         let directory = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        if CommandLine.arguments.contains("--conversation-opening") {
+            captureScheme = .dark
+            window.setContentSize(CGSize(width: 1100, height: 800))
+            window.center()
+            try await focusReplayWindow(window)
+            try await Task.sleep(for: .milliseconds(650))
+            try await conversationOpening(window, directory: directory)
+            return
+        }
         if CommandLine.arguments.contains("--note-link") {
             window.center()
             try await focusReplayWindow(window)
@@ -403,6 +412,125 @@ private final class WheelSample: NSEvent {
         guard presentation.dockDraft.text == fixture.draft else { throw ReplayError("Escape discarded the draft") }
         try JSONSerialization.data(withJSONObject: observed, options: [.prettyPrinted, .sortedKeys])
             .write(to: evidence.appending(path: "conversation-" + stage + ".json"))
+    }
+
+    private func conversationOpening(_ window: NSWindow, directory: URL) async throws {
+        guard let content = window.contentView,
+              let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else {
+            throw ReplayError("Missing mounted Overview scroll input")
+        }
+        let scene = presentation.scene
+        let client = workspace.client
+        let scope = RuntimeContentScope.mokuConversation(before: nil)
+        let cache = RuntimeOfflineStore(storageDirectory: client.storageDirectory, hostID: nil)
+        let ending = "End of Chief reply"
+        func row(_ index: Int, _ text: String) -> JSONValue {
+            .object(["id": .text("opening-\(index)"), "text": .text(text),
+                     "createdAt": .integer(1_786_000_000_000 + index * 60_000),
+                     "role": .text(index.isMultiple(of: 2) ? "user" : "chief")])
+        }
+        let paragraph = "The current checklist includes the release notes, a review of the changes, and the remaining checks."
+        let rows = (0..<31).map { i in
+            row(i, "Message \(i)\n" + Array(repeating: paragraph, count: 1 + (i % 5)).joined(separator: "\n"))
+        } + [row(31, Array(repeating: paragraph, count: 15).joined(separator: "\n") + "\n" + ending)]
+        let page = JSONValue.object(["messages": .array(rows)])
+        try cache.saveContent(page, thread: "moku", scope: scope)
+        func subscription() async throws -> String {
+            let resources = await client.contentResources
+            guard let resource = resources.first(where: { $0.value.threadID == "moku" && $0.value.scope == scope }) else {
+                throw ReplayError("No conversation subscription")
+            }
+            return resource.key
+        }
+        func barPoint() -> CGPoint {
+            let frame = scene.capsuleFrame
+            let x = scene.inputOpen ? frame.minX + 32 : frame.midX
+            return monitor.windowPoint(CGPoint(x: x, y: frame.maxY - 22))
+        }
+        func open() async throws {
+            let point = barPoint()
+            try await postScroll(window, point, y: 42, phase: .began)
+            try await postScroll(window, point, y: 0, phase: .ended)
+            try await postScroll(window, point, y: 90, phase: nil, momentum: .begin)
+            try await postScroll(window, point, y: 0, phase: nil, momentum: .end)
+            guard scene.conversationOpen else { throw ReplayError("Upward contact did not open Chief Bar") }
+        }
+        func bottomGap(_ timeline: NSScrollView) -> CGFloat {
+            timeline.contentView.documentRect.maxY - timeline.contentView.bounds.maxY
+        }
+        var samples = [[String: Any]]()
+        var failures = [String]()
+        func checkBottom(_ name: String) async throws -> NSScrollView {
+            let frame = scene.capsuleFrame
+            let point = monitor.windowPoint(CGPoint(x: frame.midX, y: frame.midY))
+            let timeline = try await conversationScroller(in: content, at: point)
+            let gap = bottomGap(timeline)
+            let png = directory.appending(path: "conversation-\(name).png")
+            try await capture(window, to: png)
+            let last = try recognizedLines(in: png, languages: ["en-US"]).first { $0.text.contains(ending) }
+            let clip = window.convertToScreen(timeline.contentView.convert(timeline.contentView.bounds, to: nil))
+            let lastFrame = last.map { CGRect(x: window.frame.minX + $0.frame.minX * window.frame.width,
+                y: window.frame.minY + $0.frame.minY * window.frame.height,
+                width: $0.frame.width * window.frame.width, height: $0.frame.height * window.frame.height) }
+            let visible = lastFrame.map { clip.insetBy(dx: -2, dy: -2).contains($0) } ?? false
+            samples.append(["visit": name, "bottomGap": gap, "lastLineInViewport": visible])
+            if abs(gap) >= 2 || !visible || timeline.contentView.bounds.minX >= 1 {
+                failures.append("\(name): gap=\(gap), lastLine=\(String(describing: lastFrame)), clip=\(clip)")
+            }
+            return timeline
+        }
+        let outside = monitor.windowPoint(CGPoint(x: 100, y: 200))
+        try await recordWindow(window, to: directory.appending(path: "conversation-opening.mp4")) {
+            try await Task.sleep(for: .milliseconds(250))
+            try await open()
+            try await Task.sleep(for: .milliseconds(550))
+            let timeline = try await checkBottom("first")
+            let clip = timeline.contentView
+            let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
+            let initial = clip.bounds.minY
+            try await postScroll(window, point, y: 240, phase: .began)
+            try await postScroll(window, point, y: 0, phase: .ended)
+            let reading = clip.bounds.minY
+            let id = try await subscription()
+            let revised = JSONValue.object(["messages": .array(rows + [row(32, "A newer message arrived.")])])
+            await client.emit(.threadContent(subscriptionId: id, state: .ready(revised)))
+            try await Task.sleep(for: .milliseconds(200))
+            let revisedY = clip.bounds.minY
+            window.setContentSize(.init(width: content.bounds.width, height: 660))
+            try await Task.sleep(for: .milliseconds(550))
+            let resized = clip.bounds.minY
+            samples.append(["initialY": initial, "readingY": reading, "revisedY": revisedY, "resizedY": resized])
+            if reading >= initial - 40 || abs(revisedY - reading) >= 2 || abs(resized - reading) >= 2 {
+                failures.append("Reading moved from \(initial) to \(reading) to \(revisedY) to \(resized)")
+            }
+            try await postClick(window, at: outside)
+            try await Task.sleep(for: .milliseconds(650))
+            guard !scene.conversationOpen else { throw ReplayError("Outside click did not dismiss Chief Bar") }
+
+            // Start the mounted reader with no cached messages and deliver
+            // its first nonempty page after the shell finishes expanding.
+            try cache.saveContent(.object(["messages": .array([])]), thread: "moku", scope: scope)
+            try await open()
+            try await Task.sleep(for: .milliseconds(550))
+            await client.emit(.threadContent(subscriptionId: try await subscription(), state: .ready(page)))
+            try await Task.sleep(for: .milliseconds(550))
+            _ = try await checkBottom("delayed-reopen")
+            try await postClick(window, at: outside)
+            try await Task.sleep(for: .milliseconds(650))
+
+            try cache.saveContent(page, thread: "moku", scope: scope)
+            try await postClick(window, at: barPoint())
+            try await Task.sleep(for: .milliseconds(550))
+            guard scene.inputOpen, !scene.conversationOpen else { throw ReplayError("Click did not open compact Compose") }
+            try await open()
+            try await Task.sleep(for: .milliseconds(550))
+            _ = try await checkBottom("from-compose")
+            try await postClick(window, at: outside)
+            try await Task.sleep(for: .milliseconds(650))
+        }
+        try JSONSerialization.data(withJSONObject: ["samples": samples, "failures": failures], options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "conversation-opening.json"))
+        guard failures.isEmpty else { throw ReplayError(failures.joined(separator: "\n")) }
     }
 
     private func conversationScroller(in content: NSView, at point: CGPoint) async throws -> NSScrollView {

@@ -138,6 +138,30 @@ python3 demos/moku-landing/verify_header.py --completed-card --output .build/com
 
 A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas selects the Running tag, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
 
+### Chief Bar opening
+
+```sh
+xcrun swift build --package-path app/macos
+python3 demos/moku-landing/verify_header.py --conversation-opening --output .build/chief-bar-opening
+```
+
+The replay opens the production Chief Bar with phased AppKit scroll events
+and momentum. It checks the first visit with cached history, reopening after
+the first nonempty page arrives late, and swiping from the compact editor.
+The last bubble is longer than the viewport. The replay measures the native
+clip against the document bottom and recognizes the final line inside the
+viewport in each window capture. A new contact scrolls back, then a content
+revision and window shrink must preserve the native vertical offset.
+
+`conversation-opening.mp4` records the opening and outside-click dismissal.
+Inspect the moving frames for the eye pair staying inside the bottom row as it
+moves between seats, and for the transcript staying above the composer until
+it retires.
+`source.json` binds the run to the source and `conversation-opening.json`
+records the scroll measurements. The fixture uses cached pages and delivers
+deterministic revisions through the client event stream. The event and
+recording checks cover the mounted workspace on macOS.
+
 The header replay mounts the 46.2-point production filters at the top of a
 real window in Aqua and Dark Aqua. The initial selection is the Chief folder
 with an unread count of 8. Beside it is the Inbox tag **🔵 Blue** with an

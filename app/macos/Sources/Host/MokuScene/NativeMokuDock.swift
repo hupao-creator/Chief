@@ -891,13 +891,25 @@ public struct NativeMokuDock: View {
         .onChange(of: completionVisible) { _, visible in
             if !visible { state.dockMentionHitRect = nil }
         }
-        .overlay(alignment: .top) {
-            if conversationVisible, let workspace = presentation?.workspace, let owner = workspace.catalog.moku?.id {
-                NativeMokuConversation(client: workspace.client, owner: owner)
-                    .id(owner)
-                    .frame(width: width, height: max(0, surface.height - rowHeight))
-                    .transition(.opacity)
+        .overlay(alignment: .bottom) {
+            ZStack {
+                if conversationVisible, let workspace = presentation?.workspace, let owner = workspace.catalog.moku?.id {
+                    let viewport = CGSize(width: width, height: max(0, surface.height - rowHeight))
+                    NativeMokuConversation(client: workspace.client, owner: owner)
+                        .id(owner)
+                        // Lay out the transcript at its reading size and reveal it
+                        // from the composer edge as the shell grows around it.
+                        .frame(width: viewport.width, height: viewport.height)
+                        .transaction(value: viewport) { $0.animation = nil }
+                        .geometryGroup()
+                        .offset(y: -rowHeight)
+                        .transition(.identity)
+                }
             }
+            // Hide any outgoing layout before the folding shell can carry it
+            // across the input row, including when a Talk occupies that row.
+            .opacity(conversationVisible ? 1 : 0)
+            .animation(nil, value: conversationVisible)
         }
         .overlay(alignment: .top) {
             if completionVisible, let agentMentions {
@@ -992,11 +1004,9 @@ public struct NativeMokuDock: View {
                             .animation(reduceMotion ? nil : .mokuInk)))
             }
         }
-        .overlay(alignment: .topLeading) {
-            // One numeric seat travels with the same transaction as the shell.
-            // Switching between an intrinsic-height row and a fixed-height row
-            // cannot interpolate, and a delayed expansion fraction starts the
-            // eyes a layout pass after the glass has already changed size.
+        .overlay(alignment: .bottomLeading) {
+            // The resident travels with the bottom row. Its local offset must
+            // stay independent of the height of the shell opening above it.
             let generation = state.composerGeneration
             let returning = state.readingPanelReturning
             let showsHarness = threadID != nil && !state.settingsOpen && !returning
@@ -1011,7 +1021,9 @@ public struct NativeMokuDock: View {
                 .onChange(of: returning) { _, returning in
                     if returning, threadID != nil { state.retireInputIdentity(generation: generation) }
                 }
-                .position(x: faceCenter.x + faceShift.width, y: faceCenter.y + faceShift.height)
+                .geometryGroup()
+                .offset(x: faceCenter.x + faceShift.width - NativeMokuFaceLayout.seat.width / 2,
+                        y: faceCenter.y + faceShift.height - surface.height + NativeMokuFaceLayout.seat.height / 2)
         }
         .overlay(alignment: .bottomTrailing) {
             // Keep the footer layout alive across insertion and retirement.
