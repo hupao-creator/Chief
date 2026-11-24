@@ -3,7 +3,7 @@ import ScreenCaptureKit
 import SwiftUI
 import Vision
 import ChiefApplications
-import ChiefCore
+@testable import ChiefCore
 import ChiefHarnessCodex
 import ChiefPluginAPI
 @testable import ChiefPluginUI
@@ -102,9 +102,10 @@ private final class WheelSample: NSEvent {
     }
 
     private func installTasks(_ count: Int, revision: Int, authority: UUID, firstDirectoryCount: Int? = nil,
-                              manyDirectories: Bool = false, reports: [JSONValue] = [], extraThreads: [JSONValue] = []) async throws {
+                              manyDirectories: Bool = false, reports: [JSONValue] = [], extraThreads: [JSONValue] = [],
+                              noteText: String? = nil) async throws {
         let ids = (0..<count).map { "task-\($0)" } + ["moku"]
-        let note = try ThreadNote(id: "fixture-note", text: JSONText(String(repeating: "A note paragraph.\n\n", count: 55)),
+        let note = try ThreadNote(id: "fixture-note", text: JSONText(noteText ?? String(repeating: "A note paragraph.\n\n", count: 55)),
                                   revision: 1, updatedAt: 2)
         let threads = try ids.enumerated().map { index, id in
             let other = firstDirectoryCount.map { index >= $0 && id != "moku" } ?? false
@@ -112,7 +113,7 @@ private final class WheelSample: NSEvent {
             let scope: JSONText = manyDirectories ? JSONText("/fixture/\(index)") : (other ? "/other" : "/fixture")
             return try HarnessThread(id: JSONText(id), harnessID: "codex", revision: 0, sessionState: .null,
                 observation: .init(), cwd: scope, settings: .object([:]), createdAt: 1, updatedAt: 2,
-                title: JSONText(id), tags: [], moku: id == "moku" ? true : nil, note: manyDirectories && id == "moku" ? note : nil, transcript: id == "moku" ? .array([]) : nil,
+                title: JSONText(id), tags: [], moku: id == "moku" ? true : nil, note: (manyDirectories || noteText != nil) && id == "moku" ? note : nil, transcript: id == "moku" ? .array([]) : nil,
                 directoryTag: directory, directoryScope: scope).json
         }
         let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
@@ -133,6 +134,12 @@ private final class WheelSample: NSEvent {
 
         let directory = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        if CommandLine.arguments.contains("--note-link") {
+            window.center()
+            try await focusReplayWindow(window)
+            try await noteLinks(window, directory: directory, authority: authority)
+            return
+        }
         if CommandLine.arguments.contains("--status-only") {
             window.center()
             try await focusReplayWindow(window)
@@ -429,6 +436,163 @@ private final class WheelSample: NSEvent {
         let sample = WheelSample(window: window, point: point, x: 0, y: up ? -40 : 40)
         guard monitor.handle(sample) == nil else { throw ReplayError("Inverted-device swipe escaped the active filter") }
         _ = monitor.handle(WheelSample(window: window, point: point, x: 0, y: 0, phase: .ended))
+    }
+
+    private func cacheNoteRuns(for thread: JSONText) throws {
+        let cache = RuntimeOfflineStore(storageDirectory: workspace.client.storageDirectory, hostID: nil)
+        func state(_ turns: [JSONValue]) -> JSONValue {
+            .object(["schema": .text("mokusei.harness.codex.thread.v1"), "updatedAt": .integer(3),
+                     "turns": .array(turns), "backgroundTerminals": .array([])])
+        }
+        var turns = [JSONValue]()
+        for (index, run) in ["cited-run", "later-run"].enumerated() {
+            let time = JSONValue.integer(index + 1)
+            let reply = (1...40).map { "\(run) paragraph \($0)." }.joined(separator: "\n\n")
+            var turn: [JSONText: JSONValue] = ["executionId": .text(run), "status": .text("completed"),
+                "createdAt": time, "updatedAt": time, "finishedAt": time, "reasoning": .text(""),
+                "answer": .text(""), "messages": .array([]), "timeline": .array([]), "activities": .array([]),
+                "notices": .array([]), "interactions": .array([]), "plan": .array([])]
+            turns.append(.object(turn))
+            turn["timeline"] = .array([.object(["id": .text("reply"), "itemId": .text("message"),
+                "kind": .text("assistant"), "content": .text(reply), "status": .text("complete"), "createdAt": time])])
+            turn["answer"] = .text(reply)
+            try cache.saveContent(state([.object(turn)]), thread: thread, scope: .turn(key: JSONText("turn:" + run)))
+        }
+        try cache.saveContent(state(turns), thread: thread, scope: .thread)
+    }
+
+    private func noteLinks(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+        let model = presentation.overview, scene = presentation.scene
+        let source = ApplicationThreadRef(threadID: "linked-task", typeID: "agent")
+        let citation = ApplicationExecutionRef(thread: source, executionID: "cited-run")
+        try cacheNoteRuns(for: source.threadID)
+        let events = await workspace.client.events()
+        let contentDelivery = Task {
+            for await event in events {
+                if case .threadContent = event { workspace.harnessHost.receive(event) }
+            }
+        }
+        defer { contentDelivery.cancel() }
+        let note = "[Earlier run](chief://execution?threadId=linked-task&executionId=cited-run)"
+        let thread = try HarnessThread(id: source.threadID, harnessID: "codex", revision: 1, sessionState: .null,
+            observation: .init(latestExecution: .init(executionID: "later-run", status: .completed, startedAt: 1, finishedAt: 2)),
+            cwd: "/other", settings: .object([:]), createdAt: 1, updatedAt: 2, title: "Linked task",
+            tags: ["Design"], tagEmojis: ["Design": "🎨"], directoryTag: "Other", directoryScope: "/other")
+        let bug = try HarnessThread(id: "other-bug", harnessID: "codex", revision: 1, sessionState: .null,
+            observation: .init(), cwd: "/other", settings: .object([:]), createdAt: 1, updatedAt: 2, title: "Bug",
+            tags: ["Bugs"], tagEmojis: ["Bugs": "🐛"], directoryTag: "Other", directoryScope: "/other")
+        func install(revision: Int, reports: [JSONValue] = []) async throws {
+            try await installTasks(2, revision: revision, authority: authority, firstDirectoryCount: 1,
+                reports: reports, extraThreads: [thread.json, bug.json], noteText: note)
+        }
+        try await install(revision: 2)
+        guard let project = model.visibleFilters.first(where: { $0.scope == "/fixture" }),
+              let other = model.visibleFilters.first(where: { $0.scope == "/other" }),
+              let bugs = other.children.first(where: { $0.tag == "Bugs" }),
+              let design = other.children.first(where: { $0.tag == "Design" }) else {
+            throw ReplayError("Missing Note fixture filters")
+        }
+        func wait(_ message: String, until ready: () -> Bool) async throws {
+            let deadline = ContinuousClock.now + .seconds(6)
+            while !ready() {
+                guard ContinuousClock.now < deadline else {
+                    throw ReplayError("\(message), note=\(scene.notePanelOpen), focused=\(model.facts.focused), phase=\(scene.noteReadingOrigin?.phase.rawValue ?? "none"), filter=\(model.selectedFilter?.id ?? "All"), reader=\(presentation.selected?.threadID.string ?? "none")")
+                }
+                try await Task.sleep(for: .milliseconds(5))
+            }
+        }
+        var visits = [[String: Any]]()
+        func visit(from start: NativeOverviewFilter, to end: NativeOverviewFilter, reader: ApplicationThreadRef) async throws {
+            model.selectTag(start)
+            await presentation.canvas.prepareForPresentation()
+            scene.openNotePanelFromUser()
+            func linkFrame() -> CGRect? {
+                guard let content = window.contentView,
+                      let link = descendant(MarkdownExecutionHost.self, in: content) else { return nil }
+                let frame = link.convert(link.bounds, to: nil)
+                let point = CGPoint(x: frame.midX, y: frame.midY)
+                // A retained link participates only once its TextKit seat accepts pointer input.
+                guard content.hitTest(content.superview?.convert(point, from: nil) ?? point) is MarkdownTextView
+                else { return nil }
+                return frame
+            }
+            try await wait("Note link did not become clickable") { linkFrame() != nil }
+            guard let frame = linkFrame() else { throw ReplayError("Note link left the window before the click") }
+            // TextKit tracks the mouse until release. Queue both events for the replay window.
+            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                guard let event = NSEvent.mouseEvent(with: type, location: CGPoint(x: frame.midX, y: frame.midY),
+                    modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                    context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0) else {
+                    throw ReplayError("Cannot construct Note link click")
+                }
+                NSApp.postEvent(event, atStart: false)
+            }
+            try await wait("Note click missed its execution link") { scene.noteReadingOrigin != nil }
+            guard let origin = scene.noteReadingOrigin, origin.phase == .dismissing, origin.reference == citation,
+                  model.selectedFilter?.id == start.id, presentation.selected == nil else {
+                throw ReplayError("Note click lost its citation or changed space before dismissal")
+            }
+            try await wait("Did not locate the destination on Overview before opening the reader") {
+                scene.noteReadingOrigin?.phase == .locating && model.selectedFilter?.id == end.id &&
+                    !scene.notePanelOpen && presentation.selected == nil
+            }
+            try await wait("Destination reader did not mount") { presentation.mountedReadingThread == reader }
+            guard model.selectedFilter?.id == end.id, presentation.selected == reader,
+                  presentation.readingPanelSource != nil, scene.noteReadingOrigin?.id == origin.id,
+                  scene.noteReadingOrigin?.phase == .reading else { throw ReplayError("Incorrect reader entrance or space") }
+            let position: HarnessReadingTarget.Position?
+            let opened: ApplicationExecutionRef?
+            if reader == source {
+                let target = presentation.readingTarget
+                guard target?.mode == .history else { throw ReplayError("Expected a pinned historical visit") }
+                opened = target.map { .init(thread: reader, executionID: $0.executionID) }
+                position = target?.position
+            } else {
+                opened = presentation.reportSidecards.selectedExecution
+                position = presentation.reportSidecards.entryPosition
+            }
+            guard let opened, opened == citation, let position, position == .executionStart else {
+                throw ReplayError("Opened the wrong run or position")
+            }
+            var record: [String: Any] = ["dismissing": start.id, "locating": end.id, "reading": end.id,
+                "reader": reader.threadID.string, "source": opened.thread.threadID.string,
+                "execution": opened.executionID.string, "position": position.rawValue]
+            if reader == source {
+                try await wait("Historical reply did not load at its heading") {
+                    let controls = presentation.readingInteractionSnapshot()["controls"]?.arrayValue ?? []
+                    guard controls.contains(where: { $0["role"] == .text("history") && $0["value"]?["rowId"] == .text("turn:cited-run") }),
+                          controls.contains(where: { $0["role"] == .text("row.load") && $0["value"]?["state"] == .text("ready")
+                              && $0["value"]?["rowId"] == .text("turn:cited-run") }),
+                          let value = controls.first(where: { $0["role"] == .text("timeline") && $0["id"]?.stringValue?.contains("history") == true })?["value"],
+                          let height = value["height"]?.numberValue, let viewport = value["viewport"]?.numberValue,
+                          viewport > 0, height > viewport, value["top"]?.numberValue == 0, value["following"] == .bool(false) else { return false }
+                    record["timeline"] = ["height": height, "viewport": viewport, "top": 0, "following": false] as [String: Any]
+                    return true
+                }
+            }
+            visits.append(record)
+            presentation.showOverview()
+            try await wait("Reader did not close to the destination space") {
+                presentation.selected == nil && model.presentationActive && !presentation.messageMotion.active
+                    && !scene.notePanelOpen && model.selectedFilter?.id == end.id
+            }
+        }
+        try await visit(from: project, to: other, reader: source)
+        try await visit(from: bugs, to: design, reader: source)
+        try await visit(from: design, to: design, reader: source)
+
+        let report = ApplicationThreadRef(threadID: "linked-report", typeID: "report.document")
+        var fields = reportFixtures([report.threadID])[0].objectValue!
+        let related = JSONValue.array([.object(["thread": source.json, "executionId": .text("later-run")])])
+        var view = fields["view"]!.objectValue!
+        view["relatedExecutions"] = related
+        fields["view"] = .object(view)
+        fields["presentations"] = .array([.object(["id": .text("mokusei.overview"), "apiVersion": .integer(1),
+            "schemaVersion": .integer(1), "value": .object(["coversExecutions": related])])])
+        try await install(revision: 3, reports: [.object(fields)])
+        try await visit(from: design, to: project, reader: report)
+        try JSONSerialization.data(withJSONObject: visits, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "note-links.json"))
     }
 
     /// Post pixel scrolls to this replay process. AppKit chooses the responder

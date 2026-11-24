@@ -359,7 +359,8 @@ Collection on All. Record the isolated window continuously and save the filter,
 carousel member, execution identities and link position alongside the recording.
 
 1. In the other directory, scroll the Note to the ordinary link and click it
-   with the system pointer. Check that the Note closes and the selected filter and canvas offset stay put.
+   with the system pointer. Check that the Note closes, Overview switches to the
+   target directory, then the reader opens.
    The reader should open at the cited run’s heading. After the scoped body has loaded, check that its timeline
    height exceeds its viewport, `top` is zero and `following` is false. Repeat from a filter that already contains the target and check that
    its selection stays put. Click the reader’s **×** and verify the Note stays
@@ -368,7 +369,8 @@ carousel member, execution identities and link position alongside the recording.
    link’s window position. On separate visits, use the Overview command and
    click the reader backdrop. Both Overview exits leave the Note closed.
 2. Open the associated link from a different directory. Check the Report title
-   and the exact cited execution in its open side panel. Apply the same scroll
+   and the exact cited execution in its open side panel. Verify the directory
+   containing the Report was selected before its reader opened. Apply the same scroll
    checks to that timeline. Close the expanded visit with the Report’s **×**
    and verify Overview settles with the Note closed. Reopen the link. Use the conversation
    contents to visit current and historical rows. Type a draft on the historical
@@ -392,7 +394,7 @@ carousel member, execution identities and link position alongside the recording.
    Chinese. Record the capture rate. Track source revision, executable identity, scoped replies,
    input targets and returned state for each visit.
 
-The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size) checks the Overview status filters, live card membership, retained tags and the Chief Bar scroll-event path to Chief Note. The semantic Note toggle exercises the Note entrance. Mounted route identity
+The [Note link replay](../../demos/moku-landing/README.md#chief-note-execution-links) checks the click, space ordering, reader and execution target in an isolated window. The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size) checks the Overview status filters, live card membership, retained tags and the Chief Bar scroll-event path to Chief Note. The semantic Note toggle exercises the Note entrance. Mounted route identity
 and window frame recordings supply separate evidence.
 [Note and link behavior](../../app/macos/Sources/Host/MokuScene/README.md)
 
