@@ -22,7 +22,7 @@ import ChiefPluginAPI
 
     var body: some Scene {
         Window("Chief", id: "loading-replay") {
-            NativeRuntimeSurface(model: model, showsConnectionNotice: false) {
+            NativeRuntimeSurface(model: model) {
                 NativeOverviewStatusEmptyState(title: "没有运行中的会话")
             }
             .background(light ? Color(white: 0.94) : Color(white: 0.15))

@@ -188,11 +188,15 @@ Its bowl and handle span about 191 pt, matching the sleeping skillet on Overview
 Reduce Motion shows the agents resting in the pan.
 The first live catalog replaces the mark as soon as content is ready. If
 startup has a saved catalog, the mark stays up while Chief attempts the
-initial connection. A failure allows browsing the saved catalog and
-identifies Chief's background service
-and offers Reconnect. Provider discovery starts after that connection succeeds.
-When Overview is visible, connection notices sit below its top controls,
-leaving folder and Inbox tag labels visible and available for browsing.
+initial connection. A failure allows browsing the saved catalog when available.
+If no catalog is available, the startup screen identifies Chief's background
+service and offers Reconnect. Provider discovery starts after the connection
+succeeds.
+Once the workspace admits a catalog, its routes and Overview filters stay
+available for browsing during background synchronization and connection
+recovery. Runtime availability still gates operations that require the live
+service. Settings presents its own connection guidance where configuration
+requires the service.
 
 `desktop-preferences.json` stores the selected thread, last Overview space,
 each directory's last tag (including an explicit Running choice), onboarding and reading activity. Saved appearance and language fields are ignored on read and omitted

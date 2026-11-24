@@ -2116,12 +2116,12 @@ private final class WheelSample: NSEvent {
         }
         samples.append(["step": "tag-heights", "points": heights, "compactLeftWidth": left.frame.width,
                         "leftHeightWithBadge": left.frame.height, "leftUnread": development.unreadCount])
-        let notice = try accessibleControl("workspace.runtime.connection-notice", role: .group, in: window).frame
-        let clearance = [folderButton, shippingButton, inboxButton].map { $0.frame.minY - notice.maxY }
-        guard !notice.isEmpty, clearance.allSatisfy({ $0 > 0 }) else {
-            throw ReplayError("Runtime notice overlaps a top filter. Screen-space gaps: \(clearance)")
+        guard workspace.synchronizing, !workspace.runtimeAvailable,
+              (try? accessibleControl("workspace.runtime.connection-notice", role: .group, in: window)) == nil else {
+            throw ReplayError("Expected a browsable catalog without a Runtime status banner during sync")
         }
-        samples.append(["step": "sync-notice-header-clearance", "gapsPt": clearance])
+        samples.append(["step": "browse-during-sync", "synchronizing": workspace.synchronizing,
+                        "runtimeAvailable": workspace.runtimeAvailable, "bannerPresent": false])
         let shippingCenter = window.convertPoint(fromScreen: CGPoint(x: shippingButton.frame.midX, y: shippingButton.frame.midY))
         try click(window, at: shippingCenter)
         try await check("inbox-top-resets-status", .all, ["Inbox tagged"], selected: inboxShipping.tag)
@@ -2533,8 +2533,7 @@ private final class WheelSample: NSEvent {
                     throw ReplayError("Switching the filter left its glass face unchanged: " + id)
                 }
             }
-            // The stacked header places the directory glyph below the connection
-            // notice so the same bright-surface sample includes its visible title.
+            // The stacked header places the directory glyph and title in the bright-surface sample.
             window.setContentSize(CGSize(width: 600, height: 600))
             brightCaptureBackdrop = true
             try await Task.sleep(for: .milliseconds(450))
