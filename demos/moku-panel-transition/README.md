@@ -360,12 +360,24 @@ python3 demos/moku-panel-transition/workspace/check_report_identity.py /private/
 
 The checker measures the ink at native 2× resolution against each encoded frame's
 timestamp. For each half turn it uses the nearby full height of that face and
-requires thin and intermediate projections.
+requires a measured thin projection (at most 45% of full height). Rotation about
+the horizontal axis compresses height while the two eyes keep their horizontal
+separation. If the usual mark detector misses one frame directly between the
+eyes and logo, the checker searches the neighboring eyes’ footprint for two
+isolated neutral strokes up to four backing pixels high. The CSV records measured
+ink bounds in backing pixels relative to the glass and identifies recovered pairs.
+The seam permits at most one unresolved sample and at most two frame periods
+between identified faces.
 At 45° and 135° the visible face projects to about 71%
 of its upright height. The checker brackets each crossing with samples at most two
 60 Hz frames apart. The [420ms reading curve](../../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer)
 spends 64ms between these angles. The movie allows one frame per crossing for
-sampling and rasterization. The fully expanded bar must hold the logo at full height.
+sampling and rasterization. An intermediate projection between 45% and 80% of
+full height can fall between exposures. In that case both samples bracketing the
+45° crossing must be consecutive tilted frames below 94% height, and their
+inferred angular step must fit the steepest slope of the 420ms cubic over their
+timestamp interval. The JSON distinguishes observed and bracketed intermediate
+heights. The fully expanded bar must hold the logo at full height.
 Corresponding legs must agree within 85ms. The return must flip within the stationary compact bar after contraction. Reopening
 during that turn must show the partially revealed eyes narrowing back toward the logo.
 The reduced-motion visit checks endpoint widths and a full logo in either direction.
