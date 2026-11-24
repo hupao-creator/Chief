@@ -2,27 +2,27 @@
 
 ## Find a task by folder or tag
 
-Press **⌘K** to open **Overview**. Click a folder icon at the top to see that project’s work. Folders with the same name appear separately.
+Press **⌘K** to open **Overview**. Overview opens the first available folder or Inbox tag when you have no current selection. Click a folder icon at the top to see that project’s tagged work. Folders with the same name appear separately.
 
-Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. Click the asterisk-only **All** button in the top row to see work across projects and Inbox, including Inbox tasks that have no tag.
+Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. A task appears once it has a tag from Tag Agent. With only untagged tasks, Overview shows **No tagged conversations yet**. Your conversations stay saved.
 
-When a folder has tags to choose from, look for their emoji along the left edge. Hover over an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. The selected tag, including **Any tag**, keeps its name visible when you move the pointer away.
+When a folder has tags to choose from, look for their emoji along the left edge. Move the pointer over or just beside an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. The selected tag, including **Any tag**, keeps its name visible when you move the pointer away.
 
-A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Selected folders and **All** have a purple tint. When **Any tag** is selected, its solid purple background keeps the asterisk and name readable over the cards.
+A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Selected folders have a purple tint. When **Any tag** is selected, its solid purple background keeps the asterisk and name readable over the cards.
 
-Click the asterisk (`*`) for **Any tag** to see the whole folder, including tasks without a tag. Choosing another folder starts you at **Any tag**. Switching to a different folder, tag, or **All** shows all statuses in that space. Selecting the same space again keeps your status filter. If a folder and its only tag show the same cards, choosing the folder is enough.
+Click the asterisk (`*`) for **Any tag** to see all tagged work in the folder. Choosing another folder starts you at **Any tag**. Switching to a different folder or tag shows all statuses in that space. Selecting the same space again keeps your status filter. If a folder and its only tag show the same cards, choosing the folder is enough.
 
 Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find a task that’s running or waiting for your response. Choose that folder or tag, then click ⏳ on the right to see its running tasks. With **Reduce Motion** turned on in macOS, the dots stay still.
 
-A red number on a folder counts conversations with an unread completed result or Super Thread document across the whole folder. A red number on a tag counts unread conversations in that tag. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
+A red number on a folder counts conversations with an unread completed result or Super Thread document among its tagged cards. A red number on a tag counts unread conversations in that tag. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
 If a Super Thread in the same view cites a task's latest run, its card can stand in for the task card. Open **Related executions** in the Super Thread to reach the task. A newer run can make the task card appear again. [See the work behind a Super Thread](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 
 ## Filter by status
 
-The three emoji on the right filter the cards in your current folder or tag. From top to bottom, click ⏳ for **Running only**, 🗂️ for **All statuses**, or 🏁 for **Completed only**. Hover over an emoji to expand its button to the left and see the status name. Click the emoji or its name to filter the cards. The selected status keeps its name visible. Other status names appear while you hover. The selected button takes its tint from the emoji, so 🏁 has a neutral gray tint. Overview starts with 🗂️ selected.
+The three emoji on the right filter the cards in your current folder or tag. From top to bottom, click ⏳ for **Running only**, 🗂️ for **All statuses**, or 🏁 for **Completed only**. Move the pointer over or just beside an emoji to expand its button to the left and see the status name. Click the emoji or its name to filter the cards. The selected status keeps its name visible. Other status names appear while you hover. The selected button takes its tint from the emoji, so 🏁 has a neutral gray tint. Overview starts with 🗂️ selected.
 
-You can also swipe up or down with two fingers over the cards or background. Start on the **left half of the window** to change tags, or the **right half** to change status. Slide your fingers up to select the choice below, or down to select the choice above. From **All statuses**, swiping up takes you to **Completed only**. One swipe moves one choice, even if the pointer crosses the middle. At either end, the selection stays put. When the left column is hidden, as it is for **All** and Inbox tags, a left-half swipe keeps your selection.
+You can also swipe up or down with two fingers over the cards or background. Start on the **left half of the window** to change tags, or the **right half** to change status. Slide your fingers up to select the choice below, or down to select the choice above. From **All statuses**, swiping up takes you to **Completed only**. One swipe moves one choice, even if the pointer crosses the middle. At either end, the selection stays put. When the left column is hidden, as it is for Inbox tags, a left-half swipe keeps your selection.
 
 **Running only** includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. **Completed only** includes tasks whose latest run finished successfully and have no pending input or background work. It also includes Super Threads and their collections. Completed task cards show when the latest run finished. Super Thread cards show when the document was last updated. Idle tasks and visible interrupted tasks with no ongoing work appear under **All statuses**.
 

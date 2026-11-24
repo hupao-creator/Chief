@@ -33,8 +33,8 @@ private func catalog(moved: Bool, created: Double) throws -> JSONValue {
         return .object(["id": .string(ref.threadID), "ref": ref.json, "revision": .integer(1),
             "createdAt": .number(created + 10 + Double(index)), "updatedAt": .number(created + 10 + Double(index)),
             "title": .text("Super Thread \(index)"), "archived": .bool(false), "scope": .text(chief),
-            "tags": .object(["tags": .array([.text("Chief")]), "semanticTags": .array([]),
-                "directoryTags": .array([.text("Chief")]), "tagEmojis": .object([:])]),
+            "tags": .object(["tags": .array([.text("Chief"), .text("共享")]), "semanticTags": .array([.text("共享")]),
+                "directoryTags": .array([.text("Chief")]), "tagEmojis": .object(["共享": .text("📌")])]),
             "presentations": .array([]), "view": .object(["coverRevision": .text(moved && index == 0 ? "revised-cover" : "cover-\(index)"),
                     "contentRevision": .text("body-1"), "emoji": .text("📌"), "shortDescription": .text("Summary \(index)"),
                     "previewText": .text("Preview"), "readingSeconds": .integer(40), "relatedExecutions": .array([])])])

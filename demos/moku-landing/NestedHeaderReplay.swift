@@ -90,6 +90,8 @@ private final class WheelSample: NSEvent {
                     Color(white: captureScheme == .dark && !brightCaptureBackdrop ? 0.13 : 0.97)
                 }
             }
+            // Inspect mounted controls even when no system accessibility client is running.
+            .environment(\.accessibilityEnabled, true)
             .preferredColorScheme(captureScheme)
             .modifier(NativeWorkspaceWindowSurface())
             .task {
@@ -102,19 +104,21 @@ private final class WheelSample: NSEvent {
     }
 
     private func installTasks(_ count: Int, revision: Int, authority: UUID, firstDirectoryCount: Int? = nil,
-                              manyDirectories: Bool = false, reports: [JSONValue] = [], extraThreads: [JSONValue] = [],
+                              manyDirectories: Bool = false, firstTagCount: Int? = nil, reports: [JSONValue] = [], extraThreads: [JSONValue] = [],
                               noteText: String? = nil) async throws {
-        let ids = (0..<count).map { "task-\($0)" } + ["moku"]
+        let extra = manyDirectories ? (0..<12).map { "project-task-\($0)" } : []
+        let ids = (0..<count).map { "task-\($0)" } + extra + ["moku"]
         let note = try ThreadNote(id: "fixture-note", text: JSONText(noteText ?? String(repeating: "A note paragraph.\n\n", count: 55)),
                                   revision: 1, updatedAt: 2)
         let threads = try ids.enumerated().map { index, id in
             let other = firstDirectoryCount.map { index >= $0 && id != "moku" } ?? false
-            let directory: JSONText = manyDirectories ? JSONText("Project \(index)") : (other ? "Other" : "Fixture")
-            let scope: JSONText = manyDirectories ? JSONText("/fixture/\(index)") : (other ? "/other" : "/fixture")
+            let directory: JSONText = index >= count && manyDirectories ? JSONText("Project \(index)") : (other ? "Other" : "Fixture")
+            let scope: JSONText = index >= count && manyDirectories ? JSONText("/fixture/\(index)") : (other ? "/other" : "/fixture")
+            let tag: JSONText = firstTagCount.map { index >= $0 } == true ? "Review" : "Work"
             return try HarnessThread(id: JSONText(id), harnessID: "codex", revision: 0, sessionState: .null,
                 observation: .init(), cwd: scope, settings: .object([:]), createdAt: 1, updatedAt: 2,
-                title: JSONText(id), tags: [], moku: id == "moku" ? true : nil, note: (manyDirectories || noteText != nil) && id == "moku" ? note : nil, transcript: id == "moku" ? .array([]) : nil,
-                directoryTag: directory, directoryScope: scope).json
+                title: JSONText(id), tags: [tag], moku: id == "moku" ? true : nil, note: (manyDirectories || noteText != nil) && id == "moku" ? note : nil, transcript: id == "moku" ? .array([]) : nil,
+                tagEmojis: [tag: "📌"], directoryTag: directory, directoryScope: scope).json
         }
         let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
             "defaultCwd": .text("/fixture"), "settings": .object([:]), "threads": .array(threads + extraThreads),
@@ -158,7 +162,7 @@ private final class WheelSample: NSEvent {
             try await cardInteraction(window, directory: directory, authority: authority)
             try await fittingCards(window, directory: directory, authority: authority)
             try await statusFilters(window, directory: directory, authority: authority)
-            try await installTasks(0, revision: 16, authority: authority)
+            try await installTasks(0, revision: 17, authority: authority)
             try await Task.sleep(for: .milliseconds(800))
             guard presentation.moku.landing else { throw ReplayError("Empty Overview did not enter landing") }
             presentation.scene.setInputOpen(false)
@@ -320,22 +324,25 @@ private final class WheelSample: NSEvent {
         func attribute(_ node: NSObject, _ key: String) -> Any? {
             node.responds(to: NSSelectorFromString(key)) ? node.value(forKey: key) : nil
         }
+        var buttonIDs: [String] = []
         func find(_ value: Any) -> FilterButton? {
             guard let node = value as? NSObject else { return nil }
-            if attribute(node, "accessibilityIdentifier") as? String == id,
-               attribute(node, "accessibilityRole") as? String == NSAccessibility.Role.button.rawValue,
-               let frame = attribute(node, "accessibilityFrame") as? NSValue {
-                return FilterButton(frame: frame.rectValue,
-                    title: attribute(node, "accessibilityTitle") as? String ?? "",
-                    label: attribute(node, "accessibilityLabel") as? String ?? "")
+            if attribute(node, "accessibilityRole") as? String == NSAccessibility.Role.button.rawValue,
+               let identifier = attribute(node, "accessibilityIdentifier") as? String {
+                buttonIDs.append(identifier)
+                if identifier == id, let frame = attribute(node, "accessibilityFrame") as? NSValue {
+                    return FilterButton(frame: frame.rectValue,
+                        title: attribute(node, "accessibilityTitle") as? String ?? "",
+                        label: attribute(node, "accessibilityLabel") as? String ?? "")
+                }
             }
             for child in attribute(node, "accessibilityChildren") as? [Any] ?? [] {
                 if let result = find(child) { return result }
             }
             return nil
         }
-        guard let button = find(window) else {
-            throw ReplayError("Missing accessible filter button " + id)
+        guard let button = find(window) ?? window.contentView.flatMap({ find($0) }) else {
+            throw ReplayError("Missing accessible filter button \(id). Found \(buttonIDs)")
         }
         return button
     }
@@ -986,11 +993,11 @@ private final class WheelSample: NSEvent {
         }
 
         window.setContentSize(CGSize(width: 1360, height: 704))
-        try await installTasks(13, revision: 4, authority: authority, firstDirectoryCount: 12)
+        try await installTasks(13, revision: 4, authority: authority, firstTagCount: 12)
         try await settle(width: 1360, count: 13)
         try wheel(-10000, 0)
         let beforeFilter = camera.scrollOffset
-        guard beforeFilter > 0, let filter = presentation.overview.filters.first(where: { $0.scope == "/fixture" }) else {
+        guard beforeFilter > 0, let filter = presentation.overview.selectedDirectory?.children.first(where: { $0.tag == "Work" }) else {
             throw ReplayError("Missing overflow or directory filter")
         }
         presentation.overview.selectTag(filter)
@@ -1015,7 +1022,8 @@ private final class WheelSample: NSEvent {
     private func statusFilters(_ window: NSWindow, directory: URL, authority: UUID) async throws {
         let model = presentation.overview, canvas = presentation.canvas
         let running = ["Executing", "Permission", "Background", "Submitting"]
-        let ordinary = running + ["Delivered", "Stopped", "Idle"]
+        let backlog = (1...8).map { "Backlog-\($0)" }
+        let ordinary = running + ["Delivered", "Stopped", "Idle"] + backlog
         let inboxTasks = ["Inbox tagged", "Inbox untagged", "Inbox label"]
         let namedFolderTask = "Directory named Inbox"
         let reportIDs = (1...8).map { "Report-\($0)" }
@@ -1031,7 +1039,7 @@ private final class WheelSample: NSEvent {
             let observation = ThreadPublicObservation(latestExecution: execution, backgroundWork: name == "Background" ? .init() : nil)
             let inbox = inboxTasks.contains(name)
             let defaultTag: JSONText? = switch name {
-            case "Inbox untagged", namedFolderTask: nil
+            case "Inbox untagged", "Directory only": nil
             case "Inbox label": "Inbox"
             case "Delivered", "Inbox tagged": "Shipping"
             default: "Development"
@@ -1057,13 +1065,21 @@ private final class WheelSample: NSEvent {
             fields["pendingInput"] = .bool(name == "Submitting")
             return .object(fields)
         }
+        var directoryReport = reportFixtures(["Directory-only report"])[0].objectValue!
+        directoryReport["tags"] = .object(["tags": .array([.text("Fixture")]), "semanticTags": .array([]),
+            "directoryTags": .array([.text("Fixture")]), "tagEmojis": .object([:])])
+        directoryReport["presentations"] = .array([.object(["id": .text("mokusei.overview"),
+            "apiVersion": .integer(1), "schemaVersion": .integer(1),
+            "value": .object(["coversExecutions": .array([.object([
+                "thread": ApplicationThreadRef(threadID: "Delivered", typeID: "agent").json,
+                "executionId": .text("run-Delivered")])])])])])
         let fixtures = try [thread("Executing", .running), thread("Permission", .waitingForUser),
             thread("Background", .completed), thread("Submitting", nil), thread("Delivered", .completed),
-            thread("Stopped", .interrupted), thread("Idle", nil), thread("Failed", .failed), thread(namedFolderTask, nil)] + inboxTasks.map { try thread($0, nil) }
+            thread("Stopped", .interrupted), thread("Idle", nil), thread("Failed", .failed), thread(namedFolderTask, nil), thread("Directory only", nil)] + (inboxTasks + backlog).map { try thread($0, nil) }
         window.setContentSize(CGSize(width: 1024, height: 704))
         model.selectTag(nil)
         try await installTasks(0, revision: 8, authority: authority,
-            reports: reportFixtures(reportIDs.map { JSONText($0) }), extraThreads: fixtures)
+            reports: reportFixtures(reportIDs.map { JSONText($0) }) + [.object(directoryReport)], extraThreads: fixtures)
         guard let content = window.contentView,
               let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else {
             throw ReplayError("Status replay has no window scroll router")
@@ -1120,7 +1136,7 @@ private final class WheelSample: NSEvent {
             return lines
         }
         func check(_ name: String, _ mode: NativeOverviewStatusFilter, _ expected: [String],
-                   selected: String = "", needsBothReportCards: Bool = false, checkCompletedCopy: Bool = false) async throws {
+                   selected: String = "Fixture", needsBothReportCards: Bool = false, checkCompletedCopy: Bool = false) async throws {
             let deadline = ContinuousClock.now + .seconds(5)
             while Set(model.items.map(\.id)) != canvas.mountedCardIDs || canvas.isLayingOut {
                 guard ContinuousClock.now < deadline else { throw ReplayError("Cards did not settle at " + name) }
@@ -1182,11 +1198,10 @@ private final class WheelSample: NSEvent {
                 let url = directory.appending(path: "status-" + name + ".png")
                 if expectsIdle || expectsCompletedLogo || checkCompletedCopy { try await Task.sleep(for: .milliseconds(450)) }
                 try await capture(window, to: url)
-                if ["all", "down", "up", "directory-any"].contains(name) {
+                if ["all", "down", "up", "directory-any", "inbox-label"].contains(name) {
                     var expectedFaces = Dictionary(uniqueKeysWithValues: [NativeOverviewStatusFilter.running, .all, .completed].map {
                         ("overview-status-" + $0.rawValue, $0 == mode)
                     })
-                    expectedFaces["overview-directory-all"] = selected.isEmpty
                     if let folder = tags.first(where: { $0.scope == "/fixture" }) {
                         expectedFaces[folder.id] = selected == folder.tag
                     }
@@ -1270,21 +1285,21 @@ private final class WheelSample: NSEvent {
               let namedFolder = tags.first(where: { $0.scope == "/other/Inbox" && $0.isDirectory }) else {
             throw ReplayError("Missing scoped Shipping controls")
         }
-        let allCards = ordinary + inboxTasks + [namedFolderTask] + reportIDs
+        let allCards = ordinary + reportIDs
         try await check("all", .all, allCards)
         try await waitForFilterInput()
         let panPoint = monitor.windowPoint(CGPoint(x: canvas.cardRegionInWindow.width * 0.8, y: content.bounds.height - 8))
         let startOffset = canvas.camera.scrollOffset
         try await postScroll(window, panPoint, y: -2, phase: nil, precise: false)
         let wheelOffset = canvas.camera.scrollOffset
-        guard wheelOffset > startOffset, model.statusFilter == .all, model.selectedTag.isEmpty else {
-            throw ReplayError("Ordinary line-wheel input did not pan the populated card area")
+        guard wheelOffset > startOffset, model.statusFilter == .all, model.selectedFilter?.id == parent.id else {
+            throw ReplayError("Line wheel failed in \(model.selectedTag): offset \(startOffset) → \(wheelOffset) of \(canvas.camera.maximumOffset)")
         }
         try await postScroll(window, panPoint, y: 2, phase: nil, precise: false)
         samples.append(["step": "populated-wheel", "windowPoint": [panPoint.x, panPoint.y],
                         "startOffset": startOffset, "wheelOffset": wheelOffset])
-        try await swipe(up: true, right: false)
-        try await check("global-left-no-children", .all, allCards)
+        try await swipe(up: false, right: false)
+        try await check("directory-left-upper-limit", .all, allCards)
         try await swipe(up: false, crossCenter: true)
         try await check("down", .running, running)
         try await swipe(up: false)
@@ -1295,17 +1310,23 @@ private final class WheelSample: NSEvent {
         try await check("up", .completed, ["Delivered"] + reportIDs, needsBothReportCards: true)
         try await swipe(up: true)
         try await check("lower-limit", .completed, ["Delivered"] + reportIDs)
-        let allButton = try filterButton("overview-directory-all", in: window)
-        guard [allButton.title, allButton.label].contains(workspace.locale.text("全部", "All")) else {
-            throw ReplayError("The global All button lost its localized accessibility name")
+        // The canvas can settle before AppKit publishes the updated toolbar accessibility tree.
+        let toolbarDeadline = ContinuousClock.now + .seconds(4)
+        while (try? filterButton(parent.id, in: window)) == nil, ContinuousClock.now < toolbarDeadline {
+            try await Task.sleep(for: .milliseconds(30))
         }
+        let folderButton = try filterButton(parent.id, in: window)
         let shippingButton = try filterButton(inboxShipping.id, in: window)
         let inboxButton = try filterButton(inboxLabel.id, in: window)
-        guard [shippingButton, inboxButton].allSatisfy({ abs($0.frame.midY - allButton.frame.midY) <= 1 }),
-              Set(model.chromeInteractions.mountedIDs(in: .semantic)) == [inboxShipping.id, inboxLabel.id],
-              Set(model.chromeInteractions.mountedIDs(in: .directory)) == ["all", parent.id, namedFolder.id] else {
-            throw ReplayError("Inbox tags did not mount as semantic buttons alongside All and the real folders")
+        let left = try filterButton("overview-semantic-any", in: window)
+        let right = try filterButton("overview-status-all", in: window)
+        let heights = [folderButton, shippingButton, inboxButton, left, right].map { $0.frame.height }
+        guard heights.allSatisfy({ abs($0 - 46.2) <= 1 }),
+              [shippingButton, inboxButton].allSatisfy({ abs($0.frame.midY - folderButton.frame.midY) <= 1 }),
+              Set(model.chromeInteractions.mountedIDs(in: .directory)) == [parent.id, namedFolder.id] else {
+            throw ReplayError("Incorrect top or side tag controls: heights=\(heights)")
         }
+        samples.append(["step": "tag-heights", "points": heights])
         let shippingCenter = window.convertPoint(fromScreen: CGPoint(x: shippingButton.frame.midX, y: shippingButton.frame.midY))
         try click(window, at: shippingCenter)
         try await check("inbox-top-resets-status", .all, ["Inbox tagged"], selected: inboxShipping.tag)
@@ -1326,11 +1347,11 @@ private final class WheelSample: NSEvent {
             throw ReplayError("A filter rail reduced the full-window card area")
         }
         try await clickMiddle(right: false)
-        try await check("mouse-development", .all, ordinary.filter { $0 != "Delivered" }, selected: "Development")
+        try await check("mouse-development", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: "Development")
         try await activate(.semantic, parent.id)
         try await activate(.status, "running")
         try await swipe(up: true, right: false, crossCenter: true)
-        try await check("left-cross-to-development", .all, ordinary.filter { $0 != "Delivered" }, selected: "Development")
+        try await check("left-cross-to-development", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: "Development")
         try await waitForFilterInput()
         try swipeWithNaturalScrolling(monitor, in: window, at: windowPoint(right: false), up: true)
         try await check("left-shipping-natural-scrolling", .all, ["Delivered"], selected: "Shipping")
@@ -1594,7 +1615,10 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Hover title for \(id) did not settle at cursor \(NSEvent.mouseLocation): \(trace)")
         }
         let hoverFrame = try filterButton(longChild.id, in: window).frame
-        let hover = window.convertPoint(fromScreen: CGPoint(x: hoverFrame.midX, y: hoverFrame.midY))
+        let hover = window.convertPoint(fromScreen: CGPoint(x: hoverFrame.maxX + 10, y: hoverFrame.midY))
+        let beyond = window.convertPoint(fromScreen: CGPoint(x: hoverFrame.maxX + 16, y: hoverFrame.midY))
+        try await pointAt(beyond)
+        try await waitForHoverMotion(longChild.id, expanded: false)
         try await pointAt(hover)
         try await waitForHoverMotion(longChild.id, expanded: true)
         try await observe("hovered-tag", expanded: [longChild.id: "Customer", shortChild.id: "Design"])
@@ -1608,13 +1632,14 @@ private final class WheelSample: NSEvent {
             try await observe("hovered-tag-dark-on-light", expanded: [longChild.id: "Customer", shortChild.id: "Design"])
             brightCaptureBackdrop = false
         }
-        try await pointAt(away)
+        let gapBelowTag = window.convertPoint(fromScreen: CGPoint(x: hoverFrame.maxX + 10, y: hoverFrame.minY - 5))
+        try await pointAt(gapBelowTag)
         try await waitForHoverMotion(longChild.id, expanded: false)
         try await observe("pointer-left", expanded: design)
 
         let runningID = "overview-status-running"
         let runningFrame = window.convertFromScreen(try filterButton(runningID, in: window).frame)
-        let hourglass = CGPoint(x: runningFrame.midX, y: runningFrame.midY)
+        let hourglass = CGPoint(x: runningFrame.minX - 10, y: runningFrame.midY)
         try await pointAt(hourglass)
         try await waitForHoverMotion(runningID, expanded: true)
         try await observe("hovered-status", expanded: design, expandedStatuses: ["running", "all"])
@@ -1659,7 +1684,8 @@ private final class WheelSample: NSEvent {
         try await Task.sleep(for: .milliseconds(700))
         try await observe("folder-restores-all", expanded: ["overview-semantic-any": "Any tag"])
         let longBounds = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
-        let titlePoint = CGPoint(x: (longBounds.maxX + expandedTitle.maxX) / 2, y: longBounds.midY)
+        let titlePoint = CGPoint(x: longBounds.maxX + 10, y: longBounds.midY)
+        guard expandedTitle.contains(titlePoint) else { throw ReplayError("Expanded label did not reach the hover margin") }
         let canvasPoint = monitor.canvasPoint(titlePoint)
         guard abs(longBounds.width - side) <= 1, let underLabel = canvas.presentedPlacements.first(where: {
             canvas.visibleFrame(for: $0.id)?.contains(canvasPoint) == true
@@ -1689,11 +1715,12 @@ private final class WheelSample: NSEvent {
             "window": [content.bounds.width, content.bounds.height], "selectedTag": model.selectedTag,
             "underlyingCard": underlyingID, "gapPoint": [gap.x, gap.y], "capsulePoint": [chip.x, chip.y],
             "cardViewport": [canvas.cardRegionInWindow.minX, canvas.cardRegionInWindow.width],
+            "leftHoverOutsidePoints": 10, "rightHoverOutsidePoints": 10,
             "tagTitlePoint": [titlePoint.x, titlePoint.y], "cardBeneathTitle": underLabel.id,
             "statusAccessibilityLabels": statusLabels.map(\.1), "labelPhases": phases]
         samples.append(compact)
         if captureFilters {
-            let switched = ["overview-directory-all", compactFolder.id, longChild.id, shortChild.id]
+            let switched = [compactFolder.id, longChild.id, shortChild.id]
                 + statusLabels.map { "overview-status-" + $0.0 }
             for id in switched {
                 guard let tint = selectedFaces[id], let idle = idleFaces[id],
@@ -1747,20 +1774,32 @@ private final class WheelSample: NSEvent {
         }
         presentation.showOverview()
         let deadline = ContinuousClock.now + .seconds(4)
-        while !model.presentationActive || model.chromeInteractions.mountedIDs(in: .directory) != ["all"]
+        while !model.presentationActive || !model.chromeInteractions.mountedIDs(in: .directory).isEmpty
                 || !model.chromeInteractions.mountedIDs(in: .semantic).isEmpty
-                || canvas.mountedCardIDs != ["Inbox tagged", "Inbox untagged"] || canvas.isLayingOut {
+                || !canvas.mountedCardIDs.isEmpty || canvas.isLayingOut {
             guard ContinuousClock.now < deadline else { throw ReplayError("Untagged-only workspace did not settle") }
             try await Task.sleep(for: .milliseconds(30))
         }
-        let global = try filterButton("overview-directory-all", in: window)
+        let savedIDs = workspace.catalog.threads.map(\.id.string)
         guard model.visibleFilters.isEmpty, model.selectedFilter == nil, model.selectedTag.isEmpty,
-              model.statusFilter == .all, abs(global.frame.midX - window.frame.midX) <= 1 else {
-            throw ReplayError("The last Inbox tag disappeared without returning to the centered All control")
+              model.statusFilter == .all, savedIDs.contains("Inbox tagged"), savedIDs.contains("Inbox untagged"),
+              model.chromeInteractions.mountedIDs(in: .status).isEmpty else {
+            throw ReplayError("Unexpected cards, controls or thread loss after removing the last tag")
         }
         samples.append(["step": "last-inbox-tag-removed", "previousTag": inboxShipping.id, "scope": model.selectedScope,
                         "visibleTags": model.visibleFilters.map(\.id), "mountedCardIDs": Array(canvas.mountedCardIDs),
-                        "retainedReaderScene": scene, "globalCenterX": global.frame.midX, "windowCenterX": window.frame.midX])
+                        "retainedReaderScene": scene, "catalogThreadIDs": savedIDs])
+        let assigned = try thread("Inbox untagged", nil, revision: 2, semanticTag: "Shipping")
+        let assignment: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(15), "revision": .integer(16),
+            "threads": .object(["upserts": .array([assigned]), "removedIds": .array([])])])
+        let taggedState = try RuntimeState.applying(assignment, to: workspace.state!)
+        await workspace.installPrepared(taggedState, event: .mutation(assignment, state: taggedState, authority: authority))
+        let assignedDeadline = ContinuousClock.now + .seconds(4)
+        while model.selectedFilter?.id != inboxShipping.id || canvas.mountedCardIDs != ["Inbox untagged"] || canvas.isLayingOut {
+            guard ContinuousClock.now < assignedDeadline else { throw ReplayError("First assignment did not open its space") }
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        samples.append(["step": "first-assignment", "selected": inboxShipping.id, "mountedCardIDs": Array(canvas.mountedCardIDs)])
         try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "overview-status.json"))
     }
@@ -1773,7 +1812,7 @@ private final class WheelSample: NSEvent {
             return .object(["id": .string(id), "ref": ref.json, "revision": .integer(1),
                 "createdAt": .number(created), "updatedAt": .number(created),
                 "title": .string(id), "archived": .bool(false), "scope": .text("/fixture"), "presentations": .array([]),
-                "tags": .object(["tags": .array([]), "semanticTags": .array([]), "directoryTags": .array([]), "tagEmojis": .object([:])]),
+                "tags": .object(["tags": .array([.text("Fixture"), .text("Development")]), "semanticTags": .array([.text("Development")]), "directoryTags": .array([.text("Fixture")]), "tagEmojis": .object(["Development": .text("🔧")])]),
                 "view": .object(["coverRevision": .text("cover"), "contentRevision": .text("body"), "emoji": .text("📕"),
                     "readingSeconds": .integer(20), "shortDescription": .text("Report"), "previewText": .text("Report"),
                     "relatedExecutions": .array([])])])
@@ -1914,7 +1953,11 @@ private final class WheelSample: NSEvent {
             abs(center.x - x) <= 0.5 && abs(center.y - 38) <= 0.5
         }
         let renderedFilterTop = window.frame.height - filterFrame.maxY
+        guard let selected = presentation.overview.selectedFilter else { throw ReplayError("Missing selected tag") }
+        let topHeight = try filterButton(selected.id, in: window).frame.height
+        let statusHeight = try filterButton("overview-status-all", in: window).frame.height
         let filterPositioned = abs(renderedFilterTop - filterTop) <= 0.5
+            && abs(topHeight - 46.2) <= 1 && abs(statusHeight - topHeight) <= 0.5
         let filterBottom = window.frame.height - filterFrame.minY
         let filterInside = filterFrame.minY >= 0 && filterFrame.maxY <= window.frame.height
         let filterExcluded = filterBottom <= boundary
@@ -1923,7 +1966,7 @@ private final class WheelSample: NSEvent {
         let pointInside = CGRect(origin: .zero, size: window.frame.size).contains(inputPoint)
         return ["windowSize": [window.frame.width, window.frame.height],
                 "logicalViewport": [size.width, size.height], "filterTopInWindow": renderedFilterTop,
-                "expectedFilterTopInWindow": filterTop, "filterBottomInWindow": filterBottom,
+                "topTagHeight": topHeight, "statusHeight": statusHeight, "expectedFilterTopInWindow": filterTop, "filterBottomInWindow": filterBottom,
                 "buttonCentersFromTopLeft": buttonCenters.map { [$0.x, $0.y] }, "buttonHits": hits,
                 "headerInputBottom": boundary, "canvasStripHeight": strip, "inputPointInWindow": [inputPoint.x, inputPoint.y],
                 "rejectsHeader": rejectsHeader, "wheelAndTrackpad": scrolled, "diagonal": diagonal, "vertical": vertical,

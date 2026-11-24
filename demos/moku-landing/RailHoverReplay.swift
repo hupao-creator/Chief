@@ -259,7 +259,7 @@ private func rowInk(_ frame: HoverFrame, roi: CGRect, centerY: CGFloat, leading:
     }
     // Chinese glyphs resolve through the system's CJK fallback. Allow two points
     // for font metric and backing-pixel rounding in the mounted SwiftUI title.
-    let font = NSFont.systemFont(ofSize: OverviewTagMetrics.chipFont * 1.1, weight: .semibold)
+    let font = NSFont.systemFont(ofSize: OverviewTagMetrics.chipFont, weight: .semibold)
     let fitted = [labels[1], labels[0]].map {
         46.2 + ceil(($0 as NSString).size(withAttributes: [.font: font]).width) + 13.2
     } + [cap]

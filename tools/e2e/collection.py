@@ -18,15 +18,15 @@ def activate(session):
     subprocess.run(["/usr/bin/open", "-a", bundle], check=True, timeout=10)
 
 
-def enable_reports(session, enabled):
+def enable_agent(session, agent, enabled):
     state = session.runtime.state()
     settings = state["settings"]
-    entry = next(value for value in settings["pluginSettings"] if value["id"] == "report.settings")
+    entry = next(value for value in settings["pluginSettings"] if value["id"] == agent + ".settings")
     entry["value"]["enabled"] = enabled
     result = session.runtime.invoke("app:update-settings", [{"settings": settings,
                                     "expectedSettingsRevision": state["settingsRevision"]}])
     if result.get("status") == "conflict":
-        raise RuntimeError("isolated report settings conflicted")
+        raise RuntimeError("isolated agent settings conflicted")
 
 
 def prepare(session):
@@ -37,21 +37,30 @@ def prepare(session):
             raise RuntimeError(f"report fixture failed: {session.peer.failures}")
         return [r for r in session.runtime.state()["applicationThreads"] if r["ref"]["typeId"] == "report.document"]
 
-    reports = wait_for(catalog, lambda rows: len(rows) >= 8, 90)
-    assert len(reports) == 8 and all(sum(r["scope"] == p for r in reports) == 4 for p in projects)
+    reports = wait_for(catalog, lambda rows: len(rows) >= 12, 90)
+    assert [sum(r["scope"] == p for r in reports) for p in projects] == [8, 4]
+    assert all(r["tags"]["semanticTags"] for r in reports)
     save(session.output / "collection-catalog.json", reports)
     return sorted(reports, key=lambda r: r["createdAt"])
 
 
 def journey(desktop, reports):
     output = desktop.session.output
-    refs = [r["ref"] for r in reports]
-    def overview(filter_id=None):
+    folders = desktop.stable(lambda s: s["page"] == "overview" and s["overview"]["filters"])["overview"]["filters"]
+    directories = [next(f for f in folders if f["kind"] == "directory" and f["scope"] == str(p.resolve()))
+                   for p in desktop.session.peer.collection_projects]
+    library, studio = directories
+
+    def reports_in(scope):
+        return [r["ref"] for r in reports if r["scope"] == scope]
+
+    refs = reports_in(library["scope"])
+    def overview(filter_id):
         return desktop.stable(lambda s: s["page"] == "overview" and s["selectedFilterId"] == filter_id
                               and not s["overview"]["layingOut"] and s["overview"]["cards"]
                               and set(s["overview"]["mountedCardIds"]) == {c["id"] for c in s["overview"]["cards"]})
 
-    def observe(name, visible, expected_members, filter_id=None):
+    def observe(name, visible, expected_members, filter_id=library["id"]):
         state = overview(filter_id)
         save(output / f"collection-{name}.json", state)
         cards = state["overview"]["cards"]
@@ -67,18 +76,13 @@ def journey(desktop, reports):
     def unread_by_folder(state):
         return {f["scope"]: f["unreadCount"] for f in state["overview"]["filters"] if f["kind"] == "directory"}
 
-    # The benchmark window fits three columns and three rows. Each column
-    # holds one cover report, with a spare row for the two ordinary tasks.
     initial = observe("initial", refs, refs[:6])
-    # Each fixture directory has one completed Agent and four independent documents.
-    fresh = {r["scope"]: 5 for r in reports}
+    fresh = {d["scope"]: len(reports_in(d["scope"])) + 1 for d in directories}
     assert unread_by_folder(initial) == fresh
-    directory = next(f for f in initial["overview"]["filters"] if f["scope"] == reports[0]["scope"]
-                     and f["kind"] == "directory")
-    subset = [r["ref"] for r in reports if r["scope"] == directory["scope"]]
-    desktop.request({"name": "filter.select", "filterId": directory["id"]})
-    assert unread_by_folder(observe("directory", subset, subset[:2], directory["id"])) == fresh
-    desktop.request({"name": "filter.select", "filterId": None})
+    subset = reports_in(studio["scope"])
+    desktop.request({"name": "filter.select", "filterId": studio["id"]})
+    assert unread_by_folder(observe("directory", subset, subset[:2], studio["id"])) == fresh
+    desktop.request({"name": "filter.select", "filterId": library["id"]})
     observe("grouped", refs, refs[:6])
 
     def visit(qualify):
@@ -103,7 +107,7 @@ def journey(desktop, reports):
     promoted = next(c for c in returned["overview"]["cards"] if c.get("id") == refs[1]["threadId"])
     assert promoted["collectionEligibility"]["lastQualifiedAt"]
     after_read = fresh.copy()
-    after_read[reports[1]["scope"]] -= 1
+    after_read[library["scope"]] -= 1
     assert unread_by_folder(returned) == after_read
 
     def archive(ref, archived):

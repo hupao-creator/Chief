@@ -18,11 +18,11 @@ import SwiftUI
             let complete = name != "active" || finished
             let execution = try PublicExecution(executionID: JSONText(name), status: complete ? .completed : .running,
                 startedAt: 1, finishedAt: complete ? 2 : nil)
-            let tags: [JSONText] = name == "second" ? [] : ["Work"]
+            let tag: JSONText = name == "second" ? "Reading" : "Work"
             return try HarnessThread(id: JSONText(name), harnessID: "codex", revision: revision, sessionState: .null,
                 observation: .init(latestExecution: execution), cwd: "/fixture", settings: .object([:]),
-                createdAt: 1, updatedAt: 2, title: JSONText(name), tags: tags,
-                tagEmojis: tags.isEmpty ? [:] : ["Work": "🔎"], directoryTag: "Project", directoryScope: "/fixture").json
+                createdAt: 1, updatedAt: 2, title: JSONText(name), tags: [tag],
+                tagEmojis: [tag: "🔎"], directoryTag: "Project", directoryScope: "/fixture").json
         }
         let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
             "defaultCwd": .text("/fixture"), "settings": .object([:]), "threads": .array(threads),
@@ -143,7 +143,7 @@ import SwiftUI
              "tag-activity-geometry.json")
     var samples = [[String: Any]]()
     var regions = [String: CGRect]()
-    for (id, diameter) in [(directoryID, CGFloat(26)), (childID, CGFloat(39.6))] {
+    for (id, diameter) in [(directoryID, CGFloat(28.6)), (childID, CGFloat(39.6))] {
         guard let button = buttons[id] else { throw ReplayFailure("Missing measured button " + id) }
         guard let view = surfaces().first(where: {
             let frame = $0.convert($0.bounds, to: nil)

@@ -56,7 +56,7 @@ Unknown/missing fields and invalid argument types are rejected.
 | `overview.show` | none | Another page open; closes Settings through its gate |
 | `navigation.back` | none | Current page's back action; respects nested reading |
 | `thread.open` | `threadId`, `typeId` | Target in the current Overview snapshot |
-| `filter.select` | `filterId` | Overview. Null selects global All |
+| `filter.select` | `filterId` | Overview. Null resolves to the first available top-row filter |
 | `overview.filters.scroll` | `filterId` | Scroll the mounted top bar to a top-level filter |
 | `overview.filters.activate` | `group`, `id` | Activate an enabled Overview button listed in the mounted group |
 

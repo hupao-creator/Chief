@@ -26,9 +26,7 @@ bounded by current catalog identities and exposed filters and are released on st
 Global conversation availability is updated from changed eligible records before
 tag filtering and report coverage, including directory-only documents. Moku
 uses these facts for its empty-workspace landing; an unloaded catalog remains
-unknown. The All membership is invalidated lazily and resolved when browsing or
-tag activity needs it. Filter chrome and Moku still receive the complete filter
-description
+unknown. Filter chrome and Moku receive the complete filter description
 when membership changes, so producing that public output scales with the output
 size; unrelated scope selections and card projections are reused. Selecting a
 filter or changing card geometry retains the ordinary complete selected-layout
@@ -247,7 +245,7 @@ swipe advances to the next choice below. A down swipe selects the preceding
 choice above. From All, up selects Completed and down selects Running under
 either Natural Scrolling setting. The gesture stops at either end. Crossing the
 middle or receiving momentum cannot advance the other column. When the left
-column is hidden, including in global All and on an Inbox tag, a left-half
+column is hidden, including on an Inbox tag, a left-half
 vertical swipe keeps both selections.
 
 The background, cards, carousel cover and filter controls accept these gestures.
@@ -302,34 +300,39 @@ turns so metadata and cached posters can enter with the card transition.
 [Report cover contract](../../../../../internal/plugins/applications/report/README.md#cover-cards)
 and [mounted switch benchmark](../../../../../tools/verification/tag-space/README.md).
 
-Global All is pinned beside the top row of project directories and Inbox semantic
-tags. Inbox is the scope for work without a persistent directory, including
-managed temporary roots. Each of its exposed tags has its own top button with
-an emoji and title, even when Inbox has only one tag. Inbox tags with equal
-member counts sort by localized tag name, independently of their emoji. Global All includes
-eligible untagged Inbox tasks. A workspace containing only those tasks shows
-All by itself at the top. The empty landing hides the bar. Choosing a project
-directory selects its full membership. Its top button keeps its name and folder-wide unread count when
+The top row lists project directories and Inbox semantic tags. A Thread needs at
+least one assigned semantic tag to participate in a space. Agent membership uses
+`HarnessThread.tags`; application membership uses `tags.semanticTags`. Directory
+labels alone do not create a space or contribute cards, unread counts or activity.
+An untagged Report cannot hide a tagged source through execution coverage.
+
+Inbox groups work without a persistent directory, including managed temporary
+roots. Each exposed Inbox tag has its own button with an emoji and title.
+With no current selection, Overview selects the first nonempty top-row filter
+in catalog display order. A populated workspace without a space shows a
+tag-specific empty message and hides the tag and status controls. Assigning the
+first tag selects its space automatically. Choosing a project directory shows
+its tagged members. Its top button keeps its name and folder-wide unread count when
 a child is selected. A project directory named Inbox and a semantic tag named
 Inbox have distinct identities, icons and memberships.
 
 The left column starts with **Any tag** and then the selected scope's visible
 semantic tags, ordered by descending member count and localized name for ties.
-Any tag includes eligible untagged directory members. The column appears only
+Any tag includes all eligible tagged directory members. The column appears only
 for project directories with visible children, including when a child is
-selected. The three status choices on the right are shared across all scopes. Changing the resolved filter identity (kind, scope and tag, or global All) restores All statuses before projecting cards. Re-selecting the same space and refreshing its membership preserve the status.
+selected. The three status choices on the right are shared across all scopes. Changing the resolved filter identity (kind, scope and tag) restores All statuses before projecting cards. Re-selecting the same space and refreshing its membership preserve the status.
 
 Semantic tag identity is a plain name with separately validated emoji. Each
 scope exposes up to five semantic tags. Directory membership uses persistent
 scope identity and excludes managed temporary roots. A symlink alias or linked
-checkout with another label remains in its canonical directory’s All view, and
+checkout with another label remains in its canonical directory’s Any tag view, and
 same-named directories stay separate.
 
 The left column omits a directory's sole semantic child when its actual selected
 Agent Thread ID set and application thread reference set both equal the
 directory's sets. This uses eligible catalog membership after the ordinary
 visibility/archive and report-coverage rules; equal member counts
-alone are insufficient. Untagged members or directory-only documents that change
+alone are insufficient. Tagged directory-only documents that change
 those sets keep the child visible. Multiple semantic names (including a name
 equal to the directory label) prevent this omission.
 Catalog membership changes recompute the decision. Canonical filters, navigation,
@@ -338,7 +341,7 @@ child stays visible and selected even if it becomes redundant, preserving its
 filtering meaning when later threads arrive. Selecting its directory then omits
 the redundant child. If a directory child leaves the catalog, its directory
 becomes the selection while that directory exists. Removing a selected Inbox
-tag or project directory returns to global All. If a reader covers Overview,
+tag or project directory resolves to the first available top-row choice. If a reader covers Overview,
 the published filter selection updates immediately and the canvas refreshes on
 return. A change in status-filtered results alone keeps the selection.
 
@@ -355,14 +358,13 @@ space from its inset to the window midpoint so status names fit at the minimum
 window size.
 A long title truncates at the trailing edge. The same title stays mounted as
 the capsule reveals or clips it, including when a hover reverses mid-animation.
-Clicking the glyph or the revealed title selects that filter. Each selected rail button, including Any tag and All statuses, stays expanded from initial display through pointer exit.
+The pointer can enter either rail button up to 12pt beyond its current horizontal edges. Its hover region has the same height as the capsule, so the gap between rows remains available to the canvas. Clicking the visible glyph or revealed title selects that filter. Each selected rail button, including Any tag and All statuses, stays expanded from initial display through pointer exit.
 Unselected buttons expand on hover and collapse on exit. Both transitions use the Chief Bar’s 420ms smooth Overview capsule animation with zero extra bounce. Reduce Motion applies the width change immediately.
 
-Global All, project directories and Inbox tags use native regular interactive Liquid Glass
+Project directories and Inbox tags use native regular interactive Liquid Glass
 and system primary foreground in the top row. The left tag and right status
 buttons use native clear interactive Liquid Glass. Each selected button tints its glass. The unselected
 buttons keep the base material.
-Global All is a 42pt icon-only button with a centered asterisk and the localized accessibility name All.
 
 Semantic tags and status choices take their tint from the dominant color of
 the displayed emoji, including the 🏷️ fallback for a tag without its own
@@ -370,7 +372,7 @@ emoji. The renderer samples the system glyph in sRGB and averages pixels in
 its most common hue cluster. When colored detail covers less than one sixth
 of the visible glyph, the tint uses its average luminance as a neutral gray,
 limited to the range 0.30–0.72.
-This keeps the 🏁 status tint neutral. The top folder buttons, global All,
+This keeps the 🏁 status tint neutral. The top folder buttons,
 the Any tag asterisk and glyphs that yield no visible sample use the Overview
 accent (#6D28D9 in light appearance and #A78BFA in dark appearance). The accent
 comes from the app palette for every profile. Tag emoji remain the saved input
@@ -393,14 +395,14 @@ background. Accessibility exposes the full name and selected trait even when
 the visible title is hidden or truncated. Member counts are available in tag
 accessibility values.
 
-[NativeOverviewChrome](NativeOverviewChrome.swift) keeps All pinned beside
+[NativeOverviewChrome](NativeOverviewChrome.swift) presents
 a horizontally scrollable row of project directories and Inbox tags. The
 centered bar leaves space for the window controls and actions. At viewport widths of 620pt or less, the filters
-occupy a second row. The 42pt capsules share their height with the traffic-light
-capsule and circular actions. The single-row bar sits 16pt from the top. In the
+occupy a second row. Top and side filter capsules share the same 46.2pt height and title size.
+The traffic-light capsule and circular actions are 42pt high. The single-row bar sits 16pt from the top. In the
 two-row layout the actions sit 10pt from the top and the bar sits 76pt from the
 top when space permits. A short viewport moves the row up to leave room for
-canvas input. Header dragging and scroll exclusion end at 60pt in the single-row
+canvas input. Header dragging and scroll exclusion end at 64.2pt in the single-row
 layout or 2pt below the bar in the two-row layout. See the
 [shared UI motion boundaries](../../Shared/PluginUI/README.md#motion-and-materials).
 
@@ -412,7 +414,7 @@ dots when their browsing membership contains a Thread whose public
 alone does not qualify. The selection tint and red unread count remain visible
 independently of activity.
 
-A transparent 26pt disk sits behind the folder icon or Inbox tag emoji in
+A transparent 28.6pt disk sits behind the folder icon or Inbox tag emoji in
 the top bar. A 39.6pt disk sits behind the semantic tag’s emoji on the left. Core
 Animation sweeps the Overview accent across fixed perforations in the same
 pattern as the running Agent badge. The icon and emoji stay still, including
@@ -423,8 +425,8 @@ window, or detaching the view stops the sweep.
 The indicator follows the same archive, visibility and Report-coverage rules as
 the browsing membership. A Report itself contributes no active Agent Thread.
 A changed-ID cache refreshes activity when execution participation or membership
-changes. Streaming content updates can reuse the cache. Global All and Any tag
-expose active presence in their localized accessibility value. The visible
+changes. Streaming content updates can reuse the cache. Any tag
+exposes active presence in their localized accessibility value. The visible
 indicators belong to directory and individual semantic chips.
 [Tag activity rendering](NativeOverviewTagActivity.swift) and
 [shared badge renderer](../../Shared/PluginUI/Cards/RunningThreadBadge.swift).
@@ -835,9 +837,9 @@ experience measurements to benchmarks. See [PBT commands/evidence](../../../../.
 
 `E2E-OVERVIEW-004` activates the mounted status and directory buttons against an
 isolated Runtime. With completed fixture tasks it checks an empty Running view
-followed by all scoped Agent IDs on directory selection, Completed in that directory,
-and the return to global All with all statuses visible. The supported
-suite includes a real project directory and untagged Inbox tasks. The
+followed by All statuses in a second space, Completed in that space, and All
+statuses on return. The supported suite includes tagged project and Inbox tasks
+and an untagged Inbox task. The
 Collection suite uses two project directories. `overview-filters.json` records
 the public scope oracle and the mounted snapshots after each action. The
 [window replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
@@ -847,7 +849,7 @@ and checks the selected tint.
 ## Camera interaction e2e
 
 `E2E-OVERVIEW-002` opens an isolated product workspace. The default suite has
-twelve completed tasks and requires horizontal overflow. The Collection suite uses mixed card footprints. The runner
+twelve tagged tasks in the selected project and requires horizontal overflow. The Collection suite uses mixed card footprints. The runner
 checks the leading alignment and both scroll limits, opens Settings, checks
 input exclusion and returns to the retained position. Snapshots and a socket
 transcript record semantic action results. The nested-window replay adds mouse

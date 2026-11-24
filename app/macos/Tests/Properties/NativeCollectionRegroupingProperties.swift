@@ -44,7 +44,8 @@ private struct RegroupingCase: Codable {
             return .object(["id": .string(ref.threadID), "ref": ref.json, "revision": .integer(1),
                 "createdAt": .number(time), "updatedAt": .number(time), "title": .string(ref.threadID),
                 "archived": .bool(false), "scope": .text("/collection"), "presentations": .array([]),
-                "tags": .object(["tags": .array([]), "semanticTags": .array([]), "directoryTags": .array([]), "tagEmojis": .object([:])]),
+                "tags": .object(["tags": .array([.text("collection"), .text("Reading")]), "semanticTags": .array([.text("Reading")]),
+                                 "directoryTags": .array([.text("collection")]), "tagEmojis": .object(["Reading": .text("📕")])]),
                 "view": .object(["coverRevision": .text("cover"), "emoji": .text("📕"), "shortDescription": .text("Report"),
                     "previewText": .text("Report"), "readingSeconds": .integer(20), "contentRevision": .text("body"),
                     "relatedExecutions": .array([])])])

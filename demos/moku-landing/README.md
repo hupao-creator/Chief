@@ -88,15 +88,17 @@ and momentum. The replay selects a top-level Inbox tag and checks its exact
 cards, restored All statuses and absence of a left column. It distinguishes a top-row
 tag named Inbox from a real directory named Inbox. It opens the sole tagged
 card and removes its tag through a catalog delta while the reader is open.
-The selection returns to All while the covered canvas retains its old scene.
-Returning to Overview shows the untagged tasks and the centered All control.
+The selection clears while the covered canvas retains its old scene. Returning
+to Overview shows an empty canvas with no filter controls. Both untagged
+Threads remain in the catalog. The replay compares the measured heights of the
+top directory and Inbox chips with the left tag and right status chips.
 Window-local mouse clicks select
 the middle status and a semantic tag. Changing child or status retains the
 full-window card area within the directory. A capsule over a card accepts the click, and a click in the gap between two capsules opens the underlying task. At the production minimum of
 860 × 600 pt, a five-tag directory exposes all six controls and selects a tag
 with a long label. The replay reads the mounted accessible buttons to check
-their names and frames. The selected tag and status stay expanded beyond five seconds. The replay places the cursor over a different tag and moves it away
-to check hover and exit, then restores the cursor. A click beside the compact
+their names and frames. The selected tag and status stay expanded beyond five seconds. The replay places the cursor 10 points beyond the compact left tag and right status button, then moves it away
+to check hover and exit, then restores the cursor. A click in the horizontal hover margin of the compact
 tag opens the card underneath. The same click on its expanded title selects
 the tag. With `--capture`, the cropped columns are checked for the expected
 visible tag and status titles. At the right edge the replay checks that the
@@ -118,7 +120,7 @@ The fixture has no Runtime connection.
 
 A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas switches status, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
 
-The header replay mounts the 42-point production controls at the top of a
+The header replay mounts the 46.2-point production filters at the top of a
 real window in Aqua and Dark Aqua. The initial selection is the Chief folder
 with an unread count of 8. Beside it is the Inbox tag **🔵 Blue** with an
 unread count of 3.
@@ -128,8 +130,7 @@ python3 demos/moku-landing/verify_header.py --header-glass --output .build/overv
 ```
 
 Each appearance produces a 618 × 174-pixel crop at 2× and a second crop with
-3-point stripes behind the controls. The replay checks that All stays square and that OCR finds
-no All title or ellipsis. It reads the folder and tag labels and both badge
+3-point stripes behind the controls. The replay checks the mounted filter heights and single-line labels. It reads the folder and tag labels and both badge
 numerals, checks the unread badge color, and compares
 texture variation inside the glass with the exposed backdrop. It samples
 adjacent pixels at the lower and trailing edges of the header viewport to
@@ -137,7 +138,7 @@ catch a hard cut through the shadow. `header-glass.json` records those
 measurements, the title's luminance difference from the chip face and the
 spacing between adjacent controls. On fixed neutral backgrounds it clicks
 each top and side control and compares the same part of its glass face across
-selections, away from the glyph, badge and rim. All, the folder and Any tag
+selections, away from the glyph, badge and rim. The folder and Any tag
 must shift toward the purple accent. Any tag’s sampled face must also reach
 4.5:1 against its full-coverage ink in each appearance. The selected top-level
 Inbox tag takes its blue tint from 🔵.

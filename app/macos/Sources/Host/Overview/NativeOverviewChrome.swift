@@ -43,9 +43,7 @@ public struct NativeOverviewFilter: Identifiable, Equatable, Sendable {
 /// Floating Liquid Glass controls. The host owns collection filtering.
 public struct NativeOverviewChrome: View {
     private let viewportHeight: CGFloat?
-    private let showsAllWhenEmpty: Bool
     public var filters: [NativeOverviewFilter]
-    public var allHasActiveTasks: Bool
     public var selectedTag: String
     public var selectedScope: String
     public var selectedKind: NativeOverviewTagKind?
@@ -67,7 +65,6 @@ public struct NativeOverviewChrome: View {
     @State private var interactionOwner = UUID()
 
     public init(filters: [NativeOverviewFilter], viewportHeight: CGFloat? = nil, selectedTag: String = "", selectedScope: String = "", selectedKind: NativeOverviewTagKind? = nil,
-                allHasActiveTasks: Bool = false, showsAllWhenEmpty: Bool = false,
                 strings: NativeOverviewChromeStrings = .init(),
                 onTagChange: @escaping (NativeOverviewFilter?) -> Void,
                 onSettings: (() -> Void)? = nil, onRestart: (() -> Void)? = nil,
@@ -75,9 +72,7 @@ public struct NativeOverviewChrome: View {
                 onSettingsFrameChange: ((CGRect?) -> Void)? = nil,
                 interactions: NativeOverviewChromeInteractions? = nil) {
         self.viewportHeight = viewportHeight
-        self.showsAllWhenEmpty = showsAllWhenEmpty
         self.filters = filters; self.selectedTag = selectedTag; self.selectedScope = selectedScope; self.selectedKind = selectedKind
-        self.allHasActiveTasks = allHasActiveTasks
         _presentedFilters = State(initialValue: filters)
         _hasPresentedFilters = State(initialValue: !filters.isEmpty)
         self.strings = strings; self.onTagChange = onTagChange
@@ -87,7 +82,7 @@ public struct NativeOverviewChrome: View {
     }
 
     public var body: some View {
-        let showsFilters = showsAllWhenEmpty || !presentedFilters.isEmpty
+        let showsFilters = !presentedFilters.isEmpty
         let stackedFilterTop = OverviewTagMetrics.stackedFilterTop(viewportHeight: viewportHeight ?? .infinity)
         GeometryReader { geometry in
             let stacked = OverviewTagMetrics.stacksFilters(in: geometry.size.width)
@@ -175,7 +170,7 @@ public struct NativeOverviewChrome: View {
     // Place unread counts above the glass and keep them inside the horizontal viewport.
     private func unreadBadges(_ filters: [NativeOverviewFilter], anchors: [String: Anchor<CGRect>],
                               reader: GeometryProxy, viewport: CGRect) -> some View {
-        let clip = viewport.insetBy(dx: 0, dy: -4)
+        let clip = viewport.insetBy(dx: 0, dy: -4 * OverviewTagMetrics.tagScale)
         return ZStack(alignment: .topLeading) {
             ForEach(filters) { filter in
                 let count = filter.unreadCount
@@ -206,32 +201,14 @@ public struct NativeOverviewChrome: View {
     private var tagEntryAnimation: Animation? { reduceMotion ? nil : .smooth(duration: 0.22, extraBounce: 0) }
 
     private func filterButtons(maximumWidth: CGFloat) -> some View {
-        HStack(spacing: presentedFilters.isEmpty ? 0 : OverviewTagMetrics.directorySpacing) {
-            Button {
-                onTagChange(nil)
-            } label: {
-                OverviewAllTagGlyph()
-                    .frame(width: OverviewTagMetrics.chipHeight, height: OverviewTagMetrics.chipHeight)
+        OverviewHorizontalScroll(interactions: interactions, owner: interactionOwner, ids: presentedFilters.map(\.id),
+                                 overflows: naturalFilterWidth > maximumWidth) {
+            GlassEffectContainer(spacing: OverviewTagMetrics.spacing) {
+                scrollingTagButtons(maximumButtonWidth: max(0, maximumWidth - OverviewTagMetrics.barInset * 2))
             }
-            .buttonStyle(OverviewTagButtonStyle(glass: .regular, selected: selectedTag.isEmpty))
-            .overviewTagAnchor("__all__")
-            .accessibilityIdentifier("overview-directory-all")
-            .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .directory, id: "all", action: { onTagChange(nil) }))
-            .accessibilityLabel(Text(strings.all))
-            .accessibilityAddTraits(selectedTag.isEmpty ? .isSelected : [])
-            .accessibilityValue(Text(allHasActiveTasks ? strings.containsActiveTasks : ""))
-            OverviewHorizontalScroll(interactions: interactions, owner: interactionOwner, ids: presentedFilters.map(\.id),
-                                     overflows: naturalFilterWidth > maximumWidth) {
-                // Keep the effect container inside the scroll viewport. A
-                // container outside it can draw captured labels beyond its clip.
-                GlassEffectContainer(spacing: OverviewTagMetrics.spacing) {
-                    scrollingTagButtons(maximumButtonWidth: max(0, maximumWidth - OverviewTagMetrics.chipHeight
-                        - OverviewTagMetrics.barInset * 2 - OverviewTagMetrics.directorySpacing))
-                }
-            }
-            .frame(height: OverviewTagMetrics.chipHeight)
-            .overviewTagAnchor("__scroll__")
         }
+        .frame(height: OverviewTagMetrics.chipHeight)
+        .overviewTagAnchor("__scroll__")
         .padding(.horizontal, OverviewTagMetrics.barInset)
     }
 
@@ -247,7 +224,7 @@ public struct NativeOverviewChrome: View {
                     HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
                         OverviewTagPrefix(emoji: emoji)
                             .background {
-                                if filter.hasActiveTasks { OverviewTagActivityIndicator(diameter: 26) }
+                                if filter.hasActiveTasks { OverviewTagActivityIndicator(diameter: 26 * OverviewTagMetrics.tagScale) }
                             }
                         OverviewTagTitle(title: filter.isDirectory ? filter.displayTag : filter.tag)
                     }
@@ -276,10 +253,9 @@ public struct NativeOverviewChrome: View {
     }
 
     private var naturalFilterWidth: CGFloat {
-        let pinnedWidth = OverviewTagMetrics.chipHeight + OverviewTagMetrics.barInset * 2
-        if presentedFilters.isEmpty { return pinnedWidth }
+        if presentedFilters.isEmpty { return 0 }
         return measuredTagsWidth > 0
-            ? pinnedWidth + measuredTagsWidth + OverviewTagMetrics.directorySpacing : 10000
+            ? measuredTagsWidth + OverviewTagMetrics.barInset * 2 : 10000
     }
 
     private func iconButton(_ name: String, size: CGFloat = 16, title: String, active: Bool = false,
@@ -313,7 +289,7 @@ public struct NativeOverviewChrome: View {
 
 struct OverviewTagUnreadBadge: View {
     let count: Int
-    var scale: CGFloat = 1
+    private let scale = OverviewTagMetrics.tagScale
 
     var body: some View {
         Text(verbatim: String(count))
@@ -336,10 +312,9 @@ struct OverviewAllTagGlyph: View {
 
 struct OverviewTagTitle: View {
     let title: String
-    var scale: CGFloat = 1
     var body: some View {
         Text(title)
-            .font(NativeTypography.inter(size: OverviewTagMetrics.chipFont * scale, weight: 620))
+            .font(NativeTypography.inter(size: OverviewTagMetrics.chipFont, weight: 620))
             .lineLimit(1)
             .truncationMode(.tail)
     }
@@ -362,7 +337,6 @@ struct OverviewTagPrefix: View {
 }
 
 public struct NativeOverviewChromeStrings: Sendable {
-    public var all = "全部"
     public var settings = "设置"
     public var restart = "重启开发应用"
     public var actions = "俯瞰视图操作"
@@ -427,24 +401,23 @@ enum OverviewTagMetrics {
         contrast == .increased ? 0.34 : 0.22
     }
     static let iconButtonSize: CGFloat = 30
-    static let barInset: CGFloat = 6
+    static let barInset = 6 * tagScale
     static let labelInset: CGFloat = 12
     static let spacing: CGFloat = 4
     // Keep regular glass shadows and surfaces apart when the directory chips are at rest.
-    static let directorySpacing: CGFloat = 8
-    static let railScale: CGFloat = 1.1
-    static let railDiameter = chipHeight * railScale
-    static let railMaximumWidth = 172 * railScale
-    static let railSpacing = 10 * railScale
-    /// Enlarge tag ink while keeping all top-level chrome at the same height.
-    static let enlargement: CGFloat = 1.1
-    static let chipScale: CGFloat = 1.125 * enlargement
+    static let directorySpacing = 8 * tagScale
+    static let tagScale: CGFloat = 1.1
+    static let railDiameter = chipHeight
+    static let railMaximumWidth = 172 * tagScale
+    static let railHoverInset: CGFloat = 12
+    static let railSpacing = 10 * tagScale
+    static let chipScale: CGFloat = 1.125 * 1.1 * tagScale
     static let chipFont = 10.5 * chipScale
     static let folderIcon = 11 * chipScale
     static let chipContentSpacing = 6 * chipScale
     static let chipLabelInset = labelInset * chipScale
-    static let chipHeight = NativeWindowNavigationGeometry.height
-    /// Tag filters, traffic-light capsules and circular actions share one height.
+    static let chipHeight = NativeWindowNavigationGeometry.height * tagScale
+    /// Window controls and circular actions retain their native height.
     static let actionDiameter = NativeWindowNavigationGeometry.height
     static let barHeight = chipHeight
     static let singleRowTop: CGFloat = 16
@@ -468,7 +441,7 @@ enum OverviewTagMetrics {
     }
     /// Persistent header extents reported by the workspace visibility probe.
     static let wideToolbarClearance = 18 + chipHeight
-    static let narrowToolbarClearance: CGFloat = 120
+    static let narrowToolbarClearance = preferredStackedFilterTop + chipHeight + headerClearance
 }
 
 struct OverviewTagButtonStyle: ButtonStyle {
@@ -572,7 +545,6 @@ private struct OverviewHorizontalScroll<Content: View>: View {
             .scrollIndicators(.never)
             .scrollClipDisabled()
             // At rest the glass can cast its shadow beyond all four edges.
-            // An overflowing list still clips horizontally before the pinned All button.
             .clipShape(OverviewDirectoryViewport(overflows: overflows))
             .scrollBounceBehavior(.basedOnSize)
             .modifier(NativeOverviewFilterScrollRegistration(registry: interactions, root: owner, ids: ids, enabled: !ids.isEmpty,

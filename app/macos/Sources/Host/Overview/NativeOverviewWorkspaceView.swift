@@ -56,10 +56,10 @@ public struct NativeOverviewWorkspaceView: View {
     public var body: some View {
         callbackStore.current = callbacks
         return GeometryReader { geometry in
-            let hasFilters = (model.globalConversationCount ?? 0) > 0 || !model.filters.isEmpty
+            let filters = landing ? [] : model.visibleFilters
+            let hasFilters = !filters.isEmpty
             let viewport = Self.viewport(in: geometry.size, hasFilters: hasFilters,
                                          hasDock: model.workspace.catalog.hasMoku)
-            let filters = landing ? [] : model.visibleFilters
             let directory = model.selectedDirectory
             let railEdgeInset = min(12, geometry.size.width * 0.015)
             // Let localized status names use the available right half, even at the minimum window width.
@@ -74,7 +74,7 @@ public struct NativeOverviewWorkspaceView: View {
             let canvasVisible = !landing || retiringToLanding
             ZStack {
                 NativeOverviewCanvas(contentSource: model.content, sceneKey: model.sceneKey, state: model.canvasState,
-                    selectionID: selectionID,
+                    selectionID: model.selectedFilter?.id,
                     toolbarBottom: viewport.toolbarBottom, bottomReservedHeight: viewport.bottomReservedHeight,
                     headerInputBottom: headerBottom,
                     visible: model.facts.overviewVisible && model.facts.documentVisible && canvasVisible,
@@ -92,7 +92,7 @@ public struct NativeOverviewWorkspaceView: View {
                     .opacity(canvasVisible ? 1 : 0)
                     .allowsHitTesting(!landing)
                     .accessibilityHidden(landing)
-                if !landing && model.content.isEmpty && model.error == nil {
+                if !landing && model.content.isEmpty && model.error == nil, model.globalConversationCount != nil {
                     switch model.statusFilter {
                     case .completed:
                         NativeOverviewStatusEmptyState(title: emptyTitle, scrollHint: nil)
@@ -100,8 +100,9 @@ public struct NativeOverviewWorkspaceView: View {
                         NativeOverviewStatusEmptyState(title: emptyTitle, scrollHint:
                             locale.text("在右半区上滑可查看全部状态。", "Scroll up on the right to show all statuses."))
                     case .all:
-                        NativeOverviewEmptyState(title: emptyTitle, detail:
-                            locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads."))
+                        NativeOverviewEmptyState(title: emptyTitle, detail: model.selectedFilter == nil
+                            ? locale.text("Thread 获得语义标签后会显示在这里。", "Threads appear here once they have a tag.")
+                            : locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads."))
                     }
                 }
                 if let error = model.error ?? model.canvasState.layoutError {
@@ -131,13 +132,13 @@ public struct NativeOverviewWorkspaceView: View {
             .overlay(alignment: .leading) {
                 if chromeVisible && !landing {
                     NativeOverviewTagRail(parent: directory, selectedID: model.selectedFilter?.id,
-                        maximumWidth: min(OverviewTagMetrics.railMaximumWidth, geometry.size.width * 0.15 * OverviewTagMetrics.railScale), strings: chromeStrings,
+                        maximumWidth: min(OverviewTagMetrics.railMaximumWidth, geometry.size.width * 0.15 * OverviewTagMetrics.tagScale), strings: chromeStrings,
                         onTagChange: model.selectTag, interactions: model.chromeInteractions)
                         .padding(.leading, railEdgeInset)
                 }
             }
             .overlay(alignment: .trailing) {
-                if chromeVisible && !landing {
+                if chromeVisible && model.selectedFilter != nil && !landing {
                     NativeOverviewStatusRail(status: model.statusFilter, maximumWidth: statusRailWidth, strings: chromeStrings,
                         onStatusChange: model.selectStatusFilter, interactions: model.chromeInteractions)
                         .padding(.trailing, railEdgeInset)
@@ -151,7 +152,6 @@ public struct NativeOverviewWorkspaceView: View {
                 NativeOverviewChrome(filters: filters, viewportHeight: geometry.size.height,
                     selectedTag: model.selectedTag,
                     selectedScope: model.selectedScope, selectedKind: model.tagSelection?.kind,
-                    allHasActiveTasks: model.allHasActiveTasks, showsAllWhenEmpty: hasFilters && !landing,
                     strings: chromeStrings,
                     onTagChange: model.selectTag,
                     onSettings: callbacks.onSettings,
@@ -195,17 +195,11 @@ public struct NativeOverviewWorkspaceView: View {
         case .all: break
         }
         if !model.selectedTag.isEmpty { return locale.text("没有 \(model.selectedFilter?.tag ?? model.selectedTag) 会话", "No \(model.selectedFilter?.tag ?? model.selectedTag) conversations") }
-        return locale.text("还没有会话", "No conversations yet")
-    }
-    private var selectionID: String? {
-        if let filter = model.selectedFilter { return filter.id }
-        if model.selectedTag.isEmpty { return "__all__" }
-        return "\(model.tagSelection?.kind == .directory ? "directory" : "semantic"):\(model.selectedScope):\(NativeOverviewSelection.key(model.selectedTag))"
+        return locale.text("暂无带语义标签的会话", "No tagged conversations yet")
     }
     private var chromeStrings: NativeOverviewChromeStrings {
         var strings = NativeOverviewChromeStrings()
         if locale == .english {
-            strings.all = "All"
             strings.settings = "Settings"; strings.restart = "Restart development app"; strings.actions = "Overview actions"
             strings.anyTag = "Any tag"
             strings.runningOnly = "Running only"

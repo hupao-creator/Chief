@@ -110,7 +110,7 @@ func seedStore(ctx context.Context, db *store.Store, cwd string, adapter *codex.
 		record := model.ThreadRecord{SessionRecord: model.SessionRecord{
 			ID: fmt.Sprintf("card-%d", index), HarnessID: "codex", Revision: 0,
 			Cwd: cwd, Settings: threadSettings, CreatedAt: at + int64(index), UpdatedAt: at + int64(index) + 3,
-		}, Title: fmt.Sprintf("Overview CI thread %02d", index), Tags: []string{}, TagEmojis: map[string]string{}, Archived: &archived}
+		}, Title: fmt.Sprintf("Overview CI thread %02d", index), Tags: []string{"Performance"}, TagEmojis: map[string]string{"Performance": "📌"}, Archived: &archived}
 		if err := encodeState(&record, state, adapter.SessionState()); err != nil {
 			return nil, err
 		}

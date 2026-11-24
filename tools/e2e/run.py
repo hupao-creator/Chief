@@ -186,7 +186,6 @@ def run(args):
             session.configure()
             if "E2E-COLLECTION-001" in requested:
                 session.peer.prepare_collection()
-                collection.enable_reports(session, True)
             elif "E2E-OVERVIEW-002" in requested:
                 session.peer.prepare_overview()
             report["validity"] = "valid"
@@ -202,7 +201,19 @@ def run(args):
             initial = row["observation"]["latestExecution"]["executionId"]
             save(output / "creation.json", {"receipt": receipt, "thread": row})
             save(output / "initial-oracle.json", read_turn(session, thread, initial, session.peer.body(1), "initial-content.json"))
+            peer = session.peer
+            peer.tagged_ids = {r["threadId"] for r in peer.receipts.values()}
+            if peer.overview_project:
+                peer.tagged_ids.remove(peer.receipts["bench_create_14"]["threadId"])
+            collection.enable_agent(session, "tag", True)
+            catalog = wait_for(session.runtime.state, lambda state: peer.tagged_ids <= {
+                t["id"] for t in state["threads"] if t.get("tags")}, 90)
+            collection.enable_agent(session, "tag", False)
             if "E2E-COLLECTION-001" in requested:
+                standalone = {thread, peer.receipts["bench_create_10"]["threadId"]}
+                peer.report_sources = {t["id"]: t["observation"]["latestExecution"]["executionId"]
+                                       for t in catalog["threads"] if t["id"] in peer.tagged_ids - standalone}
+                collection.enable_agent(session, "report", True)
                 reports = collection.prepare(session)
             event("prepared", thread=thread, execution=initial)
             report["preparation"] = "ready"
@@ -239,7 +250,7 @@ def run(args):
             if "E2E-COLLECTION-001" in requested:
                 execute("E2E-COLLECTION-001", lambda: collection.journey(desktop, reports))
                 if args.suite == "all":
-                    collection.enable_reports(session, False)
+                    collection.enable_agent(session, "report", False)
             if "E2E-CHIEF-001" in requested:
                 execute("E2E-CHIEF-001", desktop.chief_controls)
             if "E2E-READ-001" in requested:

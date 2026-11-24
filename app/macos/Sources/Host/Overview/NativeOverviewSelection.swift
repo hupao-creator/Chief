@@ -385,32 +385,24 @@ enum NativeOverviewSelection {
               applications: applications.filter { !$0.entry.archived && $0.visible })
     }
     static func select(threads: [HarnessThread], applications: [NativeOverviewApplicationEntry],
-                       tags: [String] = [], kind: NativeOverviewTagKind? = nil, scope selectedScope: String? = nil,
-                       merge: Bool = true,
-                       directoryTags: [JSONText: String] = [:],
+                       tags: [String], kind: NativeOverviewTagKind, scope selectedScope: String,
                        key: (String) -> String = NativeOverviewSelection.key) -> NativeOverviewCollection {
-        let keys = Set(tags.map(key).filter { !$0.isEmpty })
+        let keys = Set(tags.map(key))
         let available = candidates(threads: threads, applications: applications)
         let visibleApplications = available.applications.enumerated().filter { _, item in
-            if let selectedScope {
-                if let ownerScope = item.entry.scope?.string {
-                    if ownerScope != selectedScope { return false }
-                    if kind == .directory { return true }
-                } else if selectedScope != inboxScope && kind != .directory { return false }
-            }
-            if item.directoryOnly {
-                return kind == .directory && item.entry.tags.directoryTags.contains { keys.contains(key($0.string)) }
-            }
-            return keys.isEmpty || item.entry.tags.tags.contains { keys.contains(key($0.string)) }
+            if let scope = item.entry.scope?.string {
+                guard scope == selectedScope else { return false }
+                if kind == .directory { return true }
+            } else if kind == .directory {
+                return item.entry.tags.directoryTags.contains { keys.contains(key($0.string)) }
+            } else if selectedScope != inboxScope { return false }
+            return !item.directoryOnly && item.entry.tags.semanticTags.contains { keys.contains(key($0.string)) }
         }.sorted { a, b in a.element.entry.createdAt == b.element.entry.createdAt ? a.offset < b.offset : a.element.entry.createdAt < b.element.entry.createdAt }.map(\.element)
-        let covered = merge ? Set(visibleApplications.flatMap(\.coveredExecutions)) : []
+        let covered = Set(visibleApplications.flatMap(\.coveredExecutions))
         let visibleThreads = available.threads.enumerated().filter { _, thread in
-            if let selectedScope, scope(thread) != selectedScope { return false }
-            // A directory label is presentation, not membership: a symlink or
-            // linked checkout can have another label within the same scope.
-            let matchesDirectoryScope = kind == .directory && selectedScope != nil
-            guard matchesDirectoryScope || keys.isEmpty || ([directoryTags[thread.cwd] ?? directoryTag(thread)] + thread.tags.map(\.string)).contains(where: { keys.contains(key($0)) }) else { return false }
-            guard merge, let execution = thread.observation.latestExecution?.executionID else { return true }
+            guard scope(thread) == selectedScope,
+                  kind == .directory || thread.tags.contains(where: { keys.contains(key($0.string)) }) else { return false }
+            guard let execution = thread.observation.latestExecution?.executionID else { return true }
             return !covered.contains(.init(thread: .init(threadID: thread.id, typeID: "agent"), executionID: execution))
         }.sorted { a, b in a.element.createdAt == b.element.createdAt ? a.offset < b.offset : a.element.createdAt < b.element.createdAt }.map(\.element)
         return .init(threads: visibleThreads, applications: visibleApplications)
@@ -487,8 +479,8 @@ enum NativeOverviewSelection {
         return top.sorted { a, b in
             if a.count != b.count { return a.count > b.count }
             if a.isDirectory != b.isDirectory { return a.isDirectory }
-            return compare(a.isDirectory ? a.displayTag : a.tag,
-                           b.isDirectory ? b.displayTag : b.tag) == .orderedAscending
+            let order = compare(a.isDirectory ? a.displayTag : a.tag, b.isDirectory ? b.displayTag : b.tag)
+            return order == .orderedSame ? a.id < b.id : order == .orderedAscending
         }
     }
     static func compare(_ a: String, _ b: String) -> ComparisonResult { a.compare(b, locale: .current) }

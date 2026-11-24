@@ -133,7 +133,7 @@ unavailable notice; a missing execution uses the reader's unavailable page. Each
 After Note dismissal, Overview resolves the tag space for the reader destination.
 It retains a space containing that Thread or Report, otherwise prefers a matching sibling
 tag within the selected folder, then a matching filter by scoped membership.
-An untagged destination available only on All selects All.
+An untagged Inbox destination opens directly and keeps the current space.
 A hidden ordinary Thread can still lead to its directory when that directory exists.
 The new space finishes layout before the reader opens. Changing space restores All statuses. A link within the current space preserves its status filter. A visible source card supplies the entrance, and a visible collection first
 turns to the linked Report. An offscreen destination or one without a card opens directly.

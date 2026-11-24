@@ -52,8 +52,11 @@ private struct OverviewRailButton: View {
 
     var body: some View {
         let expanded = selected || hovered
+        // Measure hover beyond the capsule, then restore its original layout and button bounds.
         capsule(expanded ? 1 : 0)
+            .padding(.horizontal, OverviewTagMetrics.railHoverInset)
             .onHover { hovered = $0 }
+            .padding(.horizontal, -OverviewTagMetrics.railHoverInset)
             .onDisappear { hovered = false }
             .animation(reduceMotion ? nil : NativeMokuCapsuleLayout.overviewExpansionAnimation, value: expanded)
     }
@@ -82,7 +85,7 @@ private struct OverviewRailCapsule: View, @MainActor Animatable {
             Button(action: action) {
                 OverviewRailLabelLayout(edge: edge, maximumWidth: maximumWidth, expansion: progress, pixelLength: pixelLength) {
                     glyph.accessibilityHidden(true)
-                    OverviewTagTitle(title: title, scale: OverviewTagMetrics.railScale)
+                    OverviewTagTitle(title: title)
                         .modifier(OverviewCanvasLabelEdge())
                         .opacity(progress)
                 }
@@ -94,17 +97,17 @@ private struct OverviewRailCapsule: View, @MainActor Animatable {
         }
         // The unread count follows the presented width while the title expands.
         .overlay(alignment: .topTrailing) {
-            if unreadCount > 0 { OverviewTagUnreadBadge(count: unreadCount, scale: OverviewTagMetrics.railScale) }
+            if unreadCount > 0 { OverviewTagUnreadBadge(count: unreadCount) }
         }
         .transaction { $0.animation = nil }
     }
 
     @ViewBuilder private var glyph: some View {
         if let emoji {
-            Text(verbatim: emoji).font(.system(size: 19 * OverviewTagMetrics.railScale)).fixedSize()
-                .background { if hasActiveTasks { OverviewTagActivityIndicator(diameter: 36 * OverviewTagMetrics.railScale) } }
+            Text(verbatim: emoji).font(.system(size: 19 * OverviewTagMetrics.tagScale)).fixedSize()
+                .background { if hasActiveTasks { OverviewTagActivityIndicator(diameter: 36 * OverviewTagMetrics.tagScale) } }
         } else {
-            OverviewAllTagGlyph(scale: OverviewTagMetrics.railScale)
+            OverviewAllTagGlyph(scale: OverviewTagMetrics.tagScale)
                 .modifier(OverviewCanvasLabelEdge())
         }
     }
@@ -135,7 +138,7 @@ private struct OverviewRailLabelLayout: Layout {
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let title = subviews[1].sizeThatFits(.unspecified)
-        let extra = min(max(0, maximumWidth - diameter), title.width + OverviewTagMetrics.labelInset * OverviewTagMetrics.railScale)
+        let extra = min(max(0, maximumWidth - diameter), title.width + OverviewTagMetrics.labelInset * OverviewTagMetrics.tagScale)
         // Snap the moving edge so rounding cannot shift the stationary glyph by a backing pixel.
         let width = ((diameter + expansion * extra) / pixelLength).rounded() * pixelLength
         return CGSize(width: width, height: diameter)
@@ -146,7 +149,7 @@ private struct OverviewRailLabelLayout: Layout {
         let glyphX = leading ? bounds.minX + diameter / 2 : bounds.maxX - diameter / 2
         subviews[0].place(at: CGPoint(x: glyphX, y: bounds.midY),
                           anchor: .center, proposal: .unspecified)
-        let titleWidth = max(0, maximumWidth - diameter - OverviewTagMetrics.labelInset * OverviewTagMetrics.railScale)
+        let titleWidth = max(0, maximumWidth - diameter - OverviewTagMetrics.labelInset * OverviewTagMetrics.tagScale)
         let titleX = leading ? bounds.minX + diameter : bounds.maxX - diameter
         subviews[1].place(at: CGPoint(x: titleX, y: bounds.midY),
                           anchor: leading ? .leading : .trailing, proposal: .init(width: titleWidth, height: diameter))

@@ -81,7 +81,6 @@ public final class NativeOverviewWorkspaceModel {
     public private(set) var selectedScope = ""
     public private(set) var selectedFilter: NativeOverviewFilter?
     public private(set) var filters: [NativeOverviewFilter] = []
-    public private(set) var allHasActiveTasks = false
     public var visibleFilters: [NativeOverviewFilter] {
         filters.filter { $0.count > 0 }.map(visibleDirectory)
     }
@@ -142,8 +141,6 @@ public final class NativeOverviewWorkspaceModel {
     @ObservationIgnored private var membershipIndex = NativeOverviewMembershipIndex()
     private var filterMembers: [String: NativeOverviewMembership] { membershipIndex.members }
     private var redundantSemanticFilterKeys: Set<String> { membershipIndex.redundant }
-    @ObservationIgnored private var allMembers = NativeOverviewMembership()
-    @ObservationIgnored private var allMembersDirty = false
     @ObservationIgnored private var unreadVersions: [ApplicationThreadRef: JSONText] = [:]
     @ObservationIgnored private var activeThreadIDs = Set<JSONText>()
     @ObservationIgnored private var globalApplicationIDs = Set<JSONText>()
@@ -285,7 +282,7 @@ public final class NativeOverviewWorkspaceModel {
     }
 
     func selectStatusFilter(_ status: NativeOverviewStatusFilter) {
-        guard status != statusFilter else { return }
+        guard selectedFilter != nil, status != statusFilter else { return }
         statusFilter = status
         reconcile(captureMutation: false, refreshSelection: false)
     }
@@ -314,8 +311,7 @@ public final class NativeOverviewWorkspaceModel {
 
     func revealNoteDestination(_ reference: ApplicationThreadRef) {
         // Tag membership is independent of status, horizontal offset and Collection page.
-        let current = selectedFilter.flatMap { filterMembers[$0.selectionKey] } ?? allMembership()
-        guard !current.contains(reference) else { return }
+        if let current = selectedFilter, filterMembers[current.selectionKey]?.contains(reference) == true { return }
         // A citation from a semantic tag can lead to a sibling in the same folder.
         // Keep that level of detail before broadening to the directory.
         func matches(_ filter: NativeOverviewFilter) -> Bool {
@@ -324,8 +320,6 @@ public final class NativeOverviewWorkspaceModel {
         let sibling = tagSelection?.kind == .semantic ? selectedDirectory?.children.first(where: matches) : nil
         if let match = sibling ?? allFilters.first(where: matches) {
             selectTag(match)
-        } else if allMembership().contains(reference) {
-            selectTag(nil)
         } else if reference.typeID == "agent", let thread = workspace.catalog.thread(reference.threadID),
                   let directory = filters.first(where: { $0.isDirectory && $0.scope == NativeOverviewSelection.scope(thread) }),
                   directory.selectionKey != selectedFilter?.selectionKey {
@@ -574,8 +568,10 @@ public final class NativeOverviewWorkspaceModel {
                         .map { .init(tag: $0.tag, kind: .directory, scope: $0.scope) }
                 }
             }
-            let chosenTag = tagSelection?.tag ?? ""
-            selectedTag = filters.isEmpty ? "" : chosenTag
+            if tagSelection == nil, let first = filters.first(where: { $0.count > 0 }) {
+                tagSelection = .init(tag: first.tag, kind: first.isDirectory ? .directory : .semantic, scope: first.scope)
+            }
+            selectedTag = tagSelection?.tag ?? ""
             selectedScope = tagSelection?.scope ?? ""
             let nextFilter = matchingFilter(tag: selectedTag, scope: selectedScope, kind: tagSelection?.kind)
             if selectedFilter?.id != nextFilter?.id { statusFilter = .all }
@@ -588,9 +584,8 @@ public final class NativeOverviewWorkspaceModel {
             // Scene identity belongs to the retained presentation too. Advancing
             // it while hidden could bookmark the old camera under a new selection.
             sceneKey = browseSceneKey
-            let selectedTags = selectedFilter.map { [$0.tag] + $0.aliases } ?? (selectedTag.isEmpty ? [] : [selectedTag])
             let selected = selectedFilter.flatMap { filterMembers[$0.selectionKey] }.map(resolve)
-                ?? (selectedTags.isEmpty ? resolve(allMembership()) : collection(tags: selectedTags, kind: tagSelection?.kind, scope: selectedScope))
+                ?? NativeOverviewCollection(threads: [], applications: [])
             let nextItems = try project(filterByStatus(selected))
             if sceneKey != previousScene { revisions.removeAll() }
             if captureMutation, facts.overviewVisible, previousScene == sceneKey,
@@ -688,7 +683,7 @@ public final class NativeOverviewWorkspaceModel {
         }
         var affectedScopes = Set<String>()
         if changedMembership {
-            membershipBuildCount += 1; allMembersDirty = true
+            membershipBuildCount += 1
             affectedScopes = membershipIndex.update(threadIDs: membershipThreads, applicationIDs: membershipApplications,
                 catalog: workspace.catalog, directoryTags: directoryTags.values, application: { applicationRecords[$0] })
             publishMembership(); refreshGlobalAvailability()
@@ -763,28 +758,14 @@ public final class NativeOverviewWorkspaceModel {
         }
     }
 
-    private func collection(tags: [String], kind: NativeOverviewTagKind?, scope: String? = nil) -> NativeOverviewCollection {
-        NativeOverviewSelection.select(threads: catalogThreads, applications: catalogApplications,
-            tags: tags, kind: kind, scope: scope, directoryTags: directoryTags.values)
-    }
-
     private func resolve(_ membership: NativeOverviewMembership) -> NativeOverviewCollection {
         .init(threads: membership.threads.map { workspace.catalog.thread($0)! },
               applications: membership.applications.map { applicationsByRef[$0]! })
     }
 
-    private func allMembership() -> NativeOverviewMembership {
-        if allMembersDirty {
-            allMembers = NativeOverviewMembership(collection(tags: [], kind: nil))
-            allMembersDirty = false
-        }
-        return allMembers
-    }
-
     private func rebuildMembership() {
         membershipBuildCount += 1
         let threads = catalogThreads, applications = catalogApplications
-        allMembersDirty = true
         let candidates = NativeOverviewSelection.candidates(threads: threads, applications: applications)
         globalThreadIDs = Set(candidates.threads.map(\.id))
         globalApplicationIDs = Set(candidates.applications.map { $0.entry.ref.threadID })
@@ -823,9 +804,6 @@ public final class NativeOverviewWorkspaceModel {
         }
         let next = source.map(decorated)
         if filters != next { filters = next }
-        // All uses its existing lazy membership too; an active task covered by
-        // a Report must not keep an otherwise settled All collection marked.
-        allHasActiveTasks = !activeThreadIDs.isEmpty && hasActiveTasks(allMembership())
     }
 
     private func unreadVersion(_ ref: ApplicationThreadRef, _ version: JSONText?) -> JSONText? {
@@ -1011,10 +989,9 @@ public final class NativeOverviewWorkspaceModel {
               let expiry = request["expiresAt"]?.numberValue, Date().timeIntervalSince1970 * 1000 < expiry else { return "unavailable" }
         guard request["contextId"] == context["contextId"], request["revision"] == context["revision"] else { return "stale" }
         let scope = request["scope"]?.stringValue ?? ""
-        if request["tag"] != .null {
-            guard allFilters.contains(where: { .text($0.tag) == request["tag"] && (scope.isEmpty || $0.scope == scope) }) else {
-                return "unavailable"
-            }
+        if request["tag"] == .null { return selectedFilter == nil ? "unchanged" : "unavailable" }
+        guard allFilters.contains(where: { $0.count > 0 && .text($0.tag) == request["tag"] && (scope.isEmpty || $0.scope == scope) }) else {
+            return "unavailable"
         }
         return request["tag"] == context["selectedTag"] && (scope.isEmpty || scope == selectedScope) ? "unchanged" : nil
     }
@@ -1029,9 +1006,9 @@ public final class NativeOverviewWorkspaceModel {
         try? await workspace.client.updateOverviewContext(nil)
         content.stop()
         snapshots.removeAll(); revisions.removeAll(); harnessCache.removeAll(); applicationCache.removeAll(); directoryTags.removeAll()
-        membershipFacts = nil; membershipIndex = .init(); allMembers = .init(); allMembersDirty = false; applicationsByRef.removeAll()
+        membershipFacts = nil; membershipIndex = .init(); applicationsByRef.removeAll()
         statusHiddenThreads.removeAll()
-        unreadVersions.removeAll(); activeThreadIDs.removeAll(); allHasActiveTasks = false
+        unreadVersions.removeAll(); activeThreadIDs.removeAll()
         globalThreadIDs.removeAll(); globalConversationCount = nil; hasEstablishedConversation = false
         applicationRecords = .init(); catalogIDs.removeAll()
         globalApplicationIDs.removeAll(); establishedThreadIDs.removeAll(); pendingInsertedIDs.removeAll()

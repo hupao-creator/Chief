@@ -83,7 +83,8 @@ class Desktop:
         assert math.isclose(initial["x"], left, abs_tol=.01) and initial["scrollOffset"] == 0
         assert initial["y"] >= 0 and initial["y"] + height * initial["scale"] <= viewport["height"] + .01
         if not self.session.peer.collection_projects:
-            assert {p["id"] for p in placements} == {r["threadId"] for r in self.session.peer.receipts.values()}
+            assert {p["id"] for p in placements} == {row["id"] for row in self.session.runtime.state()["threads"]
+                if row.get("tags") and row["directoryScope"] == str(self.session.peer.overview_project.resolve())}
             assert maximum > 0, "dense workspace did not exercise overflow"
 
         def scroll(distance, expected, filename):
@@ -110,19 +111,17 @@ class Desktop:
         catalog = self.session.runtime.state()
         scopes = {row["id"]: row["directoryScope"] for row in catalog["threads"] if row["id"] in created}
         assert set(scopes) == created
-        # The Collection fixture deliberately creates independent reports. Check
-        # their published source references before expecting every task as a card.
         sources = {row["id"]: row["view"]["relatedExecutions"] for row in catalog["applicationThreads"]
                    if row["ref"]["typeId"] == "report.document" and not row["archived"]}
-        assert len(sources) == (8 if self.session.peer.collection_projects else 0)
-        assert all(refs == [] for refs in sources.values()), "fixture reports must not cite the prepared tasks"
+        covered = {ref["thread"]["threadId"] for refs in sources.values() for ref in refs}
+        assert covered == set(self.session.peer.report_sources)
+        eligible = {row["id"] for row in catalog["threads"] if row["id"] in created and row.get("tags")} - covered
         scope = scopes[thread]
         if self.session.peer.overview_project:
-            untagged = created - {thread}
             assert scope == str(self.session.peer.overview_project.resolve())
-            assert all(scopes[task] == "inbox" for task in untagged)
-            assert all(not row["tags"] for row in catalog["threads"] if row["id"] in untagged)
-        scoped = {task for task in created if scopes[task] == scope}
+            assert len(created - eligible) == 1
+        def agents_in(scope):
+            return {task for task in eligible if scopes[task] == scope}
 
         def settled(status, directory_id, expected):
             def matches(state):
@@ -132,7 +131,7 @@ class Desktop:
                 return (state["page"] == "overview" and "overview.filters.activate" in state["actions"]
                         and state["selectedFilterId"] == directory_id and overview["status"] == status
                         and set(overview["controls"]["status"]) == {"running", "all", "completed"}
-                        and not overview["controls"]["semantic"] and not overview["layingOut"]
+                        and not overview["layingOut"]
                         and set(overview["mountedCardIds"]) == {card["id"] for card in cards}
                         and agents == expected)
             return self.stable(matches)
@@ -140,21 +139,21 @@ class Desktop:
         def activate(group, control):
             self.request({"name": "overview.filters.activate", "group": group, "id": control})
 
-        initial = settled("all", None, created)
-        top = initial["overview"]["filters"]
-        directories = {item["scope"]: item["id"] for item in top if item["kind"] == "directory"}
-        assert set(directories) == set(scopes.values()) - {"inbox"}
-        directory = directories[scope]
-        assert set(initial["overview"]["controls"]["directory"]) == {"all", *directories.values()}
+        top = self.stable(lambda s: s["page"] == "overview" and s["overview"]["filters"])["overview"]["filters"]
+        current = next(f for f in top if f["scope"] == scope)
+        other = next(f for f in top if f["scope"] != scope)
+        directory = current["id"]
+        initial = settled("all", directory, agents_in(scope))
+        assert "all" not in initial["overview"]["controls"]["directory"]
         activate("status", "running")
-        running = settled("running", None, set())
+        running = settled("running", directory, set())
         assert not running["overview"]["cards"]
-        activate("directory", directory)
-        folder = settled("all", directory, scoped)
+        activate(other["kind"], other["id"])
+        folder = settled("all", other["id"], agents_in(other["scope"]))
         activate("status", "completed")
-        completed = settled("completed", directory, scoped)
-        activate("directory", "all")
-        restored = settled("all", None, created)
+        completed = settled("completed", other["id"], agents_in(other["scope"]))
+        activate("directory", directory)
+        restored = settled("all", directory, agents_in(scope))
         save(self.session.output / "overview-filters.json", {
             "taskScopes": scopes, "reportSources": sources, "initial": initial, "running": running, "directory": folder,
             "completedDirectory": completed, "restored": restored})

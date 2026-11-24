@@ -80,7 +80,7 @@ final class NativeOverviewMembershipIndex {
             threads[old]?.remove(id)
             if threads[old]?.isEmpty == true { threads.removeValue(forKey: old) }
         }
-        guard let thread, thread.moku != true else { return }
+        guard let thread, thread.moku != true, !thread.tags.isEmpty else { return }
         let scope = NativeOverviewSelection.scope(thread)
         threadScopes[id] = scope; threads[scope, default: []].insert(id)
     }
@@ -100,13 +100,13 @@ final class NativeOverviewMembershipIndex {
                 if semanticApplications[key]?.isEmpty == true { semanticApplications.removeValue(forKey: key) }
             }
         }
-        guard let application else { return }
+        guard let application, !application.entry.tags.semanticTags.isEmpty else { return }
         if let scope = application.entry.scope?.string {
             applicationScopes[id] = scope; applications[scope, default: []].insert(id)
         } else {
-            let directoryTags = application.directoryOnly ? application.entry.tags.directoryTags : application.entry.tags.tags
+            let directoryTags = application.entry.tags.directoryTags
             let keys = Unscoped(directory: Set(directoryTags.map { NativeOverviewSelection.key($0.string) }),
-                semantic: application.directoryOnly ? [] : Set(application.entry.tags.tags.map { NativeOverviewSelection.key($0.string) }))
+                semantic: application.directoryOnly ? [] : Set(application.entry.tags.semanticTags.map { NativeOverviewSelection.key($0.string) }))
             unscoped[id] = keys
             for key in keys.directory { directoryApplications[key, default: []].insert(id) }
             for key in keys.semantic { semanticApplications[key, default: []].insert(id) }
@@ -136,8 +136,7 @@ final class NativeOverviewMembershipIndex {
         }
         let ownIDs = applications[scope] ?? []
         let ownApplications = orderedApplications(ownIDs)
-        let candidates = NativeOverviewSelection.candidates(threads: threadInputs, applications: ownApplications)
-        let browsing = NativeOverviewCollection(threads: candidates.threads, applications: candidates.applications)
+        let browsing = NativeOverviewSelection.candidates(threads: threadInputs, applications: ownApplications)
         var keys: [String: String] = [:]
         func normalized(_ text: String) -> String {
             if let value = keys[text] { return value }
@@ -156,7 +155,7 @@ final class NativeOverviewMembershipIndex {
             let applications = orderedApplications(ids)
             return NativeOverviewMembership(NativeOverviewSelection.select(threads: browsing.threads, applications: applications,
                 tags: labels, kind: filter.isDirectory ? .directory : .semantic,
-                scope: scope, directoryTags: directoryTags, key: normalized))
+                scope: scope, key: normalized))
         }
         for var filter in filters {
             let parent = select(filter)
@@ -169,7 +168,7 @@ final class NativeOverviewMembershipIndex {
             }
             if filter.isDirectory, filter.children.count == 1, let child = filter.children.first {
                 let names = browsing.threads.flatMap { $0.tags.map(\.string) }
-                    + candidates.applications.flatMap { $0.entry.tags.semanticTags.map(\.string) }
+                    + browsing.applications.flatMap { $0.entry.tags.semanticTags.map(\.string) }
                 let semanticKeys = Set(names.map(normalized).filter { !$0.isEmpty })
                 let selected = members[child.selectionKey]!
                 if semanticKeys.count == 1, Set(parent.threads) == Set(selected.threads), Set(parent.applications) == Set(selected.applications) {
