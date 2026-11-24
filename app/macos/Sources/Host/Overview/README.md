@@ -371,6 +371,15 @@ the Any tag asterisk and glyphs that yield no visible sample use the Overview
 accent. The emoji keeps its original colors.
 [Emoji tint sampling](NativeOverviewTagTint.swift).
 
+Selected Any tag uses an opaque Overview accent face above its glass, with
+white ink in light appearance and black ink in dark appearance for both the
+asterisk and its title. The face stays opaque with Increased Contrast or Reduce
+Transparency so the cards underneath cannot change the label's contrast.
+The [header glass replay](../../../../../demos/moku-landing/verify_header.py)
+checks the selected accent on a neutral backdrop in both appearances. Text
+contrast uses the opaque sRGB accent and full-coverage ink, with a target of
+4.5:1. The replay's tint samples do not measure the expanded title's contrast.
+
 Each tag's red unread count follows the upper trailing corner of the glass
 at its current animated width. Increased Contrast and Reduce Transparency
 strengthen the selection tint. Reduce Transparency also supplies an opaque

@@ -88,7 +88,8 @@ private struct OverviewSemanticRailButton: View, @MainActor Animatable {
                 }
                 .clipped()
             }
-            .buttonStyle(OverviewTagButtonStyle(glass: .clear, selected: selected, emoji: emoji))
+            .buttonStyle(OverviewTagButtonStyle(glass: .clear, selected: selected, emoji: emoji,
+                                              solidAccentSelection: emoji == nil))
             .accessibilityAddTraits(selected ? .isSelected : [])
         }
         // The unread count follows the presented width while the title expands.

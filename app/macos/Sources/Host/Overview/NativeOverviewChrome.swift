@@ -475,6 +475,7 @@ struct OverviewTagButtonStyle: ButtonStyle {
     let glass: Glass
     let selected: Bool
     var emoji: String?
+    var solidAccentSelection = false
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -482,10 +483,18 @@ struct OverviewTagButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let opacity = contrast == .increased || reduceTransparency ? 0.82 : 0.56
         let tint = selected ? OverviewTagTint.color(for: emoji).opacity(opacity) : nil
+        let hasSolidAccent = selected && solidAccentSelection
+        let foreground = hasSolidAccent ? AnyShapeStyle(scheme == .dark ? Color.black : .white)
+            : AnyShapeStyle(HierarchicalShapeStyle.primary)
         return configuration.label
-            .foregroundStyle(.primary)
+            .foregroundStyle(foreground)
             .background {
-                if reduceTransparency { Capsule().fill(Color(white: scheme == .dark ? 0.16 : 0.94)) }
+                if hasSolidAccent {
+                    // Keep the glass behind the face so moving cards cannot change the ink contrast.
+                    Capsule().fill(NativePalette.overview.accent.swiftUI)
+                } else if reduceTransparency {
+                    Capsule().fill(Color(white: scheme == .dark ? 0.16 : 0.94))
+                }
             }
             .contentShape(Capsule())
             .glassEffect(glass.tint(tint).interactive(), in: Capsule())

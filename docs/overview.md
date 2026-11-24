@@ -8,7 +8,7 @@ Tasks without a project folder belong to Inbox. Their tags appear in the same to
 
 When a folder has tags to choose from, look for their emoji along the left edge. Hover over an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. When you switch tags, the new tag shows its name for five seconds.
 
-Tinted glass marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Folders, **All** and **Any tag** use the Overview accent color.
+A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Folders and **All** use the Overview accent color. When **Any tag** is selected, its solid teal background keeps the asterisk and name readable over the cards.
 
 Click the asterisk (`*`) for **Any tag** to see the whole folder, including tasks without a tag. Choosing another folder also starts you at **Any tag** and keeps your current status filter. If a folder and its only tag show the same cards, choosing the folder is enough.
 
