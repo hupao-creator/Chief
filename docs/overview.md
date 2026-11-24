@@ -2,17 +2,19 @@
 
 ## Find a task by folder or tag
 
-Press **⌘K** to open **Overview**. Choose a project folder at the top, or choose **Inbox** for tasks without a project folder. Folders with the same name appear separately. Choose **All** at the top to see work across folders.
+Press **⌘K** to open **Overview**. Click a folder icon at the top to see that project’s work. Folders with the same name appear separately.
+
+Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. Choose **All** to see work across projects and Inbox, including Inbox tasks that have no tag.
 
 When a folder has tags to choose from, look for their emoji along the left edge. Hover over an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. When you switch tags, the new tag shows its name for five seconds.
 
-Tinted glass marks your selection. Folders, **All** and **Any tag** use the Overview accent color. Each tag on the left takes its tint from its emoji.
+Tinted glass marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Folders, **All** and **Any tag** use the Overview accent color.
 
 Click the asterisk (`*`) for **Any tag** to see the whole folder, including tasks without a tag. Choosing another folder also starts you at **Any tag** and keeps your current status filter. If a folder and its only tag show the same cards, choosing the folder is enough.
 
 Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find a task that’s running or waiting for your response. Choose that folder or tag, then click ⏳ on the right to see its running tasks. With **Reduce Motion** turned on in macOS, the dots stay still.
 
-A red number on a folder counts conversations with an unread completed result or Super Thread document across the whole folder. Each tag on the left shows its own unread count in the upper-right corner, even as the tag expands and closes. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
+A red number on a folder counts conversations with an unread completed result or Super Thread document across the whole folder. A red number on a tag counts unread conversations in that tag. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
 If a Super Thread in the same view cites a task's latest run, its card can stand in for the task card. Open **Related executions** in the Super Thread to reach the task. A newer run can make the task card appear again. [See the work behind a Super Thread](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 
@@ -20,15 +22,15 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 The three emoji on the right filter the cards in your current folder or tag. From top to bottom, click ⏳ for **Running only**, 🗂️ for **All statuses**, or 🏁 for **Completed only**. Hover over an emoji to see its name. The selected button takes its tint from the emoji, so 🏁 has a neutral gray tint. Overview starts with 🗂️ selected.
 
-You can also swipe up or down with two fingers over the cards or background. Start on the **left half of the window** to change tags, or the **right half** to change status. Slide your fingers up to select the choice below, or down to select the choice above. From **All statuses**, swiping up takes you to **Completed only**. One swipe moves one choice, even if the pointer crosses the middle. At either end, the selection stays put. When the left column is hidden, swiping there keeps your selection.
+You can also swipe up or down with two fingers over the cards or background. Start on the **left half of the window** to change tags, or the **right half** to change status. Slide your fingers up to select the choice below, or down to select the choice above. From **All statuses**, swiping up takes you to **Completed only**. One swipe moves one choice, even if the pointer crosses the middle. At either end, the selection stays put. When the left column is hidden, as it is for **All** and Inbox tags, a left-half swipe keeps your selection.
 
 **Running only** includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. **Completed only** includes tasks whose latest run finished successfully and have no pending input or background work. It also includes Super Threads and their collections. Completed task cards show when the latest run finished. Super Thread cards show when the document was last updated. Idle tasks and visible interrupted tasks with no ongoing work appear under **All statuses**.
 
-If no cards match, choose another tag on the left or click 🗂️ on the right to see all statuses for the same tag. With a mouse wheel, scroll up on the right half to leave an empty **Running only** view, or down there to leave an empty **Completed only** view.
+If no cards match, click 🗂️ on the right to see all statuses for the same folder or tag. With a mouse wheel, scroll up on the right half to leave an empty **Running only** view, or down there to leave an empty **Completed only** view.
 
 ## Move around the canvas
 
-Resize the window to adjust how many cards you can see. Overview arranges cards across the window and centers them vertically. The folder buttons at the top have a frosted glass background. The clear glass buttons on the left and right float over the cards. With **Reduce transparency** turned on in macOS, the filters have a solid background. Click a filter to select it, or click the visible part of a card between filters to open it. A wide task card can appear between two taller cards when there’s room for it there. Opening the Chief input box keeps the cards in place.
+Resize the window to adjust how many cards you can see. Overview arranges cards across the window and centers them vertically. The folder and tag buttons at the top have a frosted glass background. The clear glass buttons on the left and right float over the cards. With **Reduce transparency** turned on in macOS, the filters have a solid background. Click a filter to select it, or click the visible part of a card between filters to open it. A wide task card can appear between two taller cards when there’s room for it there. Opening the Chief input box keeps the cards in place.
 
 With the input box closed, swipe up over the eyes on Chief Bar to open **Chief Note**. Scroll inside an open note or a long Chief Bar message to read more.
 

@@ -43,7 +43,7 @@ struct NativeOverviewTagRail: View {
         let activity = filter.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
         let expanded = hoveredID == filter.id || recentID == filter.id
         return OverviewSemanticRailButton(title: isParent ? strings.anyTag : filter.tag,
-            emoji: isParent ? nil : (filter.emoji.flatMap { $0.isEmpty ? nil : $0 } ?? "🏷️"),
+            emoji: isParent ? nil : filter.semanticEmoji,
             hasActiveTasks: !isParent && filter.hasActiveTasks, selected: filter.id == selectedID,
             unreadCount: isParent ? 0 : filter.unreadCount, maximumWidth: maximumWidth,
             expansion: expanded ? 1 : 0, action: select)

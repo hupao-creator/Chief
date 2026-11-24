@@ -56,12 +56,13 @@ public struct NativeOverviewWorkspaceView: View {
     public var body: some View {
         callbackStore.current = callbacks
         return GeometryReader { geometry in
-            let viewport = Self.viewport(in: geometry.size, hasFilters: !model.filters.isEmpty,
+            let hasFilters = (model.globalConversationCount ?? 0) > 0 || !model.filters.isEmpty
+            let viewport = Self.viewport(in: geometry.size, hasFilters: hasFilters,
                                          hasDock: model.workspace.catalog.hasMoku)
             let filters = landing ? [] : model.visibleFilters
             let directory = model.selectedDirectory
             let railEdgeInset = min(12, geometry.size.width * 0.015)
-            let headerBottom = OverviewTagMetrics.headerBottom(in: geometry.size, hasFilters: !filters.isEmpty)
+            let headerBottom = OverviewTagMetrics.headerBottom(in: geometry.size, hasFilters: !landing && hasFilters)
             // The last card can make the Dock switch to landing before the
             // canvas admits its empty layout. Keep that exit drawable while
             // landing and its input take over immediately.
@@ -143,7 +144,7 @@ public struct NativeOverviewWorkspaceView: View {
                 NativeOverviewChrome(filters: filters, viewportHeight: geometry.size.height,
                     selectedTag: model.selectedTag,
                     selectedScope: model.selectedScope, selectedKind: model.tagSelection?.kind,
-                    allHasActiveTasks: model.allHasActiveTasks,
+                    allHasActiveTasks: model.allHasActiveTasks, showsAllWhenEmpty: hasFilters && !landing,
                     strings: chromeStrings,
                     onTagChange: model.selectTag,
                     onSettings: callbacks.onSettings,

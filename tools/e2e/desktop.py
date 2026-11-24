@@ -117,8 +117,11 @@ class Desktop:
         assert len(sources) == (8 if self.session.peer.collection_projects else 0)
         assert all(refs == [] for refs in sources.values()), "fixture reports must not cite the prepared tasks"
         scope = scopes[thread]
-        if not self.session.peer.collection_projects:
-            assert scope == "inbox"
+        if self.session.peer.overview_project:
+            untagged = created - {thread}
+            assert scope == str(self.session.peer.overview_project.resolve())
+            assert all(scopes[task] == "inbox" for task in untagged)
+            assert all(not row["tags"] for row in catalog["threads"] if row["id"] in untagged)
         scoped = {task for task in created if scopes[task] == scope}
 
         def settled(status, directory_id, expected):
@@ -138,9 +141,11 @@ class Desktop:
             self.request({"name": "overview.filters.activate", "group": group, "id": control})
 
         initial = settled("all", None, created)
-        directory = next(item["id"] for item in initial["overview"]["filters"]
-                         if item["scope"] == scope and item["kind"] == "directory")
-        assert directory in initial["overview"]["controls"]["directory"]
+        top = initial["overview"]["filters"]
+        directories = {item["scope"]: item["id"] for item in top if item["kind"] == "directory"}
+        assert set(directories) == set(scopes.values()) - {"inbox"}
+        directory = directories[scope]
+        assert set(initial["overview"]["controls"]["directory"]) == {"all", *directories.values()}
         activate("status", "running")
         running = settled("running", None, set())
         assert not running["overview"]["cards"]

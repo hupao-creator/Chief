@@ -65,9 +65,10 @@ mounted Agent cards and individual or collected report members at each step.
 The right-half gesture traverses Running only, All statuses and Completed only.
 The left-half gesture traverses the directory and its semantic tags. Each side
 checks a contact that crosses the midpoint before recognition, the endpoints
-and momentum. Global All has no semantic selection. The replay activates the
-built-in Inbox, its tagged and untagged tasks, an identically named semantic
-tag and a separate directory named Inbox. Window-local mouse clicks select
+and momentum. The replay selects a top-level Inbox tag and checks its exact
+cards, retained status and absence of a left column. It distinguishes a top-row
+tag named Inbox from a real directory named Inbox. Untagged Inbox tasks appear
+in global All. Window-local mouse clicks select
 the middle status and a semantic tag. Changing child or status retains the
 full-window card area within the directory. A capsule over a card accepts the click, and a click in the gap between two capsules opens the underlying task. At the production minimum of
 860 × 600 pt, a five-tag directory exposes all six controls and selects a tag
@@ -84,7 +85,7 @@ visible tag titles and the absence of written status names beside the
 hourglass, card index dividers and finish flag. The hovered title is read in
 Aqua and Dark Aqua and with a bright backdrop behind dark-appearance glass.
 Samples from inside each capsule show its glass tint changing with the
-selection on both rails and the directory row. `source.json` records the checkout revision,
+selection on both rails and the top row. `source.json` records the checkout revision,
 source changes, macOS version and architecture.
 
 With Shipping selected, a catalog update admits and removes a card in each
@@ -98,25 +99,27 @@ The fixture has no Runtime connection.
 
 A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas switches status, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
 
-The short directory-header replay uses 42-point production controls at the
-top of a real window. The gray gradient, selected Chief folder, unread count
-of 8 and adjacent Inbox folder stay the same in Aqua and Dark Aqua.
+The header replay mounts the 42-point production controls at the top of a
+real window in Aqua and Dark Aqua. The initial selection is the Chief folder
+with an unread count of 8. Beside it is the Inbox tag **🔵 Blue** with an
+unread count of 3.
 
 ```sh
 python3 demos/moku-landing/verify_header.py --header-glass --output .build/overview-header-glass
 ```
 
 Each appearance produces a 618 × 174-pixel crop at 2× and a second crop with
-3-point stripes behind the controls. The replay reads the directory labels
-and badge numeral, checks the unread badge color, and compares
+3-point stripes behind the controls. The replay reads the top-row labels
+and both badge numerals, checks the unread badge color, and compares
 texture variation inside the glass with the exposed backdrop. It samples
 adjacent pixels at the lower and trailing edges of the header viewport to
 catch a hard cut through the shadow. `header-glass.json` records those
 measurements, the title's luminance difference from the chip face and the
 spacing between adjacent controls. On fixed neutral backgrounds it clicks
-each directory and side control and compares the same part of its glass
-face across selections, away from the glyph, badge and rim. The directory
-controls without emoji and Any take the accent. Blue and green semantic emoji
+each top and side control and compares the same part of its glass face across
+selections, away from the glyph, badge and rim. All, the folder and Any take
+the accent. The selected top-level Inbox tag takes its blue tint from 🔵.
+Blue and green semantic emoji
 have distinct tints, the hourglass and dividers have warm tints and the
 checkered flag has a neutral tint. The selected controls must retain the
 same emoji ink as their unselected counterparts.

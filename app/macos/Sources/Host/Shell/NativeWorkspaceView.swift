@@ -538,9 +538,7 @@ public final class NativeWorkspacePresentation {
         var source: [JSONText: JSONValue] = [:]
         if let id = mokuSuperThreadID { source["superThreadId"] = .string(id) }
         if selected == nil, !scene.settingsOpen,
-           let filter = overview.filters.first(where: {
-               $0.matches(overview.selectedTag, kind: overview.tagSelection?.kind, scope: overview.selectedScope)
-           }), filter.isDirectory, filter.scope != NativeOverviewSelection.inboxScope {
+           let filter = overview.selectedFilter, filter.isDirectory {
             source["directoryScopeId"] = .text(filter.scope)
         }
         return .object(source)
