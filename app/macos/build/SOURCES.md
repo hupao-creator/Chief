@@ -12,8 +12,11 @@ The three agents rest inside the skillet. A warm ivory outline separates the
 dark pan from dark window backgrounds. The cropped 624 × 272 RGBA PNG supplies
 the artwork for the Running and Completed filters’ empty states.
 
-The full-surface loading mark uses the [high-toss motion study](../../../demos/chief-logo-loading/toss-variants/high.webp).
-The shared UI bundle contains transparent 240 × 240 GIFs for [light](../Sources/Shared/PluginUI/Resources/ChiefStartupToss.gif) and [dark](../Sources/Shared/PluginUI/Resources/ChiefStartupTossDark.gif) appearances. Both show only the moving foreground over 80 frames at 40 ms per frame. The dark version adds a fine gray edge to the dark ink.
+The loading skillet uses five transparent PNG layers extracted from the same
+1024 × 1024 logo. The pan, Codex, Claude, Pi and the pair of motion strokes
+retain their source-resolution paint and have a fine warm outline. The
+[native loading view](../Sources/Shared/PluginUI/Design/NativeSurfaceLoading.swift)
+composes and animates those layers at the view's display scale.
 
 [`generate-app-icon.swift`](generate-app-icon.swift) resizes this artwork with
 ImageIO and packages the representations with the macOS `iconutil` tool.

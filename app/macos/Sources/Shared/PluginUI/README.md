@@ -257,8 +257,11 @@ column. Inline placeholders reserve only their text/padding height, independent
 of eventual short or overflowing content. Neither form imposes a fixed width.
 
 The shared [surface loading view](Design/NativeSurfaceLoading.swift) centers the
-120 pt high-toss skillet on a transparent canvas, preserves the surface's localized status caption where
-present, and holds a still frame with Reduce Motion. Agent configuration notices use the same mark at 32 pt, with the adjacent localized text providing their accessible status. The reading placeholder
+bowl of the skillet above its optional localized caption. A 250 × 152 pt
+transparent canvas fits proportionally in smaller viewports. At full size the
+pan paints about 191 pt across, matching the visible width of the Running
+empty-state skillet. Three agents leave the rim in sequence and settle into
+the pan as it rebounds. Reduce Motion holds that resting pose. Agent configuration notices use the same mark at 32 pt, with the adjacent localized text providing their accessible status. The reading placeholder
 shows it after a cancellable 180ms grace period without taking focus or pointer input. Its layout is reserved during the delay,
 and it is absent from accessibility until visible. Unmounting cancels the delay
 and resets visibility; errors and retry controls appear immediately. The shared
