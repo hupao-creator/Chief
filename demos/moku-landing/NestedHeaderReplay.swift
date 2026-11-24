@@ -268,6 +268,30 @@ private final class WheelSample: NSEvent {
         }
     }
 
+    private func filterButton(_ id: String, in window: NSWindow) throws -> any NSAccessibilityProtocol {
+        func find(_ value: Any) -> (any NSAccessibilityProtocol)? {
+            guard let node = value as? any NSAccessibilityProtocol else { return nil }
+            if node.accessibilityRole() == .button && node.accessibilityIdentifier() == id { return node }
+            for child in node.accessibilityChildren() ?? [] {
+                if let result = find(child) { return result }
+            }
+            return nil
+        }
+        guard let button = find(window) else { throw ReplayError("Missing accessible filter button " + id) }
+        return button
+    }
+
+    private func movePointer(_ window: NSWindow, to point: CGPoint) async throws {
+        window.acceptsMouseMovedEvents = true
+        guard let event = NSEvent.mouseEvent(with: .mouseMoved, location: point, modifierFlags: [],
+            timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+            context: nil, eventNumber: 0, clickCount: 0, pressure: 0) else {
+            throw ReplayError("Cannot construct window-local pointer motion")
+        }
+        NSApp.postEvent(event, atStart: false)
+        try await Task.sleep(for: .milliseconds(240))
+    }
+
     private func click(_ window: NSWindow, at location: CGPoint) throws {
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
             guard let event = NSEvent.mouseEvent(with: type, location: location, modifierFlags: [],
@@ -321,6 +345,14 @@ private final class WheelSample: NSEvent {
         try await Task.sleep(for: .milliseconds(55))
     }
 
+    private func swipeWithNaturalScrolling(_ monitor: NativeOverviewScrollInput.MonitorView, in window: NSWindow,
+                                          at point: CGPoint, up: Bool) throws {
+        // The same finger movement reports the opposite delta with Natural Scrolling enabled.
+        let sample = WheelSample(window: window, point: point, x: 0, y: up ? -40 : 40)
+        guard monitor.handle(sample) == nil else { throw ReplayError("Inverted-device swipe escaped the active filter") }
+        _ = monitor.handle(WheelSample(window: window, point: point, x: 0, y: 0, phase: .ended))
+    }
+
     /// Post pixel scrolls to this replay process. AppKit chooses the responder
     /// and invokes the installed monitors, including over the nested tag scroller.
     private func noteSwipes(_ window: NSWindow, directory: URL) async throws {
@@ -367,7 +399,7 @@ private final class WheelSample: NSEvent {
             guard !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Subthreshold swipe at " + region) }
             try await postScroll(window, point, y: 17, phase: .changed)
             guard scene.notePanelOpen == bar, scene.noteOpenGeneration == generation + (bar ? 1 : 0),
-                  model.statusFilter == (bar ? .all : .running) else { throw ReplayError("Wrong swipe owner at " + region) }
+                  model.statusFilter == (bar ? .all : .completed) else { throw ReplayError("Wrong swipe owner at " + region) }
             if bar { presentation.toggleMokuNote() }
             // Reverse before lift, cross into the other surface and add inertia.
             let other = bar ? background : barPoint
@@ -375,7 +407,7 @@ private final class WheelSample: NSEvent {
             try await postScroll(window, other, y: 0, phase: .ended)
             try await postScroll(window, other, y: -60, phase: nil, momentum: .begin, x: -20)
             try await postScroll(window, other, y: 0, phase: nil, momentum: .end)
-            guard !scene.notePanelOpen, model.statusFilter == (bar ? .all : .running),
+            guard !scene.notePanelOpen, model.statusFilter == (bar ? .all : .completed),
                   camera.scrollOffset == startOffset else { throw ReplayError("Swipe tail escaped at " + region) }
             if !bar {
                 try await postScroll(window, background, y: -40, phase: .began)
@@ -383,11 +415,10 @@ private final class WheelSample: NSEvent {
             }
             try await Task.sleep(for: .milliseconds(600))
         }
-        let inverted = WheelSample(window: window, point: background, x: 0, y: -25)
-        guard monitor.handle(inverted) == nil, !scene.notePanelOpen, model.statusFilter == .running else {
+        try swipeWithNaturalScrolling(monitor, in: window, at: background, up: true)
+        guard !scene.notePanelOpen, model.statusFilter == .completed else {
             throw ReplayError("Natural Scrolling changed the physical filter gesture")
         }
-        _ = monitor.handle(WheelSample(window: window, point: background, x: 0, y: 0, phase: .ended))
         try await postScroll(window, background, y: -40, phase: .began)
         try await postScroll(window, background, y: 0, phase: .ended)
         try await Task.sleep(for: .milliseconds(650))
@@ -526,7 +557,7 @@ private final class WheelSample: NSEvent {
         let background = monitor.windowPoint(CGPoint(x: size.width * 0.72, y: size.height - 8))
         try await postScroll(window, background, y: 36, phase: .began)
         try await postScroll(window, background, y: 0, phase: .ended)
-        guard !scene.notePanelOpen, scene.noteOpenGeneration == generation, presentation.overview.statusFilter == .running, timer.current?.id == alert.id else {
+        guard !scene.notePanelOpen, scene.noteOpenGeneration == generation, presentation.overview.statusFilter == .completed, timer.current?.id == alert.id else {
             throw ReplayError("Exposed Overview lost its status gesture while a reminder was pending")
         }
         try await Task.sleep(for: .milliseconds(700))
@@ -732,13 +763,21 @@ private final class WheelSample: NSEvent {
             default: "Development"
             }
             let tag = semanticTag ?? defaultTag
+            let emoji: JSONText = switch tag?.string {
+            case "Shipping": "📦"
+            case "Design": "🎨"
+            case "Planning": "🗓️"
+            case "Support": "🎧"
+            case "Customer experience and international release coordination": "🌎"
+            default: "🔧"
+            }
             let folder: JSONText = name == namedFolderTask ? "/other/Inbox" : "/fixture"
             let label: JSONText = name == namedFolderTask ? "Inbox" : "Fixture"
             let thread = try HarnessThread(id: JSONText(name), harnessID: "codex", revision: revision, sessionState: .null,
                 observation: observation, cwd: inbox ? "" : folder, settings: .object([:]),
                 createdAt: finishedAt - 60_000, updatedAt: finishedAt + 86_400_000,
                 title: JSONText(name), tags: tag.map { [$0] } ?? [],
-                tagEmojis: tag.map { [$0: $0 == "Shipping" ? "📦" : "🔧"] } ?? [:],
+                tagEmojis: tag.map { [$0: emoji] } ?? [:],
                 directoryTag: inbox ? "" : label, directoryScope: inbox ? "inbox" : folder)
             var fields = thread.json.objectValue!
             fields["pendingInput"] = .bool(name == "Submitting")
@@ -761,11 +800,11 @@ private final class WheelSample: NSEvent {
         func emptyCopy(_ mode: NativeOverviewStatusFilter) -> [String] {
             mode == .running
                 ? [workspace.locale.text("没有运行中的会话", "No running conversations"),
-                   workspace.locale.text("在右半区下滑可查看全部状态", "Scroll down on the right to show all statuses")]
-                : [workspace.locale.text("没有已完成的会话", "No completed conversations"),
                    workspace.locale.text("在右半区上滑可查看全部状态", "Scroll up on the right to show all statuses")]
+                : [workspace.locale.text("没有已完成的会话", "No completed conversations"),
+                   workspace.locale.text("在右半区下滑可查看全部状态", "Scroll down on the right to show all statuses")]
         }
-        func checkStatusText(in url: URL, expected: [String], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [String] {
+        func checkStatusText(in url: URL, expected: [String], absent: [String] = [], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [String] {
             let request = VNRecognizeTextRequest()
             request.regionOfInterest = region
             request.recognitionLanguages = workspace.locale == .chinese ? ["zh-Hans", "en-US"] : ["en-US"]
@@ -776,8 +815,9 @@ private final class WheelSample: NSEvent {
                 text.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
             }
             let actual = lines.map(normalized)
-            guard expected.allSatisfy({ text in actual.contains { $0.contains(normalized(text)) } }) else {
-                throw ReplayError("Missing status text in \(url.lastPathComponent): expected=\(expected), found=\(lines)")
+            guard expected.allSatisfy({ text in actual.contains { $0.contains(normalized(text)) } }),
+                  absent.allSatisfy({ text in !actual.contains { $0.contains(normalized(text)) } }) else {
+                throw ReplayError("Unexpected visible text in \(url.lastPathComponent): expected=\(expected), absent=\(absent), found=\(lines)")
             }
             return lines
         }
@@ -817,8 +857,12 @@ private final class WheelSample: NSEvent {
                     sample["emptyText"] = try checkStatusText(in: url, expected: emptyCopy(mode))
                 } else if checkCompletedCopy {
                     let locale = workspace.locale
-                    let expectedText = ["Delivered", locale.text("仅已完成", "Completed only")]
-                    sample["completedText"] = try checkStatusText(in: url, expected: expectedText)
+                    let title = locale.text("仅已完成", "Completed only")
+                    let button = try filterButton("overview-status-completed", in: window)
+                    guard button.accessibilityLabel() == title || button.accessibilityTitle() == title else {
+                        throw ReplayError("Completed status icon lost its localized accessible name")
+                    }
+                    sample["completedText"] = try checkStatusText(in: url, expected: ["Delivered"], absent: [title])
                 }
             }
             samples.append(sample)
@@ -837,7 +881,8 @@ private final class WheelSample: NSEvent {
             let bounds = content.convert(content.bounds, to: nil)
             return CGPoint(x: bounds.minX + bounds.width * (right ? 0.76 : 0.24), y: bounds.midY)
         }
-        func swipe(_ y: Int32, right: Bool = true, crossCenter: Bool = false) async throws {
+        func swipe(up: Bool, right: Bool = true, crossCenter: Bool = false) async throws {
+            let y: Int32 = up ? 40 : -40
             try await waitForFilterInput()
             let start = windowPoint(right: right)
             let end = crossCenter ? windowPoint(right: !right) : start
@@ -862,7 +907,8 @@ private final class WheelSample: NSEvent {
             try presentation.performOverviewInteraction(.overviewActivateFilter(group, id))
         }
         func clickMiddle(right: Bool) async throws {
-            let x = right ? content.bounds.width - 80 : 80
+            let insetToCenter = 12 + OverviewTagMetrics.chipHeight / 2
+            let x = right ? content.bounds.width - insetToCenter : insetToCenter
             try click(window, at: content.convert(CGPoint(x: x, y: content.bounds.midY), to: nil))
             try await Task.sleep(for: .milliseconds(150))
         }
@@ -894,17 +940,17 @@ private final class WheelSample: NSEvent {
         try await postScroll(window, panPoint, y: 2, phase: nil, precise: false)
         samples.append(["step": "populated-wheel", "windowPoint": [panPoint.x, panPoint.y],
                         "startOffset": startOffset, "wheelOffset": wheelOffset])
-        try await swipe(-40, right: false)
+        try await swipe(up: true, right: false)
         try await check("global-left-no-children", .all, allCards)
-        try await swipe(40, crossCenter: true)
-        try await check("up", .running, running)
-        try await swipe(40)
+        try await swipe(up: false, crossCenter: true)
+        try await check("down", .running, running)
+        try await swipe(up: false)
         try await check("upper-limit", .running, running)
-        try await swipe(-40)
+        try await swipe(up: true)
         try await check("back-from-running", .all, allCards)
-        try await swipe(-40)
-        try await check("down", .completed, ["Delivered"] + reportIDs, needsBothReportCards: true)
-        try await swipe(-40)
+        try await swipe(up: true)
+        try await check("up", .completed, ["Delivered"] + reportIDs, needsBothReportCards: true)
+        try await swipe(up: true)
         try await check("lower-limit", .completed, ["Delivered"] + reportIDs)
         try await activate(.directory, inbox.id)
         try await check("inbox-keeps-status", .completed, [], selected: inbox.tag)
@@ -925,22 +971,23 @@ private final class WheelSample: NSEvent {
         try await clickMiddle(right: false)
         try await check("mouse-development", .all, ordinary.filter { $0 != "Delivered" }, selected: "Development")
         try await activate(.semantic, parent.id)
-        try await swipe(-40, right: false, crossCenter: true)
+        try await swipe(up: true, right: false, crossCenter: true)
         try await check("left-cross-to-development", .all, ordinary.filter { $0 != "Delivered" }, selected: "Development")
-        try await swipe(-40, right: false)
-        try await check("left-shipping", .all, ["Delivered"], selected: "Shipping")
-        try await swipe(-40, right: false)
+        try await waitForFilterInput()
+        try swipeWithNaturalScrolling(monitor, in: window, at: windowPoint(right: false), up: true)
+        try await check("left-shipping-natural-scrolling", .all, ["Delivered"], selected: "Shipping")
+        try await swipe(up: true, right: false)
         try await check("left-lower-limit", .all, ["Delivered"], selected: "Shipping")
-        try await swipe(40, right: false)
-        try await swipe(40, right: false)
-        try await swipe(40, right: false)
+        try await swipe(up: false, right: false)
+        try await swipe(up: false, right: false)
+        try await swipe(up: false, right: false)
         try await check("left-upper-limit", .all, ordinary + reportIDs, selected: parent.tag)
         try await activate(.semantic, shipping.id)
         try await check("tag", .all, ["Delivered"], selected: "Shipping")
         let originalLocale = workspace.locale
         defer { workspace.updateSystemLocale(originalLocale) }
         workspace.updateSystemLocale(.chinese)
-        try await swipe(40)
+        try await swipe(up: false)
         try await check("empty-tag", .running, [], selected: "Shipping")
         if CommandLine.arguments.contains("--capture") {
             defer { captureScheme = nil }
@@ -957,11 +1004,13 @@ private final class WheelSample: NSEvent {
         workspace.updateSystemLocale(.english)
         try await updateDelivered(.completed, revision: 10)
         try await check("live-remove", .running, [], selected: "Shipping")
-        try await wheel(-1, right: false)
-        try await check("empty-left-wheel", .running, [], selected: "Shipping")
         try await wheel(-1, right: true)
+        try await check("empty-running-wheel-at-end", .running, [], selected: "Shipping")
+        try await wheel(1, right: false)
+        try await check("empty-left-wheel", .running, [], selected: "Shipping")
+        try await wheel(1, right: true)
         try await check("tag-restored", .all, ["Delivered"], selected: "Shipping")
-        try await swipe(-40)
+        try await swipe(up: true)
         try await check("completed-tag", .completed, ["Delivered"], selected: "Shipping", checkCompletedCopy: true)
         try await updateDelivered(.running, revision: 11)
         try await check("completed-live-remove", .completed, [], selected: "Shipping")
@@ -977,16 +1026,18 @@ private final class WheelSample: NSEvent {
                 _ = try checkStatusText(in: url, expected: emptyCopy(.completed))
             }
         }
-        try await swipe(40)
+        try await swipe(up: false)
         try await check("back-from-completed-empty", .all, ["Delivered"], selected: "Shipping")
-        try await swipe(-40)
+        try await swipe(up: true)
         try await check("completed-empty-again", .completed, [], selected: "Shipping")
         try await wheel(1, right: true)
+        try await check("empty-completed-wheel-at-end", .completed, [], selected: "Shipping")
+        try await wheel(-1, right: true)
         try await check("back-from-completed-wheel", .all, ["Delivered"], selected: "Shipping")
-        try await swipe(-40)
+        try await swipe(up: true)
         try await updateDelivered(.completed, revision: 12)
         try await check("completed-live-admit", .completed, ["Delivered"], selected: "Shipping", checkCompletedCopy: true)
-        try await swipe(40)
+        try await swipe(up: false)
         try await check("completed-finished", .all, ["Delivered"], selected: "Shipping")
         guard canvas.cardRegionInWindow == twoRailFrame else {
             throw ReplayError("Changing a tag or a status moved the card viewport")
@@ -1009,7 +1060,7 @@ private final class WheelSample: NSEvent {
         let fullViewport = CGRect(origin: .zero, size: content.bounds.size)
         guard canvas.cardRegionInWindow == fullViewport else { throw ReplayError("Filters consumed card layout space") }
         let pitch = OverviewTagMetrics.chipHeight + OverviewTagMetrics.railSpacing
-        let center = CGPoint(x: fullViewport.maxX - 80, y: fullViewport.midY)
+        let center = CGPoint(x: fullViewport.maxX - 12 - OverviewTagMetrics.chipHeight / 2, y: fullViewport.midY)
         // A partially occupied last column may place its card on either row.
         let overlap = canvas.presentedPlacements.lazy.compactMap { placement -> (String, CGPoint, CGPoint, NativeOverviewStatusFilter)? in
             guard let frame = canvas.visibleFrame(for: placement.id) else { return nil }
@@ -1042,8 +1093,53 @@ private final class WheelSample: NSEvent {
         }
         presentation.showOverview()
         try await Task.sleep(for: .milliseconds(700))
+        guard let shortChild = compactFolder.children.first(where: { $0.tag == "Design" }) else {
+            throw ReplayError("Missing short label for the second selection")
+        }
+        let ids = ["overview-semantic-any"] + compactFolder.children.map(\.id)
+        let leftColumn = CGRect(x: 0, y: 0.20, width: 0.20, height: 0.60)
+        let rightColumn = CGRect(x: 0.80, y: 0.35, width: 0.20, height: 0.30)
+        let titles = ["Any tag", "Customer", "Design", "Engineering", "Planning", "Support"]
+        let statusLabels = [("running", "Running only"), ("all", "All statuses"), ("completed", "Completed only")]
+        let side = OverviewTagMetrics.chipHeight
+        var phases = [[String: Any]]()
+        func observe(_ name: String, expanded: [String: String]) async throws {
+            var widths = [String: CGFloat]()
+            for id in ids {
+                let frame = try filterButton(id, in: window).accessibilityFrame()
+                widths[id] = frame.width
+                guard abs(frame.height - side) <= 1,
+                      expanded[id] == nil ? abs(frame.width - side) <= 1 : frame.width > side + 1 else {
+                    throw ReplayError("Unexpected \(name) button frame for \(id): \(frame), expanded=\(expanded)")
+                }
+            }
+            for (id, title) in statusLabels {
+                let button = try filterButton("overview-status-" + id, in: window)
+                let frame = button.accessibilityFrame()
+                guard abs(frame.width - side) <= 1, abs(frame.height - side) <= 1,
+                      button.accessibilityLabel() == title || button.accessibilityTitle() == title else {
+                    throw ReplayError("Unexpected compact status button for \(title): \(frame)")
+                }
+            }
+            var sample: [String: Any] = ["phase": name, "widths": widths]
+            if CommandLine.arguments.contains("--capture") {
+                let url = directory.appending(path: name + ".png")
+                try await capture(window, to: url)
+                let visible = Array(expanded.values)
+                sample["visibleTitles"] = try checkStatusText(in: url, expected: visible,
+                    absent: titles.filter { !visible.contains($0) }, region: leftColumn)
+                sample["statusInk"] = try checkStatusText(in: url, expected: [], absent: statusLabels.map(\.1), region: rightColumn)
+            }
+            phases.append(sample)
+        }
+        // The pointer stays in the card area during the timer checks, including
+        // a second selection before the previous selection's deadline.
+        let away = monitor.windowPoint(CGPoint(x: fullViewport.midX, y: fullViewport.midY))
+        try await movePointer(window, to: away)
+        let first = ContinuousClock.now
         try await activate(.semantic, longChild.id)
-        try await Task.sleep(for: .milliseconds(650))
+        try await Task.sleep(for: .milliseconds(350))
+        try await observe("minimum-window", expanded: [longChild.id: "Customer"])
         let registered = model.chromeInteractions.mountedIDs(in: .semantic)
         guard registered.count == 6, model.selectedFilter?.id == longChild.id,
               content.bounds.size == CGSize(width: 860, height: 600),
@@ -1051,18 +1147,24 @@ private final class WheelSample: NSEvent {
               model.items.count == 1, canvas.cardRegionInWindow == fullViewport else {
             throw ReplayError("Minimum window failed to retain both columns and the selected long label")
         }
-        var compact: [String: Any] = ["step": "minimum-window", "visibleSemanticControls": registered,
+        try await Task.sleep(until: first + .seconds(2))
+        let second = ContinuousClock.now
+        try await activate(.semantic, shortChild.id)
+        try await Task.sleep(until: second + .milliseconds(4550))
+        try await observe("second-selection", expanded: [shortChild.id: "Design"])
+        try await Task.sleep(until: second + .milliseconds(5500))
+        try await observe("compact-filters", expanded: [:])
+        let hoverFrame = try filterButton(longChild.id, in: window).accessibilityFrame()
+        let hover = window.convertPoint(fromScreen: CGPoint(x: hoverFrame.midX, y: hoverFrame.midY))
+        try await movePointer(window, to: hover)
+        try await observe("hovered-tag", expanded: [longChild.id: "Customer"])
+        try await movePointer(window, to: away)
+        try await observe("pointer-left", expanded: [:])
+        let compact: [String: Any] = ["step": "minimum-window", "visibleSemanticControls": registered,
             "window": [content.bounds.width, content.bounds.height], "selectedTag": model.selectedTag,
             "underlyingCard": underlyingID, "gapPoint": [gap.x, gap.y], "capsulePoint": [chip.x, chip.y],
-            "cardViewport": [canvas.cardRegionInWindow.minX, canvas.cardRegionInWindow.width]]
-        if CommandLine.arguments.contains("--capture") {
-            let url = directory.appending(path: "minimum-window.png")
-            try await capture(window, to: url)
-            compact["semanticLabels"] = try checkStatusText(in: url, expected: ["Customer", "Any tag", "Design",
-                "Engineering", "Planning", "Support"], region: CGRect(x: 0, y: 0.20, width: 0.20, height: 0.60))
-            compact["statusLabels"] = try checkStatusText(in: url, expected: ["Running only", "All statuses",
-                "Completed only"], region: CGRect(x: 0.80, y: 0.35, width: 0.20, height: 0.30))
-        }
+            "cardViewport": [canvas.cardRegionInWindow.minX, canvas.cardRegionInWindow.width],
+            "statusAccessibilityLabels": statusLabels.map(\.1), "labelPhases": phases]
         samples.append(compact)
         try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "overview-status.json"))

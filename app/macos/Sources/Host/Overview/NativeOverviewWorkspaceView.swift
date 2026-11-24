@@ -60,7 +60,6 @@ public struct NativeOverviewWorkspaceView: View {
                                          hasDock: model.workspace.catalog.hasMoku)
             let filters = landing ? [] : model.visibleFilters
             let directory = model.selectedDirectory
-            let hasTags = directory?.children.isEmpty == false
             let railEdgeInset = min(12, geometry.size.width * 0.015)
             let headerBottom = OverviewTagMetrics.headerBottom(in: geometry.size, hasFilters: !filters.isEmpty)
             // The last card can make the Dock switch to landing before the
@@ -118,10 +117,10 @@ public struct NativeOverviewWorkspaceView: View {
                 }
             }
             .overlay(alignment: .leading) {
-                if chromeVisible && !landing && hasTags, let directory {
-                    NativeOverviewTagRail(parent: directory, selectedTag: model.selectedTag, selectedKind: model.tagSelection?.kind,
-                        strings: chromeStrings, onTagChange: model.selectTag, interactions: model.chromeInteractions)
-                        .frame(width: min(172, geometry.size.width * 0.15))
+                if chromeVisible && !landing {
+                    NativeOverviewTagRail(parent: directory, selectedID: model.selectedFilter?.id,
+                        expandedWidth: min(172, geometry.size.width * 0.15), strings: chromeStrings,
+                        onTagChange: model.selectTag, interactions: model.chromeInteractions)
                         .padding(.leading, railEdgeInset)
                 }
             }
@@ -129,7 +128,6 @@ public struct NativeOverviewWorkspaceView: View {
                 if chromeVisible && !landing {
                     NativeOverviewStatusRail(status: model.statusFilter, strings: chromeStrings,
                         onStatusChange: model.selectStatusFilter, interactions: model.chromeInteractions)
-                        .frame(width: min(152, geometry.size.width * 0.175))
                         .padding(.trailing, railEdgeInset)
                 }
             }
@@ -177,8 +175,8 @@ public struct NativeOverviewWorkspaceView: View {
 
     private var emptyDetail: String {
         switch model.statusFilter {
-        case .running: return locale.text("在右半区下滑可查看全部状态。", "Scroll down on the right to show all statuses.")
-        case .completed: return locale.text("在右半区上滑可查看全部状态。", "Scroll up on the right to show all statuses.")
+        case .running: return locale.text("在右半区上滑可查看全部状态。", "Scroll up on the right to show all statuses.")
+        case .completed: return locale.text("在右半区下滑可查看全部状态。", "Scroll down on the right to show all statuses.")
         case .all: break
         }
         return locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads.")

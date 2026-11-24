@@ -2,50 +2,92 @@ import ChiefPluginUI
 import SwiftUI
 
 struct NativeOverviewTagRail: View {
-    let parent: NativeOverviewFilter
-    let selectedTag: String
-    let selectedKind: NativeOverviewTagKind?
+    let parent: NativeOverviewFilter?
+    let selectedID: String?
+    let expandedWidth: CGFloat
     let strings: NativeOverviewChromeStrings
     let onTagChange: (NativeOverviewFilter?) -> Void
     var interactions: NativeOverviewChromeInteractions?
+    @State private var recentID: String?
 
     var body: some View {
-        OverviewFilterRail {
-            let chooseParent = { onTagChange(parent) }
-            OverviewRailButton(title: strings.anyTag, selected: selectedKind == .directory, action: chooseParent)
-                .accessibilityIdentifier("overview-semantic-any")
-                .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .semantic,
-                    id: parent.id, action: chooseParent))
-            ForEach(parent.children) { child in
-                let chooseChild = { onTagChange(child) }
-                let selected = selectedKind == .semantic && child.matches(selectedTag, kind: .semantic, scope: parent.scope)
-                let activity = child.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
-                OverviewRailButton(title: child.emoji == nil ? child.displayTag : child.tag,
-                    emoji: child.emoji, hasActiveTasks: child.hasActiveTasks, selected: selected, action: chooseChild)
-                    .overviewTagAnchor(child.id)
-                    .accessibilityIdentifier(child.id)
-                    .accessibilityLabel(Text(child.displayTag))
-                    .accessibilityValue(Text("\(child.count)\(activity)\(strings.unreadSuffix(child.unreadCount))"))
-                    .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .semantic,
-                        id: child.id, action: chooseChild))
-            }
-        }
-        // The badge ink must sit above the composed glass, including when the list changes.
-        .overlayPreferenceValue(OverviewTagBounds.self) { anchors in
-            GeometryReader { reader in
-                ForEach(parent.children) { child in
-                    if child.unreadCount > 0, let anchor = anchors[child.id] {
-                        let bounds = reader[anchor]
-                        OverviewTagUnreadBadge(count: child.unreadCount)
-                            .frame(width: bounds.width, height: bounds.height, alignment: .topTrailing)
-                            .position(x: bounds.midX, y: bounds.midY)
+        ZStack(alignment: .leading) {
+            if let parent, !parent.children.isEmpty {
+                OverviewFilterRail {
+                    tagButton(parent, isParent: true)
+                        .id(parent.id)
+                    ForEach(parent.children) { child in
+                        tagButton(child, isParent: false)
+                            .overviewTagAnchor(child.id)
                     }
                 }
+                // Unread ink belongs above the composed glass and follows the chip as it expands.
+                .overlayPreferenceValue(OverviewTagBounds.self) { anchors in
+                    GeometryReader { reader in
+                        ForEach(parent.children) { child in
+                            if child.unreadCount > 0, let anchor = anchors[child.id] {
+                                let bounds = reader[anchor]
+                                OverviewTagUnreadBadge(count: child.unreadCount)
+                                    .frame(width: bounds.width, height: bounds.height, alignment: .topTrailing)
+                                    .position(x: bounds.midX, y: bounds.midY)
+                            }
+                        }
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
+                .accessibilityLabel(strings.filter)
             }
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
         }
-        .accessibilityLabel(strings.filter)
+        // Observe actual selection changes, including swipes and directory navigation.
+        // Mounting the rail for an already-selected scope starts in its compact state.
+        .onChange(of: selectedID) { _, id in
+            recentID = parent?.children.isEmpty == false ? id : nil
+        }
+        .task(id: recentID) {
+            guard let id = recentID else { return }
+            do { try await Task.sleep(for: .seconds(5)) } catch { return }
+            if recentID == id { recentID = nil }
+        }
+    }
+
+    private func tagButton(_ filter: NativeOverviewFilter, isParent: Bool) -> some View {
+        let select = { onTagChange(filter) }
+        let activity = filter.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
+        return OverviewSemanticRailButton(title: isParent ? strings.anyTag : filter.tag,
+            emoji: isParent ? nil : (filter.emoji.flatMap { $0.isEmpty ? nil : $0 } ?? "🏷️"),
+            hasActiveTasks: !isParent && filter.hasActiveTasks, selected: filter.id == selectedID,
+            recent: filter.id == recentID, expandedWidth: expandedWidth, action: select)
+            .accessibilityIdentifier(isParent ? "overview-semantic-any" : filter.id)
+            .accessibilityLabel(Text(isParent ? strings.anyTag : filter.displayTag))
+            .accessibilityValue(Text("\(filter.count)\(activity)\(strings.unreadSuffix(filter.unreadCount))"))
+            .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .semantic, id: filter.id, action: select))
+    }
+}
+
+private struct OverviewSemanticRailButton: View {
+    let title: String
+    let emoji: String?
+    let hasActiveTasks: Bool
+    let selected: Bool
+    let recent: Bool
+    let expandedWidth: CGFloat
+    let action: () -> Void
+    @State private var hovered = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let expanded = hovered || recent
+        OverviewRailButton(title: title, titleWidth: expanded ? expandedWidth : nil,
+                           selected: selected, hasActiveTasks: hasActiveTasks, action: action) {
+            if let emoji {
+                Text(verbatim: emoji).font(.system(size: 19)).fixedSize()
+            } else {
+                Image(systemName: "asterisk").font(.system(size: 17, weight: .semibold))
+            }
+        }
+        .onHover { hovered = $0 }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: expanded)
     }
 }
 
@@ -57,18 +99,22 @@ struct NativeOverviewStatusRail: View {
 
     var body: some View {
         OverviewFilterRail {
-            statusButton(.running, title: strings.runningOnly)
-            statusButton(.all, title: strings.allStatuses)
-            statusButton(.completed, title: strings.completedOnly)
+            statusButton(.running, icon: "Activity", title: strings.runningOnly)
+            statusButton(.all, icon: "Layers", title: strings.allStatuses)
+            statusButton(.completed, icon: "CircleCheck", title: strings.completedOnly)
         }
         .accessibilityLabel(strings.statusFilter)
     }
 
-    private func statusButton(_ value: NativeOverviewStatusFilter, title: String) -> some View {
+    private func statusButton(_ value: NativeOverviewStatusFilter, icon: String, title: String) -> some View {
         let choose = { onStatusChange(value) }
-        return OverviewRailButton(title: title, selected: status == value, action: choose)
-            .accessibilityIdentifier("overview-status-" + value.rawValue)
-            .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .status, id: value.rawValue, action: choose))
+        return OverviewRailButton(title: title, selected: status == value, action: choose) {
+            NativeIcon(name: icon, size: 19, strokeWidth: 1.8)
+        }
+        .accessibilityLabel(Text(title))
+        .help(title)
+        .accessibilityIdentifier("overview-status-" + value.rawValue)
+        .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .status, id: value.rawValue, action: choose))
     }
 }
 
@@ -77,35 +123,46 @@ private struct OverviewFilterRail<Content: View>: View {
 
     var body: some View {
         GlassEffectContainer(spacing: OverviewTagMetrics.railSpacing) {
-            VStack(spacing: OverviewTagMetrics.railSpacing, content: content)
+            VStack(alignment: .leading, spacing: OverviewTagMetrics.railSpacing, content: content)
         }
         .accessibilityElement(children: .contain)
     }
 }
 
-private struct OverviewRailButton: View {
+private struct OverviewRailButton<Glyph: View>: View {
     let title: String
-    var emoji: String?
-    var hasActiveTasks = false
+    var titleWidth: CGFloat?
     let selected: Bool
+    var hasActiveTasks = false
     let action: () -> Void
+    @ViewBuilder let glyph: () -> Glyph
 
     var body: some View {
+        let diameter = OverviewTagMetrics.chipHeight
         Button(action: action) {
-            HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
-                if let emoji {
-                    OverviewTagPrefix(emoji: emoji, selected: selected)
-                } else {
-                    NativeIcon(name: "Check", size: OverviewTagMetrics.folderIcon, strokeWidth: 2)
-                        .opacity(selected ? 1 : 0)
-                        .accessibilityHidden(true)
+            HStack(spacing: 0) {
+                glyph()
+                    .frame(width: diameter, height: diameter)
+                    .overlay(alignment: .bottomLeading) {
+                        if selected {
+                            NativeIcon(name: "Check", size: 10, strokeWidth: 2.8)
+                                .padding(.leading, 6).padding(.bottom, 5)
+                        }
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        if hasActiveTasks {
+                            OverviewTagActivityIndicator(hasActiveTasks: true)
+                                .padding(.trailing, 5).padding(.bottom, 4)
+                        }
+                    }
+                    .accessibilityHidden(true)
+                if titleWidth != nil {
+                    OverviewTagTitle(title: title)
+                        .padding(.trailing, OverviewTagMetrics.labelInset)
+                        .transition(.opacity)
                 }
-                OverviewTagTitle(title: title)
-                if hasActiveTasks { OverviewTagActivityIndicator(hasActiveTasks: true) }
             }
-            .padding(.horizontal, OverviewTagMetrics.labelInset)
-            .frame(maxWidth: .infinity)
-            .frame(height: OverviewTagMetrics.chipHeight)
+            .frame(width: titleWidth ?? diameter, height: diameter, alignment: .leading)
         }
         .buttonStyle(OverviewTagButtonStyle(active: selected))
         .accessibilityAddTraits(selected ? .isSelected : [])
