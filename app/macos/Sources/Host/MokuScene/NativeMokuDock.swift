@@ -4,6 +4,7 @@ import ChiefPluginUI
 import SwiftUI
 
 private let composerRevealStart: CGFloat = 0.9
+private let maximumConversationHeight: CGFloat = 648
 
 /// The editor uses its final layout throughout the morph. Reveal it in the
 /// last part of the shell's own travel, once the identity has cleared the row.
@@ -21,38 +22,6 @@ private struct ComposerInk: ViewModifier, @preconcurrency Animatable {
         content.opacity(opacity)
             .onChange(of: opacity >= 0.1 ? autofocusGeneration : nil, initial: true) { _, generation in
                 if let generation { requestFocus(generation) }
-            }
-    }
-}
-
-/// The first transcript layout can occupy the fast part of the shell
-/// animation. Admit it with editor ink, once the leading eye seat is clear.
-/// Keep that admission for the visit so resizing preserves the reader.
-private struct ConversationViewport: View {
-    let presentation: NativeMokuWorkspacePresentation
-    let owner: JSONText
-    let size: CGSize
-    let rowHeight: CGFloat
-    @State private var admitted = false
-
-    var body: some View {
-        Color.clear
-            .allowsHitTesting(false)
-            .onGeometryChange(for: Bool.self) { shell in
-                let idleWidth = min(size.width, NativeMokuCapsuleLayout.idleSize.width)
-                return shell.size.width >= idleWidth + (size.width - idleWidth) * composerRevealStart
-            } action: { ready in
-                if ready { admitted = true }
-            }
-            .overlay(alignment: .bottom) {
-                if admitted {
-                    NativeMokuConversation(presentation: presentation, owner: owner)
-                        .frame(width: size.width, height: size.height)
-                        .transaction(value: size) { $0.animation = nil }
-                        .geometryGroup()
-                        .offset(y: -rowHeight)
-                        .transition(.identity)
-                }
             }
     }
 }
@@ -460,7 +429,7 @@ public struct NativeMokuDock: View {
             let rowHeight = rowExpanded && !state.settingsExpanded && !noteExpanded
                 ? surfaceHeight(width: width) : NativeMokuCapsuleLayout.idleSize.height
             let noteAvailableHeight = max(0, frame.height - rowHeight)
-            let conversationPanelHeight = min(rowHeight + conversationContentHeight, 648, dockViewport.height * 0.96, frame.height)
+            let conversationPanelHeight = min(rowHeight + conversationContentHeight, maximumConversationHeight, dockViewport.height * 0.96, frame.height)
             let conversationHeight = conversationVisible ? max(0, conversationPanelHeight - rowHeight) : 0
             let noteHeight = noteExpanded
                 ? NativeMokuNoteLayout.fittedHeight(content: noteContentHeight, available: noteAvailableHeight) : 0
@@ -536,14 +505,6 @@ public struct NativeMokuDock: View {
                     .geometryGroup()
                     .offset(y: destination.verticalOffset)
                     .animation(nil, value: destination.verticalOffset)
-                    // A page can already receive scroll gestures as soon as its rows mount.
-                    // Fit the viewport in that layout pass so its bounds stay still under the reader.
-                    .transaction(value: conversationContentHeight) { transaction in
-                        if conversationVisible {
-                            transaction.animation = nil
-                            transaction.disablesAnimations = true
-                        }
-                    }
                     // The panel owns this handoff. Keep the outgoing composer's
                     // width animation from carrying into the restored Note.
                     .transaction(value: state.noteReadingOrigin?.phase == .reading) { transaction in
@@ -594,7 +555,7 @@ public struct NativeMokuDock: View {
             .onPreferenceChange(NativeSettingsPreferredHeightKey.self) { height in
                 settingsPreferredHeight = max(900, ceil(height))
             }
-            .onPreferenceChange(NativeMokuConversationHeightKey.self) { conversationContentHeight = $0 }
+            .onPreferenceChange(NativeMokuConversationHeightKey.self) { conversationContentHeight = min($0, maximumConversationHeight) }
             .onPreferenceChange(NativeSettingsHeaderScrollKey.self) { offset in
                 settingsHeaderScroll = offset
             }
@@ -950,8 +911,12 @@ public struct NativeMokuDock: View {
             ZStack {
                 if conversationVisible, let presentation, let owner = presentation.workspace.catalog.moku?.id {
                     let viewport = CGSize(width: width, height: max(0, surface.height - rowHeight))
-                    ConversationViewport(presentation: presentation, owner: owner, size: viewport, rowHeight: rowHeight)
+                    NativeMokuConversation(presentation: presentation, owner: owner, readingSize: viewport)
                         .id(owner)
+                        // Keep the reading viewport seated above the editor as the shell moves.
+                        .transaction { $0.animation = nil }
+                        .clipped()
+                        .padding(.bottom, rowHeight)
                         .transition(.identity)
                 }
             }

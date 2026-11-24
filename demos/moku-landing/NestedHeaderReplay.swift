@@ -171,7 +171,7 @@ private final class WheelSample: NSEvent {
 
         let directory = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        if CommandLine.arguments.contains("--conversation-opening") {
+        if CommandLine.arguments.contains("--conversation-opening") || CommandLine.arguments.contains("--conversation-performance") {
             captureScheme = .dark
             window.setContentSize(CGSize(width: 1100, height: 800))
             window.center()
@@ -280,6 +280,14 @@ private final class WheelSample: NSEvent {
         try await fittingCollection(directory: directory, authority: authority)
     }
 
+    private func wait(_ description: @autoclosure () -> String, timeout: Duration = .seconds(35), _ check: () -> Bool) async throws {
+        let deadline = ContinuousClock.now + timeout
+        while !check() {
+            guard ContinuousClock.now < deadline else { throw ReplayError(description()) }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
     private func liveConversation() async throws {
         struct Fixture: Decodable {
             let messages: [String]
@@ -292,13 +300,6 @@ private final class WheelSample: NSEvent {
         let stage = restart ? "restart" : "send"
         let evidence = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
         try FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
-        func wait(_ description: @autoclosure () -> String, timeout: Duration = .seconds(35), _ check: () -> Bool) async throws {
-            let deadline = ContinuousClock.now + timeout
-            while !check() {
-                guard ContinuousClock.now < deadline else { throw ReplayError(description()) }
-                try await Task.sleep(for: .milliseconds(50))
-            }
-        }
         guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "header-replay" }),
               let content = window.contentView else { throw ReplayError("Missing live replay window") }
         let regularSize = CGSize(width: 1100, height: 800)
@@ -598,10 +599,21 @@ private final class WheelSample: NSEvent {
                      "role": .text(index.isMultiple(of: 2) ? "user" : "chief")])
         }
         let paragraph = "The current checklist includes the release notes, a review of the changes, and the remaining checks."
-        let rows = (0..<31).map { i in
+        let measuring = CommandLine.arguments.contains("--conversation-performance")
+        let last = measuring ? 63 : 31
+        let rows = (0..<last).map { i in
             row(i, "Message \(i)\n" + Array(repeating: paragraph, count: 1 + (i % 5)).joined(separator: "\n"))
-        } + [row(31, Array(repeating: paragraph, count: 15).joined(separator: "\n") + "\n" + ending)]
-        let page = JSONValue.object(["messages": .array(rows)])
+        } + [row(last, Array(repeating: paragraph, count: 15).joined(separator: "\n") + "\n" + ending)]
+        func latestPage(_ messages: [JSONValue]) -> JSONValue {
+            var fields: [JSONText: JSONValue] = ["messages": .array(messages)]
+            if !measuring { fields["before"] = .text("opening-before") }
+            return .object(fields)
+        }
+        let page = latestPage(rows)
+        if !measuring {
+            try cache.saveContent(.object(["messages": .array([row(-1, "On the earlier page")])]),
+                                  thread: "moku", scope: .mokuConversation(before: "opening-before"))
+        }
         try cache.saveContent(page, thread: "moku", scope: scope)
         func barPoint() -> CGPoint {
             let frame = scene.capsuleFrame
@@ -648,6 +660,26 @@ private final class WheelSample: NSEvent {
             try await Task.sleep(for: .milliseconds(650))
             guard !scene.conversationOpen, !scene.inputOpen else { throw ReplayError("Outside click did not dismiss Chief Bar") }
         }
+        if measuring {
+            let configuration: [String: Any] = ["messages": rows.count, "pageBytes": try page.encodedData().count,
+                "windowWidth": window.frame.width, "windowHeight": window.frame.height, "appearance": "dark",
+                "displayScale": window.backingScaleFactor, "displayMaximumFPS": window.screen?.maximumFramesPerSecond ?? 0,
+                "reduceMotion": NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+                "reduceTransparency": NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency]
+            try JSONSerialization.data(withJSONObject: configuration, options: [.prettyPrinted, .sortedKeys])
+                .write(to: directory.appending(path: "configuration.json"))
+            for visit in 1...5 {
+                do {
+                    try await measureConversationOpening(window: window, directory: directory, visit: visit,
+                        ending: ending, open: open)
+                } catch {
+                    let scroll = try await captureViewport("measurement-failure-\(visit)")
+                    throw ReplayError("Visit \(visit), native end distance \(bottomGap(scroll)): \(error)")
+                }
+                try await dismiss()
+            }
+            return
+        }
         try await recordWindow(window, to: directory.appending(path: "conversation-opening.mp4")) {
             try await Task.sleep(for: .milliseconds(250))
             try await open()
@@ -659,7 +691,7 @@ private final class WheelSample: NSEvent {
             try await postScroll(window, point, y: 240, phase: .began)
             try await postScroll(window, point, y: 0, phase: .ended)
             let reading = clip.bounds.minY
-            let revised = JSONValue.object(["messages": .array(rows + [row(32, "A newer message arrived.")])])
+            let revised = latestPage(rows + [row(32, "A newer message arrived.")])
             try await client.publishReplayConversation(revised)
             try await Task.sleep(for: .milliseconds(200))
             let revisedY = clip.bounds.minY
@@ -669,6 +701,48 @@ private final class WheelSample: NSEvent {
             samples.append(["initialY": initial, "readingY": reading, "revisedY": revisedY, "resizedY": resized])
             if reading >= initial - 40 || abs(revisedY - reading) >= 2 || abs(resized - reading) >= 2 {
                 failures.append("Reading moved from \(initial) to \(reading) to \(revisedY) to \(resized)")
+            }
+            let topDeadline = ContinuousClock.now + .seconds(6)
+            let scrollPoint = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
+            while clip.bounds.minY > 1 {
+                guard ContinuousClock.now < topDeadline else {
+                    throw ReplayError("Oldest message was unreachable at \(clip.bounds) in \(clip.documentRect)")
+                }
+                try await postScroll(window, scrollPoint, y: Int32(min(900, ceil(clip.bounds.minY))), phase: .began)
+                try await postScroll(window, scrollPoint, y: 0, phase: .ended)
+            }
+            try await wait("Top edge did not settle at \(clip.bounds)", timeout: .seconds(3)) { abs(clip.bounds.minY) < 1 }
+            let screenClip = window.convertToScreen(clip.convert(clip.bounds, to: nil))
+            let oldestVisible = conversationElements(in: window).contains { row in
+                row.id == "moku-conversation-message" && (row.value + row.label).contains("Message 0\n") &&
+                    screenClip.contains(CGPoint(x: row.frame.midX, y: row.frame.midY))
+            }
+            samples.append(["firstMessageVisible": oldestVisible])
+            if !oldestVisible { failures.append("First message missing at top of page") }
+            try await capture(window, to: directory.appending(path: "conversation-oldest.png"))
+            for (button, expected) in [("moku-conversation-earlier", "On the earlier page"),
+                                       ("moku-conversation-newer", ending)] {
+                // Both native rubber-banding and fitting a shorter page move the
+                // button under the pointer. Click its resting location.
+                var frame = CGRect.null
+                try await wait("Page control \(button) did not settle", timeout: .seconds(3)) {
+                    guard let target = try? filterButton(button, in: window), !target.frame.isEmpty else { return false }
+                    defer { frame = target.frame }
+                    return target.frame == frame
+                }
+                let point = window.convertPoint(fromScreen: .init(x: frame.midX, y: frame.midY))
+                try await postClick(window, at: point)
+                do {
+                    try await wait("Page control \(button) at \(point) did not reach \(expected)", timeout: .seconds(3)) {
+                        conversationElements(in: window).contains { row in
+                            row.id == "moku-conversation-message" && (row.label + row.value).contains(expected)
+                        }
+                    }
+                } catch {
+                    try await capture(window, to: directory.appending(path: "\(button)-failure.png"))
+                    throw error
+                }
+                samples.append(["pageControl": button, "reached": expected])
             }
             try await dismiss()
 
@@ -1202,7 +1276,7 @@ private final class WheelSample: NSEvent {
             guard let opened, opened == citation, let position, position == .executionStart else {
                 throw ReplayError("Opened the wrong run or position")
             }
-            var record: [String: Any] = ["dismissing": start.id, "locating": end.id, "reading": end.id,
+            var record: [String: any Sendable] = ["dismissing": start.id, "locating": end.id, "reading": end.id,
                 "reader": reader.threadID.string, "source": opened.thread.threadID.string,
                 "execution": opened.executionID.string, "position": position.rawValue, "fromFolderRunning": fromRunning]
             if reader == source {
@@ -1214,7 +1288,7 @@ private final class WheelSample: NSEvent {
                           let value = controls.first(where: { $0["role"] == .text("timeline") && $0["id"]?.stringValue?.contains("history") == true })?["value"],
                           let height = value["height"]?.numberValue, let viewport = value["viewport"]?.numberValue,
                           viewport > 0, height > viewport, value["top"]?.numberValue == 0, value["following"] == .bool(false) else { return false }
-                    record["timeline"] = ["height": height, "viewport": viewport, "top": 0, "following": false] as [String: Any]
+                    record["timeline"] = ["height": height, "viewport": viewport, "top": 0, "following": false] as [String: any Sendable]
                     return true
                 }
             }

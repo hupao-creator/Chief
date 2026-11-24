@@ -1,0 +1,232 @@
+{
+  "productionSourceSHA256": "f166d94c2ca6fe27d06e94f0f2bfde14f3f18fc03472dcb56cbeee58b86ccc29",
+  "debugAppSHA256": "f5d6143e7167945d4fe274d1c3c80e3ef0220ba6ca88def309985a5a840c85b8",
+  "opening": {
+    "failures": [],
+    "samples": [
+      {
+        "initialY": 3523,
+        "readingY": 3283,
+        "resizedY": 3283,
+        "revisedY": 3283
+      },
+      {
+        "firstMessageVisible": true
+      },
+      {
+        "pageControl": "moku-conversation-earlier",
+        "reached": "On the earlier page"
+      },
+      {
+        "pageControl": "moku-conversation-newer",
+        "reached": "End of Chief reply"
+      },
+      {
+        "bottomGap": 0,
+        "lastLineInViewport": true,
+        "visit": "first"
+      },
+      {
+        "bottomGap": 0,
+        "lastLineInViewport": true,
+        "visit": "delayed-reopen"
+      },
+      {
+        "bottomGap": 0,
+        "lastLineInViewport": true,
+        "visit": "from-compose"
+      },
+      {
+        "bottomGap": 0,
+        "lastLineInViewport": true,
+        "visit": "interrupted-reopen"
+      }
+    ]
+  },
+  "live": {
+    "send": {
+      "regular": {
+        "attachmentBubbleHeight": 77,
+        "bottomMargin": 36,
+        "distanceFromEnd": 0,
+        "documentHeight": 627.5,
+        "editorHeight": 58,
+        "listHeight": 589,
+        "panelHeight": 648,
+        "sameSpeakerGap": 7,
+        "speakerChangeGap": 14,
+        "topMargin": 116,
+        "windowHeight": 800,
+        "windowWidth": 1100
+      },
+      "regularMultiline": {
+        "attachmentBubbleHeight": 77,
+        "bottomMargin": 36,
+        "distanceFromEnd": 0,
+        "documentHeight": 627.5,
+        "editorHeight": 118,
+        "listHeight": 529,
+        "panelHeight": 648,
+        "sameSpeakerGap": 7,
+        "speakerChangeGap": 14,
+        "topMargin": 116,
+        "windowHeight": 800,
+        "windowWidth": 1100
+      },
+      "short": {
+        "regular": {
+          "bottomGap": 12,
+          "documentHeight": 197,
+          "listHeight": 197,
+          "panelHeight": 256,
+          "topGap": 14
+        },
+        "small": {
+          "bottomGap": 12,
+          "documentHeight": 197,
+          "listHeight": 197,
+          "panelHeight": 256,
+          "topGap": 14
+        }
+      },
+      "small": {
+        "attachmentBubbleHeight": 77,
+        "bottomMargin": 30,
+        "distanceFromEnd": 0,
+        "documentHeight": 627.5,
+        "editorHeight": 58,
+        "listHeight": 487,
+        "panelHeight": 546,
+        "sameSpeakerGap": 7,
+        "speakerChangeGap": 14,
+        "topMargin": 24,
+        "windowHeight": 600,
+        "windowWidth": 860
+      },
+      "smallMultiline": {
+        "attachmentBubbleHeight": 77,
+        "bottomMargin": 30,
+        "distanceFromEnd": 0,
+        "documentHeight": 627.5,
+        "editorHeight": 118,
+        "listHeight": 427,
+        "panelHeight": 546,
+        "sameSpeakerGap": 7,
+        "speakerChangeGap": 14,
+        "topMargin": 24,
+        "windowHeight": 600,
+        "windowWidth": 860
+      },
+      "timestampsHeldPoints": 78,
+      "timestampsReleasedPoints": 0,
+      "persistedMessages": 5
+    },
+    "restart": {
+      "regular": {
+        "attachmentBubbleHeight": 77,
+        "bottomMargin": 36,
+        "distanceFromEnd": 0,
+        "documentHeight": 627.5,
+        "editorHeight": 58,
+        "listHeight": 589,
+        "panelHeight": 648,
+        "sameSpeakerGap": 7,
+        "speakerChangeGap": 14,
+        "topMargin": 116,
+        "windowHeight": 800,
+        "windowWidth": 1100
+      },
+      "regularMultiline": {
+        "attachmentBubbleHeight": 77,
+        "bottomMargin": 36,
+        "distanceFromEnd": 0,
+        "documentHeight": 627.5,
+        "editorHeight": 118,
+        "listHeight": 529,
+        "panelHeight": 648,
+        "sameSpeakerGap": 7,
+        "speakerChangeGap": 14,
+        "topMargin": 116,
+        "windowHeight": 800,
+        "windowWidth": 1100
+      },
+      "small": {
+        "attachmentBubbleHeight": 77,
+        "bottomMargin": 30,
+        "distanceFromEnd": 0,
+        "documentHeight": 627.5,
+        "editorHeight": 58,
+        "listHeight": 487,
+        "panelHeight": 546,
+        "sameSpeakerGap": 7,
+        "speakerChangeGap": 14,
+        "topMargin": 24,
+        "windowHeight": 600,
+        "windowWidth": 860
+      },
+      "smallMultiline": {
+        "attachmentBubbleHeight": 77,
+        "bottomMargin": 30,
+        "distanceFromEnd": 0,
+        "documentHeight": 627.5,
+        "editorHeight": 118,
+        "listHeight": 427,
+        "panelHeight": 546,
+        "sameSpeakerGap": 7,
+        "speakerChangeGap": 14,
+        "topMargin": 24,
+        "windowHeight": 600,
+        "windowWidth": 860
+      },
+      "timestampsHeldPoints": 78,
+      "timestampsReleasedPoints": 0,
+      "persistedMessages": 5
+    }
+  },
+  "sendRefresh": {
+    "distanceFromEndAfterSend": 0,
+    "readingY": 0,
+    "readingYAfterTalk": 0,
+    "persistedMessages": 6
+  },
+  "combinedReplay": {
+    "firstRun": "Note click fixture missed the overflowing Note body",
+    "debugDiagnostic": {
+      "overview-note-click.json": {
+        "outsideClickClosedNote": true,
+        "tagOffsets": [
+          1,
+          0
+        ],
+        "naturalScrolling": true,
+        "conversationPeriodCount": 3,
+        "rightClickOpenedNoteOnce": true,
+        "composerScrollExcluded": true,
+        "olderReadingOffsetsOnResize": [
+          189.5,
+          189.5
+        ],
+        "settingsScrollExcluded": true,
+        "conversationDraftRestoredInCompose": true,
+        "backgroundRightClickOpenedNote": false,
+        "regions": [
+          "background",
+          "card",
+          "tag scroller"
+        ],
+        "primaryClickOpenedCompose": true,
+        "horizontalScroll": true,
+        "noteOffsets": [
+          0.17904044265014818,
+          70.17904044265015
+        ],
+        "swipeOpenedConversation": true,
+        "conversationPaging": true
+      },
+      "landing-note-click.json": {
+        "controlClickOpenedNote": true,
+        "swipeOpenedConversation": true
+      }
+    }
+  }
+}

@@ -12,11 +12,14 @@ struct NativeMokuConversationTimeline: View {
     // Target the inset below the last bubble when the timeline first mounts.
     @State private var position = ScrollPosition(id: TimelineEnd.bottom, anchor: .bottomLeading)
     @State private var atBottom = true
+    @State private var scrolling = false
     @State private var revealed: CGFloat = 0
 
     private struct ReadingViewport: Equatable {
         let height: CGFloat
+        let documentHeight: CGFloat
         let nearEnd: Bool
+        let atEnd: Bool
     }
     private enum TimelineEnd: Hashable { case bottom }
 
@@ -28,43 +31,24 @@ struct NativeMokuConversationTimeline: View {
             let width = bounds.size.width
             ScrollViewReader { proxy in
                 ScrollView([.horizontal, .vertical]) {
-                    // Fit the Dock to this bounded page at its rendered width. Exact bubble heights
-                    // also keep a tall offscreen message from moving the reader when a send arrives.
                     VStack(alignment: .leading, spacing: 0) {
                         if let cursor = page.before {
                             pageButton(chinese ? "较早消息" : "Earlier messages", width: width) { showEarlier(cursor) }
                                 .accessibilityIdentifier("moku-conversation-earlier")
                         }
-                        ForEach(page.messages.enumerated(), id: \.element.id) { index, message in
-                            let previous = index > 0 ? page.messages[index - 1] : nil
-                            let starts = previous.map { startsPeriod(message, after: $0) } ?? true
-                            let bubbleSpacing: CGFloat = previous?.fromUser == message.fromUser ? 7 : 14
-                            let next = index + 1
-                            let tail = next == page.messages.count || page.messages[next].fromUser != message.fromUser
-                                || startsPeriod(page.messages[next], after: message)
-                            VStack(alignment: .leading, spacing: 0) {
-                                if starts {
-                                    separator(message.date)
-                                        .frame(width: width).offset(x: revealed)
-                                        .padding(.top, index == 0 ? 2 : 20).padding(.bottom, 8)
-                                }
-                                HStack(spacing: 0) {
-                                    ConversationBubble(message: message, tail: tail, viewport: viewport,
-                                                       viewportHeight: bounds.size.height, chinese: chinese)
-                                        .frame(maxWidth: max(1, (width - 28) * 0.76),
-                                               alignment: message.fromUser ? .trailing : .leading)
-                                        .padding(.horizontal, 14)
-                                        .frame(width: width, alignment: message.fromUser ? .trailing : .leading)
-                                        .offset(x: message.fromUser ? 0 : revealed)
-                                    Text(message.date, format: .dateTime.hour().minute())
-                                        .font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary)
-                                        .lineLimit(1).padding(.trailing, 13)
-                                        .frame(width: timeColumn, alignment: .trailing)
-                                        .accessibilityHidden(true)
+                        // The trailing rows and the end target share one exact layout. A tall last
+                        // reply must not resolve to a lazy height estimate on entry or on send.
+                        let rows = page.messages.enumerated()
+                        let tailCount = 6
+                        if rows.count > tailCount {
+                            LazyVStack(alignment: .leading, spacing: 0) {
+                                ForEach(rows.dropLast(tailCount), id: \.element.id) { index, message in
+                                    row(message, at: index, width: width, height: bounds.size.height)
                                 }
                             }
-                            .padding(.top, starts ? 0 : bubbleSpacing)
-                            .id(message.id)
+                        }
+                        ForEach(rows.suffix(tailCount), id: \.element.id) { index, message in
+                            row(message, at: index, width: width, height: bounds.size.height)
                         }
                         if let showNewer {
                             pageButton(chinese ? "较新消息" : "Newer messages", width: width, action: showNewer)
@@ -86,14 +70,25 @@ struct NativeMokuConversationTimeline: View {
                     revealed = x
                 }
                 .onScrollGeometryChange(for: ReadingViewport.self) { geometry in
-                    ReadingViewport(height: geometry.containerSize.height,
-                                    nearEnd: geometry.contentSize.height - geometry.visibleRect.maxY < 24)
+                    let gap = geometry.contentSize.height - geometry.visibleRect.maxY
+                    return ReadingViewport(height: geometry.containerSize.height, documentHeight: geometry.contentSize.height,
+                                           nearEnd: gap < 24, atEnd: gap <= 1)
                 } action: { before, after in
-                    atBottom = after.nearEnd
-                    // A taller draft can shrink the viewport while the last message ID stays the same.
-                    if before.nearEnd, after.height < before.height, revealed < 1 { position.scrollTo(edge: .bottom) }
+                    let resized = before.height != after.height || before.documentHeight != after.documentHeight
+                    // Layout can change the gap before the native offset settles. Only a reader
+                    // moving through the document gives up following the latest reply.
+                    if !scrolling, revealed < 1, before.nearEnd, after.height < before.height {
+                        // A point used to release horizontal timestamps otherwise survives a
+                        // window or editor resize, even when the last bubble stayed visible.
+                        position.scrollTo(edge: .bottom)
+                    } else if scrolling || (!resized && position.isPositionedByUser) {
+                        atBottom = after.nearEnd
+                    } else if resized, atBottom, !after.atEnd, revealed < 1 {
+                        position.scrollTo(edge: .bottom)
+                    }
                 }
                 .onScrollPhaseChange { _, phase, context in
+                    scrolling = phase == .tracking || phase == .interacting || phase == .decelerating
                     if (phase == .idle || phase == .decelerating), context.geometry.visibleRect.minX > 0.5 {
                         // A point preserves the reader's vertical offset on a two-axis scroll view.
                         let resting = CGPoint(x: 0, y: context.geometry.visibleRect.minY)
@@ -101,11 +96,43 @@ struct NativeMokuConversationTimeline: View {
                     }
                 }
                 .onChange(of: page.messages.last?.id) { _, last in
-                    if atBottom, revealed < 1, let last { proxy.scrollTo(last, anchor: .bottomLeading) }
+                    if atBottom, revealed < 1, last != nil { proxy.scrollTo(TimelineEnd.bottom, anchor: .bottomLeading) }
                 }
             }
         }
         .coordinateSpace(name: viewport)
+    }
+
+    private func row(_ message: NativeMokuConversationPage.Message, at index: Int, width: CGFloat, height: CGFloat) -> some View {
+        let previous = index > 0 ? page.messages[index - 1] : nil
+        let starts = previous.map { startsPeriod(message, after: $0) } ?? true
+        let bubbleSpacing: CGFloat = previous?.fromUser == message.fromUser ? 7 : 14
+        let next = index + 1
+        let tail = next == page.messages.count || page.messages[next].fromUser != message.fromUser
+            || startsPeriod(page.messages[next], after: message)
+        return VStack(alignment: .leading, spacing: 0) {
+            if starts {
+                separator(message.date)
+                    .frame(width: width).offset(x: revealed)
+                    .padding(.top, index == 0 ? 2 : 20).padding(.bottom, 8)
+            }
+            HStack(spacing: 0) {
+                ConversationBubble(message: message, tail: tail, viewport: viewport,
+                                   viewportHeight: height, chinese: chinese)
+                    .frame(maxWidth: max(1, (width - 28) * 0.76),
+                           alignment: message.fromUser ? .trailing : .leading)
+                    .padding(.horizontal, 14)
+                    .frame(width: width, alignment: message.fromUser ? .trailing : .leading)
+                    .offset(x: message.fromUser ? 0 : revealed)
+                Text(message.date, format: .dateTime.hour().minute())
+                    .font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary)
+                    .lineLimit(1).padding(.trailing, 13)
+                    .frame(width: timeColumn, alignment: .trailing)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.top, starts ? 0 : bubbleSpacing)
+        .id(message.id)
     }
 
     private func startsPeriod(_ message: NativeMokuConversationPage.Message, after previous: NativeMokuConversationPage.Message) -> Bool {
