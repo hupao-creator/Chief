@@ -87,6 +87,7 @@ private struct OverviewSemanticRailButton: View {
                     }
             } else {
                 Image(systemName: "asterisk").font(.system(size: 17, weight: .semibold))
+                    .modifier(OverviewTagInk())
             }
         }
         .onHover { hovered = $0 }

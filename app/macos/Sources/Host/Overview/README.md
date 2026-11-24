@@ -340,7 +340,8 @@ The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
 (Completed only). Hover help gives the localized status name. All, directory,
 tag and status controls apply native `.clear.interactive()` Liquid Glass
 directly to their capsule. The backdrop is unfilled and the glass is untinted.
-Reduce Transparency uses an opaque fill. The selected control draws a 2pt
+The folder icon, asterisk and text use a contrasting edge so they stay legible over
+light or dark content. Reduce Transparency uses an opaque fill. The selected control draws a 2pt
 inset accent border above its surface (3pt with Increased Contrast). Folder
 icons and emoji stay visible. Accessibility exposes the full name and selected
 state even when the visible title is hidden or

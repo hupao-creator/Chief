@@ -58,6 +58,7 @@ private final class WheelSample: NSEvent {
 @main @MainActor private struct NestedHeaderReplay: App {
     @State private var collectionViewport: CGSize?
     @State private var captureScheme: ColorScheme?
+    @State private var brightCaptureBackdrop = false
     private let workspace: NativeWorkspaceModel
     private let presentation: NativeWorkspacePresentation
 
@@ -85,7 +86,9 @@ private final class WheelSample: NSEvent {
             }
             .background {
                 // A single-window capture omits the desktop behind the material.
-                if captureScheme != nil { Color(nsColor: .windowBackgroundColor) }
+                if let captureScheme {
+                    Color(white: captureScheme == .dark && !brightCaptureBackdrop ? 0.13 : 0.97)
+                }
             }
             .preferredColorScheme(captureScheme)
             .modifier(NativeWorkspaceWindowSurface())
@@ -268,27 +271,121 @@ private final class WheelSample: NSEvent {
         }
     }
 
-    private func filterButton(_ id: String, in window: NSWindow) throws -> any NSAccessibilityProtocol {
-        func find(_ value: Any) -> (any NSAccessibilityProtocol)? {
-            guard let node = value as? any NSAccessibilityProtocol else { return nil }
-            if node.accessibilityRole() == .button && node.accessibilityIdentifier() == id { return node }
-            for child in node.accessibilityChildren() ?? [] {
+    private struct FilterButton {
+        let frame: CGRect
+        let title: String
+        let label: String
+    }
+
+    private func filterButton(_ id: String, in window: NSWindow) throws -> FilterButton {
+        // SwiftUI's accessible children implement individual AppKit accessors
+        // without requiring the full NSAccessibilityProtocol conformance.
+        func attribute(_ node: NSObject, _ key: String) -> Any? {
+            node.responds(to: NSSelectorFromString(key)) ? node.value(forKey: key) : nil
+        }
+        func find(_ value: Any) -> FilterButton? {
+            guard let node = value as? NSObject else { return nil }
+            if attribute(node, "accessibilityIdentifier") as? String == id,
+               attribute(node, "accessibilityRole") as? String == NSAccessibility.Role.button.rawValue,
+               let frame = attribute(node, "accessibilityFrame") as? NSValue {
+                return FilterButton(frame: frame.rectValue,
+                    title: attribute(node, "accessibilityTitle") as? String ?? "",
+                    label: attribute(node, "accessibilityLabel") as? String ?? "")
+            }
+            for child in attribute(node, "accessibilityChildren") as? [Any] ?? [] {
                 if let result = find(child) { return result }
             }
             return nil
         }
-        guard let button = find(window) else { throw ReplayError("Missing accessible filter button " + id) }
+        guard let button = find(window) else {
+            throw ReplayError("Missing accessible filter button " + id)
+        }
         return button
     }
 
+    // Sample four independent edges of the rendered capsule, outside its glyph.
+    // Overview's selection accent is green in both system appearances.
+    private func checkOutlines(_ expected: [String: Bool], in image: URL, window: NSWindow) throws -> [String: Int] {
+        guard let pixels = NSBitmapImageRep(data: try Data(contentsOf: image)) else {
+            throw ReplayError("Cannot read outline screenshot")
+        }
+        let scale = CGFloat(pixels.pixelsWide) / window.frame.width
+        var matches = [String: Int]()
+        for (id, selected) in expected {
+            let bounds = window.convertFromScreen(try filterButton(id, in: window).frame)
+            let edges = (1...3).map { index in
+                let inset = CGFloat(index) / scale
+                // In the isolated Runtime fixture its connection notice covers the
+                // upper half of the directory row. Sample its exposed lower curve.
+                if id.hasPrefix("directory:") || id == "overview-directory-all" {
+                    let radius = bounds.height / 2
+                    let diagonal = (radius - inset) / sqrt(2)
+                    return [CGPoint(x: bounds.minX + radius - diagonal, y: bounds.midY - diagonal),
+                            CGPoint(x: bounds.maxX - radius + diagonal, y: bounds.midY - diagonal),
+                            CGPoint(x: bounds.minX + radius, y: bounds.minY + inset),
+                            CGPoint(x: bounds.maxX - radius, y: bounds.minY + inset)]
+                }
+                return [CGPoint(x: bounds.minX + inset, y: bounds.midY),
+                        CGPoint(x: bounds.maxX - inset, y: bounds.midY),
+                        CGPoint(x: bounds.midX, y: bounds.minY + inset),
+                        CGPoint(x: bounds.midX, y: bounds.maxY - inset)]
+            }
+            let greenEdges = (0..<4).filter { edge in
+                edges.contains { row in
+                    let point = row[edge]
+                    guard let color = pixels.colorAt(x: Int(point.x * scale),
+                        y: Int((window.frame.height - point.y) * scale))?.usingColorSpace(.sRGB) else { return false }
+                    return color.greenComponent - color.redComponent > 0.16
+                        && color.blueComponent - color.redComponent > 0.09
+                        && color.greenComponent - color.blueComponent > 0.025
+                }
+            }.count
+            guard selected ? greenEdges >= 3 : greenEdges <= 1 else {
+                throw ReplayError("Selection outline mismatch in \(image.lastPathComponent) for \(id): frame=\(bounds), selected=\(selected), accentEdges=\(greenEdges)")
+            }
+            matches[id] = greenEdges
+        }
+        return matches
+    }
+
+    private func checkGlyphInk(_ id: String, centerInset: CGFloat? = nil, in image: URL, window: NSWindow) throws {
+        guard let pixels = NSBitmapImageRep(data: try Data(contentsOf: image)) else {
+            throw ReplayError("Cannot read glyph screenshot")
+        }
+        let frame = window.convertFromScreen(try filterButton(id, in: window).frame)
+        let scale = CGFloat(pixels.pixelsWide) / window.frame.width
+        let x = Int((centerInset.map { frame.minX + $0 } ?? frame.midX) * scale)
+        let y = Int((window.frame.height - frame.midY) * scale)
+        let radius = Int(7 * scale)
+        var levels = [CGFloat]()
+        for dx in -radius...radius {
+            for dy in -radius...radius {
+                if let color = pixels.colorAt(x: x + dx, y: y + dy)?.usingColorSpace(.sRGB) {
+                    levels.append(0.21 * color.redComponent + 0.72 * color.greenComponent + 0.07 * color.blueComponent)
+                }
+            }
+        }
+        levels.sort()
+        guard !levels.isEmpty, levels[levels.count * 95 / 100] - levels[levels.count / 20] >= 0.14 else {
+            throw ReplayError("Indistinguishable glyph in \(image.lastPathComponent) for \(id)")
+        }
+    }
+
     private func movePointer(_ window: NSWindow, to point: CGPoint) async throws {
+        try await focusReplayWindow(window)
         window.acceptsMouseMovedEvents = true
         guard let event = NSEvent.mouseEvent(with: .mouseMoved, location: point, modifierFlags: [],
             timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
-            context: nil, eventNumber: 0, clickCount: 0, pressure: 0) else {
+            context: nil, eventNumber: 0, clickCount: 0, pressure: 0),
+              let screen = NSScreen.screens.first else {
             throw ReplayError("Cannot construct window-local pointer motion")
         }
-        NSApp.postEvent(event, atStart: false)
+        let position = window.convertPoint(toScreen: point)
+        let target = CGPoint(x: position.x, y: screen.frame.maxY - position.y)
+        guard CGWarpMouseCursorPosition(target) == .success else { throw ReplayError("Could not place fixture cursor") }
+        // SwiftUI reads the live cursor for hover tracking. Deliver motion only
+        // to the replay window. The caller restores the cursor on exit.
+        window.sendEvent(event)
         try await Task.sleep(for: .milliseconds(240))
     }
 
@@ -879,13 +976,23 @@ private final class WheelSample: NSEvent {
                 let url = directory.appending(path: "status-" + name + ".png")
                 if expectsIdle || expectsCompletedLogo || checkCompletedCopy { try await Task.sleep(for: .milliseconds(450)) }
                 try await capture(window, to: url)
+                if ["all", "down", "up", "directory-any"].contains(name) {
+                    var expectedRings = Dictionary(uniqueKeysWithValues: [NativeOverviewStatusFilter.running, .all, .completed].map {
+                        ("overview-status-" + $0.rawValue, $0 == mode)
+                    })
+                    expectedRings["overview-directory-all"] = selected.isEmpty
+                    if let folder = tags.first(where: { $0.scope == "/fixture" }) {
+                        expectedRings[folder.id] = selected == folder.tag
+                    }
+                    sample["accentEdges"] = try checkOutlines(expectedRings, in: url, window: window)
+                }
                 if expectsIdle || expectsCompletedLogo {
                     sample["emptyText"] = try checkStatusText(in: url, expected: emptyCopy(mode))
                 } else if checkCompletedCopy {
                     let locale = workspace.locale
                     let title = locale.text("仅已完成", "Completed only")
                     let button = try filterButton("overview-status-completed", in: window)
-                    guard button.accessibilityLabel() == title || button.accessibilityTitle() == title else {
+                    guard button.label == title || button.title == title else {
                         throw ReplayError("Completed status icon lost its localized accessible name")
                     }
                     let formattedFinish = Date(timeIntervalSince1970: finishedAt / 1_000)
@@ -1072,6 +1179,12 @@ private final class WheelSample: NSEvent {
         }
         workspace.updateSystemLocale(.english)
         model.selectTag(nil)
+        let captureFilters = CommandLine.arguments.contains("--capture")
+        if captureFilters { captureScheme = .light }
+        defer {
+            captureScheme = nil
+            brightCaptureBackdrop = false
+        }
         window.setContentSize(CGSize(width: 860, height: 600))
         let longName = "Customer experience and international release coordination"
         let labels = [longName, "Design", "Engineering", "Planning", "Support"]
@@ -1134,7 +1247,11 @@ private final class WheelSample: NSEvent {
         func observe(_ name: String, expanded: [String: String]) async throws {
             var widths = [String: CGFloat]()
             for id in ids {
-                let frame = try filterButton(id, in: window).accessibilityFrame()
+                let button = try filterButton(id, in: window)
+                let frame = button.frame
+                if id == longChild.id, !(button.title + button.label).contains(longName) {
+                    throw ReplayError("Truncating the long tag changed its accessible name")
+                }
                 widths[id] = frame.width
                 guard abs(frame.height - side) <= 1,
                       expanded[id] == nil ? abs(frame.width - side) <= 1 : frame.width > side + 1 else {
@@ -1143,9 +1260,9 @@ private final class WheelSample: NSEvent {
             }
             for (id, title) in statusLabels {
                 let button = try filterButton("overview-status-" + id, in: window)
-                let frame = button.accessibilityFrame()
+                let frame = button.frame
                 guard abs(frame.width - side) <= 1, abs(frame.height - side) <= 1,
-                      button.accessibilityLabel() == title || button.accessibilityTitle() == title else {
+                      button.label == title || button.title == title else {
                     throw ReplayError("Unexpected compact status button for \(title): \(frame)")
                 }
             }
@@ -1153,6 +1270,10 @@ private final class WheelSample: NSEvent {
             if CommandLine.arguments.contains("--capture") {
                 let url = directory.appending(path: name + ".png")
                 try await capture(window, to: url)
+                sample["accentEdges"] = try checkOutlines(Dictionary(uniqueKeysWithValues: ids.map {
+                    ($0, $0 == model.selectedFilter?.id)
+                }), in: url, window: window)
+                try checkGlyphInk("overview-semantic-any", in: url, window: window)
                 let visible = Array(expanded.values)
                 sample["visibleTitles"] = try checkStatusText(in: url, expected: visible,
                     absent: titles.filter { !visible.contains($0) }, region: leftColumn)
@@ -1160,20 +1281,37 @@ private final class WheelSample: NSEvent {
             }
             phases.append(sample)
         }
-        // The pointer stays in the card area during the timer checks, including
-        // a second selection before the previous selection's deadline.
+        var originalCursor: CGPoint?
+        defer { if let originalCursor { CGWarpMouseCursorPosition(originalCursor) } }
+        func pointAt(_ point: CGPoint) async throws {
+            if originalCursor == nil {
+                guard let position = CGEvent(source: nil)?.location else { throw ReplayError("Missing fixture cursor") }
+                originalCursor = position
+            }
+            try await movePointer(window, to: point)
+        }
+        // Exclude incidental hover from the timer checks, preserving an
+        // operator's cursor outside the rails until the actual hover step.
         let away = monitor.windowPoint(CGPoint(x: fullViewport.midX, y: fullViewport.midY))
-        try await movePointer(window, to: away)
+        let railIDs = ids + statusLabels.map { "overview-status-" + $0.0 }
+        if try railIDs.contains(where: { try filterButton($0, in: window).frame.contains(NSEvent.mouseLocation) }) {
+            try await pointAt(away)
+        }
         let first = ContinuousClock.now
         try await activate(.semantic, longChild.id)
-        try await Task.sleep(for: .milliseconds(350))
+        let settlingDeadline = first + .seconds(3)
+        while Set(model.items.map(\.id)) != canvas.mountedCardIDs || canvas.isLayingOut {
+            guard ContinuousClock.now < settlingDeadline else { throw ReplayError("Long tag's card did not settle") }
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        try await Task.sleep(for: .milliseconds(300))
         try await observe("minimum-window", expanded: [longChild.id: "Customer"])
         let registered = model.chromeInteractions.mountedIDs(in: .semantic)
         guard registered.count == 6, model.selectedFilter?.id == longChild.id,
               content.bounds.size == CGSize(width: 860, height: 600),
               Set(model.items.map(\.id)) == canvas.mountedCardIDs,
               model.items.count == 1, canvas.cardRegionInWindow == fullViewport else {
-            throw ReplayError("Minimum window failed to retain both columns and the selected long label")
+            throw ReplayError("Minimum window did not settle: controls=\(registered), selected=\(model.selectedFilter?.id ?? "-"), size=\(content.bounds.size), items=\(model.items.map(\.id)), mounted=\(canvas.mountedCardIDs), region=\(canvas.cardRegionInWindow)")
         }
         try await Task.sleep(until: first + .seconds(2))
         let second = ContinuousClock.now
@@ -1182,18 +1320,67 @@ private final class WheelSample: NSEvent {
         try await observe("second-selection", expanded: [shortChild.id: "Design"])
         try await Task.sleep(until: second + .milliseconds(5500))
         try await observe("compact-filters", expanded: [:])
-        let hoverFrame = try filterButton(longChild.id, in: window).accessibilityFrame()
+        let hoverFrame = try filterButton(longChild.id, in: window).frame
         let hover = window.convertPoint(fromScreen: CGPoint(x: hoverFrame.midX, y: hoverFrame.midY))
-        try await movePointer(window, to: hover)
+        try await pointAt(hover)
         try await observe("hovered-tag", expanded: [longChild.id: "Customer"])
-        try await movePointer(window, to: away)
+        let expandedTitle = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
+        if captureFilters {
+            captureScheme = .dark
+            try await Task.sleep(for: .milliseconds(450))
+            try await observe("hovered-tag-dark", expanded: [longChild.id: "Customer"])
+            brightCaptureBackdrop = true
+            try await Task.sleep(for: .milliseconds(450))
+            try await observe("hovered-tag-dark-on-light", expanded: [longChild.id: "Customer"])
+            brightCaptureBackdrop = false
+        }
+        try await pointAt(away)
         try await observe("pointer-left", expanded: [:])
+
+        try await activate(.semantic, compactFolder.id)
+        try await Task.sleep(for: .milliseconds(700))
+        let longBounds = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
+        let titlePoint = CGPoint(x: (longBounds.maxX + expandedTitle.maxX) / 2, y: longBounds.midY)
+        let canvasPoint = monitor.canvasPoint(titlePoint)
+        guard longBounds.width == side, let underLabel = canvas.presentedPlacements.first(where: {
+            canvas.visibleFrame(for: $0.id)?.contains(canvasPoint) == true
+        }) else { throw ReplayError("Compact tag fixture needs a card under the collapsed title") }
+        try click(window, at: titlePoint)
+        try await Task.sleep(for: .milliseconds(850))
+        guard presentation.selected?.threadID.string == underLabel.id else {
+            throw ReplayError("The collapsed title area did not pass its click to the card")
+        }
+        presentation.showOverview()
+        try await Task.sleep(for: .milliseconds(700))
+        try await pointAt(hover)
+        let expandedBounds = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
+        guard expandedBounds.contains(titlePoint) else { throw ReplayError("Hovered title did not reach the click") }
+        try click(window, at: titlePoint)
+        try await Task.sleep(for: .milliseconds(350))
+        guard model.selectedFilter?.id == longChild.id, presentation.selected == nil else {
+            throw ReplayError("The expanded title area did not select its tag over the card")
+        }
         let compact: [String: Any] = ["step": "minimum-window", "visibleSemanticControls": registered,
             "window": [content.bounds.width, content.bounds.height], "selectedTag": model.selectedTag,
             "underlyingCard": underlyingID, "gapPoint": [gap.x, gap.y], "capsulePoint": [chip.x, chip.y],
             "cardViewport": [canvas.cardRegionInWindow.minX, canvas.cardRegionInWindow.width],
+            "tagTitlePoint": [titlePoint.x, titlePoint.y], "cardBeneathTitle": underLabel.id,
             "statusAccessibilityLabels": statusLabels.map(\.1), "labelPhases": phases]
         samples.append(compact)
+        if captureFilters {
+            // The stacked header places the directory glyph below the connection
+            // notice so the same bright-surface sample includes its visible title.
+            window.setContentSize(CGSize(width: 600, height: 600))
+            brightCaptureBackdrop = true
+            try await Task.sleep(for: .milliseconds(450))
+            let url = directory.appending(path: "directory-dark-on-light.png")
+            try await capture(window, to: url)
+            try checkGlyphInk(compactFolder.id, centerInset: OverviewTagMetrics.chipLabelInset + OverviewTagMetrics.folderIcon / 2,
+                in: url, window: window)
+            _ = try checkStatusText(in: url, expected: ["Fixture"],
+                region: CGRect(x: 0.20, y: 0.76, width: 0.60, height: 0.15))
+            window.setContentSize(CGSize(width: 860, height: 600))
+        }
         try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "overview-status.json"))
     }

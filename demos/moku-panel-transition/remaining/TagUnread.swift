@@ -35,8 +35,23 @@ import SwiftUI
     defer { panel.close() }
     let overview = NativeOverviewWorkspaceView(model: model, callbacks: .init(
         openThread: { _, _ in }, openApplication: { _, _ in }, onSettings: {}))
+    var measuredButtons = [String: CGRect]()
     if let activityMotionReduced {
-        panel.mount(overview.environment(\._accessibilityReduceMotion, activityMotionReduced))
+        panel.mount(overview.environment(\._accessibilityReduceMotion, activityMotionReduced)
+            .overlayPreferenceValue(OverviewTagBounds.self) { anchors in
+                GeometryReader { proxy in
+                    Color.clear.onChange(of: anchors.mapValues { proxy[$0] }, initial: true) { _, frames in
+                        // A selected directory also supplies the left "Any tag" button's ID.
+                        // Accept directory frames only inside the measured header scroll region.
+                        guard let bar = frames["__scroll__"] else { return }
+                        for (id, rect) in frames where !rect.isEmpty {
+                            guard id.hasPrefix("semantic:") || (id.hasPrefix("directory:") && bar.intersects(rect)) else { continue }
+                            measuredButtons[id] = CGRect(x: rect.minX, y: proxy.size.height - rect.maxY,
+                                                         width: rect.width, height: rect.height)
+                        }
+                    }
+                }.allowsHitTesting(false)
+            })
     } else {
         panel.mount(overview)
     }
@@ -58,7 +73,8 @@ import SwiftUI
             model.statusFilter == .completed && !model.canvasState.isLayingOut
                 && !model.canvasState.mountedCardIDs.contains("active")
         }
-        try await inspectTagActivity(in: panel, directoryID: parent.id, childID: work.id, reduced: activityMotionReduced) {
+        try await inspectTagActivity(in: panel, directoryID: parent.id, childID: work.id, reduced: activityMotionReduced,
+                                     currentButtons: { measuredButtons }) {
             try install(finished: true, revision: 2)
         }
         return
@@ -83,7 +99,7 @@ import SwiftUI
 }
 
 @MainActor private func inspectTagActivity(in panel: Panel, directoryID: String, childID: String, reduced: Bool,
-                                           finishExecution: () throws -> Void) async throws {
+                                           currentButtons: () -> [String: CGRect], finishExecution: () throws -> Void) async throws {
     func surfaces() -> [NSView] {
         (panel.contentView?.descendants(NSView.self) ?? []).filter {
             $0.identifier?.rawValue == "OverviewTagActivityPerforations"
@@ -119,12 +135,19 @@ import SwiftUI
     }
     // The five-second selected title must finish collapsing before the pixel samples.
     try await pause(5300)
-    var buttons = [String: CGRect]()
-    buttonFrames(panel, into: &buttons)
+    let buttons = currentButtons()
+    var panelAX = [String: CGRect](), hostAX = [String: CGRect]()
+    buttonFrames(panel, into: &panelAX)
+    if let root = panel.contentView { buttonFrames(root, into: &hostAX) }
+    try save(["window": NSStringFromRect(panel.frame), "controlAnchors": buttons.mapValues(NSStringFromRect),
+              "panelAX": panelAX.mapValues(NSStringFromRect), "contentAX": hostAX.mapValues(NSStringFromRect),
+              "nativeSurfaces": surfaces().map { NSStringFromRect($0.convert($0.bounds, to: nil)) }],
+             "tag-activity-geometry.json")
     var samples = [[String: Any]]()
     var regions = [String: CGRect]()
     for (id, diameter) in [(directoryID, CGFloat(26)), (childID, CGFloat(36))] {
-        guard let button = buttons[id], let view = surfaces().first(where: {
+        guard let button = buttons[id] else { throw ReplayFailure("Missing measured button " + id) }
+        guard let view = surfaces().first(where: {
             let frame = $0.convert($0.bounds, to: nil)
             return button.contains(CGPoint(x: frame.midX, y: frame.midY))
         }), let layer = view.layer else { throw ReplayFailure("Missing activity behind " + id) }
@@ -147,7 +170,8 @@ import SwiftUI
         surfaces().isEmpty
     }
     let filter = try await panel.filter()
-    try await savePNG(SCScreenshotManager.captureImage(contentFilter: filter, configuration: panel.configuration()),
-                      "finished-filter-activity.png")
+    let config = panel.configuration()
+    config.ignoreGlobalClipSingleWindow = true
+    try await savePNG(SCScreenshotManager.captureImage(contentFilter: filter, configuration: config), "finished-filter-activity.png")
     try save(["reduceMotion": reduced, "running": samples, "pixelCounts": pixels, "finishedSurfaceCount": surfaces().count], "tag-activity.json")
 }
