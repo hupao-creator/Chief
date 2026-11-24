@@ -341,6 +341,8 @@ across 90ms. Corresponding legs must agree within 85ms. The return must cross th
 contraction, and reopening must show the partially revealed eyes narrowing back toward the logo.
 The reduced-motion visit checks endpoint widths and a full logo in either direction.
 
+The [window recordings and frame evidence](evidence/bar-motion/README.md) include the baseline and the two measured directions.
+
 ### Right-column identity return
 
 This offscreen replay mounts the production workspace with a completed Codex

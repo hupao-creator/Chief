@@ -1,0 +1,50 @@
+[
+  {
+    "action" : "select source",
+    "inputReady" : false,
+    "seconds" : 1.3046991666778922,
+    "width" : 168
+  },
+  {
+    "action" : "press Report Close",
+    "inputReady" : true,
+    "seconds" : 3.1909120832569897,
+    "width" : 508
+  },
+  {
+    "action" : "Overview settled",
+    "inputReady" : true,
+    "seconds" : 4.7756201250012964,
+    "width" : 168
+  },
+  {
+    "action" : "select source",
+    "inputReady" : false,
+    "seconds" : 6.0038462500087917,
+    "width" : 168
+  },
+  {
+    "action" : "press Report Close",
+    "inputReady" : true,
+    "seconds" : 7.7786516665946692,
+    "width" : 508
+  },
+  {
+    "action" : "reopen Report",
+    "inputReady" : false,
+    "seconds" : 8.0799323332030326,
+    "width" : 168
+  },
+  {
+    "action" : "press Report Close again",
+    "inputReady" : true,
+    "seconds" : 9.3026425417046994,
+    "width" : 508
+  },
+  {
+    "action" : "Overview settled",
+    "inputReady" : true,
+    "seconds" : 10.849173541646451,
+    "width" : 168
+  }
+]

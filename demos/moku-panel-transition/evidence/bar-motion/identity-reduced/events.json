@@ -1,0 +1,20 @@
+[
+  {
+    "action" : "select source",
+    "inputReady" : false,
+    "seconds" : 1.2711419167462736,
+    "width" : 168
+  },
+  {
+    "action" : "press Report Close",
+    "inputReady" : true,
+    "seconds" : 2.2422019583173096,
+    "width" : 508
+  },
+  {
+    "action" : "Overview settled",
+    "inputReady" : true,
+    "seconds" : 3.8484627916477621,
+    "width" : 168
+  }
+]

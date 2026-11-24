@@ -1,0 +1,54 @@
+{
+  "first lap": {
+    "frames": 160,
+    "resolved": 160,
+    "correlation": [
+      0.9834848613396503,
+      0.9787284288794443
+    ],
+    "passed": true
+  },
+  "resumed": {
+    "frames": 91,
+    "resolved": 91,
+    "correlation": [
+      0.9962485913637673,
+      0.9247253381590751
+    ],
+    "passed": true
+  },
+  "reversed": {
+    "frames": 60,
+    "resolved": 60,
+    "correlation": [
+      0.8712758619871457,
+      0.9833896533252192
+    ],
+    "passed": true
+  },
+  "folded": {
+    "frames": 67,
+    "resolved": 61,
+    "correlation": [
+      0.9652886159272515,
+      0.9857816848191832
+    ],
+    "passed": true
+  },
+  "paused": {
+    "frames": 31,
+    "passed": true
+  },
+  "editor": {
+    "frames": 22,
+    "passed": true
+  },
+  "reopened": {
+    "frames": 11,
+    "passed": true
+  },
+  "idle": {
+    "frames": 9,
+    "passed": true
+  }
+}

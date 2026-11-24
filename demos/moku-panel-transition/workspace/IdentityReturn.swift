@@ -142,7 +142,11 @@ import SwiftUI
             let sameForeground = foreground == NSWorkspace.shared.frontmostApplication?.processIdentifier
             guard sameForeground, resting.width == 168, abs(resting.midX - view.bounds.midX) < 1,
                   host.dockDraft !== draft, host.dockDraft.text.isEmpty else {
-                throw PluginContractError("Overview handoff or window ownership changed")
+                let failure = "Overview handoff: foreground unchanged=\(sameForeground), frame=\(resting), "
+                    + "released draft=\(host.dockDraft !== draft), empty draft=\(host.dockDraft.text.isEmpty)"
+                record("failed handoff")
+                try saveObservations(failure: failure)
+                throw PluginContractError(failure)
             }
             try saveObservations()
         }

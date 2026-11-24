@@ -1,0 +1,46 @@
+[
+  {
+    "action" : "start",
+    "seconds" : 0.41019754181616008
+  },
+  {
+    "action" : "replace tool",
+    "seconds" : 2.1050767917186022
+  },
+  {
+    "action" : "pause",
+    "seconds" : 3.939555250108242
+  },
+  {
+    "action" : "resume",
+    "seconds" : 4.6985736251808703
+  },
+  {
+    "action" : "retire",
+    "seconds" : 6.4994313751813024
+  },
+  {
+    "action" : "reverse fade",
+    "seconds" : 6.7553804584313184
+  },
+  {
+    "action" : "open editor",
+    "seconds" : 8.5376436251681298
+  },
+  {
+    "action" : "close editor",
+    "seconds" : 9.4324563750997186
+  },
+  {
+    "action" : "reopen editor",
+    "seconds" : 9.7360759167931974
+  },
+  {
+    "action" : "close editor again",
+    "seconds" : 10.096987875178456
+  },
+  {
+    "action" : "finish",
+    "seconds" : 11.999201333383098
+  }
+]
