@@ -340,8 +340,8 @@ public struct NativeMokuDock: View {
             && !state.inputOpen && interaction == nil && !state.dockCovered
     }
     private var inputSuppressesRunningFeedback: Bool {
-        // Agent detail owns its persistent editor during travel and logo placement,
-        // before inputOpen can become true.
+        // Agent detail owns its persistent editor during travel and the Harness
+        // flip, before inputOpen can become true. That wait is not a closed input.
         state.inputOpen || state.inputPinnedOpen
     }
     private var runningFeedback: Bool {
@@ -987,7 +987,7 @@ public struct NativeMokuDock: View {
                 showsHarness: showsHarness,
                 entranceReady: state.inputAdmissionReady, generation: generation,
                 animation: state.windowVisible && !reduceMotion
-                    ? .linear(duration: showsHarness ? NativeReadingPageTiming.duration : 0.32) : nil,
+                    ? .linear(duration: showsHarness ? 0.36 : 0.32) : nil,
                 onSettled: { state.completeInputIdentity(generation: generation) }) {
                 face(characterInput)
             }

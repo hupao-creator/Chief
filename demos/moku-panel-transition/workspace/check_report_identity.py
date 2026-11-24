@@ -53,10 +53,6 @@ def faces(rows):
     return [key for key, _ in itertools.groupby(r["face"] for r in rows if r["face"] != "unresolved")]
 
 
-def aligned_entry(rows):
-    return faces(rows) == ["eyes", "logo"] and all(r["height"] >= 22 for r in rows if r["face"] == "logo")
-
-
 def compare(rows, before, after):
     if faces(rows) != [before, after]:
         raise ValueError(f"Unexpected face order: {faces(rows)}")
@@ -94,17 +90,23 @@ def check(directory, reduced):
                   and all(w < 345 or w > 995 for w in widths)
                   and all(r["height"] >= 22 for r in opened + closed if r["face"] == "logo"))
         return dict(passed=passed, widthsPx=sorted(set(widths)))
-    opening = aligned_entry(opened)
+    opening = compare(opened, "eyes", "logo")
+    # The mark finishes face-on before the editor expands and stays upright
+    # through the settled hold preceding Close.
+    expanded = [r for r in opened if r["width"] >= opened[-1]["width"] - 2]
+    aligned = all(r["face"] == "logo" and r["height"] >= 22 for r in expanded)
     closing = compare(closed, "logo", "eyes")
     edge_row = next(r for r in closed if r["pts"] == closing["edgePTS"])
     folding = closed[-1]["width"] + 4 < edge_row["width"] < closed[0]["width"] - 4
     reverse = segment(4, 6)
     sequence = faces(reverse)
     eyes = [r for r in reverse if r["face"] == "eyes"]
-    aligned_reopen = (sequence == ["logo", "eyes", "logo"] and faces(segment(4, 5)) == ["logo", "eyes"]
-                      and all(r["height"] >= 22 for r in segment(5, 6) if r["face"] == "logo"))
-    return dict(passed=opening and closing["passed"] and folding and aligned_reopen,
-                alignedOpening=opening, closing=closing, closingEdgeWidthPx=edge_row["width"],
+    reversed_midturn = sequence == ["logo", "eyes", "logo"] and eyes[0]["height"] < max(r["height"] for r in eyes) > eyes[-1]["height"]
+    asymmetry = max(abs(a["edgeToFullMS"] - b["edgeToFullMS"])
+                    for a, b in zip(opening["legs"], reversed(closing["legs"])))
+    return dict(passed=opening["passed"] and aligned and closing["passed"] and folding and reversed_midturn and asymmetry <= 85,
+                expandedLogoUpright=aligned,
+                opening=opening, closing=closing, closingEdgeWidthPx=edge_row["width"], maxLegDifferenceMS=asymmetry,
                 interruptedSequence=sequence, interruptedEyeHeightsPt=[r["height"] for r in eyes])
 
 

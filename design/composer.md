@@ -18,7 +18,7 @@ draft. A callback may consume only the submitted draft revision and captured
 source; a late result cannot reopen another visit.
 
 The input pin exists before the editor opens, through reading preparation and
-placement of the Harness logo. It suppresses closed-input running/submission orbit
+the Harness identity flip. It suppresses closed-input running/submission orbit
 ink throughout that ownership. Current active Thread input uses one trailing
 action seat: Stop for an empty draft, Send for sendable text/attachments/directory
 mentions. Import/submission/unavailable gates still apply. Historical input has
@@ -60,8 +60,8 @@ scrollable and the shell stays within the viewport. Closing the bottom Overview
 input fades the draft as the capsule starts to fold. The native editor stays
 mounted for the 420ms return and keeps its selection for reopening.
 Returning to Overview hides the Agent composer as soon as the reading panel
-blocks input. On entry the Harness logo appears face-on. On return the logo turns
-edge-on and the eyes turn into view over 320ms. Reduce Motion settles the mark immediately.
+blocks input. The eyes flip to the Harness logo over 360ms on entry. On return,
+the logo turns edge-on and the eyes turn into view over 320ms. Reduce Motion settles either direction immediately.
 The turn starts as the shell contracts
 around the bottom center of its reading column. Once compact, it glides horizontally at the reading height until
 centered in the workspace, then rises vertically to its Overview seat.

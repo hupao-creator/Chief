@@ -113,18 +113,19 @@ selections from either chooser retain their structured form across draft restora
 the saved command ID. Chief's delegation tools take text prompts. When a
 delegated Agent needs a file, its prompt can refer to the file by its managed path.
 
-After the compact Dock arrives and reading layout is ready, the Harness logo
-appears face-on in the eyes’ seat and the composer can expand and take focus.
-A composer-generation fence and a view-local transition generation reject
-replaced or detached completions without an elapsed-time task.
+Agent entry sequences the compact Dock's travel, the eyes-to-Harness flip and
+composer expansion. The reading entrance's actual arrival/layout admission
+releases the flip; its removed animation completion releases input and the
+existing focus path. A composer-generation fence and a view-local transition
+generation reject replaced or detached completions without an elapsed-time task.
 The small downward reading-seat shift uses the existing native travel host,
 with a 420ms ease-in/ease-out curve rather than SwiftUI layout animation. Reader
 preparation cannot stall submitted travel frames. Both axes share sampled
 replacement geometry, completion fencing and moving-control hit protection;
 shell sizing and composer expansion remain owned by SwiftUI.
-Rapid replacement retains the current mark during travel.
-Reopening during a return places the Harness mark face-on
-before the editor expands, even with the same draft.
+Rapid replacement retains the current mark during travel. The same Harness
+reuses a settled or in-flight flip. Reopening during a return waits for the
+Harness mark to settle before the editor expands, even with the same draft.
 Reduce Motion, an inactive scene or a hidden window settles the mark immediately,
 while reading/content readiness still gates input. See the
 [entrance contract](../../../../../design/reading.md).
@@ -638,8 +639,8 @@ ease-in/ease-out curve. Its composer stays unmounted until the reading panel/tit
 finishes and the main document is ready, then the folded Agent workspace
 commits. That visit-scoped boundary admits the Sidecard reveal (380ms). If its
 execution column owns the Dock, the compact Moku travels there first; the actual
-horizontal animation's final completion admits the upright Harness logo
-and the 420ms input expansion.
+horizontal animation's final completion then admits the
+360ms Harness flip and subsequent 420ms input expansion.
 The native geometry bridge fences completion to the current destination revision,
 and the workspace retains the existing route-visit admission check. A folded,
 ineligible or absent execution Sidecard releases the identity stage at layout commit without
@@ -674,13 +675,14 @@ The host resolves the current target's `harnessID` on each render, including tar
 changes; unknown/empty IDs use a neutral terminal mark, never Moku's Harness.
 Registered custom Harnesses supply their own mark through the same registry.
 The passive logo occupies a 34×25pt seat only in Agent input and ignores pointer
-and accessibility hit testing. As the reader folds, a 320ms horizontal-axis turn
-retires the logo in its first half and reveals the eyes in its second half.
-Switching between Harnesses uses a 420ms turn. The same Harness keeps its mark.
+and accessibility hit testing. The constant-speed horizontal-axis turn takes 360ms
+to reveal a Harness logo and 320ms to return to the eyes. It retires the old mark
+in its first half and reveals the new mark in its second half. Changing Harness
+flips to the new mark; changing Threads within the same Harness keeps it steady.
 Overview and Report/Git restore Moku's theme. Settings uses the resident eyes.
 Both marks share one animated angle. Its clock is independent of the shell’s
-resize curve through input withdrawal and release of the Report column. Reopening
-during the fold settles the logo directly once the reader is ready. A hidden side uses an
+resize curve through input withdrawal and release of the Report column. Reopening during the fold reverses that
+angle, so only the side facing the viewer can draw. A hidden side uses an
 identity transform to keep its coordinate space invertible. If a third Harness
 is requested mid-turn, its artwork takes the hidden seat once the turn lands.
 The current visit alone can admit the editor when its mark has settled.
@@ -780,7 +782,7 @@ the submission. Open input hides the orbit, including retiring dot ink; closing
 input reveals applicable pending/running feedback without waiting for the
 retained editor to unmount. The pinned editor keeps its own Send/Stop controls.
 Agent detail's persistent input suppresses this feedback for its whole ownership
-lifetime, including reading travel and logo placement before input opens.
+lifetime, including reading travel and the Harness flip before input opens.
 Entry, replacement and return therefore cannot mistake delayed editor admission
 for a user-closed input or reveal retained orbit ink. Ordinary closed-input
 running/submission feedback and the running story remain unchanged. See the

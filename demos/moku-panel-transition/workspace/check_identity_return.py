@@ -86,11 +86,11 @@ def reversal(rows, width):
     faces = sequence(rows[:reopened + 1])
     eyes = [r["frame"] for r in rows[:reopened + 1] if r["face"] == "eyes"]
     tilted = [r["frame"] for r in rows[:reopened + 1] if r["face"] == "logo" and r["inkHeight"] < .8 * r["inkWidth"]]
-    fold_only = bool(eyes and tilted and tilted[-1] < eyes[0])
+    two_flips = bool(eyes and tilted and tilted[0] < eyes[0] <= eyes[-1] < tilted[-1])
     contracted = [r["width"] for r in before]
     expanded = [r["width"] for r in after]
     column_drift = max(abs(r["center"] - rows[0]["center"]) for r in rows[:reopened + 1])
-    passed = (faces == ["logo", "eyes", "logo"] and fold_only and column_drift <= 4
+    passed = (faces == ["logo", "eyes", "logo"] and two_flips and column_drift <= 4
               and len(set(contracted)) >= 4 and len(set(expanded)) >= 4
               and max(b - a for a, b in zip(contracted, contracted[1:])) <= 4
               and max(a - b for a, b in zip(expanded, expanded[1:])) <= 4
