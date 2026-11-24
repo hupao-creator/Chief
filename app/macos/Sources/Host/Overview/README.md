@@ -261,7 +261,8 @@ Status filters apply to the selected tag's eligible members after report coverag
 The [status empty states](NativeOverviewStatusPresentation.swift) center the
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
 with its bowl on the title and viewport centerline and its handle extending fully
-to the right. Completed displays the illustration at up to
+to the right. The skillet gently bobs while three lowercase z’s drift above it.
+Reduce Motion holds both still. Completed displays the illustration at up to
 195 × 85 pt directly on the canvas. Running uses up to 156 × 68 pt and
 includes a scroll hint inside a regular Liquid Glass panel with adaptive tint
 and an opaque fallback for Reduce Transparency. Both states expose the visible

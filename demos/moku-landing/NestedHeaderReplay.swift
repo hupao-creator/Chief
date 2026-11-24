@@ -239,7 +239,7 @@ private final class WheelSample: NSEvent {
         }
     }
 
-    private func recordSwitches(_ window: NSWindow, to url: URL, actions: () async throws -> Void) async throws {
+    private func recordWindow(_ window: NSWindow, to url: URL, actions: () async throws -> Void) async throws {
         let windows = try await SCShareableContent.currentProcess
         guard let target = windows.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
             throw ReplayError("Cannot record replay window")
@@ -1382,6 +1382,11 @@ private final class WheelSample: NSEvent {
                 let url = directory.appending(path: filename + ".png")
                 try await capture(window, to: url)
                 _ = try checkEmptyCopy(in: url, mode: .completed)
+                if scheme == .light {
+                    try await recordWindow(window, to: directory.appending(path: "sleeping-skillet.mp4")) {
+                        try await Task.sleep(for: .seconds(4))
+                    }
+                }
             }
         }
         try await swipe(up: false)
@@ -1429,7 +1434,7 @@ private final class WheelSample: NSEvent {
             try await Task.sleep(for: .milliseconds(30))
         }
         if captureFilters {
-            try await recordSwitches(window, to: directory.appending(path: "filter-switches.mp4")) {
+            try await recordWindow(window, to: directory.appending(path: "filter-switches.mp4")) {
                 try await Task.sleep(for: .milliseconds(400))
                 try await swipe(up: false)
                 try await Task.sleep(for: .milliseconds(600))
