@@ -24,7 +24,7 @@ If no cards match, choose another tag on the left or click 🗂️ on the right 
 
 ## Move around the canvas
 
-Resize the window to adjust how many cards you can see. Overview arranges cards across the window and centers them vertically. The filter columns float over the cards. Click a filter to select it, or click the visible part of a card between filters to open it. A wide task card can appear between two taller cards when there’s room for it there. Opening the Chief input box keeps the cards in place.
+Resize the window to adjust how many cards you can see. Overview arranges cards across the window and centers them vertically. The clear glass filters float over the cards. With **Reduce transparency** turned on in macOS, the filters have a solid background. Click a filter to select it, or click the visible part of a card between filters to open it. A wide task card can appear between two taller cards when there’s room for it there. Opening the Chief input box keeps the cards in place.
 
 With the input box closed, swipe up over the eyes on Chief Bar to open **Chief Note**. Scroll inside an open note or a long Chief Bar message to read more.
 
