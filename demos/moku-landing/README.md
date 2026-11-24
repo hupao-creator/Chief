@@ -72,16 +72,18 @@ full-window card area within the directory. A capsule over a card accepts the cl
 860 × 600 pt, a five-tag directory exposes all six controls and selects a tag
 with a long label. The replay reads the mounted accessible buttons to check
 their names and compact frames. It selects another tag before the first
-five-second deadline, then checks the new title before and after its own
-deadline. The replay places the cursor over a different tag and moves it away
+five-second deadline. A screenshot checks the second title early. After 4.55
+seconds a width trace checks that the button stays expanded through the end
+of the first timer, starts to collapse at the second deadline and settles
+at its 42-point width. The replay places the cursor over a different tag and moves it away
 to check hover and exit, then restores the cursor. A click beside the compact
 tag opens the card underneath. The same click on its expanded title selects
 the tag. With `--capture`, the cropped columns are checked for the expected
 visible tag titles and the absence of written status names beside the
 hourglass, card index dividers and finish flag. The hovered title is read in
 Aqua and Dark Aqua and with a bright backdrop behind dark-appearance glass.
-Samples from capsule edges locate the selected outline as it moves on each
-rail and the directory row. `source.json` records the checkout revision,
+Samples from inside each capsule show its glass tint changing with the
+selection on both rails and the directory row. `source.json` records the checkout revision,
 source changes, macOS version and architecture.
 
 With Shipping selected, a catalog update admits and removes a card in each
@@ -93,3 +95,34 @@ including both empty states in Aqua and Dark Aqua. It does not exercise a hardwa
 The fixture has no Runtime connection.
 
 A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas switches status, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
+
+The short directory-header replay uses 42-point production controls at the
+top of a real window. The gray gradient, selected Chief folder, unread count
+of 8 and adjacent Inbox folder stay the same in Aqua and Dark Aqua.
+
+```sh
+python3 demos/moku-landing/verify_header.py --header-glass --output .build/overview-header-glass
+```
+
+Each appearance produces a 618 × 174-pixel crop at 2× and a second crop with
+3-point stripes behind the controls. The replay reads the directory labels
+and badge numeral, checks the unread badge color, and compares
+texture variation inside the glass with the exposed backdrop. It samples
+adjacent pixels at the lower and trailing edges of the header viewport to
+catch a hard cut through the shadow. `header-glass.json` records those
+measurements, the title's luminance difference from the chip face and the
+spacing between adjacent controls. On fixed neutral backgrounds it clicks
+each directory and side control and compares the same part of its glass
+face across selections, away from the glyph, badge and rim. The directory
+controls without emoji and Any take the accent. Blue and green semantic emoji
+have distinct tints, the hourglass and dividers have warm tints and the
+checkered flag has a neutral tint. The selected controls must retain the
+same emoji ink as their unselected counterparts.
+
+`--rail-hover` mounts three Chinese semantic tags on a neutral gray
+background in an active, isolated window. The replay requests 60 Hz and
+retains every complete WindowServer frame delivered through hover,
+transfer and reversal. It tracks the red badge and selected glass tint as the capsule moves, checks the two four-character titles against native
+CJK text width and checks truncation of a longer title. The captured
+intervals bound the observed transition without measuring hardware
+refresh rate. This option can run alongside `--header-glass` in one command.

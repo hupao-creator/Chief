@@ -342,7 +342,8 @@ Semantic tags and status choices take their tint from the dominant color of
 the displayed emoji, including the 🏷️ fallback for a tag without its own
 emoji. The renderer samples the system glyph in sRGB and averages pixels in
 its most common hue cluster. When colored detail covers less than one sixth
-of the visible glyph, the tint uses its average luminance as a neutral gray.
+of the visible glyph, the tint uses its average luminance as a neutral gray,
+limited to the range 0.30–0.72.
 This keeps the 🏁 status tint neutral. The top folder buttons, global All,
 the Any tag asterisk and glyphs that yield no visible sample use the Overview
 accent. The emoji keeps its original colors.

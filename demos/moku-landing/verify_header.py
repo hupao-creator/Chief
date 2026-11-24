@@ -37,8 +37,12 @@ parser.add_argument("--keyboard", action="store_true", help="focus a card with s
 scenario = parser.add_mutually_exclusive_group()
 scenario.add_argument("--note-swipe", action="store_true", help="run Note and scroll interactions entirely at actual size")
 scenario.add_argument("--status-only", action="store_true", help="run only the mounted side-filter scenario")
+parser.add_argument("--header-glass", action="store_true", help="capture and measure the production directory row over gray")
+parser.add_argument("--rail-hover", action="store_true", help="capture the mounted semantic rail during hover")
 args = parser.parse_args()
-if args.status_only and args.keyboard:
+if (args.header_glass or args.rail_hover) and (args.status_only or args.note_swipe):
+    parser.error("choose dedicated chrome captures or the workspace scenario")
+if (args.status_only or args.header_glass or args.rail_hover) and args.keyboard:
     parser.error("--keyboard requires the card interaction scenario")
 with native_lease():
     args.output.mkdir(parents=True, exist_ok=False)
@@ -50,7 +54,18 @@ with native_lease():
     # Keep AppKit's saved window state separate across consecutive replay runs.
     replay = NativeReplay(repo, "NestedHeaderReplay", f"com.chief.nested-header-replay.{uuid4().hex}")
     try:
-        replay.compile([source / "NestedHeaderReplay.swift"])
+        if args.header_glass or args.rail_hover:
+            fixtures = [source / "OverviewChromeFixtureApp.swift"]
+            flags = []
+            if args.header_glass:
+                fixtures.extend([source / "HeaderGlassReplay.swift", source / "FilterFacePixels.swift"])
+                flags.append("-DHEADER_GLASS")
+            if args.rail_hover:
+                fixtures.append(source / "RailHoverReplay.swift")
+                flags.append("-DRAIL_HOVER")
+            replay.compile(fixtures, extra_args=flags)
+        else:
+            replay.compile([source / "NestedHeaderReplay.swift", source / "FilterFacePixels.swift"])
         arguments = ["--capture"] if args.capture else []
         if args.note_swipe:
             arguments.append("--note-swipe")
@@ -67,6 +82,11 @@ with native_lease():
             replay.close()
 # LaunchServices owns the foreground launch. The app writes each receipt
 # after its corresponding input and geometry assertions have passed.
+if args.header_glass or args.rail_hover:
+    receipts = (["header-glass.json"] if args.header_glass else []) + (["rail-hover.json"] if args.rail_hover else [])
+    passed = all((args.output / receipt).is_file() and
+                 json.loads((args.output / receipt).read_text()).get("status") == "passed" for receipt in receipts)
+    sys.exit(status or int(not passed))
 if args.status_only:
     sys.exit(status or int(not (args.output / "overview-status.json").is_file()))
 receipts = ["overview-scroll.json", "overview-fit.json"]
