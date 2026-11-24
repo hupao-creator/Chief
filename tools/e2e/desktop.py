@@ -105,6 +105,58 @@ class Desktop:
         assert restored["overview"]["camera"]["scrollOffset"] == maximum
         scroll(-10000, 0, "overview-start.json")
 
+    def overview_filters(self, thread):
+        created = {receipt["threadId"] for receipt in self.session.peer.receipts.values()}
+        catalog = self.session.runtime.state()
+        scopes = {row["id"]: row["directoryScope"] for row in catalog["threads"] if row["id"] in created}
+        assert set(scopes) == created
+        # The Collection fixture deliberately creates independent reports. Check
+        # their published source references before expecting every task as a card.
+        sources = {row["id"]: row["view"]["relatedExecutions"] for row in catalog["applicationThreads"]
+                   if row["ref"]["typeId"] == "report.document" and not row["archived"]}
+        assert len(sources) == (8 if self.session.peer.collection_projects else 0)
+        assert all(refs == [] for refs in sources.values()), "fixture reports must not cite the prepared tasks"
+        scope = scopes[thread]
+        if not self.session.peer.collection_projects:
+            assert scope == "inbox"
+        scoped = {task for task in created if scopes[task] == scope}
+
+        def settled(status, directory_id, expected):
+            def matches(state):
+                overview = state["overview"]
+                cards = overview["cards"]
+                agents = {card["ref"]["threadId"] for card in cards if card.get("ref", {}).get("typeId") == "agent"}
+                return (state["page"] == "overview" and "overview.filters.activate" in state["actions"]
+                        and state["selectedFilterId"] == directory_id and overview["status"] == status
+                        and set(overview["controls"]["status"]) == {"running", "all", "completed"}
+                        and not overview["controls"]["semantic"] and not overview["layingOut"]
+                        and set(overview["mountedCardIds"]) == {card["id"] for card in cards}
+                        and agents == expected)
+            return self.stable(matches)
+
+        def activate(group, control):
+            self.request({"name": "overview.filters.activate", "group": group, "id": control})
+
+        initial = settled("all", None, created)
+        directory = next(item["id"] for item in initial["overview"]["filters"]
+                         if item["scope"] == scope and item["kind"] == "directory")
+        assert directory in initial["overview"]["controls"]["directory"]
+        activate("status", "running")
+        running = settled("running", None, set())
+        assert not running["overview"]["cards"]
+        activate("directory", directory)
+        empty = settled("running", directory, set())
+        assert not empty["overview"]["cards"]
+        activate("status", "completed")
+        completed = settled("completed", directory, scoped)
+        activate("directory", "all")
+        global_completed = settled("completed", None, created)
+        activate("status", "all")
+        restored = settled("all", None, created)
+        save(self.session.output / "overview-filters.json", {
+            "taskScopes": scopes, "reportSources": sources, "initial": initial, "running": running, "emptyDirectory": empty,
+            "completedDirectory": completed, "globalCompleted": global_completed, "restored": restored})
+
     def read(self, thread, initial, followup):
         overview = self.stable(lambda s: s["page"] == "overview" and s["runtimeAvailable"])
         target = next(t for t in overview["threads"] if t["threadId"] == thread)

@@ -2,6 +2,8 @@
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 import argparse
+import json
+import platform
 import subprocess
 import sys
 from uuid import uuid4
@@ -32,10 +34,19 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--capture", action="store_true", help="save images of the wide, narrow and four-column layouts")
 parser.add_argument("--keyboard", action="store_true", help="focus a card with system Accessibility and check arrow keys and Return")
-parser.add_argument("--note-swipe", action="store_true", help="run Note and scroll interactions entirely at actual size")
+scenario = parser.add_mutually_exclusive_group()
+scenario.add_argument("--note-swipe", action="store_true", help="run Note and scroll interactions entirely at actual size")
+scenario.add_argument("--status-only", action="store_true", help="run only the mounted side-filter scenario")
 args = parser.parse_args()
+if args.status_only and args.keyboard:
+    parser.error("--keyboard requires the card interaction scenario")
 with native_lease():
     args.output.mkdir(parents=True, exist_ok=False)
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+    changed = subprocess.check_output(["git", "status", "--porcelain", "--", "app/macos", "demos/moku-landing"],
+                                      cwd=repo, text=True).splitlines()
+    (args.output / "source.json").write_text(json.dumps({"revision": revision, "sourceChanges": changed,
+        "macOS": platform.mac_ver()[0], "architecture": platform.machine()}, indent=2) + "\n")
     # Keep AppKit's saved window state separate across consecutive replay runs.
     replay = NativeReplay(repo, "NestedHeaderReplay", f"com.chief.nested-header-replay.{uuid4().hex}")
     try:
@@ -43,6 +54,8 @@ with native_lease():
         arguments = ["--capture"] if args.capture else []
         if args.note_swipe:
             arguments.append("--note-swipe")
+        if args.status_only:
+            arguments.append("--status-only")
         if args.keyboard:
             arguments.append("--keyboard")
         with keyboard_client(replay, args.output) if args.keyboard else nullcontext():
@@ -54,6 +67,8 @@ with native_lease():
             replay.close()
 # LaunchServices owns the foreground launch. The app writes each receipt
 # after its corresponding input and geometry assertions have passed.
+if args.status_only:
+    sys.exit(status or int(not (args.output / "overview-status.json").is_file()))
 receipts = ["overview-scroll.json", "overview-fit.json"]
 receipts += ["overview-status.json", "overview-note-swipe.json", "landing-note-swipe.json", "reminder-note-ownership.json"] if args.note_swipe else ["nested-header.json", "collection-fit.json"]
 if args.keyboard:

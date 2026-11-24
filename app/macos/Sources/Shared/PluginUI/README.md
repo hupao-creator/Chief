@@ -363,7 +363,7 @@ Inventory and integration boundaries:
 | Shared composer | Native multiline editor, attachment strip, host file picker | AppKit subclass and control-scoped List adapter; attachment indicators remain hidden |
 | Settings and shared selects | Main form, section strip, agent/error detail, native textareas, option and model menus | Wrapper/subclass only; bindings, validation and menu focus unchanged |
 | Moku | Note (including short viewport), directory completion, Talk and interaction bodies | Wrapper; completion uses native drag/accessibility instead of its old custom thumb |
-| Overview | Tag/filter navigation strips | Wrapper; existing hidden indicators and canvas input routing retained |
+| Overview | Horizontal folder bar | Native scroll wrapper with hidden indicators. The Host routes vertical filter swipes across the window. |
 | Git | Worktree/file list, diff reader and synchronized horizontal code panes | Wrapper/subclass; line selection and horizontal synchronization remain owned by Git |
 | Plugins | Report relations, OpenCode process, Browser annotation list | Wrapper; Browser comment TextEditor also uses the control-scoped adapter |
 | Harness interactions | Codex JSON elicitation, Claude permission/elicitation/reply and OpenCode permission/custom-answer editors | Control-scoped TextEditor adapter; form state, validation and actions stay with each Harness |

@@ -86,7 +86,13 @@ the snapshot reports `transitioning`, withholds reading controls and excludes
 that time from foreground reading. Selecting a carousel page is not a reading event.
 
 
-Overview filter observations include the unread Thread count for each folder and semantic tag.
+Overview publishes the unread Thread count for each folder and semantic tag.
+The folder count covers the whole folder while a semantic tag is selected.
+The filter tree describes the choices in the catalog. The mounted controls
+identify the choices available on the current Overview. Filter activation
+invokes the registered button action. A hidden semantic rail has no targets.
+See the [socket protocol](../../../../../tools/native-interaction/README.md) for
+action arguments and snapshot fields.
 Individual report observations expose `collectionEligibility`. Collections expose
 the same fields per real member in `memberEligibility`. `lastClosedAt` and
 `lastQualifiedAt` use epoch milliseconds or null. `defaultsToCollection`

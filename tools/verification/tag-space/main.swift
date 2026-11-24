@@ -100,7 +100,7 @@ private func catalog(moved: Bool, created: Double) throws -> JSONValue {
         guard let value = model.filters.first(where: { $0.scope == scope }) else { throw Failure(description: "Missing scope " + scope) }
         return value
     }
-    // Time the synchronous selector and pure geometry apart from the mounted path.
+    // Sample the standalone selector before mounting any Report browser.
     model.setCollectionWindowSize(size)
     var selectionMs = [Double](), geometryMs = [Double]()
     let destination = try filter(chief), source = try filter("inbox")
@@ -109,10 +109,6 @@ private func catalog(moved: Bool, created: Double) throws -> JSONValue {
         let start = ProcessInfo.processInfo.systemUptime
         model.selectTag(destination)
         selectionMs.append((ProcessInfo.processInfo.systemUptime - start) * 1000)
-        let members = model.items.map(\.member)
-        let layoutStart = ProcessInfo.processInfo.systemUptime
-        _ = try NativeOverviewLayout.solve(members: members, windowSize: size)
-        geometryMs.append((ProcessInfo.processInfo.systemUptime - layoutStart) * 1000)
     }
     model.selectTag(source)
     let panel = NSPanel(contentRect: .init(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel],
@@ -161,12 +157,6 @@ private func catalog(moved: Bool, created: Double) throws -> JSONValue {
     }
     for cycle in 0..<4 {
         for (scope, ids) in [(chief, crowded), ("inbox", stock)] {
-            if scope == chief {
-                let directory = try filter(chief)
-                try model.chromeInteractions.perform(directory: directory.id, operation: "open")
-                try await waitUntil("directory menu") { model.chromeInteractions.mountedMenuIDs.contains(directory.id) }
-                try await Task.sleep(for: .milliseconds(300))
-            }
             let before = queries
             let start = try press(scope)
             func ms() -> Double { (ProcessInfo.processInfo.systemUptime - start) * 1000 }
@@ -181,9 +171,21 @@ private func catalog(moved: Bool, created: Double) throws -> JSONValue {
                 try await waitUntil("rendered report covers") { readyBrowsers(in: view).count == reportCount }
             }
             let covers = ms()
+            guard let viewport = canvas.camera.viewport, viewport.width == size.width else {
+                throw Failure(description: "Filter controls changed the full-width card viewport")
+            }
+            if scope == chief && cycle == 0 {
+                let members = model.items.map(\.member)
+                let canvasSize = CGSize(width: viewport.width, height: viewport.height)
+                for _ in 0..<12 {
+                    let start = ProcessInfo.processInfo.systemUptime
+                    _ = try NativeOverviewLayout.solve(members: members, windowSize: canvasSize)
+                    geometryMs.append((ProcessInfo.processInfo.systemUptime - start) * 1000)
+                }
+            }
             try await Task.sleep(for: .milliseconds(300))
             rows.append(["cycle": cycle, "scope": scope, "dispatchMs": dispatch, "selectedMs": selected,
-                "placedMs": placed, "settledMs": ready, "coversAndSettledMs": covers, "coverQueries": queries - before])
+                "canvasWidth": viewport.width, "placedMs": placed, "settledMs": ready, "coversAndSettledMs": covers, "coverQueries": queries - before])
         }
     }
     _ = try press(chief)

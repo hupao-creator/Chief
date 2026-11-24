@@ -540,7 +540,7 @@ public final class NativeWorkspacePresentation {
         if selected == nil, !scene.settingsOpen,
            let filter = overview.filters.first(where: {
                $0.matches(overview.selectedTag, kind: overview.tagSelection?.kind, scope: overview.selectedScope)
-           }), filter.isDirectory {
+           }), filter.isDirectory, filter.scope != NativeOverviewSelection.inboxScope {
             source["directoryScopeId"] = .text(filter.scope)
         }
         return .object(source)
@@ -1127,8 +1127,10 @@ public struct NativeWorkspaceView: View {
                         regions: presentation.scene.swipeRegions,
                         available: { presentation.overviewSwipeAvailable },
                         canFilter: { !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
+                        canReturnWithWheel: { presentation.overview.canReturnToAllWithWheel(up: $0) },
                         openNote: { if presentation.canToggleMokuNote { presentation.scene.openNotePanelFromUser() } },
-                        stepFilter: { presentation.overview.stepStatusFilter(up: $0) }))
+                        stepSemanticFilter: { presentation.overview.stepSemanticFilter(up: $0) },
+                        stepStatusFilter: { presentation.overview.stepStatusFilter(up: $0) }))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen
                         && !presentation.onboarding.blocksWorkspace),
                         presentation: presentation.collectionPanel)
