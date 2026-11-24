@@ -1476,11 +1476,15 @@ private final class WheelSample: NSEvent {
         }
         try await Task.sleep(for: .milliseconds(850))
         let notePoint = monitor.windowPoint(center(scene.capsuleFrame))
-        let hit = content.hitTest(content.superview?.convert(notePoint, from: nil) ?? notePoint)
-        guard let scroller = hit?.enclosingScrollView, let document = scroller.documentView,
-              document.bounds.height > scroller.contentView.bounds.height + 80 else {
-            throw ReplayError("Note click fixture missed the overflowing Note body")
-        }
+        // SwiftUI can return a graphics host from hitTest even inside the Note viewport.
+        // Observe the mounted scroll view and send both gestures to the original window point.
+        let notePanel = window.convertFromScreen(try accessibleControl("moku-note-panel", role: .group, in: window).frame)
+        guard notePanel.contains(notePoint), let scroller = descendant(NSScrollView.self, in: content, matching: { view in
+            let clip = view.contentView
+            let viewport = clip.convert(clip.visibleRect, to: nil)
+            return !view.isHiddenOrHasHiddenAncestor && notePanel.contains(viewport) && viewport.contains(notePoint)
+                && (view.documentView?.bounds.height ?? 0) > clip.bounds.height + 80
+        }) else { throw ReplayError("Missing overflowing Chief Note viewport at the gesture point") }
         if CommandLine.arguments.contains("--capture") {
             try await capture(window, to: directory.appending(path: "chief-note.png"))
         }

@@ -107,6 +107,8 @@ The replay uses a 1100×800-point window and the application minimum of 860×600
 
 The Note-click scenario also opens cached conversation pages in the production Dock. It crosses midnight and a 15-minute gap, captures the three centered date headings in `conversation-periods.png` and clicks both page controls. On the longer page it scrolls up, reveals the times and verifies that releasing the gesture restores the horizontal origin. The vertical reading position must hold both through the gesture and when the window becomes shorter. These replays use window-addressed AppKit events. Physical trackpad hardware and a remote model service have separate evidence boundaries.
 
+The Note scroll check identifies the visible native viewport inside the mounted Note panel. It sends both scroll directions to the center of the capsule and checks the document offset after each event. The combined visit has a 150-second process timeout for the Note, reminder, card fitting, filter and Landing interactions.
+
 Use `--status-only` in place of `--note-click` to run the mixed catalog scenario
 independently. It mounts the [production Overview](../../app/macos/Sources/Host/Overview/README.md)
 with ordinary tasks, running interactions, completed work and eight reports.

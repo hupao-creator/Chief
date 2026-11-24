@@ -118,7 +118,9 @@ with lease() if args.conversation_performance else nullcontext(), native_lease()
         if args.keyboard:
             arguments.append("--keyboard")
         with keyboard_client(replay, args.output) if args.keyboard else nullcontext():
-            status = replay.run(arguments, timeout=75 if args.note_click or args.status_only or args.completed_card else 60)
+            # The combined visit also runs the reminder, card fitting, status rail and Landing scenarios.
+            timeout = 75 if args.status_only or args.completed_card else 60
+            status = replay.run(arguments, timeout=150 if args.note_click else timeout)
     finally:
         try:
             replay.export(args.output)
