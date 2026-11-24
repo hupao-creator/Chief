@@ -250,7 +250,8 @@ unmodified, precise trackpad contact after at least 24 points of vertical travel
 and more than 1.5 times its horizontal travel. Across the windowed or full-screen canvas, a physical
 up swipe advances to the next visible left choice and a down swipe to the
 preceding one under either Natural Scrolling setting. From the whole
-directory, up enters the first choice. Both ends clamp. Recognition claims
+directory, up enters the first choice. Stepping past either end wraps to the
+opposite end. An empty rail or a single already-selected choice stays put. Recognition claims
 the rest of the contact and its momentum, even across controls or a change
 of selection. A vertically dominant unmodified line-wheel event steps the same list.
 

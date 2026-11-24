@@ -1737,10 +1737,13 @@ private final class WheelSample: NSEvent {
             // Cross the midpoint before reaching the recognition threshold.
             try await postScroll(window, start, y: y > 0 ? 8 : -8, phase: .began)
             try await postScroll(window, end, y: y, phase: .changed)
+            let selection = model.selectedRailID
             try await postScroll(window, end, y: y * 2, phase: .changed)
+            guard model.selectedRailID == selection else { throw ReplayError("A held swipe stepped the rail twice") }
             try await postScroll(window, end, y: 0, phase: .ended)
             try await postScroll(window, end, y: y, phase: nil, momentum: .begin)
             try await postScroll(window, end, y: 0, phase: nil, momentum: .end)
+            guard model.selectedRailID == selection else { throw ReplayError("Swipe momentum stepped the rail") }
         }
         func wheel(_ y: Int32, right: Bool) async throws {
             try await waitForFilterInput()
@@ -1797,7 +1800,9 @@ private final class WheelSample: NSEvent {
         try await swipe(up: true)
         try await check("directory-running", .running, running)
         try await swipe(up: true, right: false)
-        try await check("last-tag-stops", .running, running)
+        try await check("last-to-first-tag", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: development.tag)
+        try await swipe(up: false)
+        try await check("first-to-last-tag", .running, running)
         try await updateThread("Delivered", .running, revision: 9)
         try await check("directory-live-admit", .running, running + ["Delivered"])
         try await updateThread("Delivered", .completed, revision: 10)
@@ -1894,6 +1899,10 @@ private final class WheelSample: NSEvent {
         guard model.railChoices.map(\.id) == ["running"] else { throw ReplayError("Expected a running-only directory rail") }
         try await swipe(up: true)
         try await check("empty-directory-running", .running, [], selected: namedFolder.tag)
+        for up in [true, false] {
+            try await swipe(up: up)
+            try await check(up ? "single-choice-up" : "single-choice-down", .running, [], selected: namedFolder.tag)
+        }
         try await activate(.directory, parent.id)
         try await check("directory-restores-shipping", .all, ["Delivered"], selected: shipping.tag)
         try await activate(.directory, parent.id)
@@ -1926,7 +1935,9 @@ private final class WheelSample: NSEvent {
             }
         }
         try await wheel(-1, right: true)
-        try await check("empty-running-upper-limit", .running, [], selected: "Shipping")
+        try await check("first-to-last-status", .completed, ["Inbox tagged"], selected: "Shipping")
+        try await wheel(1, right: false)
+        try await check("last-to-first-status", .running, [], selected: "Shipping")
         try await wheel(1, right: false)
         workspace.updateSystemLocale(.english)
         try await check("inbox-all", .all, ["Inbox tagged"], selected: "Shipping", checkDeliveredLayout: true)
@@ -1952,9 +1963,9 @@ private final class WheelSample: NSEvent {
             }
         }
         try await wheel(1, right: true)
-        try await check("empty-completed-lower-limit", .completed, [], selected: "Shipping")
-        try await wheel(-1, right: true)
-        try await check("back-from-completed-wheel", .all, ["Inbox tagged"], selected: "Shipping")
+        try await check("wrap-from-empty-completed", .running, ["Inbox tagged"], selected: "Shipping")
+        try await wheel(1, right: true)
+        try await check("back-from-running-wheel", .all, ["Inbox tagged"], selected: "Shipping")
         try await swipe(up: false)
         try await check("inbox-running", .running, ["Inbox tagged"], selected: "Shipping")
         try await updateThread("Inbox tagged", .completed, revision: 12)
@@ -2354,6 +2365,12 @@ private final class WheelSample: NSEvent {
                 || !canvas.mountedCardIDs.isEmpty || canvas.isLayingOut {
             guard ContinuousClock.now < deadline else { throw ReplayError("Untagged-only workspace did not settle") }
             try await Task.sleep(for: .milliseconds(30))
+        }
+        let emptyPoint = windowPoint(right: true)
+        for y: Int32 in [40, -40] {
+            try await postScroll(window, emptyPoint, y: y, phase: .began)
+            try await postScroll(window, emptyPoint, y: 0, phase: .ended)
+            guard model.railChoices.isEmpty, model.selectedRailID == nil else { throw ReplayError("Swipe selected an empty rail") }
         }
         let savedIDs = workspace.catalog.threads.map(\.id.string)
         guard model.visibleFilters.isEmpty, model.selectedFilter == nil, model.selectedTag.isEmpty,
