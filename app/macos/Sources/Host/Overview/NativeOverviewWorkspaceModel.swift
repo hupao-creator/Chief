@@ -312,6 +312,28 @@ public final class NativeOverviewWorkspaceModel {
         return content.activeIDs.contains(id) ? id : nil
     }
 
+    func revealNoteDestination(_ reference: ApplicationThreadRef) {
+        // Tag membership is independent of status, horizontal offset and Collection page.
+        let current = selectedFilter.flatMap { filterMembers[$0.selectionKey] } ?? allMembership()
+        guard !current.contains(reference) else { return }
+        // A citation from a semantic tag can lead to a sibling in the same folder.
+        // Keep that level of detail before broadening to the directory.
+        func matches(_ filter: NativeOverviewFilter) -> Bool {
+            filterMembers[filter.selectionKey]?.contains(reference) == true
+        }
+        let sibling = tagSelection?.kind == .semantic ? selectedDirectory?.children.first(where: matches) : nil
+        if let match = sibling ?? allFilters.first(where: matches) {
+            selectTag(match)
+        } else if allMembership().contains(reference) {
+            selectTag(nil)
+        } else if reference.typeID == "agent", let thread = workspace.catalog.thread(reference.threadID),
+                  let directory = filters.first(where: { $0.isDirectory && $0.scope == NativeOverviewSelection.scope(thread) }),
+                  directory.selectionKey != selectedFilter?.selectionKey {
+            // An archived or failed Thread can still have a directory even without a card.
+            selectTag(directory)
+        }
+    }
+
     public func selectedCollectionMember(for item: NativeOverviewItem) -> ApplicationThreadRef? {
         guard case .collection(_, let members) = snapshot(for: item) else { return nil }
         if let returnMember, members.contains(where: { $0.entry.ref == returnMember }) { return returnMember }

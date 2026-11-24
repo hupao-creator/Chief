@@ -310,6 +310,12 @@ public final class NativeWorkspacePresentation {
         overview.readingSource = nil
         guard let request else { return }
         guard request.space == scene.noteReadingOrigin?.space else { scene.cancelPendingNoteReading(); return }
+        overview.revealNoteDestination(request.destination)
+        if request.space != overview.sceneKey {
+            // The locating task for the new space must wait for its own canvas layout.
+            scene.noteReadingOrigin?.space = overview.sceneKey
+            return
+        }
         if overview.error == nil {
             await canvas.prepareForPresentation()
             guard !Task.isCancelled, request == noteSourcePreparation else { return }

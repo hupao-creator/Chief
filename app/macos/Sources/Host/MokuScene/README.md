@@ -482,9 +482,10 @@ control supplies named keyboard/accessibility activation.
 
 Pointer and accessibility activation dispatch the same exact execution reference.
 The Dock closes the Note and retains its reading position. Once the Note has
-closed, Overview preserves its filter and scroll position. A visible Collection
-turns to the cited Report. A visible card supplies the reader’s origin and
-a filtered or offscreen target opens directly.
+closed, Overview keeps the current tag space if it contains the destination.
+Otherwise it selects a matching space and waits for its layout. A visible
+Collection turns to the cited Report. A visible card supplies the reader’s
+origin. A target outside the viewport or hidden by status opens directly.
 A unique Super Thread owner opens its Report with the cited execution selected
 in Related executions. Other links open the ordinary Agent reader, including
 eligible Threads hidden from Overview. Both readers start at the cited run’s

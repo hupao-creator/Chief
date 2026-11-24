@@ -46,6 +46,25 @@ Those Collection checks set the mounted workspace’s layout size directly so a
 With `--keyboard`, the replay scrolls a column with each arrow key and opens the
 focused card with Return. It records both distances and the card identity in
 `overview-keyboard.json`. Optional captures show the isolated workspace.
+
+### Chief Note execution links
+
+After building the current Debug package, run the mounted workspace replay.
+
+```sh
+python3 demos/moku-landing/verify_header.py --note-link --output .build/note-link-replay
+```
+
+A window-local mouse click on a Note citation opens an ordinary Thread from
+another directory, switches between sibling tags in one directory, repeats
+the visit from the matching tag, and opens
+the owning Super Thread in a different directory. The Report cites a later
+run of the same task. `note-links.json` records the filter during dismissal,
+location and reading, the mounted reader, and the requested execution and entry
+position. For ordinary Threads it also checks the loaded historical row and
+its scroll position against an offline two-run fixture. System-wide accessibility
+activation and live Report content use the [product replay](../../tools/e2e/README.md#chief-note-execution-link).
+
 ### Overview Note swipe at actual size
 
 ```sh
