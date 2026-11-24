@@ -215,7 +215,7 @@ public struct NativeOverviewChrome: View {
                 onTagChange(nil)
             } label: {
                 HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
-                    Text(strings.all).font(NativeTypography.inter(size: OverviewTagMetrics.chipFont, weight: 620))
+                    OverviewTagTitle(title: strings.all)
                 }
                 .padding(.horizontal, OverviewTagMetrics.chipLabelInset)
                 .frame(height: OverviewTagMetrics.chipHeight)
@@ -342,6 +342,21 @@ struct OverviewTagTitle: View {
             .font(NativeTypography.inter(size: OverviewTagMetrics.chipFont, weight: 620))
             .lineLimit(1)
             .truncationMode(.tail)
+            .modifier(OverviewTagInk())
+    }
+}
+
+// Clear glass can reveal a backdrop of either brightness in either appearance.
+// The contrasting edge belongs only to monochrome ink, including the Any glyph.
+struct OverviewTagInk: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    func body(content: Content) -> some View {
+        let edge: Color = scheme == .dark ? .black : .white
+        content
+            .foregroundStyle(.primary)
+            .shadow(color: edge.opacity(0.9), radius: 0.7, y: 0.5)
+            .shadow(color: edge.opacity(0.8), radius: 1)
     }
 }
 
@@ -352,7 +367,8 @@ struct OverviewTagPrefix: View {
             if let emoji, !emoji.isEmpty {
                 Text(emoji).font(.system(size: OverviewTagMetrics.folderIcon))
             } else {
-                NativeIcon(name: "Folder", size: OverviewTagMetrics.folderIcon).opacity(0.72)
+                NativeIcon(name: "Folder", size: OverviewTagMetrics.folderIcon)
+                    .modifier(OverviewTagInk())
             }
         }
         .fixedSize()
@@ -472,7 +488,6 @@ struct OverviewTagButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundStyle(scheme == .dark ? .white : NativePalette.overview.ink.swiftUI)
             .background {
                 if reduceTransparency { Capsule().fill(Color(white: scheme == .dark ? 0.16 : 0.94)) }
             }

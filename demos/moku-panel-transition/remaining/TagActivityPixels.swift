@@ -6,6 +6,7 @@ import ScreenCaptureKit
 @MainActor func captureTagActivity(in panel: Panel, regions: [String: CGRect], reduced: Bool) async throws -> [String: Int] {
     let filter = try await panel.filter()
     let config = panel.configuration()
+    config.ignoreGlobalClipSingleWindow = true
     let scale = CGFloat(config.width) / panel.frame.width
     var minima = [String: [UInt8]](), maxima = [String: [UInt8]]()
     for index in 0..<14 {
