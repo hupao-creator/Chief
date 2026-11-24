@@ -70,8 +70,12 @@ tag and a separate directory named Inbox. Window-local mouse clicks select
 the middle status and a semantic tag. Changing child or status retains the
 full-window card area within the directory. A capsule over a card accepts the click, and a click in the gap between two capsules opens the underlying task. At the production minimum of
 860 × 600 pt, a five-tag directory exposes all six controls and selects a tag
-with a long label. The optional capture checks that all three English status
-names and the visible part of the long label can be read. `source.json`
+with a long label. The replay reads the mounted accessible buttons to check
+their names and compact frames. It selects another tag before the first
+five-second deadline, then checks the new title before and after its own
+deadline. A window-local pointer move reveals a different title until the
+pointer leaves. With `--capture`, the cropped columns are checked for
+the expected visible tag titles and icon-only status controls. `source.json`
 records the checkout revision, source changes, macOS version and architecture.
 
 With Shipping selected, a catalog update admits and removes a card in each

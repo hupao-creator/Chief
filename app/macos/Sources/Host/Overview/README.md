@@ -241,9 +241,10 @@ and more than 1.5 times its horizontal travel. The initial pointer location in
 the Overview window chooses the column. On the left, a swipe steps among the
 current directory's visible tags, including its unrestricted first choice. On
 the right, it steps among Running, All (initial) and Completed. A physical up
-swipe selects the preceding choice and down selects the next, under either
-Natural Scrolling setting. The gesture stops at either end. Crossing the middle
-or receiving momentum cannot advance the other column. On the left with no
+swipe advances to the next choice below. A down swipe selects the preceding
+choice above. From All, up selects Completed and down selects Running under
+either Natural Scrolling setting. The gesture stops at either end. Crossing the
+middle or receiving momentum cannot advance the other column. On the left with no
 visible tags, a vertical swipe leaves both selections alone.
 
 The background, cards, carousel cover and filter controls accept these gestures.
@@ -261,13 +262,13 @@ title and scroll hint. The text provides the group's accessibility label.
 An adaptive tint strengthens contrast behind the text, and Reduce Transparency
 uses an opaque panel. The panel passes input through to Overview. On the
 right half of the Overview filter surface, a vertical line-wheel event can exit an empty status
-filter in its return direction. Scroll down from Running or up from Completed
+filter in its return direction. Scroll up from Running or down from Completed
 to return to All while keeping the selected tag. An empty All status shows a
-localized title and tag-switch hint on an opaque surface.
+localized title and tag-switch hint on an opaque surface. A left-half wheel event keeps the selected status.
 The [status replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
 exercises empty and populated states and both input types.
 
-The selected right-hand capsule identifies the status, including when the view is empty. The existing plugin cards keep their layout and
+The selected right-hand icon identifies the status, including when the view is empty. The existing plugin cards keep their layout and
 activation. Hover outlines emphasize cards and keyboard focus outlines Agent
 cards. Agent cards show the localized time of the latest successful execution
 from its public `finishedAt` in addition to its duration. Super Threads retain
@@ -328,11 +329,20 @@ selection while that directory exists. Removing the selected scope returns to
 global All. A change in status-filtered results alone keeps both selections.
 
 The left and right Liquid Glass columns sit at the window's edges, each group
-vertically centered. The selected option in each column shows a checkmark
-and accent tint. Each capsule exposes its selected state to accessibility. Full tag names remain available to accessibility when the visible label
-truncates. Member counts, activity and unread counts have distinct meanings.
-Member counts are available in tag accessibility values. Unread counts appear
-on their own folder or semantic tag.
+vertically centered. Compact controls are 42pt circles. The left controls show
+the semantic emoji, 🏷️ for a tag without an emoji, or an asterisk for Any tag. Hover expands that button inward to
+show its title. Selecting another tag shows its title for five seconds.
+A subsequent selection starts a fresh five-second interval for the latest
+choice. A hovered tag keeps its title until pointer exit, including after the
+selection interval expires.
+
+The right controls show an activity pulse (Running only), stacked layers
+(All statuses) and a circled check (Completed only). Hover help gives the
+localized status name. Both columns retain the selected glyph and mark the
+active choice with a lower-leading check and accent tint. Accessibility exposes the
+full name and selected state even when the visible title is hidden or
+truncated. Member counts are available in tag accessibility values. Unread
+counts appear on their own folder or semantic tag.
 
 [NativeOverviewChrome](NativeOverviewChrome.swift) keeps All pinned beside
 a horizontally scrollable directory row. The centered bar leaves space for the
@@ -347,10 +357,9 @@ layout or 2pt below the bar in the two-row layout. See the
 
 ## Tag activity
 
-Directory and semantic tag chips append an 11pt native status ring only when
-their existing browsing membership contains a Thread whose public
-`isExecutionActive` is true (running or waiting for user). Inactive tags omit both
-the ring and its adjacent HStack spacing. Background work alone does not redefine active. Selection tint, task counts,
+Directory and semantic tag chips show an 11pt native status ring when their
+browsing membership contains a Thread whose public `isExecutionActive` is true
+(running or waiting for user). Background work alone does not qualify. Selection tint, task counts,
 membership, ordering and Runtime filter context remain independent.
 Archive/visibility and Report-coverage exclusions come from the
 same membership used to browse each tag; a Report does not itself become an active
@@ -358,9 +367,9 @@ Agent Thread. A changed-ID activity cache refreshes these booleans when active
 participation changes, without rebuilding membership or reacting to every streamed
 payload. Membership changes also refresh the markers, including the existing lazy
 All membership for its accessibility value. The All chip has no visible activity
-ring. Semantic tags use the same indicator as directory tags. Native window
-visibility remains owned by the production spinner. Tooltips and
-accessibility values announce active presence in the selected UI language. The
+ring. A semantic chip places its activity ring in the lower-trailing corner of the glyph. The production
+spinner owns native window visibility. Accessibility values announce active
+presence in the selected UI language. The
 shared slot is implemented in [NativeOverviewTagActivity](NativeOverviewTagActivity.swift).
 
 ## Verification boundary

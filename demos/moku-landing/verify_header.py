@@ -59,7 +59,7 @@ with native_lease():
         if args.keyboard:
             arguments.append("--keyboard")
         with keyboard_client(replay, args.output) if args.keyboard else nullcontext():
-            status = replay.run(arguments, timeout=60)
+            status = replay.run(arguments, timeout=75 if args.note_swipe or args.status_only else 60)
     finally:
         try:
             replay.export(args.output)

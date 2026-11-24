@@ -4,7 +4,9 @@
 
 Press **⌘K** to open **Overview**. Choose a project folder at the top, or choose **Inbox** for tasks without a project folder. Folders with the same name appear separately. Choose **All** at the top to see work across folders.
 
-When a folder has tags to choose from, they appear in a column on the left. Click a tag to narrow the cards to that topic. A checkmark shows your choice. Click **Any tag** to see the whole folder, including tasks without a tag. Clicking another folder starts with all its tags and keeps your current status filter. If a folder and its only tag show the same cards, selecting the folder is enough.
+When a folder has tags to choose from, look for their emoji along the left edge. Hover over an emoji to see its tag name. Click it to show the matching cards. The selected tag has a small checkmark. When you switch tags, the new tag shows its name for five seconds.
+
+Click the asterisk (`*`) for **Any tag** to see the whole folder, including tasks without a tag. Choosing another folder also starts you at **Any tag** and keeps your current status filter. If a folder and its only tag show the same cards, choosing the folder is enough.
 
 A red number on a folder counts conversations with an unread completed result or Super Thread document across the whole folder. Each tag on the left shows its own unread count. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
@@ -12,13 +14,13 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 ## Filter by status
 
-Choose **Running only**, **All statuses**, or **Completed only** on the right. Overview starts with **All statuses**. A checkmark shows which status applies to the folder or tag you are viewing.
+The three icons on the right filter the cards in your current folder or tag. From top to bottom, click the pulse line for **Running only**, the stacked layers for **All statuses**, or the circled check for **Completed only**. Hover over an icon to see its name. Overview starts with the middle icon selected. Look for a small checkmark in the corner of the selected icon.
 
-You can also swipe up or down with two fingers over the cards or background. Start on the **left half of the window** to change tags, or the **right half** to change status. Swipe up for the choice above and down for the choice below. One swipe moves one choice, even if the pointer crosses the middle. At either end, the selection stays put. When the left column is hidden, swiping there keeps your selection.
+You can also swipe up or down with two fingers over the cards or background. Start on the **left half of the window** to change tags, or the **right half** to change status. Slide your fingers up to select the choice below, or down to select the choice above. From **All statuses**, swiping up takes you to **Completed only**. One swipe moves one choice, even if the pointer crosses the middle. At either end, the selection stays put. When the left column is hidden, swiping there keeps your selection.
 
 **Running only** includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. **Completed only** includes tasks whose latest run finished successfully and have no pending input or background work. It also includes Super Threads and their collections. Completed task cards show when the latest run finished. Super Thread cards show when the document was last updated. Idle tasks and visible interrupted tasks with no ongoing work appear under **All statuses**.
 
-If no cards match, you can still change either filter. For example, if **No running conversations** appears, choose another tag on the left or click **All statuses** on the right. With a mouse wheel, scroll down on the right half to leave an empty **Running only** view, or up there to leave an empty **Completed only** view.
+If no cards match, choose another tag on the left or click the stacked layers on the right to see all statuses for the same tag. With a mouse wheel, scroll up on the right half to leave an empty **Running only** view, or down there to leave an empty **Completed only** view.
 
 ## Move around the canvas
 
