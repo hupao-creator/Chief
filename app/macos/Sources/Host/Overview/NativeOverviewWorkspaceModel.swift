@@ -302,9 +302,9 @@ public final class NativeOverviewWorkspaceModel {
             if up, let first = choices.first { selectRailChoice(first) }
             return
         }
-        guard let index = choices.firstIndex(where: { $0.id == selectedRailID }) else { return }
-        let next = index + (up ? 1 : -1)
-        if choices.indices.contains(next) { selectRailChoice(choices[next]) }
+        guard choices.count > 1, let index = choices.firstIndex(where: { $0.id == selectedRailID }) else { return }
+        let next = (index + (up ? choices.count - 1 : 1)) % choices.count
+        selectRailChoice(choices[next])
     }
 
     func selectRailChoice(_ choice: NativeOverviewRailChoice) {

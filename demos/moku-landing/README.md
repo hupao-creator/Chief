@@ -99,15 +99,22 @@ mounted Agent cards and individual or collected report members at each step.
 Window-addressed AppKit gestures from both halves traverse one left column.
 The mixed-catalog replay steps through the folder's semantic tags and the final
 Running tag, including a switch from a tag with no running tasks to running
-work elsewhere in the folder. It checks endpoints, cross-center contacts,
-system momentum, inverted device deltas, horizontal camera travel, live status
-changes, and reentry to a folder whose sole left choice is empty Running.
+work elsewhere in the folder. On the three-choice rail (Development, Shipping,
+Running), a finger swipe up from Development selects Running, a swipe down
+returns to Development, and another swipe down selects Shipping. The replay
+posts non-inverted events to the window and delivers inverted samples to its
+mounted scroll monitor. Each `rail-swipe` entry records finger direction,
+inversion, signed recognition delta, rail order and observed start and end IDs.
+The replay checks that further contact and momentum events keep the same selection, and
+swipes both ways on a single selected choice and an empty rail. It also checks
+cross-center contacts, inverted device deltas, horizontal camera travel, live
+status changes, and reentry to a folder whose sole left choice is empty Running.
 A catalog delta moves a semantic tag into first place while a semantic tag
 named Running and the last built-in choice retain distinct identities.
 In macOS full screen it swipes on both empty margins and a running card.
 
 Selecting a top-row Inbox tag mounts Running, All statuses and Completed on the
-left. The replay checks their order, window positions, tag-scoped cards and
+left. The replay checks their order, wheel wraparound in both directions, window positions, tag-scoped cards and
 state on entry. It distinguishes an Inbox tag named Inbox from a real directory
 of the same name. It removes and assigns tags while checking retained reader
 and catalog state. A Runtime notice leaves top-row controls clickable.
