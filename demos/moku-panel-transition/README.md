@@ -319,6 +319,31 @@ draft through AppKit marked text. The fixture returns to Overview and rejects
 the earlier send. It checks the exact restored Agent draft and that Overview
 keeps its own draft and focus.
 
+### Overview filters on Report Close
+
+Build the runtime with `python3 tools/e2e/build.py --go ./scripts/go.sh --with-app`.
+The replay runs with normal motion and again with Reduce Motion enabled in the
+replay window. It tags a completed Inbox task, creates a Super Thread and opens
+its related list in a 1280 × 820 pt native workspace. It presses the Report’s
+Close button, returns to Overview, then interrupts another Close by reopening
+the same Report through the workspace. The mounted filter actions must stay
+unavailable during that return and reappear after the final Close.
+
+```sh
+python3 demos/moku-panel-transition/workspace/report_followup.py --tag-return /private/tmp/report-tags
+python3 demos/moku-panel-transition/workspace/check_tag_return.py /private/tmp/report-tags/tag-return
+python3 demos/moku-panel-transition/workspace/check_tag_return.py /private/tmp/report-tags/tag-return-reduced --reduced
+```
+
+The checker uses FFmpeg and NumPy. It compares the left status icon and top tag label with
+their original positions in the same window recording and writes offsets in
+points and relative contrast for every encoded frame to `filter-frames.csv`.
+At rest, both landmarks must be within 1pt of their reference. Normal travel
+requires intermediate positions in each direction, and Reduce Motion keeps the
+landmarks in place whenever their ink is visible.
+The [Overview contract](../../app/macos/Sources/Host/Overview/README.md#tags-and-filter-transitions)
+defines the motion and input handoff.
+
 ### Report identity flip
 
 Build the private runtime and native modules with `tools/e2e/build.py --go ./scripts/go.sh --with-app`.

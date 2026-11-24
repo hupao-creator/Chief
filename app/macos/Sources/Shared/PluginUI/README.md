@@ -1602,10 +1602,11 @@ Report Sidecards opt into the same native host inside `NativeSidecardFold`; thei
 carrier changes opacity only while the fold memo retains its aperture/offset.
 Agent Sidecards do not mount this additional Report host.
 Both carriers use the stack's monotonic start time, duration and Agent return
-curve `(0.3, 0, 0.2, 1)`. Native completion remains generation-fenced. Cancelling
-return removes
-carrier animations and restores its untransformed reader; route unmount retires
-the hosting content. There is one live reader per surface, without a bitmap copy.
+curve `(0.3, 0, 0.2, 1)`. Native completion remains generation-fenced. Cancelling return restores the
+untransformed reader and lets the partially revealed Overview backdrop fade
+back out. Its native host stays drawable until that reversal finishes. A new
+transition supersedes the pending freeze. The [Overview filters](../../Host/Overview/README.md#tags-and-filter-transitions)
+share this return and reversal clock. Route unmount retires the hosting content. There is one live reader per surface, without a bitmap copy.
 No native carrier-return correctness replay is configured for this surface path. See [Report Close](../../../../../design/reading.md)
 for the native-host return and ownership contract.
 

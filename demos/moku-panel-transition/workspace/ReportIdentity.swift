@@ -32,7 +32,9 @@ extension ReportFollowup {
             if reverse {
                 try await wait("Report did not begin closing") { scene.readingPanelReturning }
                 try await Task.sleep(for: .milliseconds(650))
-                guard scene.readingPanelReturning else { throw PluginContractError("Missed in-flight Close") }
+                guard scene.readingPanelReturning, host.messageMotion.parentTravel?.returning != true else {
+                    throw PluginContractError("Overview began returning before the Harness turn ended")
+                }
                 record("reopen Report")
                 host.open(report)
                 try await editorReady()

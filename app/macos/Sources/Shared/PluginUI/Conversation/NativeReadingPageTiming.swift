@@ -9,6 +9,10 @@ public enum NativeReadingPageTiming {
     public static var openingAnimation: Animation {
         .timingCurve(x1, 0, x2, 1, duration: duration)
     }
+    static func openingProgress(at time: Double) -> Double {
+        sample(x1: x1, x2: x2, at: time)
+    }
+
     /// The vertical history replacement curve (see NativeReadingPageStack).
     /// Page-level streaming reuses it so a flushed page enters like a history
     /// page, without driving the full-viewport page stack inline.
