@@ -457,7 +457,7 @@ struct OverviewTagButtonStyle: ButtonStyle {
         let opacity = contrast == .increased || reduceTransparency ? 0.82 : 0.56
         let tint = selected ? OverviewTagTint.color(for: emoji).opacity(opacity) : nil
         let hasSolidAccent = selected && solidAccentSelection
-        let foreground = hasSolidAccent ? AnyShapeStyle(scheme == .dark ? Color.black : .white)
+        let foreground = hasSolidAccent ? AnyShapeStyle(Color.black)
             : AnyShapeStyle(HierarchicalShapeStyle.primary)
         return configuration.label
             .foregroundStyle(foreground)

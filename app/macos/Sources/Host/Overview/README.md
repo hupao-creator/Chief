@@ -374,15 +374,15 @@ of the visible glyph, the tint uses its average luminance as a neutral gray,
 limited to the range 0.30–0.72.
 This keeps the 🏁 status tint neutral. The top folder buttons,
 the Any tag asterisk and glyphs that yield no visible sample use the Overview
-accent (#6D28D9 in light appearance and #A78BFA in dark appearance). The accent
-comes from the app palette for every profile. Tag emoji remain the saved input
+copper accent (#C87856 in light appearance and #E5A384 in dark appearance).
+The accent comes from the app palette for every profile. Tag emoji remain the saved input
 for tag colors, and the displayed emoji keeps its original colors.
 [Emoji tint sampling](NativeOverviewTagTint.swift).
 
 Selected Any tag uses an opaque Overview accent face above its glass, with
-white ink in light appearance and black ink in dark appearance for both the
-asterisk and its title. The face stays opaque with Increased Contrast or Reduce
-Transparency so the cards underneath cannot change the label's contrast.
+black ink for the asterisk and its title in both appearances. The face stays
+opaque with Increased Contrast or Reduce Transparency so the cards underneath
+cannot change the label's contrast.
 The [header glass replay](../../../../../demos/moku-landing/verify_header.py)
 checks the selected accent on a neutral backdrop in both appearances. For
 Any tag it compares sampled face luminance with full-coverage ink, targeting

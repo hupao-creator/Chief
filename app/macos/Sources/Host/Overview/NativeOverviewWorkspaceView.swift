@@ -113,7 +113,7 @@ public struct NativeOverviewWorkspaceView: View {
                             Button(locale.text("重试", "Retry")) {
                                 model.refresh()
                                 model.canvasState.retryLayout()
-                            }.buttonStyle(.plain).foregroundStyle(NativePalette.overview.accent.swiftUI)
+                            }.buttonStyle(.plain).foregroundStyle(NativePalette.overviewAccentText.swiftUI)
                         }.font(NativeTypography.inter(size: 12)).padding(10)
                             .background(NativePalette.overview.surface.swiftUI, in: RoundedRectangle(cornerRadius: 8))
                             .padding(.top, 72)
