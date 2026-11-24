@@ -152,6 +152,36 @@ The `onboarding` suite runs separately from prepared-profile suites, including
 journeys. Onboarding requires a local AX-authorized graphical session. The
 driver records macOS and accessibility settings for that session.
 
+### Onboarding Agent configuration reuse
+
+Use a disposable first-run profile with OpenCode and a second ready Agent.
+Drive the mounted setup controls and observe `onboarding.canContinue` and
+`onboarding.editorReady` through the [interaction socket](../native-interaction/README.md).
+For request attribution, count Runtime entries to `harness:settings-presentation`
+by Harness, execution owner, application setting and refresh flag. A disabled
+confirmation alone cannot establish that a read occurred. These checks concern
+the [onboarding resource contract](../../app/macos/Sources/Host/Onboarding/README.md).
+
+1. On Tag Agent, choose **Configure separately** and select OpenCode. With a
+   delayed first Tag/OpenCode reply, switch to another Agent and back before
+   the reply arrives. Expect one Tag/OpenCode presentation and confirmation
+   gated until the selected catalog and draft are ready.
+2. Within five minutes, choose **Use Chief**, restore the separate settings,
+   go **Back** to Chief and return to Tag. Leave and reactivate the app twice.
+   Expect zero additional Tag/OpenCode presentations for those actions.
+3. Continue to Super Thread, then return to the saved Tag step. Check that
+   the same profile is selected. Change the saved Tag/OpenCode profile from a
+   second client and watch the Tag editor revalidate. Expect a read for its
+   new source and an enabled confirmation after it settles.
+4. Open Super Thread’s separate OpenCode editor. Count its first presentation
+   under `report.settings`. On a failed read, check that the error and retry
+   are accessible and that **Start using Chief** waits for a usable result.
+
+Record the source revisions, build identities, request starts and completions,
+and readiness at each action. Record any injected reply delay or simulated
+activation notification. A simulated notification exercises the mounted handler;
+system focus, rendered frames and native CLI launches require their own observations.
+
 ### Full-surface loading mark
 
 Open the native app with a disposable returning profile. Delay the start of its
