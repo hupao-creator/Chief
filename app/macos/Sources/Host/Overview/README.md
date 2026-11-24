@@ -269,11 +269,12 @@ localized title and tag-switch hint on an opaque surface. A left-half wheel even
 The [status replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
 exercises empty and populated states and both input types.
 
-The outlined right-hand emoji identifies the status, including when the view is empty. The existing plugin cards keep their layout and
-activation. Hover outlines emphasize cards and keyboard focus outlines Agent
-cards. Agent cards show the localized time of the latest successful execution
-from its public `finishedAt` in addition to its duration. Super Threads retain
-their document update time and collection selection.
+The outlined right-hand emoji identifies the status, including when the view is
+empty. Card borders stay the same on pointer hover. In **Completed only**, keyboard
+focus adds a 2pt accent outline to Agent cards. Agent cards show the localized
+time of the latest successful execution from its public `finishedAt` in addition
+to its duration. Super Threads retain their document update time and collection
+selection.
 
 A trackpad contributes its horizontal delta, including native momentum. For
 canvas travel, a line wheel uses its horizontal delta when available and

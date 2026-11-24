@@ -229,7 +229,6 @@ private struct NativeOverviewWorkspaceCard: View {
     @State private var lifetime = PluginLifetime()
     @State private var error: String?
     @State private var archivePending = false
-    @State private var hovered = false
     @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.locale) private var locale
@@ -276,16 +275,13 @@ private struct NativeOverviewWorkspaceCard: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 22))
         .overlay {
-            if completedOnly && (hovered || focused) {
+            if completedOnly && focused {
                 RoundedRectangle(cornerRadius: NativeGeometry.overviewCardRadius)
-                    .strokeBorder(NativePalette.overview.accent.swiftUI.opacity(focused ? 1 : 0.55),
-                                  lineWidth: focused ? 2 : 1)
+                    .strokeBorder(NativePalette.overview.accent.swiftUI, lineWidth: 2)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
             }
         }
-        .onHover { if completedOnly || hovered { hovered = $0 } }
-        .onChange(of: completedOnly) { _, enabled in if !enabled { hovered = false } }
         .background {
             if let request = model.readingSource, model.visibleCardID(for: request.member) == item.id,
                model.sourceCardID(for: request.member) == nil {

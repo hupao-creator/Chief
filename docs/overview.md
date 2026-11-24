@@ -34,7 +34,7 @@ Resize the window to adjust how many cards you can see. Overview arranges cards 
 
 With the input box closed, swipe up over the eyes on Chief Bar to open **Chief Note**. Scroll inside an open note or a long Chief Bar message to read more.
 
-When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or turn the mouse wheel. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. Click a task card, or press Return on a focused task, to open it.
+When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or turn the mouse wheel. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. In **Completed only**, an outline marks the task card with keyboard focus. Click a task card, or press Return on a focused task, to open it.
 
 Overview keeps your place when you close a conversation or Settings. If you widen the window or choose a filter so all the cards fit, Overview centers them. Horizontal swipes and the mouse wheel leave a fitting grid centered. If some columns are still offscreen, you can scroll to the last one.
 
