@@ -377,23 +377,49 @@ private final class WheelSample: NSEvent {
         if !window.isKeyWindow && NSScreen.screens.contains(where: { $0.frame.intersects(window.frame) }) {
             try await focusReplayWindow(window)
         }
-        // A window-addressed AppKit event supplies the native window identity.
-        // Reuse its CGEvent envelope to enqueue a window-local pixel or line scroll.
-        guard let event = NSEvent.mouseEvent(with: .mouseMoved, location: point, modifierFlags: [],
-                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
-                context: nil, eventNumber: 0, clickCount: 0, pressure: 0)?.cgEvent else {
-            throw ReplayError("Cannot address the replay window")
+        guard let content = window.contentView else { throw ReplayError("Scroll target window has no content") }
+        func pixel(_ location: CGPoint) -> CGPoint {
+            let backing = window.convertToBacking(CGRect(origin: location, size: .zero)).origin
+            return CGPoint(x: floor(backing.x), y: floor(backing.y))
         }
-        event.type = .scrollWheel
-        event.flags = flags
-        event.setIntegerValueField(.scrollWheelEventIsContinuous, value: precise ? 1 : 0)
-        event.setIntegerValueField(precise ? .scrollWheelEventPointDeltaAxis1 : .scrollWheelEventDeltaAxis1, value: Int64(y))
-        event.setIntegerValueField(precise ? .scrollWheelEventPointDeltaAxis2 : .scrollWheelEventDeltaAxis2, value: Int64(x))
-        event.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase?.rawValue ?? 0))
-        event.setIntegerValueField(.scrollWheelEventMomentumPhase, value: Int64(momentum.rawValue))
-        guard let sample = NSEvent(cgEvent: event), sample.window === window, sample.locationInWindow == point,
-              sample.hasPreciseScrollingDeltas == precise else { throw ReplayError("Scroll lost its window target or precision") }
-        NSApp.postEvent(sample, atStart: false)
+        func hit(_ location: CGPoint) -> NSView? {
+            content.hitTest(content.superview?.convert(location, from: nil) ?? location)
+        }
+        let targetPixel = pixel(point)
+        let center = window.convertFromBacking(CGRect(x: targetPixel.x + 0.5, y: targetPixel.y + 0.5, width: 0, height: 0)).origin
+        let targetHit = hit(point)
+        guard hit(center) === targetHit else { throw ReplayError("Backing pixel center changed the scroll responder at \(point)") }
+        // AppKit converts this envelope via screen coordinates. Fractional positions
+        // can round across a pixel edge, and a moving window can still have a stale
+        // presentation transform. Construct locally until it addresses the same hit.
+        let deadline = ContinuousClock.now + .seconds(1)
+        while true {
+            guard let event = NSEvent.mouseEvent(with: .mouseMoved, location: center, modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                    context: nil, eventNumber: 0, clickCount: 0, pressure: 0)?.cgEvent else {
+                throw ReplayError("Cannot address the replay window")
+            }
+            event.type = .scrollWheel
+            event.flags = flags
+            event.setIntegerValueField(.scrollWheelEventIsContinuous, value: precise ? 1 : 0)
+            event.setIntegerValueField(precise ? .scrollWheelEventPointDeltaAxis1 : .scrollWheelEventDeltaAxis1, value: Int64(y))
+            event.setIntegerValueField(precise ? .scrollWheelEventPointDeltaAxis2 : .scrollWheelEventDeltaAxis2, value: Int64(x))
+            event.setIntegerValueField(.scrollWheelEventScrollPhase, value: Int64(phase?.rawValue ?? 0))
+            event.setIntegerValueField(.scrollWheelEventMomentumPhase, value: Int64(momentum.rawValue))
+            guard let sample = NSEvent(cgEvent: event) else { throw ReplayError("Cannot decode window scroll event") }
+            guard sample.window === window, sample.hasPreciseScrollingDeltas == precise else {
+                throw ReplayError("Scroll window=\(sample.windowNumber)/\(window.windowNumber), precise=\(sample.hasPreciseScrollingDeltas)/\(precise)")
+            }
+            let delivered = sample.locationInWindow
+            if pixel(delivered) == targetPixel, hit(delivered) === targetHit {
+                NSApp.postEvent(sample, atStart: false)
+                break
+            }
+            guard ContinuousClock.now < deadline else {
+                throw ReplayError("Scroll at \(point) in \(window.frame) targeted pixel \(pixel(delivered))/\(targetPixel), hit=\(String(describing: hit(delivered)))/\(String(describing: targetHit))")
+            }
+            try await Task.sleep(for: .milliseconds(16))
+        }
         try await Task.sleep(for: .milliseconds(55))
     }
 

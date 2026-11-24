@@ -28,7 +28,8 @@ The JSON records rendered filter bounds, native window button centers and
 hit tests, and whether a window-local click in the upper part of the
 Settings button opens Settings in both actual-size windows. It also records
 header exclusion, precise diagonal input, vertical-only input, native momentum
-phases, mouse wheel bounds and Settings input ownership. An 18-task fixture
+phases, mouse wheel bounds and Settings input ownership. Before posting a synthetic scroll, the replay checks that AppKit
+decodes the intended window, backing pixel, hit view and scroll precision. An 18-task fixture
 also exercises blank-space drags and clicks, a mouse click on a newly reached
 card, reader return, insertion and deletion. The drags start in the blank area
 beyond the trailing and bottom card edges. The receipt `overview-scroll.json`
