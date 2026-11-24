@@ -4,20 +4,20 @@ import SwiftUI
 struct NativeOverviewStatusEmptyState: View {
     let title: String
     let scrollHint: String
-    let up: Bool
+    let isCompleted: Bool
     private let palette = NativePalette.overview
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: NativeGeometry.overviewCardRadius)
         VStack(spacing: 8) {
-            NativeOverviewIdleMark(identifier: up ? "overview.completed.logo" : "overview.idle")
+            NativeOverviewIdleMark(identifier: isCompleted ? "overview.completed.logo" : "overview.idle")
                 .accessibilityHidden(true)
             VStack(spacing: 3) {
                 Text(title)
                     .font(NativeTypography.inter(size: 15, weight: 650))
                     .foregroundStyle(palette.ink.swiftUI)
                 HStack(spacing: 5) {
-                    NativeIcon(name: up ? "ArrowUp" : "ArrowDown", size: 13)
+                    NativeIcon(name: isCompleted ? "ArrowDown" : "ArrowUp", size: 13)
                     Text(scrollHint)
                 }
                 .font(NativeTypography.inter(size: 12, weight: 520))
@@ -40,7 +40,7 @@ struct NativeOverviewStatusEmptyState: View {
         }
         .overlay { shape.strokeBorder(palette.line.swiftUI.opacity(0.7), lineWidth: 1) }
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(up ? "overview.completed.empty" : "overview.running.empty")
+        .accessibilityIdentifier(isCompleted ? "overview.completed.empty" : "overview.running.empty")
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .allowsHitTesting(false)

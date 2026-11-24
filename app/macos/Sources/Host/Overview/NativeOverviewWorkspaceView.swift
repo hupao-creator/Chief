@@ -92,7 +92,7 @@ public struct NativeOverviewWorkspaceView: View {
                     .accessibilityHidden(landing)
                 if !landing && model.content.isEmpty && model.error == nil {
                     if model.statusFilter != .all {
-                        NativeOverviewStatusEmptyState(title: emptyTitle, scrollHint: emptyDetail, up: model.statusFilter == .completed)
+                        NativeOverviewStatusEmptyState(title: emptyTitle, scrollHint: emptyDetail, isCompleted: model.statusFilter == .completed)
                     } else {
                         NativeOverviewEmptyState(title: emptyTitle, detail: emptyDetail)
                     }
