@@ -46,13 +46,15 @@ After a successful removal, the checkout folder is gone. The task conversation s
 
 ## Find Chief's replies and notes
 
-In Overview, swipe up with two fingers over Chief’s eyes to open **Conversation with Chief**. Your messages appear on the right and Chief’s replies on the left, oldest first. The panel opens at the latest messages. Scroll up to read earlier ones. If you reach **Earlier messages**, click it to turn back a page. **Newer messages** takes you forward again.
+In Overview, swipe up with two fingers over Chief’s eyes to read your conversation. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see the time beside each message, swipe left in the conversation and hold. Release to tuck the times away.
 
-Use the input at the bottom to continue the conversation. A draft you started in the compact bar is already there. Press **Return** or click **Send**. The panel stays open for Chief’s reply. Click **×** to close it.
+The panel opens at the latest messages. Scroll up to read earlier ones. At the top of a page, **Earlier messages** takes you further back. **Newer messages** at the bottom takes you forward.
+
+Use the input at the bottom to reply. A draft you started in the compact bar is already there. Press **Return** or click **Send**. The panel stays open for Chief’s reply. Press **Esc** or click outside the bar to close it and keep your draft.
 
 You can revisit these messages after restarting Chief in the same profile, including saved exchanges with a previous coordinating agent. A message can be recovered as long as Chief still has its conversation record. Clearing the history removes those exchanges. Messages you sent directly to a task stay in that task’s conversation.
 
-- **Replies.** Chief also shows its latest reply briefly on the compact bar. You can select the text, scroll through a longer reply, or read it later in **Conversation with Chief**.
+- **Replies.** Chief also shows its latest reply briefly on the compact bar. You can select the text, scroll through a longer reply, or swipe up to read it again.
 - **Task updates.** Watch the bar for **Dispatching task**. **Thread started** means the task is ready to open. If the handoff fails, the bar shows **Dispatch failed**. Open the task card in Overview to see how the work is going.
 - **Notes.** In Overview, right-click Chief Bar with the input box closed to open **Chief Note**. You can also press **⌘⇧N**. Click the eyes centered below the note to start a message, or click a run’s link to read it. The note closes. If the conversation or its Super Thread is outside your selected folder or tag, Overview switches to a matching view before the reader opens. If the conversation belongs to exactly one Super Thread, its card opens with the run you clicked in **Related executions**. If its collection is visible, it turns to that Super Thread’s page first. Other links open the cited run in the task conversation. In both readers, you start at the top of the run. Click the **×** at the top left of the reader or press **⌘K** to return to Overview with the note closed. To resume the note from a task conversation, press **Esc** in the run you opened. In a Super Thread, you can use **Back to related executions** to browse other runs before closing the report. To reopen the note from Overview, right-click Chief Bar again.
 

@@ -317,6 +317,7 @@ public struct NativeMokuDock: View {
         state.conversationOpen && composerVisible && threadID == nil && !state.readingPanelVisible
             && presentation?.workspace.catalog.moku != nil
     }
+    private var capsuleScheme: ColorScheme { conversationVisible ? workspaceColorScheme : .dark }
     private var composerCanFocus: Bool {
         state.inputInteractionReady && state.dockRouteVisible && state.inputOpen && !state.dockCovered
     }
@@ -711,7 +712,7 @@ public struct NativeMokuDock: View {
         }
         // Keep the override local: a preferredColorScheme would also recolor
         // the containing workspace window and its other application surfaces.
-        .environment(\.colorScheme, .dark)
+        .environment(\.colorScheme, capsuleScheme)
     }
 
     private func timerSurface(in viewport: CGRect) -> CGRect {
@@ -845,7 +846,7 @@ public struct NativeMokuDock: View {
             // Settings covers the Dock but keeps the face on screen in the page's
             // header, so its blink and expression keep their clock.
             motion: scenePhase == .active && state.windowVisible && (!state.dockCovered || state.settingsOpen),
-            dark: !state.settingsExpanded || workspaceColorScheme == .dark, immediateOrbit: threadID != nil)
+            dark: (state.settingsExpanded ? workspaceColorScheme : capsuleScheme) == .dark, immediateOrbit: threadID != nil)
         return Color.clear
         .frame(width: sizesRow ? nil : surface.width, height: sizesRow ? nil : surface.height)
         .overlay(alignment: .bottom) {
@@ -891,7 +892,7 @@ public struct NativeMokuDock: View {
         }
         .overlay(alignment: .top) {
             if conversationVisible, let workspace = presentation?.workspace, let owner = workspace.catalog.moku?.id {
-                NativeMokuConversation(client: workspace.client, owner: owner, close: state.closeConversation)
+                NativeMokuConversation(client: workspace.client, owner: owner)
                     .id(owner)
                     .frame(width: width, height: max(0, surface.height - rowHeight))
                     .transition(.opacity)
@@ -1046,7 +1047,8 @@ public struct NativeMokuDock: View {
         }
         .background {
             ZStack {
-                NativeMokuCapsuleGlass(regular: noteExpanded || conversationVisible).opacity(state.settingsExpanded ? 0 : 1)
+                NativeMokuCapsuleGlass(regular: noteExpanded || conversationVisible, appearance: capsuleScheme)
+                    .opacity(state.settingsExpanded ? 0 : 1)
                 if state.settingsOpen {
                     NativeSettingsPanelBackground()
                         .environment(\.colorScheme, workspaceColorScheme)

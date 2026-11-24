@@ -33,7 +33,8 @@ def run(binary, output):
     session = Session(binary, output, uuid.uuid4().hex, event)
     replay = NativeReplay(ROOT, "ChiefConversationReplay", "com.chief.conversation-replay." + uuid.uuid4().hex)
     messages = ["Please review the release notes.", "I’ll check the notes against the latest changes.",
-                "Which section needs my attention?", "The upgrade instructions are ready for your review."]
+                "Which section needs my attention?", "The upgrade instructions are ready for your review.",
+                "Start with the install step."]
     attachment = "upgrade-preview.png"
     try:
         replay.compile([HERE / "NestedHeaderReplay.swift", HERE / "FilterFacePixels.swift"])
@@ -60,7 +61,8 @@ def run(binary, output):
             create = find_tool(tools, "create_thread")
             calls = [("review", create, peer.creation_arguments(1), messages[0]),
                      ("first", talk, {"text": messages[1]}, messages[0]),
-                     ("second", talk, {"text": messages[3]}, messages[2])]
+                     ("second", talk, {"text": messages[3]}, messages[2]),
+                     ("detail", talk, {"text": messages[4]}, messages[2])]
             for key, tool, args, trigger in calls:
                 if trigger in inputs and key not in called:
                     called.add(key)
@@ -87,9 +89,9 @@ def run(binary, output):
             if status or not receipt.exists():
                 raise RuntimeError(f"{stage} replay did not finish: " + (replay.root / "stdout.log").read_text()[-1500:])
             rows = page()
-            if [r["text"] for r in rows] != messages or [r["role"] for r in rows] != ["user", "chief"] * 2:
+            if [r["text"] for r in rows] != messages or [r["role"] for r in rows] != ["user", "chief", "user", "chief", "chief"]:
                 raise AssertionError("Persistent conversation differs from the submitted messages and acknowledged Talks")
-            if [r.get("attachments", []) for r in rows] != [[], [], [attachment], []]:
+            if [r.get("attachments", []) for r in rows] != [[], [], [attachment], [], []]:
                 raise AssertionError("The attachment name did not follow its submitted message")
             ids = [r["id"] for r in rows]
             if len(set(ids)) != len(ids) or [r["createdAt"] for r in rows] != sorted(r["createdAt"] for r in rows):

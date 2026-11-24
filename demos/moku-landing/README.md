@@ -82,7 +82,9 @@ python3 tools/e2e/build.py --go ./scripts/go.sh --with-app
 python3 demos/moku-landing/verify_conversation.py --output .build/chief-conversation
 ```
 
-The first native visit checks previously submitted messages and keyboard focus, types into the mounted editor, stages a PNG from disk and sends with Return. It observes the accepted text and filename, the peer’s successful Talk, and an unsent draft after closing and reopening. A second App and Runtime process reopen the same profile. Both visits compare mounted accessibility labels with the expected ordered dialogue, record a window screenshot and compare independent public content reads. The capture uses window-addressed AppKit input. Physical trackpad hardware and a remote model service have separate evidence boundaries.
+The first native visit checks previously submitted messages and keyboard focus, types into the mounted editor, stages a PNG from disk and sends with Return. It observes the accepted text and filename, two consecutive Talk replies, and the unsent draft after closing and reopening. A second App and Runtime process reopen the same profile. Both visits compare ordered accessibility labels, individual dates and public content reads. Window screenshots show the resting bubbles and a held left swipe in dark and light appearances. The corresponding MP4s record the timestamps appearing and retracting. Escape dismisses the panel with its draft intact.
+
+The Note-click scenario also opens cached conversation pages in the production Dock. It crosses midnight and a 15-minute gap, captures the three centered date headings in `conversation-periods.png` and clicks both page controls. On the longer page it scrolls up, reveals the times and verifies that releasing the gesture restores the horizontal origin and preserves the vertical reading position. These replays use window-addressed AppKit events. Physical trackpad hardware and a remote model service have separate evidence boundaries.
 
 Use `--status-only` in place of `--note-click` to run the mixed catalog scenario
 independently. It mounts the [production Overview](../../app/macos/Sources/Host/Overview/README.md)

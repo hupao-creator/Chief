@@ -280,22 +280,14 @@ private final class WheelSample: NSEvent {
             try await postScroll(window, point, y: 0, phase: .ended)
             try await wait("Swipe did not open conversation") { scene.conversationOpen && scene.inputOpen && !scene.notePanelOpen }
         }
+        func spokenRows() -> [String] {
+            conversationElements(in: window).filter { $0.id == "moku-conversation-message" }.map { $0.label.isEmpty ? $0.value : $0.label }
+        }
         func labels() -> [String] {
-            var found = [String]()
-            func visit(_ node: NSObject) {
-                if node.responds(to: NSSelectorFromString("accessibilityLabel")),
-                   let label = node.value(forKey: "accessibilityLabel") as? String,
-                   label.hasPrefix("You, ") || label.hasPrefix("Chief, ") { found.append(label) }
-                if node.responds(to: NSSelectorFromString("accessibilityChildren")),
-                   let children = node.value(forKey: "accessibilityChildren") as? [NSObject] {
-                    for child in children { visit(child) }
-                }
-            }
-            visit(window)
-            return found
+            spokenRows().map { $0.components(separatedBy: " — ")[0] }
         }
         let expected = fixture.messages.enumerated().map { index, text in
-            (index.isMultiple(of: 2) ? "You, " : "Chief, ") + text + (index == 2 ? ", " + fixture.attachment : "")
+            (index == 0 || index == 2 ? "You, " : "Chief, ") + text + (index == 2 ? ", " + fixture.attachment : "")
         }
         try await swipe()
         let initial = restart ? expected : Array(expected.prefix(2))
@@ -326,10 +318,86 @@ private final class WheelSample: NSEvent {
         }
         try await Task.sleep(for: .milliseconds(500))
         try await capture(window, to: evidence.appending(path: "conversation-" + stage + ".png"))
+        let elements = conversationElements(in: window)
+        let periods = elements.filter { $0.id == "moku-conversation-period" }
+        guard periods.count == 1, !elements.contains(where: {
+            ($0.role == "AXStaticText" && [$0.label, $0.value].contains("Conversation with Chief"))
+                || ($0.role == "AXButton" && $0.label == "Close conversation")
+        }), spokenRows().allSatisfy({ $0.components(separatedBy: " — ").last?.contains(":") == true }) else {
+            throw ReplayError("Unexpected date groups, heading, close control or accessible dates: \(elements)")
+        }
+        let bar = scene.capsuleFrame
+        let point = monitor.windowPoint(CGPoint(x: bar.midX, y: bar.minY + bar.height * 0.4))
+        let timeline = try await conversationScroller(in: content, at: point)
+        var held: CGFloat = 0
+        try await recordWindow(window, to: evidence.appending(path: "conversation-times-" + stage + ".mp4")) {
+            try await Task.sleep(for: .milliseconds(300))
+            held = try await revealTimes(window, at: point, timeline: timeline,
+                                         captureTo: evidence.appending(path: "conversation-times-" + stage + ".png"))
+            try await Task.sleep(for: .milliseconds(400))
+        }
         let observed: [String: Any] = ["rows": labels(), "draft": presentation.dockDraft.text,
-                                       "conversationOpen": scene.conversationOpen, "noteOpen": scene.notePanelOpen]
+            "conversationOpen": scene.conversationOpen, "noteOpen": scene.notePanelOpen,
+            "period": periods[0].value, "timestampsHeldPoints": held, "timestampsReleasedPoints": timeline.contentView.bounds.minX]
+        try await pressKey("\u{1b}", code: 53, in: window)
+        try await wait("Escape did not close the headerless conversation") { !scene.conversationOpen }
+        guard presentation.dockDraft.text == fixture.draft else { throw ReplayError("Escape discarded the draft") }
         try JSONSerialization.data(withJSONObject: observed, options: [.prettyPrinted, .sortedKeys])
             .write(to: evidence.appending(path: "conversation-" + stage + ".json"))
+    }
+
+    private func conversationScroller(in content: NSView, at point: CGPoint) async throws -> NSScrollView {
+        let deadline = ContinuousClock.now + .seconds(3)
+        while true {
+            var candidates = [String]()
+            if let timeline = descendant(NSScrollView.self, in: content, matching: { view in
+                let rect = view.convert(view.bounds, to: nil)
+                let width = view.documentView?.bounds.width ?? 0
+                candidates.append("\(rect)/\(width)/\(view.contentView.bounds)")
+                return rect.contains(point) && width > view.contentView.bounds.width + 40
+            }) { return timeline }
+            guard ContinuousClock.now < deadline else { throw ReplayError("Missing conversation scroller at \(point) in \(candidates)") }
+            try await Task.sleep(for: .milliseconds(40))
+        }
+    }
+
+    private func revealTimes(_ window: NSWindow, at point: CGPoint, timeline: NSScrollView, captureTo url: URL? = nil) async throws -> CGFloat {
+        let before = timeline.contentView.bounds.origin
+        try await postScroll(window, point, y: 0, phase: .began, x: -32)
+        try await postScroll(window, point, y: 0, phase: .changed, x: -46)
+        let held = timeline.contentView.bounds.origin
+        guard before.x < 1, held.x > 50, abs(before.y - held.y) < 1 else {
+            throw ReplayError("Holding a left swipe did not reveal times in place: \(before) → \(held)")
+        }
+        if let url {
+            try await Task.sleep(for: .milliseconds(350))
+            try await capture(window, to: url)
+        }
+        try await postScroll(window, point, y: 0, phase: .ended)
+        let deadline = ContinuousClock.now + .seconds(3)
+        while abs(timeline.contentView.bounds.minX) >= 1 {
+            guard ContinuousClock.now < deadline else { throw ReplayError("Lifting did not hide timestamps") }
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        guard abs(before.y - timeline.contentView.bounds.minY) < 1 else {
+            throw ReplayError("Releasing timestamps moved the transcript vertically: \(before) → \(held) → \(timeline.contentView.bounds.origin)")
+        }
+        return held.x
+    }
+
+    private func conversationElements(in window: NSWindow) -> [(id: String, role: String, label: String, value: String, frame: CGRect)] {
+        var found = [(String, String, String, String, CGRect)]()
+        func visit(_ node: NSObject) {
+            func attribute(_ key: String) -> Any? {
+                node.responds(to: NSSelectorFromString(key)) ? node.value(forKey: key) : nil
+            }
+            found.append((attribute("accessibilityIdentifier") as? String ?? "", attribute("accessibilityRole") as? String ?? "",
+                          attribute("accessibilityLabel") as? String ?? attribute("accessibilityTitle") as? String ?? "",
+                          attribute("accessibilityValue") as? String ?? "", (attribute("accessibilityFrame") as? NSValue)?.rectValue ?? .zero))
+            for child in attribute("accessibilityChildren") as? [NSObject] ?? [] { visit(child) }
+        }
+        visit(window)
+        return found
     }
 
     private func focusReplayWindow(_ window: NSWindow) async throws {
@@ -409,7 +477,7 @@ private final class WheelSample: NSEvent {
     }
 
     private func pressKey(_ text: String, code: UInt16, in window: NSWindow) async throws {
-        let flags: NSEvent.ModifierFlags = code == 36 ? [] : [.numericPad, .function]
+        let flags: NSEvent.ModifierFlags = code == 36 || code == 53 ? [] : [.numericPad, .function]
         for type in [NSEvent.EventType.keyDown, .keyUp] {
             guard let event = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags,
                 timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
@@ -617,6 +685,23 @@ private final class WheelSample: NSEvent {
             try cache.saveContent(state([.object(turn)]), thread: thread, scope: .turn(key: JSONText("turn:" + run)))
         }
         try cache.saveContent(state(turns), thread: thread, scope: .thread)
+    }
+
+    private func cacheConversationPages() throws {
+        let cache = RuntimeOfflineStore(storageDirectory: workspace.client.storageDirectory, hostID: nil)
+        let midnight = Int(Calendar.current.startOfDay(for: Date()).timeIntervalSince1970)
+        func row(_ text: String, _ seconds: Int, user: Bool) -> JSONValue {
+            .object(["id": .text("message-\(seconds)"), "text": .text(text), "createdAt": .integer((midnight + seconds) * 1000),
+                     "role": .text(user ? "user" : "chief")])
+        }
+        let rows = [row("Can we finish this tomorrow?", -120, user: true), row("One more thing.", -60, user: true),
+                    row("I saved the notes.", 60, user: false), row("Ready to continue?", 959, user: false),
+                    row("Let’s send them.", 1859, user: true)]
+        try cache.saveContent(.object(["messages": .array(rows), "before": .text("message--120")]),
+                              thread: "moku", scope: .mokuConversation(before: nil))
+        let earlier = (1...20).map { index in row("Earlier plan \(index)", -7200 + index * 60, user: false) }
+        try cache.saveContent(.object(["messages": .array(earlier)]),
+                              thread: "moku", scope: .mokuConversation(before: "message--120"))
     }
 
     private func noteLinks(_ window: NSWindow, directory: URL, authority: UUID) async throws {
@@ -838,6 +923,7 @@ private final class WheelSample: NSEvent {
               !scene.notePanelOpen else { throw ReplayError("The overflowing tags lost horizontal scrolling") }
 
         let beforeOpen = scene.noteOpenGeneration
+        try cacheConversationPages()
         try await postScroll(window, barPoint, y: 10, phase: .began)
         guard !scene.conversationOpen else { throw ReplayError("A subthreshold contact opened the conversation") }
         try await postScroll(window, barPoint, y: 30, phase: .changed)
@@ -849,6 +935,40 @@ private final class WheelSample: NSEvent {
             throw ReplayError("The Bar swipe did not open the conversation directly")
         }
         try await Task.sleep(for: .milliseconds(650))
+        let page = conversationElements(in: window)
+        let periods = page.filter { $0.id == "moku-conversation-period" }
+        guard let shell = page.first(where: { $0.id == "moku-capsule" })?.frame, periods.count == 3,
+              periods.allSatisfy({ abs($0.frame.midX - shell.midX) < 1.5 }),
+              page.filter({ $0.id == "moku-conversation-message" }).allSatisfy({
+                  $0.frame.minX >= shell.minX + 10 && $0.frame.maxX <= shell.maxX - 10
+              }) else { throw ReplayError("Messages or date headings did not fit the capsule: \(page)") }
+        try await capture(window, to: directory.appending(path: "conversation-periods.png"))
+        for (button, message) in [("moku-conversation-earlier", "Earlier plan 20"), ("moku-conversation-newer", "Let’s send them.")] {
+            guard let pageButton = conversationElements(in: window).first(where: {
+                $0.role == "AXButton" && $0.id == button
+            }) else { throw ReplayError("Missing \(button) in the conversation timeline") }
+            try await postClick(window, at: window.convertPoint(fromScreen: CGPoint(x: pageButton.frame.midX, y: pageButton.frame.midY)))
+            let pageDeadline = ContinuousClock.now + .seconds(3)
+            while !conversationElements(in: window).contains(where: {
+                $0.id == "moku-conversation-message" && ($0.label + $0.value).contains(", " + message + " — ")
+            }) {
+                guard ContinuousClock.now < pageDeadline else { throw ReplayError("Could not read \(message) via \(button)") }
+                try await Task.sleep(for: .milliseconds(40))
+            }
+            if button == "moku-conversation-earlier" {
+                let point = monitor.windowPoint(center(scene.capsuleFrame))
+                let timeline = try await conversationScroller(in: content, at: point)
+                let bottom = timeline.contentView.bounds.minY
+                try await postScroll(window, point, y: 120, phase: .began)
+                try await postScroll(window, point, y: 0, phase: .ended)
+                guard timeline.contentView.bounds.minY > 20, timeline.contentView.bounds.minY < bottom - 20 else {
+                    throw ReplayError("Could not scroll up from the latest cached message: \(bottom) → \(timeline.contentView.bounds.minY)")
+                }
+                _ = try await revealTimes(window, at: point, timeline: timeline)
+                try await postScroll(window, point, y: -160, phase: .began)
+                try await postScroll(window, point, y: 0, phase: .ended)
+            }
+        }
         guard let field = descendant(NSTextView.self, in: content, matching: { $0.isEditable && !$0.isHiddenOrHasHiddenAncestor }),
               window.makeFirstResponder(field) else { throw ReplayError("Missing conversation editor") }
         let draft = "Please check the release notes."
@@ -930,7 +1050,7 @@ private final class WheelSample: NSEvent {
         }
         try JSONSerialization.data(withJSONObject: ["regions": targets.map { $0.0 },
             "rightClickOpenedNoteOnce": true, "swipeOpenedConversation": true, "backgroundRightClickOpenedNote": false,
-            "conversationDraftRestoredInCompose": true,
+            "conversationDraftRestoredInCompose": true, "conversationPeriodCount": periods.count, "conversationPaging": true,
             "outsideClickClosedNote": true, "primaryClickOpenedCompose": true,
             "horizontalScroll": true, "composerScrollExcluded": true, "settingsScrollExcluded": true,
             "tagOffsets": [tagOffset, tags.contentView.bounds.minX], "noteOffsets": [original, scrolled],

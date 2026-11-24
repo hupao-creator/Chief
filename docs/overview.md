@@ -34,7 +34,7 @@ When no cards match **Running** or **Completed**, you’ll see Chief’s sleepin
 
 Resize the window to adjust how many cards you can see. Overview arranges cards across the window and centers them vertically. The folder and tag buttons at the top have a frosted glass background. The clear glass buttons on the left and right float over the cards. With **Reduce transparency** turned on in macOS, the filters have a solid background. Click a filter to select it, or click the visible part of a card between filters to open it. A wide task card can appear between two taller cards when there’s room for it there. Opening the Chief input box keeps the cards in place.
 
-Swipe up with two fingers over Chief’s eyes to read your messages and reply in **Conversation with Chief**. With the input box closed, right-click Chief Bar to open **Chief Note**. You can also use your trackpad’s secondary click or Control-click the bar. Scroll inside an open note or a long Chief Bar message to read more.
+Swipe up with two fingers over Chief’s eyes to read your conversation with Chief and reply. With the input box closed, right-click Chief Bar to open **Chief Note**. You can also use your trackpad’s secondary click or Control-click the bar. Scroll inside an open note or a long Chief Bar message to read more.
 
 When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or turn the mouse wheel. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. In **Completed**, an outline marks the task card with keyboard focus. Click a task card, or press Return on a focused task, to open it.
 
