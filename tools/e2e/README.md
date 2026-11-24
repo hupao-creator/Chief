@@ -473,15 +473,18 @@ that version is displayed. Keep the window captures and profile receipt set
 for each step. Also check the red count on each containing tag before and after
 opening a bookmarked card, including a shared child tag, a covered execution
 and a Report collection. Selecting a tag preserves the count. When its last
-unread version is acknowledged, the number disappears while the selected
-border stays visible. With an active member in the same tag, check that its
+unread version is acknowledged, the number disappears and the selected
+glass keeps its tint. With an active member in the same tag, check that its
 perforated activity indicator also remains visible after the unread count clears.
-Choose a directory at normal window scale. Capture a tag's unread badge on its
-compact emoji, while hovering to reveal its name, and when it contracts. Check
-that the complete white digits and red capsule remain visible above the glass. Switch folders rapidly and change a
-tag's unread count while its title is visible, including to zero. Check the
-selected folder's count in the top bar and each visible tag's count in the left
-column. Repeat with Reduce Motion. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)
+Choose a directory at normal window scale. Select a tag with an unread count
+and move the pointer away. After its five-second title has closed, capture
+the compact tag, hover to reveal its title, then move away and capture it
+during contraction. The selected tint should fill the button at each width and
+the complete red badge should stay at its upper trailing corner. Try a short
+name and one long enough to truncate. Switch folders rapidly and change a tag's
+unread count while its title is visible, including to zero. Check the selected
+folder's count in the top bar and each visible tag's count in the left column.
+Repeat with Reduce Motion. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)
 
 ### Agent reader alignment
 

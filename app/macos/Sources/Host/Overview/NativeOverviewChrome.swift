@@ -147,15 +147,11 @@ public struct NativeOverviewChrome: View {
 
     private func filtersBar(maximumWidth: CGFloat) -> some View {
         filterButtons(maximumWidth: maximumWidth)
-            .clipShape(Capsule())
             .overlayPreferenceValue(OverviewTagBounds.self) { anchors in
                 GeometryReader { reader in
-                    if selectedTag.isEmpty, let all = anchors["__all__"] {
-                        OverviewSelectionOutline(bounds: reader[all])
-                    }
                     if let scroll = anchors["__scroll__"] {
                         let viewport = reader[scroll]
-                        directoryDecorations(presentedFilters, anchors: anchors, reader: reader, viewport: viewport)
+                        unreadBadges(presentedFilters, anchors: anchors, reader: reader, viewport: viewport)
                         ForEach(presentedFilters) { filter in
                             if let anchor = anchors[filter.id], reader[anchor].intersects(viewport) {
                                 Color.clear.frame(width: 0, height: 0)
@@ -173,18 +169,15 @@ public struct NativeOverviewChrome: View {
             .accessibilityLabel(strings.filter)
     }
 
-    // Draw the selection and unread ink after the glass pass and clip both at the scroll viewport.
-    private func directoryDecorations(_ filters: [NativeOverviewFilter], anchors: [String: Anchor<CGRect>],
-                                      reader: GeometryProxy, viewport: CGRect) -> some View {
+    // Place unread counts above the glass and keep them inside the horizontal viewport.
+    private func unreadBadges(_ filters: [NativeOverviewFilter], anchors: [String: Anchor<CGRect>],
+                              reader: GeometryProxy, viewport: CGRect) -> some View {
         let clip = viewport.insetBy(dx: 0, dy: -4)
         return ZStack(alignment: .topLeading) {
             ForEach(filters) { filter in
                 let count = filter.unreadCount
                 let chip = anchors[filter.id].map { reader[$0] } ?? .zero
                 let visible = count > 0 && !chip.isEmpty
-                if isActive(filter), !chip.isEmpty {
-                    OverviewSelectionOutline(bounds: chip.offsetBy(dx: -clip.minX, dy: -clip.minY))
-                }
                 ZStack {
                     if visible {
                         OverviewTagUnreadBadge(count: count)
@@ -210,7 +203,7 @@ public struct NativeOverviewChrome: View {
     private var tagEntryAnimation: Animation? { reduceMotion ? nil : .smooth(duration: 0.22, extraBounce: 0) }
 
     private func filterButtons(maximumWidth: CGFloat) -> some View {
-        HStack(spacing: OverviewTagMetrics.spacing) {
+        HStack(spacing: OverviewTagMetrics.directorySpacing) {
             Button {
                 onTagChange(nil)
             } label: {
@@ -220,19 +213,20 @@ public struct NativeOverviewChrome: View {
                 .padding(.horizontal, OverviewTagMetrics.chipLabelInset)
                 .frame(height: OverviewTagMetrics.chipHeight)
             }
-            .buttonStyle(OverviewTagButtonStyle())
+            .buttonStyle(OverviewTagButtonStyle(glass: .regular, selected: selectedTag.isEmpty))
             .overviewTagAnchor("__all__")
             .accessibilityIdentifier("overview-directory-all")
             .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .directory, id: "all", action: { onTagChange(nil) }))
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measuredAllWidth = $0 }
             .accessibilityAddTraits(selectedTag.isEmpty ? .isSelected : [])
             .accessibilityValue(Text(allHasActiveTasks ? strings.containsActiveTasks : ""))
-            OverviewHorizontalScroll(interactions: interactions, owner: interactionOwner, ids: presentedFilters.map(\.id)) {
+            OverviewHorizontalScroll(interactions: interactions, owner: interactionOwner, ids: presentedFilters.map(\.id),
+                                     overflows: naturalFilterWidth > maximumWidth) {
                 // Keep the effect container inside the scroll viewport. A
                 // container outside it can draw captured labels beyond its clip.
                 GlassEffectContainer(spacing: OverviewTagMetrics.spacing) {
                     scrollingTagButtons(maximumButtonWidth: max(0, maximumWidth - measuredAllWidth
-                        - OverviewTagMetrics.barInset * 2 - OverviewTagMetrics.spacing))
+                        - OverviewTagMetrics.barInset * 2 - OverviewTagMetrics.directorySpacing))
                 }
             }
             .frame(height: OverviewTagMetrics.chipHeight)
@@ -242,7 +236,7 @@ public struct NativeOverviewChrome: View {
     }
 
     private func scrollingTagButtons(maximumButtonWidth: CGFloat) -> some View {
-        HStack(spacing: OverviewTagMetrics.spacing) {
+        HStack(spacing: OverviewTagMetrics.directorySpacing) {
             ForEach(presentedFilters) { filter in
                 let active = isActive(filter)
                 let activitySuffix = filter.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
@@ -266,7 +260,8 @@ public struct NativeOverviewChrome: View {
                     .frame(height: OverviewTagMetrics.chipHeight)
                     .frame(maxWidth: maximumButtonWidth)
                 }
-                .buttonStyle(OverviewTagButtonStyle())
+                .buttonStyle(OverviewTagButtonStyle(glass: .regular, selected: active,
+                                                    emoji: filter.isDirectory ? nil : filter.emoji))
                 .glassEffectID(filter.id, in: tagGlass)
                 .glassEffectTransition(.matchedGeometry)
                 .overviewTagAnchor(filter.id)
@@ -288,7 +283,7 @@ public struct NativeOverviewChrome: View {
 
     private var naturalFilterWidth: CGFloat {
         measuredAllWidth > 0 && measuredTagsWidth > 0
-            ? measuredAllWidth + measuredTagsWidth + OverviewTagMetrics.barInset * 2 + OverviewTagMetrics.spacing : 10000
+            ? measuredAllWidth + measuredTagsWidth + OverviewTagMetrics.barInset * 2 + OverviewTagMetrics.directorySpacing : 10000
     }
 
     private func iconButton(_ name: String, size: CGFloat = 16, title: String, active: Bool = false,
@@ -342,21 +337,6 @@ struct OverviewTagTitle: View {
             .font(NativeTypography.inter(size: OverviewTagMetrics.chipFont, weight: 620))
             .lineLimit(1)
             .truncationMode(.tail)
-            .modifier(OverviewTagInk())
-    }
-}
-
-// Clear glass can reveal a backdrop of either brightness in either appearance.
-// The contrasting edge belongs only to monochrome ink, including the Any glyph.
-struct OverviewTagInk: ViewModifier {
-    @Environment(\.colorScheme) private var scheme
-
-    func body(content: Content) -> some View {
-        let edge: Color = scheme == .dark ? .black : .white
-        content
-            .foregroundStyle(.primary)
-            .shadow(color: edge.opacity(0.9), radius: 0.7, y: 0.5)
-            .shadow(color: edge.opacity(0.8), radius: 1)
     }
 }
 
@@ -367,8 +347,7 @@ struct OverviewTagPrefix: View {
             if let emoji, !emoji.isEmpty {
                 Text(emoji).font(.system(size: OverviewTagMetrics.folderIcon))
             } else {
-                NativeIcon(name: "Folder", size: OverviewTagMetrics.folderIcon)
-                    .modifier(OverviewTagInk())
+                NativeIcon(name: "Folder", size: OverviewTagMetrics.folderIcon).opacity(0.72)
             }
         }
         .fixedSize()
@@ -446,6 +425,8 @@ enum OverviewTagMetrics {
     static let barInset: CGFloat = 6
     static let labelInset: CGFloat = 12
     static let spacing: CGFloat = 4
+    // Keep regular glass shadows and surfaces apart when the directory chips are at rest.
+    static let directorySpacing: CGFloat = 8
     static let railSpacing: CGFloat = 10
     /// Enlarge tag ink while keeping all top-level chrome at the same height.
     static let enlargement: CGFloat = 1.1
@@ -483,30 +464,23 @@ enum OverviewTagMetrics {
 }
 
 struct OverviewTagButtonStyle: ButtonStyle {
+    let glass: Glass
+    let selected: Bool
+    var emoji: String?
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        let opacity = contrast == .increased || reduceTransparency ? 0.82 : 0.56
+        let tint = selected ? OverviewTagTint.color(for: emoji).opacity(opacity) : nil
+        return configuration.label
+            .foregroundStyle(.primary)
             .background {
                 if reduceTransparency { Capsule().fill(Color(white: scheme == .dark ? 0.16 : 0.94)) }
             }
             .contentShape(Capsule())
-            .glassEffect(.clear.interactive(), in: Capsule())
-    }
-}
-
-/// GlassEffectContainer composites its surfaces above their contents. Draw
-/// the selected chip's outline in the container overlay at its presented bounds.
-struct OverviewSelectionOutline: View {
-    let bounds: CGRect
-    @Environment(\.colorSchemeContrast) private var contrast
-
-    var body: some View {
-        Capsule().strokeBorder(NativePalette.overview.accent.swiftUI, lineWidth: contrast == .increased ? 3 : 2)
-            .frame(width: bounds.width, height: bounds.height)
-            .position(x: bounds.midX, y: bounds.midY)
-            .allowsHitTesting(false).accessibilityHidden(true)
+            .glassEffect(glass.tint(tint).interactive(), in: Capsule())
     }
 }
 
@@ -571,6 +545,7 @@ private struct OverviewHorizontalScroll<Content: View>: View {
     let interactions: NativeOverviewChromeInteractions?
     let owner: UUID
     let ids: [String]
+    let overflows: Bool
     @ViewBuilder var content: () -> Content
     var body: some View {
         ScrollViewReader { proxy in
@@ -578,10 +553,23 @@ private struct OverviewHorizontalScroll<Content: View>: View {
                 content()
             }
             .scrollIndicators(.never)
+            .scrollClipDisabled()
+            // At rest the glass can cast its shadow beyond all four edges.
+            // An overflowing list still clips horizontally before the pinned All button.
+            .clipShape(OverviewDirectoryViewport(overflows: overflows))
             .scrollBounceBehavior(.basedOnSize)
             .modifier(NativeOverviewFilterScrollRegistration(registry: interactions, root: owner, ids: ids, enabled: true,
                 scroll: { id in proxy.scrollTo(id, anchor: .center) }))
         }
+    }
+}
+
+private struct OverviewDirectoryViewport: Shape {
+    let overflows: Bool
+
+    func path(in rect: CGRect) -> Path {
+        let bleed = OverviewTagMetrics.chipHeight
+        return Path(rect.insetBy(dx: overflows ? 0 : -bleed, dy: -bleed))
     }
 }
 
