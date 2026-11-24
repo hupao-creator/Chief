@@ -88,12 +88,11 @@ public struct NativeOverviewWorkspaceView: View {
                     .allowsHitTesting(!landing)
                     .accessibilityHidden(landing)
                 if !landing && model.content.isEmpty && model.error == nil {
-                    if model.statusFilter == .running {
-                        NativeOverviewIdleMark(label: emptyTitle, hint: emptyDetail)
-                    } else if model.statusFilter == .completed {
+                    if model.statusFilter == .completed {
                         NativeOverviewCompletedState(title: emptyTitle, swipeHint: emptyDetail)
                     } else {
-                        NativeOverviewEmptyState(title: emptyTitle, detail: emptyDetail)
+                        NativeOverviewEmptyState(title: emptyTitle, detail: emptyDetail,
+                            showsIdleMark: model.statusFilter == .running)
                     }
                 }
                 if let error = model.error ?? model.canvasState.layoutError {
