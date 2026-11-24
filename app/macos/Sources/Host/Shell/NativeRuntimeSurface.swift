@@ -137,6 +137,7 @@ private struct RuntimeConnectionNotice: View {
             }
             .help(error)
             .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("workspace.runtime.connection-notice")
             .background {
                 RuntimeStatusAnnouncements(status: message, error: "", enabled: announcementsEnabled)
                     .frame(width: 0, height: 0)

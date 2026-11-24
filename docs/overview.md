@@ -6,6 +6,8 @@ Press **⌘K** to open **Overview**. Chief highlights your last folder or tag an
 
 Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. A task appears once it has a tag from Tag Agent. With only untagged tasks, Overview shows **No tagged conversations yet**. Your conversations stay saved.
 
+While the background service syncs or reconnects, its message appears below the top controls. You can still use the folders and tags shown there.
+
 When a folder has tags to choose from, look for their emoji along the left edge. Move the pointer over or just beside an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. The selected tag keeps its name visible when you move the pointer away.
 
 A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Selected folders have a muted gold tint.

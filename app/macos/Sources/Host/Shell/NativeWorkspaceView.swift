@@ -953,11 +953,18 @@ public struct NativeWorkspaceView: View {
             onDismiss: { model.dismissOperationError() }) {
             workspaceScene
         }
-        .overlay(alignment: .top) {
-            NativeRuntimeConnectionNotice(model: model).padding(.top, 12)
-                .blur(radius: presentation.scene.settingsExpanded ? 12 : 0)
-                .allowsHitTesting(!presentation.scene.settingsOpen)
-                .accessibilityHidden(presentation.scene.settingsOpen)
+        .overlay {
+            GeometryReader { geometry in
+                let top = presentation.scene.overviewVisible
+                    ? OverviewTagMetrics.headerBottom(in: geometry.size,
+                        hasFilters: !presentation.overview.visibleFilters.isEmpty)
+                    : 0
+                NativeRuntimeConnectionNotice(model: model).padding(.top, top + 12)
+                    .frame(maxWidth: .infinity, alignment: .top)
+                    .blur(radius: presentation.scene.settingsExpanded ? 12 : 0)
+                    .allowsHitTesting(!presentation.scene.settingsOpen)
+                    .accessibilityHidden(presentation.scene.settingsOpen)
+            }
         }
         .modifier(NativeMokuTimerPlacement(timer: model.timer, scene: presentation.scene,
             dockAvailable: { model.catalog.hasMoku && presentation.onboarding.mountDock

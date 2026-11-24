@@ -189,6 +189,8 @@ startup has a saved catalog, the mark stays up while Chief attempts the
 initial connection. A failure allows browsing the saved catalog and
 identifies Chief's background service
 and offers Reconnect. Provider discovery starts after that connection succeeds.
+When Overview is visible, connection notices sit below its top controls,
+leaving folder and Inbox tag labels visible and available for browsing.
 
 `desktop-preferences.json` stores the selected thread, last Overview space,
 each directory's last tag, onboarding and reading activity. Saved appearance and language fields are ignored on read and omitted

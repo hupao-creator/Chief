@@ -109,7 +109,9 @@ the title stays open on pointer exit and a swipe selects and expands All statuse
 tag title is read in Aqua and Dark Aqua and with a bright backdrop behind dark-appearance glass.
 Samples from inside each capsule show its glass tint changing with the
 selection on both rails and the top row. `source.json` records the checkout revision,
-source changes, macOS version and architecture.
+source changes, macOS version and architecture. While the Runtime notice is
+visible, the replay measures the gap below the folder and Inbox buttons and
+uses window-local clicks to select both kinds of top filter.
 
 With Shipping selected, a catalog update admits and removes a card in each
 status filter. Line-wheel events on the right return to All statuses from

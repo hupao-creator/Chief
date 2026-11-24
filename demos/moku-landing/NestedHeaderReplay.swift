@@ -312,26 +312,30 @@ private final class WheelSample: NSEvent {
         }
     }
 
-    private struct FilterButton {
+    private struct AccessibleControl {
         let frame: CGRect
         let title: String
         let label: String
     }
 
-    private func filterButton(_ id: String, in window: NSWindow) throws -> FilterButton {
+    private func filterButton(_ id: String, in window: NSWindow) throws -> AccessibleControl {
+        try accessibleControl(id, role: .button, in: window)
+    }
+
+    private func accessibleControl(_ id: String, role: NSAccessibility.Role, in window: NSWindow) throws -> AccessibleControl {
         // SwiftUI's accessible children implement individual AppKit accessors
         // without requiring the full NSAccessibilityProtocol conformance.
         func attribute(_ node: NSObject, _ key: String) -> Any? {
             node.responds(to: NSSelectorFromString(key)) ? node.value(forKey: key) : nil
         }
-        var buttonIDs: [String] = []
-        func find(_ value: Any) -> FilterButton? {
+        var controlIDs: [String] = []
+        func find(_ value: Any) -> AccessibleControl? {
             guard let node = value as? NSObject else { return nil }
-            if attribute(node, "accessibilityRole") as? String == NSAccessibility.Role.button.rawValue,
+            if attribute(node, "accessibilityRole") as? String == role.rawValue,
                let identifier = attribute(node, "accessibilityIdentifier") as? String {
-                buttonIDs.append(identifier)
+                controlIDs.append(identifier)
                 if identifier == id, let frame = attribute(node, "accessibilityFrame") as? NSValue {
-                    return FilterButton(frame: frame.rectValue,
+                    return AccessibleControl(frame: frame.rectValue,
                         title: attribute(node, "accessibilityTitle") as? String ?? "",
                         label: attribute(node, "accessibilityLabel") as? String ?? "")
                 }
@@ -342,7 +346,7 @@ private final class WheelSample: NSEvent {
             return nil
         }
         guard let button = find(window) ?? window.contentView.flatMap({ find($0) }) else {
-            throw ReplayError("Missing accessible filter button \(id). Found \(buttonIDs)")
+            throw ReplayError("Missing accessible control \(id). Found \(controlIDs)")
         }
         return button
     }
@@ -1324,6 +1328,12 @@ private final class WheelSample: NSEvent {
         }
         samples.append(["step": "tag-heights", "points": heights, "compactLeftWidth": left.frame.width,
                         "leftHeightWithBadge": left.frame.height, "leftUnread": development.unreadCount])
+        let notice = try accessibleControl("workspace.runtime.connection-notice", role: .group, in: window).frame
+        let clearance = [folderButton, shippingButton, inboxButton].map { $0.frame.minY - notice.maxY }
+        guard !notice.isEmpty, clearance.allSatisfy({ $0 > 0 }) else {
+            throw ReplayError("Runtime notice overlaps a top filter. Screen-space gaps: \(clearance)")
+        }
+        samples.append(["step": "sync-notice-header-clearance", "gapsPt": clearance])
         let shippingCenter = window.convertPoint(fromScreen: CGPoint(x: shippingButton.frame.midX, y: shippingButton.frame.midY))
         try click(window, at: shippingCenter)
         try await check("inbox-top-resets-status", .all, ["Inbox tagged"], selected: inboxShipping.tag)
@@ -1337,7 +1347,8 @@ private final class WheelSample: NSEvent {
         try await activate(.directory, namedFolder.id)
         try await check("directory-named-inbox", .all, [namedFolderTask], selected: namedFolder.tag)
         guard model.selectedFilter?.id == namedFolder.id else { throw ReplayError("Inbox tag shadowed the real directory") }
-        try await activate(.directory, parent.id)
+        let directoryFrame = try filterButton(parent.id, in: window).frame
+        try click(window, at: window.convertPoint(fromScreen: CGPoint(x: directoryFrame.midX, y: directoryFrame.midY)))
         try await check("directory-entry-first-tag", .all, ordinary.filter { $0 != "Delivered" } + reportIDs,
                         selected: development.tag)
         try await activate(.directory, parent.id)
