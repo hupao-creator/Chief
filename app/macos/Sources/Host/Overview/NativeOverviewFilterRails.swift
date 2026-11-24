@@ -99,17 +99,17 @@ struct NativeOverviewStatusRail: View {
 
     var body: some View {
         OverviewFilterRail {
-            statusButton(.running, icon: "Activity", title: strings.runningOnly)
-            statusButton(.all, icon: "Layers", title: strings.allStatuses)
-            statusButton(.completed, icon: "CircleCheck", title: strings.completedOnly)
+            statusButton(.running, emoji: "⏳", title: strings.runningOnly)
+            statusButton(.all, emoji: "🗂️", title: strings.allStatuses)
+            statusButton(.completed, emoji: "🏁", title: strings.completedOnly)
         }
         .accessibilityLabel(strings.statusFilter)
     }
 
-    private func statusButton(_ value: NativeOverviewStatusFilter, icon: String, title: String) -> some View {
+    private func statusButton(_ value: NativeOverviewStatusFilter, emoji: String, title: String) -> some View {
         let choose = { onStatusChange(value) }
         return OverviewRailButton(title: title, selected: status == value, action: choose) {
-            NativeIcon(name: icon, size: 19, strokeWidth: 1.8)
+            Text(verbatim: emoji).font(.system(size: 19)).fixedSize()
         }
         .accessibilityLabel(Text(title))
         .help(title)
@@ -143,12 +143,6 @@ private struct OverviewRailButton<Glyph: View>: View {
             HStack(spacing: 0) {
                 glyph()
                     .frame(width: diameter, height: diameter)
-                    .overlay(alignment: .bottomLeading) {
-                        if selected {
-                            NativeIcon(name: "Check", size: 10, strokeWidth: 2.8)
-                                .padding(.leading, 6).padding(.bottom, 5)
-                        }
-                    }
                     .overlay(alignment: .bottomTrailing) {
                         if hasActiveTasks {
                             OverviewTagActivityIndicator(hasActiveTasks: true)

@@ -466,16 +466,14 @@ that version is displayed. Keep the window captures and profile receipt set
 for each step. Also check the red count on each containing tag before and after
 opening a bookmarked card, including a shared child tag, a covered execution
 and a Report collection. Selecting a tag preserves the count. When its last
-unread version is acknowledged the number disappears while the selected check
-and any activity ring remain. Expand a directory at normal window scale and
-capture the opening, settled and returning child row. Child badges first appear
-when their chips settle. Capture intermediate frames of the capsule fading and
-growing into place. Change a positive count on the open row and check that the
-digits update while the capsule stays visible. Check the complete white digits
-and red capsule over the glass, including its upper edge. Close and reopen during travel, switch
-folders rapidly, and change a child’s count during entry, including to zero.
-Only the settled, open row should show its latest positive counts. Repeat with
-Reduce Motion and check the folder badge throughout. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)
+unread version is acknowledged, the number disappears while the selected
+border and any activity ring remain. Choose a directory at normal window scale.
+Capture a tag's unread badge on its compact emoji, while hovering to reveal its
+name, and when it contracts. Check that the complete white digits and red
+capsule remain visible above the glass. Switch folders rapidly and change a
+tag's unread count while its title is visible, including to zero. Check the
+selected folder's count in the top bar and each visible tag's count in the left
+column. Repeat with Reduce Motion. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)
 
 ### Agent reader alignment
 

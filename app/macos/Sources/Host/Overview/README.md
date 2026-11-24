@@ -268,7 +268,7 @@ localized title and tag-switch hint on an opaque surface. A left-half wheel even
 The [status replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
 exercises empty and populated states and both input types.
 
-The selected right-hand icon identifies the status, including when the view is empty. The existing plugin cards keep their layout and
+The outlined right-hand emoji identifies the status, including when the view is empty. The existing plugin cards keep their layout and
 activation. Hover outlines emphasize cards and keyboard focus outlines Agent
 cards. Agent cards show the localized time of the latest successful execution
 from its public `finishedAt` in addition to its duration. Super Threads retain
@@ -336,10 +336,10 @@ A subsequent selection starts a fresh five-second interval for the latest
 choice. A hovered tag keeps its title until pointer exit, including after the
 selection interval expires.
 
-The right controls show an activity pulse (Running only), stacked layers
-(All statuses) and a circled check (Completed only). Hover help gives the
-localized status name. Both columns retain the selected glyph and mark the
-active choice with a lower-leading check and accent tint. Accessibility exposes the
+The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
+(Completed only). Hover help gives the localized status name. The top filter
+bar and both side columns mark the selected control with a 2pt inset accent
+border (3pt with Increased Contrast). Folder icons and emoji stay visible. Accessibility exposes the
 full name and selected state even when the visible title is hidden or
 truncated. Member counts are available in tag accessibility values. Unread
 counts appear on their own folder or semantic tag.
@@ -359,7 +359,7 @@ layout or 2pt below the bar in the two-row layout. See the
 
 Directory and semantic tag chips show an 11pt native status ring when their
 browsing membership contains a Thread whose public `isExecutionActive` is true
-(running or waiting for user). Background work alone does not qualify. Selection tint, task counts,
+(running or waiting for user). Background work alone does not qualify. The selection border, task counts,
 membership, ordering and Runtime filter context remain independent.
 Archive/visibility and Report-coverage exclusions come from the
 same membership used to browse each tag; a Report does not itself become an active
