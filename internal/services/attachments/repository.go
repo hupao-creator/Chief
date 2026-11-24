@@ -503,21 +503,7 @@ func (r *Repository) ReleaseOwner(ctx context.Context, threadID string) error {
 func (r *Repository) Preview(ctx context.Context, threadID, id string) (string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	owners, err := r.readOwners()
-	if err != nil {
-		return "", err
-	}
-	owned := false
-	for _, candidate := range owners[threadID] {
-		if candidate == id {
-			owned = true
-			break
-		}
-	}
-	if !owned {
-		return "", errors.New("附件不属于此 Thread")
-	}
-	a, err := r.canonicalFile(ctx, id)
+	a, err := r.ownedFile(ctx, threadID, id)
 	if err != nil {
 		return "", err
 	}
@@ -559,6 +545,33 @@ func (r *Repository) Preview(ctx context.Context, threadID, id string) (string, 
 		return "", errors.New("附件在预览时发生变化")
 	}
 	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(data), nil
+}
+
+// ImagePath resolves a local managed image for native thumbnailing and Quick Look.
+func (r *Repository) ImagePath(ctx context.Context, threadID, id string) (string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	a, err := r.ownedFile(ctx, threadID, id)
+	if err != nil {
+		return "", err
+	}
+	if KindForMimeType(a.MimeType) != "image" {
+		return "", errors.New("附件不是图片")
+	}
+	return a.Path, nil
+}
+
+func (r *Repository) ownedFile(ctx context.Context, threadID, id string) (model.Attachment, error) {
+	owners, err := r.readOwners()
+	if err != nil {
+		return model.Attachment{}, err
+	}
+	for _, candidate := range owners[threadID] {
+		if candidate == id {
+			return r.canonicalFile(ctx, id)
+		}
+	}
+	return model.Attachment{}, errors.New("附件不属于此 Thread")
 }
 
 func (r *Repository) Discard(ctx context.Context, ids []string) error {

@@ -4,7 +4,7 @@ import "context"
 
 // commandReadOnly is the protocol registry, independent of installed plugins.
 var commandReadOnly = map[string]bool{
-	"attachment:preview": true, "attachment:discard": false,
+	"attachment:preview": true, "attachment:image-path": true, "attachment:discard": false,
 	"moku:deliveries": true, "moku:resolve-delivery": false,
 	"moku:submit": false, "moku:clear": false, "moku:stage-attachments": false, "moku:cancel": false,
 	"moku:record-note-exposure": false,

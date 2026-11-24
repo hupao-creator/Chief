@@ -33,7 +33,7 @@ func (r *Runtime) Invoke(ctx context.Context, channel string, args []json.RawMes
 	switch channel {
 	case "state:load", "history:clear", "moku:clear", "moku:deliveries", "harness:detect-installations", "workspace:list-known-directories":
 		arity = 0
-	case "attachment:preview", "thread:set-archived", "application:archive":
+	case "attachment:preview", "attachment:image-path", "thread:set-archived", "application:archive":
 		arity = 2
 	}
 	if len(args) != arity {
@@ -62,13 +62,16 @@ func (r *Runtime) Invoke(ctx context.Context, channel string, args []json.RawMes
 		return nil, r.ResolveMokuDelivery(ctx, request.ID, request.Decision)
 	case "state:load":
 		return r.Snapshot()
-	case "attachment:preview":
+	case "attachment:preview", "attachment:image-path":
 		if r.config.Attachments == nil {
 			return nil, errors.New("attachment repository unavailable")
 		}
 		var id, attachment string
 		if err := decodeArguments(args, &id, &attachment); err != nil {
 			return nil, err
+		}
+		if channel == "attachment:image-path" {
+			return r.config.Attachments.ImagePath(ctx, id, attachment)
 		}
 		return r.config.Attachments.Preview(ctx, id, attachment)
 	case "attachment:discard":

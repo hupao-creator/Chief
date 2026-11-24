@@ -7,7 +7,8 @@ extension CodexMessage {
             annotations: annotations.map(ThreadMessageAnnotation.init(json:)), attachments: attachments.filter { attachment in
                 !annotations.contains { $0["screenshotId"] == attachment["id"] }
             }.map { attachment in
-                ThreadMessageAttachment(id: attachment.codexIdentity("id"), label: attachment["name"]?.stringValue ?? "", title: attachment["name"]?.stringValue)
+                ThreadMessageAttachment(id: attachment.codexIdentity("id"), label: attachment["name"]?.stringValue ?? "",
+                    mimeType: attachment["mimeType"]?.stringValue, kind: attachment["kind"]?.stringValue)
             })
     }
 }

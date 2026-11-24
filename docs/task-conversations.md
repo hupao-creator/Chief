@@ -24,6 +24,8 @@ Type your follow-up in **Type a message…** and click **Send** or press Return.
 
 Click **+** to attach files or point the agent to a folder on your Mac. Command-click to select several items together. Their names or image previews appear above your draft. Supported attachments vary by agent. If the agent rejects an attachment, remove it and try a supported type or describe it in text. You can return to finish an unsent draft after opening a different conversation.
 
+When a follow-up appears in the conversation, click **Show full text** to see its attachments. Available images appear as thumbnails. Click a thumbnail to view the original in Quick Look, where you can open it in an app. Other files and images that Chief can't read appear by filename. Click **Collapse text** to return to the compact message.
+
 If Chief is still connected to a background service from before an update, your message appears when the agent records it.
 
 When you send from the latest finished result, the **Execution** sidecard opens immediately. You can fold it or switch to another sidecard while the run starts.

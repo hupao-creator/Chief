@@ -10,6 +10,7 @@ public struct NativeHarnessHostCallbacks {
     public let openFollowUp: (JSONText, JSONText) -> Void
     public let onError: (Error) -> Void
     public let previewAttachment: ((JSONText, JSONText) async throws -> Data)?
+    public let resolveAttachmentImage: ((JSONText, JSONText) async throws -> URL)?
     public let resolveMedia: (@Sendable (URL) async throws -> Data)?
 
     public init(beforeCommand: @escaping () async throws -> Void = {},
@@ -18,10 +19,12 @@ public struct NativeHarnessHostCallbacks {
                 openFollowUp: @escaping (JSONText, JSONText) -> Void,
                 onError: @escaping (Error) -> Void,
                 previewAttachment: ((JSONText, JSONText) async throws -> Data)? = nil,
+                resolveAttachmentImage: ((JSONText, JSONText) async throws -> URL)? = nil,
                 resolveMedia: (@Sendable (URL) async throws -> Data)? = nil) {
         self.beforeCommand = beforeCommand; self.canExecute = canExecute
         self.openExternal = openExternal; self.openFollowUp = openFollowUp; self.onError = onError
-        self.previewAttachment = previewAttachment; self.resolveMedia = resolveMedia
+        self.previewAttachment = previewAttachment; self.resolveAttachmentImage = resolveAttachmentImage
+        self.resolveMedia = resolveMedia
     }
 }
 

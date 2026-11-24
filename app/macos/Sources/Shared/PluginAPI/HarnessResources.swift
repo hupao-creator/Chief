@@ -116,20 +116,23 @@ public struct HarnessRenderContext {
     public let contentResource: (HarnessContentScope) -> HarnessContentResource
     public let onIndexChange: (ThreadConversationIndex) -> Void
     public let previewAttachment: ((JSONText) async throws -> Data)?
+    public let resolveAttachmentImage: ((JSONText) async throws -> URL)?
     public let resolveMedia: (@Sendable (URL) async throws -> Data)?
     public init(content: HarnessContentMode, presentation: HarnessConversationPresentation,
                 contentResource: @escaping (HarnessContentScope) -> HarnessContentResource,
                 onIndexChange: @escaping (ThreadConversationIndex) -> Void,
                 previewAttachment: ((JSONText) async throws -> Data)? = nil,
+                resolveAttachmentImage: ((JSONText) async throws -> URL)? = nil,
                 resolveMedia: (@Sendable (URL) async throws -> Data)? = nil) {
         self.content = content; self.presentation = presentation
         self.contentResource = contentResource; self.onIndexChange = onIndexChange
-        self.previewAttachment = previewAttachment; self.resolveMedia = resolveMedia
+        self.previewAttachment = previewAttachment; self.resolveAttachmentImage = resolveAttachmentImage
+        self.resolveMedia = resolveMedia
     }
     /// Re-enters the same owning Harness for a lazily materialized row.
     public func row(_ id: JSONText) -> Self {
         Self(content: .row(id), presentation: presentation,
              contentResource: contentResource, onIndexChange: onIndexChange,
-             previewAttachment: previewAttachment, resolveMedia: resolveMedia)
+             previewAttachment: previewAttachment, resolveAttachmentImage: resolveAttachmentImage, resolveMedia: resolveMedia)
     }
 }

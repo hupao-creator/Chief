@@ -83,6 +83,10 @@ public final class NativeWorkspaceModel {
             previewAttachment: { [weak self] thread, attachment in
                 guard let self else { throw CancellationError() }
                 return try await self.services.preview(threadID: thread, attachmentID: attachment)
+            },
+            resolveAttachmentImage: { [weak self] thread, attachment in
+                guard let self else { throw CancellationError() }
+                return try await self.services.attachmentImageURL(threadID: thread, attachmentID: attachment)
             }
         )
     )

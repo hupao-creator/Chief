@@ -205,6 +205,15 @@ public final class NativeWorkspaceServices {
         return bytes
     }
 
+    func attachmentImageURL(threadID: JSONText, attachmentID: JSONText) async throws -> URL {
+        let value = try await requireWorkspace().client.invoke("attachment:image-path",
+            args: [.string(threadID), .string(attachmentID)])
+        guard let path = value.stringValue, path.hasPrefix("/"), !path.contains("\0") else {
+            throw PluginContractError("Invalid attachment image path")
+        }
+        return URL(fileURLWithPath: path)
+    }
+
     public func followUp(threadID: JSONText, input: JSONValue) async throws -> SidecardSendReceipt {
         let workspace = try requireWorkspace()
         guard let thread = workspace.catalog.thread(threadID), !thread.mokuHistory else {

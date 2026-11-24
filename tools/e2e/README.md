@@ -37,6 +37,21 @@ A nonactivating panel mounts the ordinary Agent workspace with an isolated conte
 
 The evidence directory contains the revision, platform, source projections, comparison results and images captured from the replay's own windows. Codex samples record changing pixels in the last work summary and its stationary text after the reply begins and after completion. These frames check whether the sweep appears at the right time. Installed CLI transport, real account permissions, database transactions and rendering latency have separate verification boundaries. [Reading contract](../../design/reading.md#content-and-execution-identity) · [Fixtures and launcher](thread-transcript)
 
+### Follow-up image attachments
+
+Use an isolated app and Runtime profile on a graphical Mac. Keep an ordinary
+Codex execution running while a follow-up with a managed raster and a text file
+is admitted, then open its task card from Overview. To exercise an unavailable
+image, remove its managed copy in the disposable profile after admission.
+Check the compact text and time, press **Show full text** and capture the
+expanded row with **Collapse text** visible. The image should fit without
+cropping, and the text file and unavailable image should still show their
+filenames. Click the image to check Quick Look opens the original, dismiss it,
+and press **Collapse text** to confirm the compact row returns. Record the
+revision, attachment inputs, native window captures and observed results.
+This check covers the mounted ordinary Agent reader with a retained follow-up.
+See the [attachment presentation contract](../../app/macos/Sources/Shared/PluginUI/README.md#harness-transcript).
+
 ## AA evaluation context
 
 Capture the public roster and Astra release HTML, then replay the response bodies

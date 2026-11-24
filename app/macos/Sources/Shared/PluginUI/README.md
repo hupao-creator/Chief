@@ -554,7 +554,14 @@ ordinary follow-ups in Agent detail as one line of literal text and one line of
 recorded message time. It has no author/sequence heading, receipt state or status
 icon. Missing time is not replaced by the execution timestamp. Text that does not
 fit the actual reading width can expand; attachment/annotation detail reuses the
-Harness's existing user-message renderer only after expansion.
+Harness's existing user-message renderer only after expansion. It resolves a
+managed image by its recorded attachment ID and decodes a thumbnail off the
+main actor using the composer’s ImageIO loader. Thumbnails fit the available
+width within 360 × 220 pt, preserve aspect ratio and open the original in the
+same system Quick Look presentation as the composer. A legacy filename can
+identify an image candidate when media metadata is absent or generic. Other
+files, unavailable references and failed decodes retain the filename chip.
+Collapsing the message retires the thumbnail task and preview.
 `.steer` rows render only while their execution is running and become invisible
 once it is no longer running
 (completed, failed, interrupted or waiting for input), even though the model, wire

@@ -38,6 +38,7 @@ type Moku interface {
 type AttachmentStore interface {
 	Stage(context.Context, []attachments.Import) ([]model.Attachment, error)
 	Preview(context.Context, string, string) (string, error)
+	ImagePath(context.Context, string, string) (string, error)
 	Discard(context.Context, []string) error
 	RetainInput(context.Context, string, model.AgentInput) (model.AgentInput, error)
 	InheritOwners(context.Context, string, string) error

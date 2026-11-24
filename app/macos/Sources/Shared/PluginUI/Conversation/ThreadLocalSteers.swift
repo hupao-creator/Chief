@@ -18,7 +18,9 @@ package final class ThreadLocalSteers {
         let text = parts.compactMap { part in
             part["text"]?.stringValue ?? part["name"]?.stringValue.map { "@" + $0 }
         }.joined(separator: "\n")
-        let attachments = submission.attachments.map { ThreadMessageAttachment(id: $0.id, label: $0.name.string) }
+        let attachments = submission.attachments.map {
+            ThreadMessageAttachment(id: $0.id, label: $0.name.string, mimeType: $0.mimeType.string, kind: $0.kind.rawValue)
+        }
         var input = ThreadTranscriptInput(text, followUp: true, createdAt: Date().timeIntervalSince1970 * 1000,
                                          attachments: attachments)
         input.localCaptureTime = CACurrentMediaTime()
