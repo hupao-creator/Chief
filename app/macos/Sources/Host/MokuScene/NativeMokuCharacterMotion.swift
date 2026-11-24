@@ -67,7 +67,8 @@ struct NativeMokuCharacterPose {
     private var orbitGeometry: NativeMokuRunningGeometry?
     private var orbitElapsed = 0.0
     private var orbitVisibility = 0.0
-    private(set) var orbitDots: [MokuRunningFrame.Dot] = []
+    private var orbitFrame: MokuRunningFrame?
+    var orbitDots: [MokuRunningFrame.Dot] { orbitFrame?.dots ?? [] }
     var orbitOpacity: Double { MokuRunningStory.smooth(orbitVisibility) }
     private var lastWall = ProcessInfo.processInfo.systemUptime
     private var replacementAt = -Double.infinity
@@ -129,7 +130,11 @@ struct NativeMokuCharacterPose {
         }
         if next.running, previous?.running != true || previous?.capsuleSize != next.capsuleSize
             || previous?.cornerRadius != next.cornerRadius {
+            if orbitGeometry == nil && next.immediateOrbit {
+                orbitElapsed = MokuRunningStory.liftEnd * MokuRunningStory.beatMS
+            }
             orbitGeometry = NativeMokuRunningGeometry(size: next.capsuleSize, cornerRadius: next.cornerRadius)
+            if orbitVisibility > 0 { orbitFrame = orbitGeometry?.sample(milliseconds: orbitElapsed) }
         }
         input = next
         stationaryTarget = nil
@@ -267,10 +272,10 @@ struct NativeMokuCharacterPose {
             orbitVisibility = MokuRunningStory.clamp(orbitVisibility + (input?.running == true ? dt : -dt) / 550)
             if input?.running == true || orbitVisibility > 0 {
                 orbitElapsed += dt
-                orbitDots = orbitGeometry.dots(milliseconds: orbitElapsed)
+                orbitFrame = orbitGeometry.sample(milliseconds: orbitElapsed)
             } else {
                 orbitElapsed = 0
-                orbitDots = []
+                orbitFrame = nil
                 self.orbitGeometry = nil
             }
         }
@@ -312,7 +317,13 @@ struct NativeMokuCharacterPose {
         let running = input.running
         if !running, let stationaryTarget { return stationaryTarget }
         let thinking = input.presentsReasoning && input.reasoning != nil
-        let gaze = running ? orbitGeometry?.gaze(milliseconds: orbitElapsed + (time - clock), direct: input.immediateOrbit) ?? .init() : .init()
+        var gaze = MokuRunningFrame.Eyes()
+        if running {
+            // Velocity sampling can look ahead during a handoff. Normal display frames
+            // share one story sample between the eyes and the three dots.
+            let frame = time == clock ? orbitFrame : nil
+            gaze = (frame ?? orbitGeometry?.sample(milliseconds: orbitElapsed + (time - clock)))?.eyes ?? .init()
+        }
         let eyes = NativeMokuCapsuleEyes.resolved(expression: running ? .idle : input.expression, focus: running ? 0 : input.focus)
         var result = NativeMokuCharacterPose(values: ["arcAlpha": thinking ? 1 : 0,
                                                        "arcGather": thinking ? 0 : 1, "arcReveal": thinking ? 1 : 0])
@@ -331,8 +342,8 @@ struct NativeMokuCharacterPose {
         let pose = self.pose
         context.saveGState(); defer { context.restoreGState() }
         context.saveGState()
-        context.setAlpha(orbitOpacity)
         for dot in orbitDots {
+            context.setAlpha(orbitOpacity * dot.opacity)
             context.setFillColor(dot.color.cgColor)
             context.fillEllipse(in: CGRect(x: bounds.midX + dot.x - 2.5,
                 y: bounds.midY + dot.y - 2.5, width: 5, height: 5))

@@ -285,16 +285,19 @@ On macOS, clicking the collapsed Moku row opens input; when a message is visible
 
 Dispatch status is informational; clicking it does not open a detail sheet.
 
-The compact Bar's three 5-point dots follow the capsule's outer contour with
-3 points of clear space. One lap takes three seconds. Entry and retirement
-change only their opacity over a 550ms full fade. A reversal retraces the fade
-from the current opacity. The orbit phase and palette advance until the last
-dot disappears, including across execution replacements. Retiring dots keep
-their last admitted contour. [NativeMokuRunningGeometry](NativeMokuRunningGeometry.swift)
-supplies the path, and the decoration seat paints outside the glass clip. The
-eyes follow the leading dot on that same contour and clock. They retain the
-gaze range, eye stretch and lid recovery from [MokuRunningStory](../Moku/MokuRunningStory.swift).
-A visible run replacement keeps its current gaze. Pausing freezes both seats.
+The compact Bar samples the five stages in [MokuRunningStory](../Moku/MokuRunningStory.swift)
+on its visible display clock. The three 5-point dots pulse in turn for 2,800ms
+at 8-point spacing beneath the glass. Over 616ms they gather on the contour.
+One eased lap takes 3,000ms, with 3 points of clearance from the glass.
+The dots return to their row over 644ms. During the final 616ms the eyes
+briefly squint and reopen, then the 7,676ms cycle repeats. A fresh direct
+Thread send starts at the lap. The eyes track the leading dot on the actual
+capsule contour during travel.
+[NativeMokuRunningGeometry](NativeMokuRunningGeometry.swift) retains the path
+for the admitted capsule size and radius. Entry and retirement apply a 550ms
+fade to the sampled ink. Reversing a fade or replacing a visible run preserves
+the current phase. Retiring dots keep their last contour until fully hidden.
+Pausing freezes both the eyes and the dots.
 
 [NativeMokuCharacterMotion](NativeMokuCharacterMotion.swift) owns the logical clock for the persistent eye and decoration seats. Ordinary expression changes take 420ms and running/thinking handoffs take 550ms. Interrupted transitions inherit the sampled geometry and velocity. Same-segment text updates keep their current role. Inactive, hidden and occluded scenes pause the clock. The Dock and composer use the same [native blink layers](NativeMokuCapsuleBlink.swift). Each eye keeps its centre, tilt and rounded outline as its height follows the blink.
 

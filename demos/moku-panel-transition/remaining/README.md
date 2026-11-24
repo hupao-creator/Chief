@@ -32,9 +32,11 @@ collector and executable fingerprints.
 
 - `orbit-fade` mounts the production 168 × 44-point Dock entirely offscreen.
   Catalog fixtures start, interrupt, reverse, replace and complete executions.
-  The replay advances the production display-frame step by 25ms. Each visible
-  sample must stay on the capsule contour, advance with an uninterrupted peer
-  and paint three 5-point dots at the current fade opacity. The evidence includes
+  The replay advances the production display-frame step by 25ms. Every visible
+  sample must match the authored compact geometry, stay in phase with an
+  uninterrupted peer and paint the three dots at their faded pulse opacity.
+  The full-cycle visit checks the top of the lap, the landing row, the
+  recovery squint and the next relay. The evidence includes
   intermediate Dock images, 1-pixel-per-point decoration rasters and
   `orbit-frames.json`. This fixture checks drawing and state, not display pacing.
 - `orbit-gaze` records a 2× nonactivating window through tool replacement, a

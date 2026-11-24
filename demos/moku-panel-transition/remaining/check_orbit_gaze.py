@@ -52,11 +52,14 @@ def check(directory):
         return [r for r in rows if start < r["pts"] < end]
 
     result = {}
-    for label, start, end in [("first lap", "start", "pause"), ("resumed", "resume", "retire"),
-                              ("reversed", "reverse fade", "open editor"), ("folded", "close editor again", "finish")]:
-        # Allow the authored 550ms eye handoff to settle. Resuming a paused
-        # clock needs only a couple of display frames.
-        group = between(events[start] + (.1 if start == "resume" else .65), events[end] - .08)
+    # Recordings with a relay mark the start of each pursuit interval.
+    # Earlier recordings started a lap at entry and at each reversal.
+    for label, marker, entry, end in [
+            ("first lap", "first lap", "start", "pause"), ("resumed", "resume", "resume", "retire"),
+            ("reversed", "reversed lap", "reverse fade", "open editor"),
+            ("folded", "folded lap", "close editor again", "finish")]:
+        start = events[marker] + .1 if marker in events else events[entry] + .65
+        group = between(start, events[end] - .08)
         visible = [r for r in group if r["eyes"] == 2 and r["dots"] == 3]
         correlation = [float(np.corrcoef([r["dot" + axis] for r in visible],
                                          [r["eye" + axis] for r in visible])[0, 1]) for axis in ("X", "Y")]
