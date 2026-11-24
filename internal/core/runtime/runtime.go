@@ -423,8 +423,22 @@ func (r *Runtime) ReadThreadContent(ctx context.Context, id string, scope transp
 	if err != nil {
 		return nil, err
 	}
+	if scope.Kind == "moku-conversation" && !t.Moku {
+		return nil, errors.New("conversation must belong to the current Chief")
+	}
 	if known != nil && *known == t.Revision {
 		return nil, nil
+	}
+	if scope.Kind == "moku-conversation" {
+		threads, err := r.cachedThreads(snapshot)
+		if err != nil {
+			return nil, err
+		}
+		page, err := mokuConversationPage(ctx, threads, scope.Key)
+		if err != nil {
+			return nil, err
+		}
+		return &transport.ContentSnapshot{Revision: t.Revision, Value: page}, nil
 	}
 	h := r.config.Harnesses[t.HarnessID]
 	if h == nil {

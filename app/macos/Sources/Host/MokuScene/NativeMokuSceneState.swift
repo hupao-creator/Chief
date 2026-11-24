@@ -22,8 +22,9 @@ import ChiefPluginUI
     // The handoff can cue only the Dock currently mounted in this scene.
     @ObservationIgnored weak var dockCharacter: NativeMokuCharacterMotion?
     public private(set) var inputOpen = false {
-        didSet { if !inputOpen { cancelComposerFocusRequest() } }
+        didSet { if !inputOpen { conversationOpen = false; cancelComposerFocusRequest() } }
     }
+    private(set) var conversationOpen = false
     public private(set) var inputPinnedOpen = false
     public private(set) var inputAdmissionReady = true
     private var inputIdentityReady = true
@@ -235,6 +236,18 @@ import ChiefPluginUI
     func ownsComposer(_ draft: NativeComposerDraft) -> Bool {
         composerIdentity == nil || composerIdentity == ObjectIdentifier(draft)
     }
+    func openConversation() {
+        guard overviewVisible, !readingPanelVisible, !dockCovered, !dockInteractionVisible,
+              !notePanelOpen, !disabled, inputInteractionReady else { return }
+        let openingEditor = !inputOpen
+        setInputOpen(true)
+        conversationOpen = true
+        if openingEditor { focusOpenComposer(bufferOpeningKeys: true) }
+    }
+    func closeConversation() {
+        conversationOpen = false
+        if !landingActive { setInputOpen(false) }
+    }
     public func setInputOpen(_ open: Bool) {
         guard !open || inputInteractionReady else { return }
         guard !settingsOpen else { return }
@@ -263,8 +276,8 @@ import ChiefPluginUI
     /// Outside clicks leave bottom-Dock input mode; landing keeps its composer open.
     @discardableResult
     public func dismissInputForOutsideClick() -> Bool {
-        guard inputOpen, !inputPinnedOpen, !landingActive, dockRouteVisible, !dockCovered else { return false }
-        setInputOpen(false)
+        guard inputOpen, !inputPinnedOpen, !landingActive || conversationOpen, dockRouteVisible, !dockCovered else { return false }
+        closeConversation()
         inputHandledOutsideClick = true
         return true
     }
@@ -280,8 +293,8 @@ import ChiefPluginUI
     /// moved away from the editor. Landing retains input, just as for outside clicks.
     /// This retires presentation, never its draft.
     func dismissInputForEscape() -> Bool {
-        guard inputOpen, !inputPinnedOpen, !landingActive, dockContentVisible, !dockInteractionVisible else { return false }
-        setInputOpen(false)
+        guard inputOpen, !inputPinnedOpen, !landingActive || conversationOpen, dockContentVisible, !dockInteractionVisible else { return false }
+        closeConversation()
         return true
     }
     public func receiveTalk(_ message: NativeMokuTalkMessage?) { talkPresentation.receive(message) }

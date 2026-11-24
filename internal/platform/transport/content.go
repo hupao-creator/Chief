@@ -123,6 +123,10 @@ func parseContentSubscription(raw []byte) (string, string, *contentTarget, error
 	switch target.Scope.Kind {
 	case "thread":
 		target.Scope.Key = ""
+	case "moku-conversation":
+		if target.Scope.Key != "" && !validContentIdentity(target.Scope.Key) {
+			return fail()
+		}
 	case "turn", "execution":
 		if !validContentIdentity(target.Scope.Key) {
 			return fail()

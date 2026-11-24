@@ -313,6 +313,10 @@ public struct NativeMokuDock: View {
     // The workspace retains the selected Agent while its reader returns to
     // Overview. Input is already closed to interaction during that motion.
     private var composerVisible: Bool { inputPresent && state.inputOpen && state.inputInteractionReady }
+    private var conversationVisible: Bool {
+        state.conversationOpen && composerVisible && threadID == nil && !state.readingPanelVisible
+            && presentation?.workspace.catalog.moku != nil
+    }
     private var composerCanFocus: Bool {
         state.inputInteractionReady && state.dockRouteVisible && state.inputOpen && !state.dockCovered
     }
@@ -415,6 +419,7 @@ public struct NativeMokuDock: View {
             let rowHeight = rowExpanded && !state.settingsExpanded && !noteExpanded
                 ? surfaceHeight(width: width) : NativeMokuCapsuleLayout.idleSize.height
             let noteAvailableHeight = max(0, frame.height - rowHeight)
+            let conversationHeight = conversationVisible ? min(360, noteAvailableHeight) : 0
             let noteHeight = noteExpanded
                 ? NativeMokuNoteLayout.fittedHeight(content: noteContentHeight, available: noteAvailableHeight) : 0
             let availableSurface = CGRect(x: frame.midX - width / 2,
@@ -422,7 +427,8 @@ public struct NativeMokuDock: View {
                 width: width, height: state.settingsExpanded ? viewport.height : frame.height)
             let reminder = timer?.current
             let surface = reminder != nil ? timerSurface(in: viewport) : NativeMokuCapsuleLayout.surface(in: availableSurface, expanded: expanded,
-                height: state.settingsExpanded ? settingsSize.height : rowHeight + noteHeight, centered: landing || state.settingsExpanded)
+                height: state.settingsExpanded ? settingsSize.height : rowHeight + noteHeight + conversationHeight,
+                centered: landing || state.settingsExpanded)
             let arcSize = NativeMokuCapsuleLayout.idleSurface(in: viewport).size
             let arcBody = CGRect(x: surface.midX - arcSize.width / 2,
                                  y: surface.maxY - rowHeight / 2 - arcSize.height / 2,
@@ -564,7 +570,7 @@ public struct NativeMokuDock: View {
             guard state.updateLanding(active) else { return }
             if active {
                 if landingInputAvailable && !running && incomingTalk == nil { state.setInputOpen(true) }
-            } else if threadID == nil {
+            } else if threadID == nil, !state.conversationOpen {
                 state.retainDraft(draft)
                 state.setInputOpen(false)
             }
@@ -884,6 +890,14 @@ public struct NativeMokuDock: View {
             if !visible { state.dockMentionHitRect = nil }
         }
         .overlay(alignment: .top) {
+            if conversationVisible, let workspace = presentation?.workspace, let owner = workspace.catalog.moku?.id {
+                NativeMokuConversation(client: workspace.client, owner: owner, close: state.closeConversation)
+                    .id(owner)
+                    .frame(width: width, height: max(0, surface.height - rowHeight))
+                    .transition(.opacity)
+            }
+        }
+        .overlay(alignment: .top) {
             if completionVisible, let agentMentions {
                 NativeMokuComposerCompletion(mentions: agentMentions, draft: draft,
                     maxHeight: max(0, room - capsuleHeight - 12),
@@ -1032,7 +1046,7 @@ public struct NativeMokuDock: View {
         }
         .background {
             ZStack {
-                NativeMokuCapsuleGlass(regular: noteExpanded).opacity(state.settingsExpanded ? 0 : 1)
+                NativeMokuCapsuleGlass(regular: noteExpanded || conversationVisible).opacity(state.settingsExpanded ? 0 : 1)
                 if state.settingsOpen {
                     NativeSettingsPanelBackground()
                         .environment(\.colorScheme, workspaceColorScheme)
@@ -1064,8 +1078,8 @@ public struct NativeMokuDock: View {
         .accessibilityElement(children: .contain).accessibilityLabel(state.settingsOpen ? localize("设置", "Settings") : "Chief")
         .accessibilityHint(state.settingsOpen || !state.inputInteractionReady ? "" :
             state.overviewVisible && rowControlAvailable && !state.notePanelOpen
-                ? localize("点击打开输入框，或右键点按 Chief Bar 打开笔记",
-                           "Click to type, or right-click Chief Bar to open Chief Note")
+                ? localize("点击输入，上滑查看对话，右键点按打开笔记",
+                           "Click to type, swipe up for messages, or right-click to open Chief Note")
                 : localize("点击打开输入框", "Click to type"))
         .accessibilityValue(state.noteUnread(note) ? localize("笔记有尚未完整浏览的更新", "Note update not yet fully browsed") : "")
         .accessibilityIdentifier("moku-capsule")
@@ -1136,16 +1150,19 @@ public struct NativeMokuDock: View {
         guard sidecardComposer?.ready ?? true else { return }
         // The retiring capsule is a sealed projection, independent of the live
         // draft. Seal the empty snapshot directly on a fold.
-        state.retainedText = ""; state.retainedAttachments = []; state.retainedDirectories = []
-        state.capsuleSealed = !state.inputPinnedOpen
+        let fold = !state.conversationOpen
+        if fold {
+            state.retainedText = ""; state.retainedAttachments = []; state.retainedDirectories = []
+            state.capsuleSealed = !state.inputPinnedOpen
+            state.setInputOpen(false)
+        }
         if threadID == nil { state.dismissTalk() }
         let sendingDraft = draft, send = onSend, consumed = onSendConsumed, generation = state.composerGeneration
-        state.setInputOpen(false)
         // Capture and project the submitted input in this event, before another
         // keystroke can change the payload. The receipt can arrive on a later visit.
         Task.immediate {
             await sendingDraft.submit(send, optimisticallyClear: true, didConsume: consumed)
-            if state.composerGeneration == generation, sendingDraft.error != nil {
+            if fold, state.composerGeneration == generation, sendingDraft.error != nil {
                 state.setInputOpen(true)
             }
         }

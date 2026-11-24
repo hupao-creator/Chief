@@ -38,6 +38,11 @@ explicit Browser annotation retain autofocus. The Dock requests automatic focus 
 current editor's text becomes visible. Explicit focus can acquire the admitted
 editor earlier. Incoming-reader publication cannot be cleared by its outgoing owner.
 
+In Overview, swiping up on Chief Bar opens its conversation around the same
+editor. Opening from the collapsed Bar requests keyboard focus. The panel keeps
+the Chief draft and stays open through admission and the reply. See the
+[Chief Bar conversation contract](../app/macos/Sources/Host/MokuScene/README.md#chief-bar-conversation).
+
 An unselected Super Thread document/list denies input expansion through the
 shared scene gate, including capsule, shortcut/menu and automation requests.
 Its associated execution borrows the pinned Agent composer after content/column

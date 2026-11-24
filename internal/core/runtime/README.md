@@ -151,6 +151,14 @@ also leaves the original terminal available on restart. The native Overview offe
 interruption with no pending input or background work, using the existing
 `thread:set-archived` command and normal catalog invalidation.
 
+### Chief conversation
+
+The `moku-conversation` content scope belongs to the current Chief Thread. On demand, Runtime reads one profile snapshot and merges that Thread’s full coordinator transcript with its retained, read-only Chief sessions. The compact catalog preview is limited to recent operations and truncated text. The [conversation projection](moku_conversation.go) reads the stored audit rows directly.
+
+The coordinator records the original user input after admission. The reader takes complete user messages, their attachment names and completed, successful `talk` arguments. Directories retain their submitted mention text. Native Harness turns can include injected context and are ineligible as a dialogue source. Assistant reasoning, diagnostics, dispatches, timers, failed or pending Talk calls, and private tool arguments have no dialogue row.
+
+Rows use the owning Thread and audit ID for identity. Equal text from distinct records appears twice. Pages follow audit creation time, breaking ties by saved session order and transcript position. Each page returns up to 64 messages within a 1 MiB source budget, allowing a single larger message on its own. Its optional `before` cursor identifies the earliest returned source row. A fresh subscription without a cursor follows the newest page. A history reset replaces the owner and removes retained sessions. The [SQLite store](../store/README.md#file-ownership-and-format) owns recovery across restarts, including profiles using the legacy database directory. Cleared or missing audit rows cannot be reconstructed from the catalog or from a model prompt.
+
 ## Settings
 
 [settings.go](settings.go) separates saved settings revision from streaming thread revisions. `app:update-settings` checks the DTO, application schema and local Harness settings shapes, preserves retained execution profiles and compares `expectedSettingsRevision` in the store transaction. The save performs no native snapshot or catalog acquisition. A conflict returns the latest settings; invalid writes leave state unchanged. An unchanged save does not advance the revision.

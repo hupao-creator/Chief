@@ -73,7 +73,16 @@ python3 demos/moku-landing/verify_header.py --note-click --output .build/overvie
 
 This scenario keeps the workspace at 1× throughout, including its first frame.
 It checks the empty Overview with folded input as well as the populated canvas.
-The replay posts window-addressed AppKit mouse events to the mounted workspace. It checks that right-click opens Chief Note once in Overview and that Control-click opens it on Landing. A click on the canvas leaves Note closed, an outside primary click dismisses an open Note, and a primary click on Chief Bar opens Compose. Phased pixel scrolls verify that an upward swipe and its momentum over Chief Bar leave Note closed. They also exercise filter swipes, native tag and Note scrolling, camera travel, composer and Settings ownership, and inverted device deltas. The reminder fixture checks native scrolling and acknowledgment. See `overview-note-click.json`, `landing-note-click.json` and `reminder-note-ownership.json`. The posted events cover AppKit delivery to the window. Physical trackpad configuration remains a system-input check.
+The replay posts window-addressed AppKit mouse events to the mounted workspace. It checks that right-click opens Chief Note once in Overview and that Control-click opens it on Landing. A click on the canvas leaves Note closed, an outside primary click dismisses an open Note, and a primary click on Chief Bar opens Compose. Phased pixel scrolls verify that a subthreshold contact stays on the Bar, an upward swipe opens the conversation with its editor, and its momentum leaves the filter and Note alone. A draft typed in the panel reappears in the compact editor. They also exercise filter swipes, native tag and Note scrolling, camera travel, composer and Settings ownership, and inverted device deltas. The reminder fixture checks native scrolling and acknowledgment. See `overview-note-click.json`, `landing-note-click.json` and `reminder-note-ownership.json`. The posted events cover AppKit delivery to the window. Physical trackpad configuration remains a system-input check.
+
+The [live conversation replay](verify_conversation.py) uses the same production window with the real Runtime, SQLite, Codex CLI and an isolated loopback model peer. Build the current artifacts and choose a new evidence directory.
+
+```sh
+python3 tools/e2e/build.py --go ./scripts/go.sh --with-app
+python3 demos/moku-landing/verify_conversation.py --output .build/chief-conversation
+```
+
+The first native visit checks previously submitted messages and keyboard focus, types into the mounted editor, stages a PNG from disk and sends with Return. It observes the accepted text and filename, the peer’s successful Talk, and an unsent draft after closing and reopening. A second App and Runtime process reopen the same profile. Both visits compare mounted accessibility labels with the expected ordered dialogue, record a window screenshot and compare independent public content reads. The capture uses window-addressed AppKit input. Physical trackpad hardware and a remote model service have separate evidence boundaries.
 
 Use `--status-only` in place of `--note-click` to run the mixed catalog scenario
 independently. It mounts the [production Overview](../../app/macos/Sources/Host/Overview/README.md)

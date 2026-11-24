@@ -251,7 +251,7 @@ vertical swipe keeps both selections.
 
 The background, cards, carousel cover and filter controls accept these gestures.
 Horizontal starts retain their original owner through reversals. The
-[Chief Bar](../MokuScene/README.md) keeps its scroll input local. Vertically
+[Chief Bar](../MokuScene/README.md#chief-bar-conversation) claims a physical upward swipe to open its conversation. A secondary click on the collapsed Bar opens Chief Note. Vertically
 overflowing native viewports keep scrolling at either limit. Open Note, editing,
 interventions, onboarding, Settings, readers and collection panels keep their input.
 

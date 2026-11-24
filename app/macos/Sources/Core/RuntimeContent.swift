@@ -25,6 +25,7 @@ extension RuntimeClient {
         try validateIdentity(threadId); try validateIdentity(JSONText(subscriptionId))
         switch scope {
         case .turn(let key), .execution(let key): try validateIdentity(key)
+        case .mokuConversation(let before): if let before { try validateIdentity(before) }
         case .thread: break
         }
         let previous = takeIdleContent(subscriptionId) ?? contentResources.removeValue(forKey: subscriptionId)

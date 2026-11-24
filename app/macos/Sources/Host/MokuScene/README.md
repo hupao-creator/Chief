@@ -293,6 +293,12 @@ own editor instructions based on whether a page region is selected.
 
 On macOS, clicking the collapsed Moku row opens input; when a message is visible, only the eyes are the input target so prose remains selectable and controls retain their actions. Clicking the eyes beneath an open note switches to input. The click entry uses the existing composer focus and draft-restoration path. In Overview, a secondary click on Chief Bar with the composer closed opens Chief Note directly through the user reading-session entry point. The window handles AppKit right-mouse events and Control-click. Stop controls and the timer alert keep their own input. Talk stays mounted while Note occupies its reading seat. Once open, Note owns its body scrolling. The shortcut toggles Note, and Escape, outside click and the close button dismiss it. See the [mounted input replay](../../../../../demos/moku-landing/README.md#overview-note-click-at-actual-size).
 
+### Chief Bar conversation
+
+In Overview and on Landing, a physical two-finger upward swipe over Chief Bar opens **Conversation with Chief**. It uses the capsule’s noninteractive regular Liquid Glass and opaque Reduce Transparency fallback. The original native composer stays at the bottom. Entry over the eyes also works with the compact editor already open. Editable text and overflowing native viewports keep their scroll input. The contact that opens the panel consumes its momentum. A new contact scrolls the messages.
+
+The newest page opens at the bottom, with user messages on the right and Chief’s Talk on the left. Earlier and newer controls change pages in place. The [Runtime scope](../../../../../internal/core/runtime/README.md#chief-conversation) owns message identity, order and recovery. A mounted page receives live revisions and uses the profile’s existing reading cache when offline. The Dock keeps its draft, attachment picker, IME, Return, Send, Stop and receipt handling. Sending from the panel keeps it open. Escape, outside click or the close button dismisses it and preserves the draft. Landing returns to its input. Interventions, readers, timers and Settings retain their existing priority.
+
 Dispatch status is informational; clicking it does not open a detail sheet.
 
 The compact Bar samples the five stages in [MokuRunningStory](../Moku/MokuRunningStory.swift)

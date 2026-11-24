@@ -67,12 +67,18 @@ private final class WheelSample: NSEvent {
     private init(profile: URL?) {
         do {
             if profile == nil { try prepareIsolatedNativeReplay() }
-            let directory = profile ?? URL(filePath: FileManager.default.currentDirectoryPath)
+            let liveProfile = CommandLine.arguments.firstIndex(of: "--live-conversation").map {
+                URL(filePath: CommandLine.arguments[$0 + 1])
+            }
+            if let liveProfile, liveProfile.lastPathComponent != "profile" || !liveProfile.deletingLastPathComponent().lastPathComponent.hasPrefix("me2e-") {
+                throw ReplayError("Expected a private e2e profile")
+            }
+            let directory = profile ?? liveProfile ?? URL(filePath: FileManager.default.currentDirectoryPath)
             let preferences = DesktopPreferences(directory: directory)
             try preferences.setOnboardingCompleted(true)
             workspace = NativeWorkspaceModel(client: RuntimeClient(profile: try RuntimeProfile(dataDirectory: directory)),
                 preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())], sidecards: [], applications: NativeApplicationModules.make()),
-                timer: NativeMokuTimerController(player: SilentReminderBell()))
+                timer: NativeMokuTimerController(player: SilentReminderBell()), locale: liveProfile == nil ? .system : .english)
             presentation = NativeWorkspacePresentation(workspace: workspace)
         } catch { fatalError(String(describing: error)) }
     }
@@ -127,6 +133,10 @@ private final class WheelSample: NSEvent {
     }
 
     private func replay() async throws {
+        if CommandLine.arguments.contains("--live-conversation") {
+            try await liveConversation()
+            return
+        }
         let authority = UUID()
         let noteClickReplay = CommandLine.arguments.contains("--note-click")
         try await installTasks(18, revision: 1, authority: authority, manyDirectories: noteClickReplay)
@@ -178,11 +188,15 @@ private final class WheelSample: NSEvent {
             try await postScroll(window, eyes, y: 40, phase: .began)
             try await postScroll(window, eyes, y: 0, phase: .ended)
             let generation = presentation.scene.noteOpenGeneration
-            guard !presentation.scene.notePanelOpen else { throw ReplayError("Empty Overview swipe opened Note") }
+            guard presentation.scene.conversationOpen, presentation.scene.inputOpen, !presentation.scene.notePanelOpen else {
+                throw ReplayError("Landing Bar swipe did not open the conversation")
+            }
+            presentation.scene.setInputOpen(false)
+            try await Task.sleep(for: .milliseconds(650))
             try await postClick(window, at: eyes, flags: .control)
             guard presentation.scene.notePanelOpen, presentation.scene.noteOpenGeneration == generation + 1,
                   !presentation.scene.inputOpen else { throw ReplayError("Control-click did not open Note directly on Landing") }
-            try JSONSerialization.data(withJSONObject: ["controlClickOpenedNote": true, "legacySwipeOpenedNote": false])
+            try JSONSerialization.data(withJSONObject: ["controlClickOpenedNote": true, "swipeOpenedConversation": true])
                 .write(to: directory.appending(path: "landing-note-click.json"))
             return
         }
@@ -226,6 +240,96 @@ private final class WheelSample: NSEvent {
         try await cardInteraction(window, directory: directory, authority: authority)
         try await fittingCards(window, directory: directory, authority: authority)
         try await fittingCollection(directory: directory, authority: authority)
+    }
+
+    private func liveConversation() async throws {
+        struct Fixture: Decodable {
+            let messages: [String]
+            let attachment: String
+            let draft: String
+        }
+        let profile = workspace.client.storageDirectory
+        let fixture = try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: profile.deletingLastPathComponent().appending(path: "conversation.json")))
+        let restart = CommandLine.arguments.contains("--restart")
+        let stage = restart ? "restart" : "send"
+        let evidence = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
+        try FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
+        func wait(_ description: String, _ check: () -> Bool) async throws {
+            let deadline = ContinuousClock.now + .seconds(35)
+            while !check() {
+                guard ContinuousClock.now < deadline else { throw ReplayError(description) }
+                try await Task.sleep(for: .milliseconds(50))
+            }
+        }
+        guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "header-replay" }),
+              let content = window.contentView else { throw ReplayError("Missing live replay window") }
+        window.setContentSize(.init(width: 900, height: 680))
+        window.center()
+        captureScheme = restart ? .light : .dark
+        try await focusReplayWindow(window)
+        workspace.start()
+        let scene = presentation.scene
+        try await wait("Live Chief did not mount") { workspace.runtimeAvailable && workspace.catalog.hasMoku && scene.capsuleFrame.width > 0 }
+        try await Task.sleep(for: .milliseconds(750))
+        guard let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else { throw ReplayError("Missing Bar event monitor") }
+        func swipe() async throws {
+            let bar = scene.capsuleFrame
+            let point = monitor.windowPoint(CGPoint(x: scene.inputOpen ? bar.minX + 32 : bar.midX,
+                                                    y: bar.maxY - min(30, bar.height / 2)))
+            try await postScroll(window, point, y: 36, phase: .began)
+            try await postScroll(window, point, y: 0, phase: .ended)
+            try await wait("Swipe did not open conversation") { scene.conversationOpen && scene.inputOpen && !scene.notePanelOpen }
+        }
+        func labels() -> [String] {
+            var found = [String]()
+            func visit(_ node: NSObject) {
+                if node.responds(to: NSSelectorFromString("accessibilityLabel")),
+                   let label = node.value(forKey: "accessibilityLabel") as? String,
+                   label.hasPrefix("You, ") || label.hasPrefix("Chief, ") { found.append(label) }
+                if node.responds(to: NSSelectorFromString("accessibilityChildren")),
+                   let children = node.value(forKey: "accessibilityChildren") as? [NSObject] {
+                    for child in children { visit(child) }
+                }
+            }
+            visit(window)
+            return found
+        }
+        let expected = fixture.messages.enumerated().map { index, text in
+            (index.isMultiple(of: 2) ? "You, " : "Chief, ") + text + (index == 2 ? ", " + fixture.attachment : "")
+        }
+        try await swipe()
+        let initial = restart ? expected : Array(expected.prefix(2))
+        try await wait("Mounted history did not match expected rows") { labels() == initial }
+        guard let field = descendant(NSTextView.self, in: content, matching: { $0.isEditable && !$0.isHiddenOrHasHiddenAncestor })
+            else { throw ReplayError("Missing native composer") }
+        try await wait("Swipe did not focus the native editor") { window.firstResponder === field }
+        if !restart {
+            field.insertText(fixture.messages[2], replacementRange: field.selectedRange())
+            try await wait("Chief draft did not receive native text") { presentation.dockDraft.text == fixture.messages[2] }
+            let selectedFile = profile.deletingLastPathComponent().appending(path: fixture.attachment)
+            await presentation.dockDraft.importFiles([NativeComposerFile(url: selectedFile)])
+            guard presentation.dockDraft.attachments.compactMap(\.attachment).map(\.name.string) == [fixture.attachment] else {
+                throw ReplayError("The native composer could not stage its attachment: \(presentation.dockDraft.error ?? "missing attachment")")
+            }
+            try await pressKey("\r", code: 36, in: window)
+            try await wait("No admitted message and Talk after Return") { labels() == expected && field.string.isEmpty && scene.conversationOpen }
+            field.insertText(fixture.draft, replacementRange: field.selectedRange())
+            try await wait("Next draft missing") { presentation.dockDraft.text == fixture.draft }
+            try await postClick(window, at: monitor.windowPoint(CGPoint(x: 45, y: 85)))
+            try await wait("Outside click did not close the panel") { !scene.conversationOpen }
+            try await Task.sleep(for: .milliseconds(650))
+            try await swipe()
+            try await wait("Reopened history differs") { labels() == expected }
+        }
+        try await wait("Reopened composer did not restore the draft") {
+            descendant(NSTextView.self, in: content, matching: { $0.isEditable && $0.string == fixture.draft }) != nil
+        }
+        try await Task.sleep(for: .milliseconds(500))
+        try await capture(window, to: evidence.appending(path: "conversation-" + stage + ".png"))
+        let observed: [String: Any] = ["rows": labels(), "draft": presentation.dockDraft.text,
+                                       "conversationOpen": scene.conversationOpen, "noteOpen": scene.notePanelOpen]
+        try JSONSerialization.data(withJSONObject: observed, options: [.prettyPrinted, .sortedKeys])
+            .write(to: evidence.appending(path: "conversation-" + stage + ".json"))
     }
 
     private func focusReplayWindow(_ window: NSWindow) async throws {
@@ -735,14 +839,28 @@ private final class WheelSample: NSEvent {
 
         let beforeOpen = scene.noteOpenGeneration
         try await postScroll(window, barPoint, y: 10, phase: .began)
+        guard !scene.conversationOpen else { throw ReplayError("A subthreshold contact opened the conversation") }
         try await postScroll(window, barPoint, y: 30, phase: .changed)
         try await postScroll(window, barPoint, y: 0, phase: .ended)
         try await postScroll(window, barPoint, y: 40, phase: nil, momentum: .begin)
         try await postScroll(window, barPoint, y: 0, phase: nil, momentum: .end)
+        guard scene.conversationOpen, scene.inputOpen, !scene.notePanelOpen, scene.noteOpenGeneration == beforeOpen,
+              model.statusFilter == .all, camera.scrollOffset == startOffset else {
+            throw ReplayError("The Bar swipe did not open the conversation directly")
+        }
+        try await Task.sleep(for: .milliseconds(650))
+        guard let field = descendant(NSTextView.self, in: content, matching: { $0.isEditable && !$0.isHiddenOrHasHiddenAncestor }),
+              window.makeFirstResponder(field) else { throw ReplayError("Missing conversation editor") }
+        let draft = "Please check the release notes."
+        field.insertText(draft, replacementRange: field.selectedRange())
+        guard presentation.dockDraft.text == draft else { throw ReplayError("Conversation did not edit the Chief draft") }
+        try await postClick(window, at: background)
+        try await Task.sleep(for: .milliseconds(650))
+        guard !scene.conversationOpen, !scene.inputOpen else { throw ReplayError("Outside click did not close the conversation") }
         try await postClick(window, at: background, secondary: true)
         guard !scene.notePanelOpen, scene.noteOpenGeneration == beforeOpen,
               model.statusFilter == .all, camera.scrollOffset == startOffset else {
-            throw ReplayError("Legacy Bar swipe or background right-click took action")
+            throw ReplayError("Background right-click changed the Bar or Overview")
         }
         try await postClick(window, at: barPoint, secondary: true)
         guard scene.notePanelOpen, scene.noteOpenGeneration == beforeOpen + 1, !scene.inputOpen else {
@@ -776,7 +894,7 @@ private final class WheelSample: NSEvent {
         try await postScroll(window, barPoint, y: 0, phase: .ended)
         try await postScroll(window, background, y: 40, phase: .began, flags: .maskShift)
         try await postScroll(window, background, y: 0, phase: .ended)
-        guard !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Downward Bar or modified canvas input took action") }
+        guard !scene.notePanelOpen, !scene.conversationOpen, model.statusFilter == .all else { throw ReplayError("Downward Bar or modified canvas input took action") }
         // The Note and the restored 18-card layout share a motion coordinator.
         // Test a fresh pan once the production camera admits a new contact.
         let panDeadline = ContinuousClock.now + .seconds(6)
@@ -793,7 +911,9 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Horizontal window scroll did not reach the camera: offset=\(panStart)->\(camera.scrollOffset)/\(camera.maximumOffset), point=\(background), phase=\(monitor.sequence.stage), owner=\(String(describing: monitor.sequence.owner)), pause=\(presentation.canvas.interactionPauseReasons), layingOut=\(presentation.canvas.isLayingOut), input=\(scene.inputOpen)")
         }
         try await postClick(window, at: barPoint)
-        guard scene.inputOpen, !scene.notePanelOpen else { throw ReplayError("Primary Bar click did not open Compose") }
+        guard scene.inputOpen, !scene.conversationOpen, !scene.notePanelOpen, presentation.dockDraft.text == draft else {
+            throw ReplayError("Primary Bar click did not reopen Compose with the conversation draft")
+        }
         try await postScroll(window, background, y: 40, phase: .began)
         try await postScroll(window, background, y: 0, phase: .ended)
         guard scene.inputOpen, !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Swipe displaced the composer") }
@@ -809,7 +929,8 @@ private final class WheelSample: NSEvent {
             try await Task.sleep(for: .milliseconds(30))
         }
         try JSONSerialization.data(withJSONObject: ["regions": targets.map { $0.0 },
-            "rightClickOpenedNoteOnce": true, "legacySwipeOpenedNote": false, "backgroundRightClickOpenedNote": false,
+            "rightClickOpenedNoteOnce": true, "swipeOpenedConversation": true, "backgroundRightClickOpenedNote": false,
+            "conversationDraftRestoredInCompose": true,
             "outsideClickClosedNote": true, "primaryClickOpenedCompose": true,
             "horizontalScroll": true, "composerScrollExcluded": true, "settingsScrollExcluded": true,
             "tagOffsets": [tagOffset, tags.contentView.bounds.minX], "noteOffsets": [original, scrolled],
@@ -1536,6 +1657,7 @@ private final class WheelSample: NSEvent {
             brightCaptureBackdrop = false
         }
         window.setContentSize(CGSize(width: 860, height: 600))
+        window.center()
         let longName = "Customer experience and international release coordination"
         let labels = [longName, "Design", "Engineering", "Planning", "Support"]
         let compactTasks = try labels.enumerated().map { index, label in
@@ -1589,20 +1711,28 @@ private final class WheelSample: NSEvent {
             if captureFilters { try await capture(window, to: directory.appending(path: "failed-status-overlap.png")) }
             throw ReplayError("Minimum window needs a card under the status rail at \(center): \(frames)")
         }
-        try click(window, at: monitor.windowPoint(chip))
+        try await focusReplayWindow(window)
+        try await postClick(window, at: monitor.windowPoint(chip))
         try await Task.sleep(for: .milliseconds(600))
         guard model.statusFilter == expectedStatus, presentation.selected == nil else {
             throw ReplayError("A status capsule over an Agent card failed to take the click")
         }
-        try click(window, at: monitor.windowPoint(center))
+        try await postClick(window, at: monitor.windowPoint(center))
         try await Task.sleep(for: .milliseconds(650))
         guard canvas.visibleFrame(for: underlyingID)?.contains(gap) == true else {
             throw ReplayError("Returning to all statuses lost the underlying card")
         }
-        try click(window, at: monitor.windowPoint(gap))
+        let gapPoint = monitor.windowPoint(gap)
+        let gapHit = content.hitTest(content.superview?.convert(gapPoint, from: nil) ?? gapPoint)
+        let gapActive = canvas.allowsActivation(cardID: underlyingID)
+        try await postClick(window, at: gapPoint)
         try await Task.sleep(for: .milliseconds(850))
         guard presentation.selected?.threadID.string == underlyingID else {
-            throw ReplayError("A click between two status capsules failed to open " + underlyingID)
+            try await capture(window, to: directory.appending(path: "failed-status-gap.png"))
+            throw ReplayError("A click between two status capsules failed to open \(underlyingID), "
+                + "point=\(gapPoint), frame=\(String(describing: canvas.visibleFrame(for: underlyingID))), "
+                + "hit=\(String(describing: gapHit)), active=\(gapActive), pause=\(canvas.interactionPauseReasons), "
+                + "selected=\(String(describing: presentation.selected)), status=\(model.statusFilter), key=\(window.isKeyWindow)")
         }
         presentation.showOverview()
         try await Task.sleep(for: .milliseconds(700))

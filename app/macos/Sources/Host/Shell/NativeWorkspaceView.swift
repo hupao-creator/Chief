@@ -852,7 +852,7 @@ public final class NativeWorkspacePresentation {
     fileprivate var overviewSwipeAvailable: Bool {
         started && scene.overviewVisible && !workspace.stopping && !scene.dockCovered
             && !onboarding.blocksWorkspace && scene.windowVisible && scene.inputInteractionReady
-            && !scene.inputOpen && !scene.inputLeaving && !scene.notePanelOpen
+            && !scene.conversationOpen && !scene.inputLeaving && !scene.notePanelOpen
             && !scene.dockInteractionVisible && moku.interaction == nil
             && !browsingCollection && !messageMotion.active
     }
@@ -1137,13 +1137,18 @@ public struct NativeWorkspaceView: View {
                     .environment(\.overviewSwipeActions, NativeOverviewSwipeActions(
                         regions: presentation.scene.swipeRegions,
                         available: { presentation.overviewSwipeAvailable },
-                        canFilter: { !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
+                        canFilter: { !presentation.scene.inputOpen && !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
                         canReturnWithWheel: { presentation.overview.canReturnToAllWithWheel(up: $0) },
                         openNoteFromBar: {
-                            guard presentation.overviewSwipeAvailable, presentation.canToggleMokuNote,
+                            guard presentation.overviewSwipeAvailable, !presentation.scene.inputOpen, presentation.canToggleMokuNote,
                                   model.timer.current == nil else { return false }
                             presentation.scene.openNotePanelFromUser()
                             return true
+                        },
+                        openConversation: {
+                            guard presentation.overviewSwipeAvailable, model.catalog.hasMoku,
+                                  model.timer.current == nil else { return }
+                            presentation.scene.openConversation()
                         },
                         stepSemanticFilter: { presentation.overview.stepSemanticFilter(up: $0) },
                         stepStatusFilter: { presentation.overview.stepStatusFilter(up: $0) }))

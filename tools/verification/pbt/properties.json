@@ -5,6 +5,7 @@
   {"id":"PBT-MOKU-WORKTREE","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestRemoveWorktreeProperties","doc":"internal/services/workspaces/README.md","cases":5},
   {"id":"PBT-MOKU-SEND","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestMokuSendProperties","doc":"internal/services/moku/README.md","cases":40},
   {"id":"PBT-MOKU-OUTBOX","suite":"go","engine":"rapid","package":"internal/core/runtime","test":"TestMokuOutboxProperties","doc":"internal/core/runtime/README.md","cases":100},
+  {"id":"PBT-MOKU-CONVERSATION","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestMokuConversationProperties","doc":"internal/core/runtime/README.md","cases":30},
   {"id":"PBT-MOKU-SCOPE","suite":"go","engine":"rapid","package":"internal/services/moku","test":"TestToolScopeProperties","doc":"internal/services/moku/README.md","cases":100},
   {"id":"PBT-MOKU-QUEUE","suite":"go","engine":"rapid","package":"internal/services/moku","test":"TestAdmissionQueueProperties","doc":"internal/services/moku/README.md","cases":100},
   {"id":"PBT-STORE-SNAPSHOT","suite":"go","engine":"rapid","package":"tools/verification/pbt/store","test":"TestSnapshotProperties","doc":"internal/core/store/README.md","cases":100},

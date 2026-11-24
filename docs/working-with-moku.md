@@ -8,7 +8,7 @@ Typing or pressing Delete in the open bar plays a keyboard click when your Mac h
 
 In a task conversation, the same input box shows the agent's icon and sends to that conversation. In a Super Thread, open a source conversation in **Related executions** before sending a follow-up. [Agent conversations](task-conversations.md) · [Super Threads](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 
-The button at the right of the input box shows **Send** when your message is ready, even while Chief is working. Click it or press **Return** to send. In Overview, the bar folds back around Chief’s eyes. It expands again when Chief shows a reply or task update. When Chief is idle, an empty or whitespace-only draft leaves **Send** disabled. A ready file or a selected folder can be sent on its own.
+The button at the right of the input box shows **Send** when your message is ready, even while Chief is working. Click it or press **Return** to send. When you send from the compact input, the bar folds back around Chief’s eyes. It expands again when Chief shows a reply or task update. When Chief is idle, an empty or whitespace-only draft leaves **Send** disabled. A ready file or a selected folder can be sent on its own.
 
 When Chief's input is at the bottom of Overview, click outside it or press **Esc** to close it. Your unsent draft is there when you reopen the box.
 
@@ -46,7 +46,13 @@ After a successful removal, the checkout folder is gone. The task conversation s
 
 ## Find Chief's replies and notes
 
-- **Replies.** A direct reply appears where you typed your request. You can select the text and scroll through a longer reply. The reply closes on its own, so ask Chief to put anything you want to keep in its note.
+In Overview, swipe up with two fingers over Chief’s eyes to open **Conversation with Chief**. Your messages appear on the right and Chief’s replies on the left, oldest first. The panel opens at the latest messages. Scroll up to read earlier ones. If you reach **Earlier messages**, click it to turn back a page. **Newer messages** takes you forward again.
+
+Use the input at the bottom to continue the conversation. A draft you started in the compact bar is already there. Press **Return** or click **Send**. The panel stays open for Chief’s reply. Click **×** to close it.
+
+You can revisit these messages after restarting Chief in the same profile, including saved exchanges with a previous coordinating agent. A message can be recovered as long as Chief still has its conversation record. Clearing the history removes those exchanges. Messages you sent directly to a task stay in that task’s conversation.
+
+- **Replies.** Chief also shows its latest reply briefly on the compact bar. You can select the text, scroll through a longer reply, or read it later in **Conversation with Chief**.
 - **Task updates.** Watch the bar for **Dispatching task**. **Thread started** means the task is ready to open. If the handoff fails, the bar shows **Dispatch failed**. Open the task card in Overview to see how the work is going.
 - **Notes.** In Overview, right-click Chief Bar with the input box closed to open **Chief Note**. You can also press **⌘⇧N**. Click the eyes centered below the note to start a message, or click a run’s link to read it. The note closes. If the conversation or its Super Thread is outside your selected folder or tag, Overview switches to a matching view before the reader opens. If the conversation belongs to exactly one Super Thread, its card opens with the run you clicked in **Related executions**. If its collection is visible, it turns to that Super Thread’s page first. Other links open the cited run in the task conversation. In both readers, you start at the top of the run. Click the **×** at the top left of the reader or press **⌘K** to return to Overview with the note closed. To resume the note from a task conversation, press **Esc** in the run you opened. In a Super Thread, you can use **Back to related executions** to browse other runs before closing the report. To reopen the note from Overview, right-click Chief Bar again.
 

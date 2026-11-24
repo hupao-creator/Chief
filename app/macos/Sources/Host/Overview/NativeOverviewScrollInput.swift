@@ -158,7 +158,8 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                    document.bounds.height > scroll.contentView.bounds.height + 1 { return nil }
                 view = current.superview
             }
-            if actions.regions.bar.contains(point, in: window) || !actions.canFilter() { return nil }
+            if actions.regions.bar.contains(point, in: window) { return .conversation }
+            guard actions.canFilter() else { return nil }
             return contentPoint.x < content.bounds.midX ? .semanticFilter : .statusFilter
         }
 
@@ -183,6 +184,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                 canReturnWithWheel: swipeActions.canReturnWithWheel,
                 perform: { target, up in
                     switch target {
+                    case .conversation: swipeActions.openConversation()
                     case .semanticFilter: swipeActions.stepSemanticFilter(up)
                     case .statusFilter: swipeActions.stepStatusFilter(up)
                     }

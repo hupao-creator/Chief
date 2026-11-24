@@ -435,7 +435,7 @@ carousel member, execution identities and link position alongside the recording.
    Chinese. Record the capture rate. Track source revision, executable identity, scoped replies,
    input targets and returned state for each visit.
 
-The [Note link replay](../../demos/moku-landing/README.md#chief-note-execution-links) checks the click, space ordering, reader and execution target in an isolated window. The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-click-at-actual-size) checks the Overview status filters, live card membership, retained tags and direct Chief Bar right-click and Control-click, primary click to compose, outside dismissal, and the retired swipe through posted AppKit events. The semantic Note toggle exercises the Note entrance. Mounted route identity
+The [Note link replay](../../demos/moku-landing/README.md#chief-note-execution-links) checks the click, space ordering, reader and execution target in an isolated window. The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-click-at-actual-size) checks the Overview status filters, live card membership, retained tags and direct Chief Bar right-click and Control-click, upward swipe into the conversation, primary click to compose, and draft-preserving outside dismissal through posted AppKit events. Its [live conversation replay](../../demos/moku-landing/verify_conversation.py) checks native Return, public dialogue, and App and Runtime restart in one isolated profile. The semantic Note toggle exercises the Note entrance. Mounted route identity
 and window frame recordings supply separate evidence.
 [Note and link behavior](../../app/macos/Sources/Host/MokuScene/README.md)
 
