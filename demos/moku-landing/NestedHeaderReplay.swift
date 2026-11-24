@@ -860,7 +860,11 @@ private final class WheelSample: NSEvent {
                 let top = CGRect(x: frame.minX, y: window.frame.height - frame.maxY, width: frame.width, height: frame.height)
                 let rgb = filterFaceRGB(pixels, at: top, scale: CGFloat(pixels.pixelsWide) / window.frame.width)
                 faces[id] = rgb
-                if selected { selectedFaces[id] = rgb } else { idleFaces[id] = rgb }
+                // Dark Aqua frames check ink contrast on separate backdrops.
+                // Keep their RGB in the receipt and compare tint within the original appearance.
+                if captureScheme != .dark {
+                    if selected { selectedFaces[id] = rgb } else { idleFaces[id] = rgb }
+                }
             }
             return faces
         }
