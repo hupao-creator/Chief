@@ -10,6 +10,8 @@ While the background service syncs or reconnects, its message appears below the 
 
 When a folder has tags to choose from, look for their emoji along the left edge. Move the pointer over or just beside an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. The selected tag keeps its name visible when you move the pointer away.
 
+When you close a task conversation or Super Thread to return to Overview, the top and left filters come back into place together. Once the reader closes, you can choose another filter.
+
 A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Selected folders have a muted gold tint.
 
 When you switch to another folder at the top, Chief restores your last left-side choice there, including **Running** if you chose it. If your saved choice is unavailable or you haven't made one, Chief opens the first visible semantic tag, or the whole folder if there are none. Click the current folder at the top to see all its tagged work.

@@ -13,6 +13,29 @@ public final class NativeReadingPageMotion {
     public var active: Bool { phase != .idle }
     /// The outgoing reader still owns its draft while its parent prepares and returns.
     public var isReturning: Bool { phase == .preparingClose || phase == .closing }
+    // The retained parent lives in a separate NSHostingView. Its overlays sample
+    // this command even if AppKit replaces the root view between display ticks.
+    public struct ParentTravel {
+        let start: TimeInterval
+        let duration: TimeInterval
+        let from: CGFloat
+        public let returning: Bool
+        let emphasized: Bool
+
+        public func visibility(at time: TimeInterval) -> CGFloat {
+            let elapsed = duration > 0 ? (time - start) / duration : 1
+            let fraction = emphasized ? NativeReadingPageTiming.openingProgress(at: elapsed)
+                : NativeReadingPageTiming.replacementProgress(at: elapsed)
+            return from + ((returning ? 1 : 0) - from) * fraction
+        }
+    }
+    public fileprivate(set) var parentTravel: ParentTravel?
+    fileprivate func moveParent(returning: Bool, duration: TimeInterval, emphasized: Bool = false) {
+        let start = CACurrentMediaTime()
+        let from = parentTravel?.visibility(at: start) ?? (returning ? 0 : 1)
+        parentTravel = ParentTravel(start: start, duration: duration, from: from,
+                                    returning: returning, emphasized: emphasized)
+    }
     fileprivate var replacementDirection: CGFloat = 1
     @ObservationIgnored fileprivate var closeAction: (() -> Void)?
     @ObservationIgnored fileprivate var cancelAction: ((Bool) -> Void)?
@@ -186,7 +209,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
                     // Keep the source host available through title handoff;
                     // settled panels need only the existing window material.
                     NativeReadingParentSurface(frozen: panel && open && panelContentReady && !motion.active
-                        && panelIdentity?.pending != true,
+                        && motion.parentTravel == nil && panelIdentity?.pending != true,
                         content: parent)
                 } else { parent }
             }
@@ -262,7 +285,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
 
     private func bindActions() {
         motion.closeAction = { requestClose() }
-        motion.cancelAction = { settle(finishingClose: $0) }
+        motion.cancelAction = { settle(finishingClose: $0, cancelReturn: true) }
     }
 
     private func requestClose() {
@@ -289,25 +312,35 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         }
     }
 
-    private func settle(finishingClose: Bool = false) {
+    private func settle(finishingClose: Bool = false, cancelReturn: Bool = false) {
         panelIdentity?.finish()
         // Layout/activation can interrupt the animation after Close was accepted.
         // Complete that visit's intent, but never close a replacement route or
         // turn an explicit cancellation into navigation.
         let finishClose = finishingClose && motion.isReturning && open && mountedIdentity == identity
+        let retreat = cancelReturn && !finishingClose && open && motion.parentTravel?.returning == true
         animationTask?.cancel(); animationTask = nil
         frames.stop()
         generation += 1
+        let token = generation
         var transaction = Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            progress = open ? 1 : 0
+            if retreat { motion.moveParent(returning: false, duration: duration) }
+            else { motion.parentTravel = nil; progress = open ? 1 : 0 }
             panelTransition = nil
             historyTravel = nil
             panelContentReady = open
             panelReaderPreloading = false
             reportReturnStartedAt = nil
             motion.phase = .idle
+        }
+        if retreat {
+            // Reopening restores the live reader immediately. Keep its partially
+            // revealed parent drawable until the backdrop and filters retreat.
+            withAnimation(curve, completionCriteria: .removed) { progress = 1 } completion: {
+                if generation == token { motion.parentTravel = nil }
+            }
         }
         onParentPresentationChange?(!open || finishClose)
         if finishClose { onClose() }
@@ -344,6 +377,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     private func finishPanelTransition(_ token: Int, _ wasClosing: Bool) {
         guard generation == token, panelTransition?.generation == token else { return }
         panelTransition = nil
+        motion.parentTravel = nil
         reportReturnStartedAt = nil
         motion.phase = .idle
         if wasClosing { onClose() }
@@ -369,6 +403,9 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             animationTask?.cancel(); animationTask = nil
             frames.stop()
             generation += 1
+            if isolatesParent {
+                motion.moveParent(returning: closing, duration: duration, emphasized: !closing && emphasizedOpening)
+            }
             reportReturnStartedAt = closing && reportPanelMotion && panelContentReady ? CACurrentMediaTime() : nil
             if !closing { panelContentReady = false; panelReaderPreloading = false }
             panelTransition = NativeReadingPanelTransition(generation: generation, closing: closing,

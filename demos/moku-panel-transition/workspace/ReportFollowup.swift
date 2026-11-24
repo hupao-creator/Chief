@@ -59,7 +59,7 @@ import SwiftUI
         panel.setFrameOrigin(CGPoint(x: screen.frame.maxX - 2, y: screen.visibleFrame.minY))
         panel.appearance = NSAppearance(named: .darkAqua)
         let view = NSHostingView(rootView: NativeWorkspaceView(model: model, presentation: host)
-            .transformEnvironment(\._accessibilityReduceMotion) { if args[5] == "identity-reduced" { $0 = true } }
+            .transformEnvironment(\._accessibilityReduceMotion) { if args[5].hasSuffix("-reduced") { $0 = true } }
             .environment(\.scenePhase, .active).environment(\.colorScheme, .dark))
         panel.contentView = view
         panel.orderFrontRegardless()
@@ -67,8 +67,12 @@ import SwiftUI
         try await wait("Initial catalog did not mount") { model.hasInitialContent && host.scene.overviewVisible }
         let report = ApplicationThreadRef(threadID: JSONText(args[2]), typeID: "report.document")
         let source = ApplicationExecutionRef(thread: .init(threadID: JSONText(args[3]), typeID: "agent"), executionID: JSONText(args[4]))
-        if args[5].hasPrefix("identity") {
-            try await recordIdentity(window: panel, host: host, report: report, source: source, scenario: args[5])
+        if args[5].hasPrefix("tag-return") || args[5].hasPrefix("identity") {
+            if args[5].hasPrefix("tag-return") {
+                try await recordTagReturn(window: panel, host: host, report: report, scenario: args[5])
+            } else {
+                try await recordIdentity(window: panel, host: host, report: report, source: source, scenario: args[5])
+            }
             guard foreground == NSWorkspace.shared.frontmostApplication?.processIdentifier else {
                 throw PluginContractError("Foreground application changed")
             }

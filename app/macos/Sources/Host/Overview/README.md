@@ -291,6 +291,15 @@ A superseded layout worker cannot pause input after a newer layout has settled o
 
 ## Tags and filter transitions
 
+The top row and left rail stay mounted behind Agent and Report readers. When a
+panel begins its return to Overview, both filter groups approach
+their resting positions together, traveling 16pt inward from the left and top
+on the same 420ms curve.
+They regain input and accessibility when Overview owns the route. Reopening the
+reader during return withdraws both groups from their current positions.
+Reduce Motion keeps them at their resting coordinates during the backdrop fade.
+[Native Report return replay](../../../../../demos/moku-panel-transition/README.md#overview-filters-on-report-close)
+
 Selecting a chip reconciles against the admitted catalog and projects the selected
 membership into card slots. Full Report cover HTML is requested on mount and
 reused by revision and appearance. On a switch into a directory with several

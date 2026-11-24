@@ -40,17 +40,20 @@ public struct NativeOverviewWorkspaceView: View {
     public let callbacks: NativeOverviewWorkspaceCallbacks
     public var interactionPaused: Bool
     public var chromeVisible: Bool
+    public var readingMotion: NativeReadingPageMotion?
     public var landing: Bool
     @Environment(\.nativeCanvasInputRegions) private var sharedInputRegions
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var localInputRegions = NativeCanvasInputRegions()
     @State private var callbackStore: NativeOverviewWorkspaceCallbackStore
     private var inputRegions: NativeCanvasInputRegions { sharedInputRegions ?? localInputRegions }
     private var locale: DesktopLocale { model.workspace.locale }
     public init(model: NativeOverviewWorkspaceModel, callbacks: NativeOverviewWorkspaceCallbacks,
                 interactionPaused: Bool = false, landing: Bool = false,
-                chromeVisible: Bool = true) {
+                chromeVisible: Bool = true, readingMotion: NativeReadingPageMotion? = nil) {
         self.model = model; self.callbacks = callbacks; self.interactionPaused = interactionPaused
         self.landing = landing; self.chromeVisible = chromeVisible
+        self.readingMotion = readingMotion
         _callbackStore = State(initialValue: NativeOverviewWorkspaceCallbackStore(callbacks))
     }
     public var body: some View {
@@ -126,11 +129,12 @@ public struct NativeOverviewWorkspaceView: View {
                 }
             }
             .overlay(alignment: .leading) {
-                if chromeVisible && !landing {
+                if !landing {
                     NativeOverviewTagRail(choices: model.railChoices, selectedID: model.selectedRailID,
                         maximumWidth: min(OverviewTagMetrics.railMaximumWidth, railWidth),
                         strings: chromeStrings, onSelect: model.selectRailChoice, interactions: model.chromeInteractions)
                         .padding(.leading, railEdgeInset)
+                        .modifier(chromePresentation(edge: .leading))
                 }
             }
             .overlay {
@@ -148,15 +152,7 @@ public struct NativeOverviewWorkspaceView: View {
                     onSettingsWithOrigin: callbacks.onSettingsWithOrigin,
                     onSettingsFrameChange: callbacks.onSettingsFrameChange,
                     interactions: model.chromeInteractions)
-                    .opacity(chromeVisible ? 1 : 0)
-                    // Translate the retained chrome without compressing its labels or
-                    // moving the cards below, including the narrow two-row layout.
-                    .visualEffect { [chromeVisible] chrome, geometry in
-                        chrome.offset(y: chromeVisible ? 0 : -geometry.size.height)
-                    }
-                    .allowsHitTesting(chromeVisible).accessibilityHidden(!chromeVisible)
-                    .disabled(!chromeVisible)
-                    .animation(NativeReadingPageTiming.openingAnimation, value: chromeVisible)
+                    .modifier(chromePresentation(edge: .top))
             }
             .onChange(of: geometry.size, initial: true) { _, size in model.setCollectionWindowSize(size) }
         }
@@ -168,6 +164,12 @@ public struct NativeOverviewWorkspaceView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(locale.text("会话俯瞰", "Conversation overview"))
     }
+
+    private func chromePresentation(edge: Edge) -> some ViewModifier {
+        OverviewChromePresentation(edge: edge, interactive: chromeVisible, travel: readingMotion?.parentTravel,
+                                   reduceMotion: reduceMotion)
+    }
+
     static func viewport(in size: CGSize, hasFilters: Bool, hasDock: Bool) -> NativeOverviewViewport {
         // Visibility probes measure the persistent header and idle Dock extents.
         let dock = NativeMokuCapsuleLayout.idleSurface(in: CGRect(origin: .zero, size: size))
@@ -199,6 +201,27 @@ public struct NativeOverviewWorkspaceView: View {
             strings.unread = "unread"
         }
         return strings
+    }
+}
+
+private struct OverviewChromePresentation: ViewModifier {
+    let edge: Edge
+    let interactive: Bool
+    let travel: NativeReadingPageMotion.ParentTravel?
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        TimelineView(.animation(paused: travel == nil || reduceMotion)) { _ in
+            let position = travel?.visibility(at: CACurrentMediaTime()) ?? (interactive ? 1 : 0)
+            let offset = reduceMotion ? 0 : 16 * (position - 1)
+            content.geometryGroup()
+                .offset(x: edge == .leading ? offset : 0, y: edge == .top ? offset : 0)
+                // The reading stack already fades its entire parent during travel.
+                .opacity(interactive || travel != nil ? 1 : 0)
+        }
+        .allowsHitTesting(interactive)
+        .accessibilityHidden(!interactive)
+        .disabled(!interactive)
     }
 }
 

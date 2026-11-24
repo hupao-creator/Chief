@@ -1135,7 +1135,8 @@ public struct NativeWorkspaceView: View {
                         onSettings: { presentation.openSettings() }),
                     interactionPaused: presentation.scene.interactionPaused || presentation.messageMotion.active,
                     landing: presentation.moku.landing,
-                    chromeVisible: presentation.selected == nil)
+                    chromeVisible: presentation.selected == nil,
+                    readingMotion: presentation.messageMotion)
                     .environment(\.overviewSwipeActions, NativeOverviewSwipeActions(
                         regions: presentation.scene.swipeRegions,
                         available: { presentation.overviewSwipeAvailable },
