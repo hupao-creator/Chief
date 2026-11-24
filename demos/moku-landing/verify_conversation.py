@@ -21,6 +21,19 @@ from reading.public import content
 from report import save, sha256
 
 
+def verify_layout(visit):
+    for size, height in (("regular", 540), ("small", 480), ("smallMultiline", 480)):
+        frame = visit[size]
+        for name, expected in (("panelHeight", height), ("sameSpeakerGap", 7), ("speakerChangeGap", 14)):
+            if abs(frame[name] - expected) > 1:
+                raise AssertionError(f"{size} {name}: expected {expected} pt, measured {frame[name]} pt")
+    small, multiline = visit["small"], visit["smallMultiline"]
+    editor_growth = multiline["editorHeight"] - small["editorHeight"]
+    list_shrinkage = small["listHeight"] - multiline["listHeight"]
+    if editor_growth <= 1 or abs(list_shrinkage - editor_growth) > 1:
+        raise AssertionError(f"Resized message list did not make room for the draft: {small}, {multiline}")
+
+
 def run(binary, output):
     output.mkdir(parents=True, exist_ok=False)
     save(output / "runtime.json", validate(binary))
@@ -32,10 +45,14 @@ def run(binary, output):
 
     session = Session(binary, output, uuid.uuid4().hex, event)
     replay = NativeReplay(ROOT, "ChiefConversationReplay", "com.chief.conversation-replay." + uuid.uuid4().hex)
-    messages = ["Please review the release notes.", "I’ll check the notes against the latest changes.",
-                "Which section needs my attention?", "The upgrade instructions are ready for your review.",
-                "Start with the install step."]
-    attachment = "upgrade-preview.png"
+    messages = [
+        "请看一下「展开全文」的效果。图片附件能按原来的比例显示吗？我想在小窗口里也看清截图中的文字。",
+        "我会把截图放进展开后的消息里，保留图片的宽高比。改完会用同一张图片分别查看普通窗口和小窗口，核对正文换行和附件的位置。",
+        "精简一下状态文案，把「仅运行中」和「仅已完成」改成「运行中」和「已完成」。附件里标出了需要调整的位置。",
+        "两个标签已经改为「运行中」和「已完成」，英文也同步为 Running 和 Completed。接下来会缩小窗口，检查多行消息和下方的输入框能否同时看清。",
+        "截图中标注的两处都已核对，附件仍然跟着这条消息。",
+    ]
+    attachment = "界面标注.png"
     try:
         replay.compile([HERE / "NestedHeaderReplay.swift", HERE / "FilterFacePixels.swift"])
         save(output / "source.json", {"commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=ROOT).strip(),
@@ -44,11 +61,11 @@ def run(binary, output):
         session.prepare()
         shutil.copyfile(ROOT / "app/macos/Sources/Shared/PluginUI/Resources/ChiefOverviewIdle.png", session.root / attachment)
         save(session.root / "conversation.json", {"messages": messages, "attachment": attachment,
-                                                   "draft": "I’ll check that section next."})
+                                                   "draft": "我再核对一下小窗口。"})
         session.start()
         session.configure()
         peer = session.peer
-        peer.title = lambda _: "Review release notes"
+        peer.title = lambda _: "核对窗口截图"
         original = peer.respond
         called = set()
 
@@ -88,6 +105,7 @@ def run(binary, output):
             receipt = replay.workspace / "evidence" / ("conversation-" + stage + ".json")
             if status or not receipt.exists():
                 raise RuntimeError(f"{stage} replay did not finish: " + (replay.root / "stdout.log").read_text()[-1500:])
+            verify_layout(json.loads(receipt.read_text()))
             rows = page()
             if [r["text"] for r in rows] != messages or [r["role"] for r in rows] != ["user", "chief", "user", "chief", "chief"]:
                 raise AssertionError("Persistent conversation differs from the submitted messages and acknowledged Talks")

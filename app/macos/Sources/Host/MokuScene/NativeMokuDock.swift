@@ -420,7 +420,8 @@ public struct NativeMokuDock: View {
             let rowHeight = rowExpanded && !state.settingsExpanded && !noteExpanded
                 ? surfaceHeight(width: width) : NativeMokuCapsuleLayout.idleSize.height
             let noteAvailableHeight = max(0, frame.height - rowHeight)
-            let conversationHeight = conversationVisible ? min(360, noteAvailableHeight) : 0
+            let conversationPanelHeight = min(540, dockViewport.height * 0.8, frame.height)
+            let conversationHeight = conversationVisible ? max(0, conversationPanelHeight - rowHeight) : 0
             let noteHeight = noteExpanded
                 ? NativeMokuNoteLayout.fittedHeight(content: noteContentHeight, available: noteAvailableHeight) : 0
             let availableSurface = CGRect(x: frame.midX - width / 2,

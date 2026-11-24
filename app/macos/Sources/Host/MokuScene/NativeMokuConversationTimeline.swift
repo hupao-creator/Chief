@@ -13,6 +13,11 @@ struct NativeMokuConversationTimeline: View {
     @State private var atBottom = true
     @State private var revealed: CGFloat = 0
 
+    private struct ReadingViewport: Equatable {
+        let height: CGFloat
+        let nearEnd: Bool
+    }
+
     private let timeColumn: CGFloat = 78
     private var chinese: Bool { locale.language.languageCode?.identifier == "zh" }
 
@@ -27,7 +32,9 @@ struct NativeMokuConversationTimeline: View {
                                 .accessibilityIdentifier("moku-conversation-earlier")
                         }
                         ForEach(page.messages.enumerated(), id: \.element.id) { index, message in
-                            let starts = index == 0 || startsPeriod(message, after: page.messages[index - 1])
+                            let previous = index > 0 ? page.messages[index - 1] : nil
+                            let starts = previous.map { startsPeriod(message, after: $0) } ?? true
+                            let bubbleSpacing: CGFloat = previous?.fromUser == message.fromUser ? 7 : 14
                             let next = index + 1
                             let tail = next == page.messages.count || page.messages[next].fromUser != message.fromUser
                                 || startsPeriod(page.messages[next], after: message)
@@ -35,7 +42,7 @@ struct NativeMokuConversationTimeline: View {
                                 if starts {
                                     separator(message.date)
                                         .frame(width: width).offset(x: revealed)
-                                        .padding(.top, index == 0 ? 2 : 12).padding(.bottom, 8)
+                                        .padding(.top, index == 0 ? 2 : 20).padding(.bottom, 8)
                                 }
                                 HStack(spacing: 0) {
                                     ConversationBubble(message: message, tail: tail, viewport: viewport,
@@ -52,7 +59,7 @@ struct NativeMokuConversationTimeline: View {
                                         .accessibilityHidden(true)
                                 }
                             }
-                            .padding(.top, index == 0 ? 0 : 3)
+                            .padding(.top, starts ? 0 : bubbleSpacing)
                             .id(message.id)
                         }
                         if let showNewer {
@@ -70,8 +77,13 @@ struct NativeMokuConversationTimeline: View {
                 .onScrollGeometryChange(for: CGFloat.self) { min(timeColumn, max(0, $0.visibleRect.minX)) } action: { _, x in
                     revealed = x
                 }
-                .onScrollGeometryChange(for: Bool.self) { $0.contentSize.height - $0.visibleRect.maxY < 24 } action: { _, nearEnd in
-                    atBottom = nearEnd
+                .onScrollGeometryChange(for: ReadingViewport.self) { geometry in
+                    ReadingViewport(height: geometry.containerSize.height,
+                                    nearEnd: geometry.contentSize.height - geometry.visibleRect.maxY < 24)
+                } action: { before, after in
+                    atBottom = after.nearEnd
+                    // A taller draft can shrink the viewport while the last message ID stays the same.
+                    if before.nearEnd, after.height < before.height, revealed < 1 { position.scrollTo(edge: .bottom) }
                 }
                 .onScrollPhaseChange { _, phase, context in
                     if (phase == .idle || phase == .decelerating), context.geometry.visibleRect.minX > 0.5 {
@@ -137,7 +149,7 @@ private struct ConversationBubble: View {
                 Label(message.attachments[i], systemImage: "paperclip").font(.callout).lineLimit(2)
             }
         }
-        .font(.system(size: 17))
+        .font(.system(size: 15))
         .foregroundStyle(user || scheme == .dark ? Color.white : .black)
         .padding(.horizontal, 13).padding(.vertical, 7)
         .padding(.bottom, tail ? ConversationBalloon.tailHeight : 0)

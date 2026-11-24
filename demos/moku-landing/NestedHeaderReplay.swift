@@ -76,9 +76,10 @@ private final class WheelSample: NSEvent {
             let directory = profile ?? liveProfile ?? URL(filePath: FileManager.default.currentDirectoryPath)
             let preferences = DesktopPreferences(directory: directory)
             try preferences.setOnboardingCompleted(true)
+            let liveLocale: DesktopLocale = CommandLine.arguments.contains("--restart") ? .english : .chinese
             workspace = NativeWorkspaceModel(client: RuntimeClient(profile: try RuntimeProfile(dataDirectory: directory)),
                 preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())], sidecards: [], applications: NativeApplicationModules.make()),
-                timer: NativeMokuTimerController(player: SilentReminderBell()), locale: liveProfile == nil ? .system : .english)
+                timer: NativeMokuTimerController(player: SilentReminderBell()), locale: liveProfile == nil ? .system : liveLocale)
             presentation = NativeWorkspacePresentation(workspace: workspace)
         } catch { fatalError(String(describing: error)) }
     }
@@ -263,7 +264,7 @@ private final class WheelSample: NSEvent {
         }
         guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "header-replay" }),
               let content = window.contentView else { throw ReplayError("Missing live replay window") }
-        window.setContentSize(.init(width: 900, height: 680))
+        window.setContentSize(.init(width: 1100, height: 800))
         window.center()
         captureScheme = restart ? .light : .dark
         try await focusReplayWindow(window)
@@ -273,9 +274,17 @@ private final class WheelSample: NSEvent {
         try await Task.sleep(for: .milliseconds(750))
         guard let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else { throw ReplayError("Missing Bar event monitor") }
         func swipe() async throws {
-            let bar = scene.capsuleFrame
-            let point = monitor.windowPoint(CGPoint(x: scene.inputOpen ? bar.minX + 32 : bar.midX,
-                                                    y: bar.maxY - min(30, bar.height / 2)))
+            let eyePoint: CGPoint
+            if scene.inputOpen {
+                let bar = scene.capsuleFrame
+                eyePoint = monitor.windowPoint(CGPoint(x: bar.minX + 32, y: bar.maxY - min(30, bar.height / 2)))
+            } else {
+                // A retained Talk can place the eyes beside selectable prose on restart.
+                let button = window.convertFromScreen(try filterButton("moku-open-input", in: window).frame)
+                eyePoint = CGPoint(x: button.midX, y: button.midY)
+            }
+            let pixel = window.convertToBacking(CGRect(origin: eyePoint, size: .zero))
+            let point = window.convertFromBacking(CGRect(x: floor(pixel.minX) + 0.5, y: floor(pixel.minY) + 0.5, width: 0, height: 0)).origin
             try await postScroll(window, point, y: 36, phase: .began)
             try await postScroll(window, point, y: 0, phase: .ended)
             try await wait("Swipe did not open conversation") { scene.conversationOpen && scene.inputOpen && !scene.notePanelOpen }
@@ -287,7 +296,7 @@ private final class WheelSample: NSEvent {
             spokenRows().map { $0.components(separatedBy: " — ")[0] }
         }
         let expected = fixture.messages.enumerated().map { index, text in
-            (index == 0 || index == 2 ? "You, " : "Chief, ") + text + (index == 2 ? ", " + fixture.attachment : "")
+            (index == 0 || index == 2 ? workspace.locale.text("你, ", "You, ") : "Chief, ") + text + (index == 2 ? ", " + fixture.attachment : "")
         }
         try await swipe()
         let initial = restart ? expected : Array(expected.prefix(2))
@@ -321,8 +330,8 @@ private final class WheelSample: NSEvent {
         let elements = conversationElements(in: window)
         let periods = elements.filter { $0.id == "moku-conversation-period" }
         guard periods.count == 1, !elements.contains(where: {
-            ($0.role == "AXStaticText" && [$0.label, $0.value].contains("Conversation with Chief"))
-                || ($0.role == "AXButton" && $0.label == "Close conversation")
+            ($0.role == "AXStaticText" && [$0.label, $0.value].contains(workspace.locale.text("与 Chief 的对话", "Conversation with Chief")))
+                || ($0.role == "AXButton" && $0.label == workspace.locale.text("关闭对话", "Close conversation"))
         }), spokenRows().allSatisfy({ $0.components(separatedBy: " — ").last?.contains(":") == true }) else {
             throw ReplayError("Unexpected date groups, heading, close control or accessible dates: \(elements)")
         }
@@ -336,9 +345,59 @@ private final class WheelSample: NSEvent {
                                          captureTo: evidence.appending(path: "conversation-times-" + stage + ".png"))
             try await Task.sleep(for: .milliseconds(400))
         }
-        let observed: [String: Any] = ["rows": labels(), "draft": presentation.dockDraft.text,
+        var observed: [String: Any] = ["rows": labels(), "draft": presentation.dockDraft.text,
             "conversationOpen": scene.conversationOpen, "noteOpen": scene.notePanelOpen,
             "period": periods[0].value, "timestampsHeldPoints": held, "timestampsReleasedPoints": timeline.contentView.bounds.minX]
+        func measure() throws -> [String: CGFloat] {
+            let nodes = conversationElements(in: window)
+            let rows = nodes.filter { $0.id == "moku-conversation-message" }.map(\.frame)
+            guard rows.count == expected.count, let shell = nodes.first(where: { $0.id == "moku-capsule" })?.frame,
+                  let editor = descendant(NSTextView.self, in: content, matching: { $0.isEditable && !$0.isHiddenOrHasHiddenAncestor }),
+                  let editorScroll = editor.enclosingScrollView else { throw ReplayError("Missing mounted conversation geometry") }
+            let editorFrame = window.convertToScreen(editorScroll.convert(editorScroll.bounds, to: nil))
+            let list = window.convertToScreen(timeline.convert(timeline.bounds, to: nil))
+            let bounds = window.convertToScreen(content.convert(content.bounds, to: nil))
+            let distanceFromEnd = (timeline.documentView?.bounds.maxY ?? 0) - timeline.documentVisibleRect.maxY
+            guard bounds.contains(shell), shell.insetBy(dx: -1, dy: -1).contains(editorFrame),
+                  list.minY >= editorFrame.maxY - 1, let last = rows.last, last.height > 20, last.minY >= list.minY - 1,
+                  distanceFromEnd < 2,
+                  rows.allSatisfy({ $0.minX >= shell.minX + 10 && $0.maxX <= shell.maxX - 10 }) else {
+                throw ReplayError("Bubble or composer outside its available space, end distance \(distanceFromEnd): \(bounds), \(shell), \(list), \(editorFrame), \(rows)")
+            }
+            return ["windowWidth": bounds.width, "windowHeight": bounds.height, "panelHeight": shell.height,
+                    "listHeight": list.height, "editorHeight": editorFrame.height, "attachmentBubbleHeight": rows[2].height,
+                    "speakerChangeGap": rows[2].minY - rows[3].maxY, "sameSpeakerGap": rows[3].minY - rows[4].maxY,
+                    "distanceFromEnd": max(0, distanceFromEnd)]
+        }
+        observed["regular"] = try measure()
+        window.setContentSize(NativeGeometry.minimumWindow)
+        try await wait("Workspace did not resize to its minimum window") { content.bounds.size == NativeGeometry.minimumWindow }
+        try await Task.sleep(for: .milliseconds(450))
+        observed["small"] = try measure()
+        try await capture(window, to: evidence.appending(path: "conversation-small-" + stage + ".png"))
+
+        guard let editor = descendant(NSTextView.self, in: content, matching: { $0.isEditable && !$0.isHiddenOrHasHiddenAncestor })
+            else { throw ReplayError("Missing resized composer") }
+        let extraLines = "\n再看一下换行。\n然后检查附件。\n最后核对输入框。"
+        editor.insertText(extraLines, replacementRange: NSRange(location: (editor.string as NSString).length, length: 0))
+        try await wait("Multiline Chinese draft did not reach the compact window") { presentation.dockDraft.text == fixture.draft + extraLines }
+        try await Task.sleep(for: .milliseconds(450))
+        observed["smallMultiline"] = try measure()
+        let compactCapture = evidence.appending(path: "conversation-small-multiline-" + stage + ".png")
+        try await capture(window, to: compactCapture)
+        let visibleText = try recognizedLines(in: compactCapture, languages: ["zh-Hans", "en-US"]).map(\.text).joined()
+            .filter { !$0.isWhitespace }
+        guard visibleText.contains("两处都已核对"), visibleText.contains("最后核对输入框") else {
+            throw ReplayError("Last reply or last draft line missing from the compact window capture: \(visibleText)")
+        }
+        let scrollPoint = timeline.convert(CGPoint(x: timeline.bounds.midX, y: timeline.bounds.midY), to: nil)
+        let y = timeline.contentView.bounds.minY
+        try await postScroll(window, scrollPoint, y: y > 5 ? 80 : -80, phase: .began)
+        try await postScroll(window, scrollPoint, y: 0, phase: .ended)
+        guard abs(timeline.contentView.bounds.minY - y) > 1, editor.string == fixture.draft + extraLines else {
+            throw ReplayError("History did not scroll independently of the multiline editor")
+        }
+        editor.insertText(fixture.draft, replacementRange: NSRange(location: 0, length: (editor.string as NSString).length))
         try await pressKey("\u{1b}", code: 53, in: window)
         try await wait("Escape did not close the headerless conversation") { !scene.conversationOpen }
         guard presentation.dockDraft.text == fixture.draft else { throw ReplayError("Escape discarded the draft") }
@@ -466,6 +525,17 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Cannot encode replay window")
         }
         try png.write(to: url)
+    }
+
+    private func recognizedLines(in url: URL, languages: [String], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [(text: String, frame: CGRect)] {
+        let request = VNRecognizeTextRequest()
+        request.regionOfInterest = region
+        request.recognitionLanguages = languages
+        request.minimumTextHeight = 0.008
+        try VNImageRequestHandler(url: url).perform([request])
+        return (request.results ?? []).compactMap { observation in
+            observation.topCandidates(1).first.map { (text: $0.string, frame: observation.boundingBox) }
+        }
     }
 
     private func descendant<T: NSView>(_ type: T.Type, in view: NSView, matching: (T) -> Bool = { _ in true }) -> T? {
@@ -943,6 +1013,7 @@ private final class WheelSample: NSEvent {
                   $0.frame.minX >= shell.minX + 10 && $0.frame.maxX <= shell.maxX - 10
               }) else { throw ReplayError("Messages or date headings did not fit the capsule: \(page)") }
         try await capture(window, to: directory.appending(path: "conversation-periods.png"))
+        var readingOffsets = [CGFloat]()
         for (button, message) in [("moku-conversation-earlier", "Earlier plan 20"), ("moku-conversation-newer", "Let’s send them.")] {
             guard let pageButton = conversationElements(in: window).first(where: {
                 $0.role == "AXButton" && $0.id == button
@@ -965,6 +1036,17 @@ private final class WheelSample: NSEvent {
                     throw ReplayError("Could not scroll up from the latest cached message: \(bottom) → \(timeline.contentView.bounds.minY)")
                 }
                 _ = try await revealTimes(window, at: point, timeline: timeline)
+                let reading = timeline.contentView.bounds
+                let size = content.bounds.size
+                window.setContentSize(.init(width: size.width, height: NativeGeometry.minimumWindow.height))
+                try await Task.sleep(for: .milliseconds(350))
+                let compact = timeline.contentView.bounds
+                guard compact.height < reading.height - 20, abs(compact.minY - reading.minY) < 1 else {
+                    throw ReplayError("Window resize lost the earlier reading position: \(reading) → \(compact)")
+                }
+                readingOffsets = [reading.minY, compact.minY]
+                window.setContentSize(size)
+                try await Task.sleep(for: .milliseconds(350))
                 try await postScroll(window, point, y: -160, phase: .began)
                 try await postScroll(window, point, y: 0, phase: .ended)
             }
@@ -1051,6 +1133,7 @@ private final class WheelSample: NSEvent {
         try JSONSerialization.data(withJSONObject: ["regions": targets.map { $0.0 },
             "rightClickOpenedNoteOnce": true, "swipeOpenedConversation": true, "backgroundRightClickOpenedNote": false,
             "conversationDraftRestoredInCompose": true, "conversationPeriodCount": periods.count, "conversationPaging": true,
+            "olderReadingOffsetsOnResize": readingOffsets,
             "outsideClickClosedNote": true, "primaryClickOpenedCompose": true,
             "horizontalScroll": true, "composerScrollExcluded": true, "settingsScrollExcluded": true,
             "tagOffsets": [tagOffset, tags.contentView.bounds.minX], "noteOffsets": [original, scrolled],
@@ -1423,14 +1506,7 @@ private final class WheelSample: NSEvent {
             text.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
         }
         func checkStatusText(in url: URL, expected: [String], absent: [String] = [], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [(text: String, frame: CGRect)] {
-            let request = VNRecognizeTextRequest()
-            request.regionOfInterest = region
-            request.recognitionLanguages = workspace.locale == .chinese ? ["zh-Hans", "en-US"] : ["en-US"]
-            request.minimumTextHeight = 0.008
-            try VNImageRequestHandler(url: url).perform([request])
-            let lines = (request.results ?? []).compactMap { observation in
-                observation.topCandidates(1).first.map { (text: $0.string, frame: observation.boundingBox) }
-            }
+            let lines = try recognizedLines(in: url, languages: workspace.locale == .chinese ? ["zh-Hans", "en-US"] : ["en-US"], region: region)
             let actual = lines.map { normalized($0.text) }
             guard expected.allSatisfy({ text in actual.contains { $0.contains(normalized(text)) } }),
                   absent.allSatisfy({ text in !actual.contains { $0.contains(normalized(text)) } }) else {
