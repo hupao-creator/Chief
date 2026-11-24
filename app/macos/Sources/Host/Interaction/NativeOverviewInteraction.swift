@@ -178,6 +178,8 @@ extension NativeWorkspacePresentation {
             "controls": .object(Dictionary(uniqueKeysWithValues: NativeOverviewControlGroup.allCases.map { group in
                 (JSONText(group.rawValue), .array(overview.chromeInteractions.mountedIDs(in: group).map(JSONValue.text)))
             })),
+            "rail": .array(overview.railChoices.map { .text($0.id) }),
+            "selectedRailId": overview.selectedRailID.map(JSONValue.text) ?? .null,
             "status": .text(overview.statusFilter.rawValue),
             "dock": .object(["inputOpen": .bool(scene.inputOpen), "inputLeaving": .bool(scene.inputLeaving),
                 "noteExecutionPhase": scene.noteReadingOrigin.map { .text($0.phase.rawValue) } ?? .null,

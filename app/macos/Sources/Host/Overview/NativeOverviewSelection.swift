@@ -8,8 +8,11 @@ public struct NativeOverviewTagSelection: Codable, Equatable, Sendable {
     public let tag: String
     public let kind: NativeOverviewTagKind
     public let scope: String
-    public init(tag: String, kind: NativeOverviewTagKind, scope: String = "") {
+    // An additive preference on the directory selection keeps the catalog tag namespace intact.
+    var runningTag: Bool?
+    public init(tag: String, kind: NativeOverviewTagKind, scope: String = "", runningTag: Bool = false) {
         self.tag = tag; self.kind = kind; self.scope = scope
+        self.runningTag = runningTag ? true : nil
     }
 }
 

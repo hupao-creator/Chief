@@ -39,8 +39,7 @@ checks the active decorations in the mounted workspace against a fixture Runtime
 
 The [mounted filter replay](../../demos/moku-panel-transition/remaining/README.md)
 checks [folder and tag activity](../../app/macos/Sources/Host/Overview/README.md#tag-activity)
-in a **Completed** view. The fixture includes a running task in the
-selected folder and tag. The `tag-activity` and `tag-activity-reduced` cases
+while **Reading** is selected. The fixture includes a running task under **Work** in the same folder. The `tag-activity` and `tag-activity-reduced` cases
 inspect their dot pattern, its animation under each motion setting, and its
 removal when the task completes. The replay captures the production window.
 
@@ -102,7 +101,7 @@ contains every requested ID, including blocked and unreached entries.
 | --- | --- | --- | --- |
 | `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Page changes take under 1,000ms each. The final Dock handoff takes under 1,560ms. | Fresh profile, authorized system AX driver, exclusive desktop. Each press verifies the private runtime PID/epoch, target button and focused test window. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
 | `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve tagged tasks in the selected folder in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
-| `E2E-OVERVIEW-004` | Select Running in the default folder. Switch spaces, select Completed and return to the folder. | Tagged project and Inbox tasks plus an untagged Inbox task in the supported suite, or tagged reports and tasks across two folders in the Collection suite. `overview-filters.json` records the Runtime scope and source references alongside the mounted pages. | Checks the tagged membership, empty Running view and status reset on navigation. The [window replay](../../demos/moku-landing/README.md) also checks live removal and assignment of the last and first tag. |
+| `E2E-OVERVIEW-004` | Select the folder’s Running tag, switch spaces and return. Choose Completed in a top-level Inbox tag. | Tagged project and Inbox tasks plus an untagged Inbox task in the supported suite, or tagged reports and tasks across two folders in the Collection suite. `overview-filters.json` records the Runtime scope and source references alongside the mounted pages. | Checks scoped membership, the available left buttons, the empty Running view and the remembered folder choice. The [window replay](../../demos/moku-landing/README.md) also checks live removal and assignment of the last and first tag. |
 | `E2E-OVERVIEW-005` | Launch, select filters through mounted controls, and relaunch the same isolated profile. | Three tagged project tasks with distinct tags and one tagged Inbox task. | Checks the first top-row default, folder entry defaults, directory child and non-first Inbox tag restoration, empty-catalog preference retention, late tags and unavailable-space fallback. |
 | `E2E-CHIEF-001` | Open Note and switch to Compose. The legacy command is rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
@@ -467,7 +466,7 @@ carousel member, execution identities and link position alongside the recording.
    Chinese. Record the capture rate. Track source revision, executable identity, scoped replies,
    input targets and returned state for each visit.
 
-The [Note link replay](../../demos/moku-landing/README.md#chief-note-execution-links) checks the click, space ordering, reader and execution target in an isolated window. The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-click-at-actual-size) checks the Overview status filters, live card membership, retained tags and direct Chief Bar right-click and Control-click, upward swipe into the conversation, primary click to compose, and draft-preserving outside dismissal through posted AppKit events. Its [live conversation replay](../../demos/moku-landing/verify_conversation.py) checks native Return, public dialogue, and App and Runtime restart in one isolated profile. The semantic Note toggle exercises the Note entrance. Mounted route identity
+The [Note link replay](../../demos/moku-landing/README.md#chief-note-execution-links) checks the click, space ordering, reader and execution target in an isolated window. The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-click-at-actual-size) checks windowed and full-screen left-rail navigation, Inbox statuses, live card membership, retained tags and direct Chief Bar right-click and Control-click, upward swipe into the conversation, primary click to compose, and draft-preserving outside dismissal through posted AppKit events. Its [live conversation replay](../../demos/moku-landing/verify_conversation.py) checks native Return, public dialogue, and App and Runtime restart in one isolated profile. The semantic Note toggle exercises the Note entrance. Mounted route identity
 and window frame recordings supply separate evidence.
 [Note and link behavior](../../app/macos/Sources/Host/MokuScene/README.md)
 
@@ -716,11 +715,9 @@ does not certify first-run onboarding.
 Run the [desktop command](#build-and-run) with `--suite overview-spaces`. This
 suite starts the normal application with its private profile and automation
 socket. A prepared Runtime supplies completed tasks, with no desktop
-preferences at the first launch. Mounted filter buttons select the left tag,
+preferences at the first launch. It relaunches with an explicitly selected empty Running tag and with the older directory preference fields. Mounted filter buttons select the left tag,
 top folder and Inbox tag. The folder button exercises first entry, restoration,
-invalid-child fallback and return to the entire folder. Runtime archive and
-classification operations vary availability without editing desktop
-preferences. The final relaunch leaves an older saved catalog on disk and
+invalid-child fallback and return to the entire folder. Runtime archive and classification operations vary tag availability. The final relaunch leaves an older saved catalog on disk and
 checks selection against the Runtime. The first observable
 populated Overview must already select the expected filter and project its
 exact card IDs. The settled state must also mount those cards and the selected

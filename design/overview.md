@@ -14,9 +14,9 @@ region is 1384×840pt. Twelve 1×1 cards occupy four columns and three rows
 
 At the default 1× camera, the card origins in this layout are x = 92, 428,
 764, 1100 and y = 140, 352, 564. The grid is centered on the logical window.
-The top directory bar, left tag column, right status column and Chief Bar float
+The top directory bar, left filter column and Chief Bar float
 above the canvas. Card framing and collection budgeting use the full window.
-The filter columns stay in place when the cards scroll.
+The filter controls stay in place when the cards scroll.
 
 The pure solver returns placements and bounds from one input.
 Cards from lower rows can fill continuous interior gaps across packing bands.

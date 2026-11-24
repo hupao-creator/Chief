@@ -1138,7 +1138,6 @@ public struct NativeWorkspaceView: View {
                         regions: presentation.scene.swipeRegions,
                         available: { presentation.overviewSwipeAvailable },
                         canFilter: { !presentation.scene.inputOpen && !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
-                        canReturnWithWheel: { presentation.overview.canReturnToAllWithWheel(up: $0) },
                         openNoteFromBar: {
                             guard presentation.overviewSwipeAvailable, !presentation.scene.inputOpen, presentation.canToggleMokuNote,
                                   model.timer.current == nil else { return false }
@@ -1150,8 +1149,7 @@ public struct NativeWorkspaceView: View {
                                   model.timer.current == nil else { return }
                             presentation.scene.openConversation()
                         },
-                        stepSemanticFilter: { presentation.overview.stepSemanticFilter(up: $0) },
-                        stepStatusFilter: { presentation.overview.stepStatusFilter(up: $0) }))
+                        stepRail: { presentation.overview.stepRail(up: $0) }))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen
                         && !presentation.onboarding.blocksWorkspace),
                         presentation: presentation.collectionPanel)

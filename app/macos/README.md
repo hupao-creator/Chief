@@ -193,7 +193,7 @@ When Overview is visible, connection notices sit below its top controls,
 leaving folder and Inbox tag labels visible and available for browsing.
 
 `desktop-preferences.json` stores the selected thread, last Overview space,
-each directory's last tag, onboarding and reading activity. Saved appearance and language fields are ignored on read and omitted
+each directory's last tag (including an explicit Running choice), onboarding and reading activity. Saved appearance and language fields are ignored on read and omitted
 from subsequent writes. A preexisting profile still establishes prior use unless
 the file explicitly marks onboarding as pending.
 

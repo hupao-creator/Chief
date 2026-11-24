@@ -186,7 +186,7 @@ height, in which case the projection scales all cards uniformly to fit that
 height. Packing and camera framing leave 30pt above and below the grid area.
 Preferred side margins are 64pt, or 32pt at window widths up to 620pt. A dimension that
 cannot fit both preferred margins with room for cards uses its full extent, including for the fit check.
-The top filter bar, side filter columns and Chief Bar overlay the cards. Packing,
+The top filter bar, left filter column and Chief Bar overlay the cards. Packing,
 centering, collection budgeting and horizontal travel use the full window.
 Control heights and the visibility or width of a side column leave the framing
 geometry unchanged. A click on a visible filter activates its button. Gaps
@@ -247,17 +247,12 @@ live.
 [NativeOverviewScrollInput](NativeOverviewScrollInput.swift) routes window-local AppKit wheel events.
 The [vertical gesture router](NativeOverviewVerticalSwipe.swift) recognizes an
 unmodified, precise trackpad contact after at least 24 points of vertical travel
-and more than 1.5 times its horizontal travel. The initial pointer location in
-the Overview window chooses the column. On the left, a swipe steps among the
-current directory's visible semantic tags. From the directory, swiping up enters
-the first tag. Swiping down at the first tag keeps it selected. On
-the right, it steps among Running, All (initial) and Completed. A physical up
-swipe advances to the next choice below. A down swipe selects the preceding
-choice above. From All, up selects Completed and down selects Running under
-either Natural Scrolling setting. The gesture stops at either end. Crossing the
-middle or receiving momentum cannot advance the other column. When the left
-column is hidden, including on an Inbox tag, a left-half
-vertical swipe keeps both selections.
+and more than 1.5 times its horizontal travel. Across the windowed or full-screen canvas, a physical
+up swipe advances to the next visible left choice and a down swipe to the
+preceding one under either Natural Scrolling setting. From the whole
+directory, up enters the first choice. Both ends clamp. Recognition claims
+the rest of the contact and its momentum, even across controls or a change
+of selection. A vertically dominant unmodified line-wheel event steps the same list.
 
 The background, cards, carousel cover and filter controls accept these gestures.
 Horizontal starts retain their original owner through reversals. The
@@ -265,7 +260,7 @@ Horizontal starts retain their original owner through reversals. The
 overflowing native viewports keep scrolling at either limit. Open Note, editing,
 interventions, onboarding, Settings, readers and collection panels keep their input.
 
-Status filters apply to the selected tag's eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and visible interruptions with no ongoing work appear only in All. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
+The directory Running tag filters the whole directory. Inbox statuses filter the selected top-level semantic tag. Both use eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and interrupted tasks with no ongoing work remain visible in ordinary directory and semantic selections and in the Inbox's All statuses view. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
 
 The [Running and Completed empty states](NativeOverviewStatusPresentation.swift) center the
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
@@ -274,24 +269,18 @@ to the right. Both display the illustration at up to 195 × 85 pt directly on th
 canvas above the localized status title, with no panel or scroll hint. The
 skillet gently bobs while three lowercase z’s drift above it. Reduce Motion
 holds both still. Each title is exposed to accessibility and the empty
-presentation passes input through to Overview. On the
-right half of the Overview filter surface, a vertical line-wheel event can exit an empty status
-filter in its return direction. Scroll up from Running or down from Completed
-to return to All while keeping the selected tag. An empty All status shows a
-localized title and tag-switch hint on an opaque surface. A left-half wheel event keeps the selected status.
+presentation passes input through to Overview. An empty ordinary selection shows a localized title and tag-switch hint on an opaque surface.
 The [status replay](../../../../../demos/moku-landing/README.md#overview-note-click-at-actual-size)
 exercises empty and populated states and both input types.
 
-The outlined right-hand emoji identifies the status, including when the view is
-empty. Card borders stay the same on pointer hover. In **Completed**, keyboard
+The selected left button stays expanded when its result is empty. Card borders stay the same on pointer hover. In the Inbox **Completed** view, keyboard
 focus adds a 2pt accent outline to Agent cards. A completed Agent card uses the
 completion badge and the same metadata layout in All and Completed. The model
 row is followed by the available duration and usage, with the excerpt below.
 Super Threads retain their document update time and collection selection.
 
 A trackpad contributes its horizontal delta, including native momentum. For
-canvas travel, a line wheel uses its horizontal delta when available and
-otherwise its vertical delta, at 40 window points per line. Pointer presses interrupt inertia. Dragging the
+canvas travel, a horizontal line wheel moves 40 window points per line. Pointer presses interrupt inertia. Dragging the
 window header moves the window. Empty canvas presses leave the offset alone.
 Native editors, the horizontally scrolling top filter bar, the Dock and carousel cover retain their own input.
 Settings, readers and active text entry gate canvas scrolling. Card focus keeps
@@ -327,23 +316,30 @@ back to the disk cache, a provisional automatic selection leaves the preference
 intact. An explicit choice is saved and live hydration resolves the preference
 again. The header reveals the selected chip
 when its filters first appear. A populated workspace without a space shows a
-tag-specific empty message and hides the tag and status controls. An empty or
+tag-specific empty message and hides the filters. An empty or
 unloaded catalog leaves the saved choice intact for the next nonempty catalog.
 The directory-wide selection shows its tagged members. Its top button keeps its name and folder-wide unread count when
 a child is selected. A project directory named Inbox and a semantic tag named
 Inbox have distinct identities, icons and memberships.
 
-The left column contains the selected directory's visible semantic tags, ordered
-by descending member count and localized name for ties. Clicking a different
-top folder restores its last visible tag, then falls back to the first visible
-tag in that order or to the directory when the rail is empty. Clicking the
-current top folder restores the full tagged directory selection and retains the
-last child for the next entry. An Inbox chip selects its own tag directly.
-The column appears only
-for project directories with visible children, including when a child is
-selected. The three status choices on the right are shared across all scopes. Changing the resolved filter identity (kind, scope and tag) restores All statuses before projecting cards. Re-selecting the same space and refreshing its membership preserve the status.
+The left column lists the selected directory's visible semantic tags in their
+existing order, followed by the built-in ⏳ Running choice at every count.
+Running uses the directory's full eligible task membership and a distinct
+control identity from any user tag named Running. Selecting an ordinary tag
+or the current folder opens its full membership. Clicking another folder
+restores its last left choice, falling back to its first visible semantic tag
+or the whole directory. The built-in is never an automatic first selection.
 
-Saved choices use filter kind and canonical scope. Semantic choices also use
+For a top-row Inbox semantic tag the left column instead offers Running,
+All statuses and Completed in that order. An Inbox status stays with the
+selected tag during catalog updates. Choosing another Inbox tag or reopening
+the app starts that tag at All statuses. A real directory named Inbox uses
+the ordinary directory rail.
+
+Saved choices use filter kind and canonical scope. The optional directory
+`runningTag` marks an explicit built-in selection. `overviewRunningDirectories`
+remembers that choice on reentry alongside ordinary saved directory tags. Absent
+fields use the catalog selection. Inbox status is session-local. Semantic choices also use
 the catalog's normalized name matching and scoped redirects. Display labels,
 emoji and positions can change independently. Each scope exposes up to five
 semantic tags. Directory membership uses persistent
@@ -368,25 +364,20 @@ tag or project directory resolves to the first available top-row choice. If a re
 the published filter selection updates immediately and the canvas refreshes on
 return. A change in status-filtered results alone keeps the selection.
 
-The left and right Liquid Glass columns sit at the window's edges, each group
-vertically centered. Compact controls are 46.2pt circles. The left controls show
-the semantic emoji or 🏷️ for a tag without an emoji.
-The right controls show ⏳ (Running), 🗂️ (All statuses) and 🏁
-(Completed), with localized titles. Hover expands a button on either
-rail toward the center, keeping its glyph at the window edge. Its natural width
-is the 46.2pt glyph seat plus the measured single-line title and 13.2pt of padding
-at the inward end. Both rails cap the expanded button at 189.2pt. The left rail
-also caps the button at 16.5% of the window width. The right rail can use the
-space from its inset to the window midpoint so status names fit at the minimum
-window size.
+The left Liquid Glass column is vertically centered at the window edge.
+Compact controls are 46.2pt circles. Semantic tags show their emoji or 🏷️.
+Status choices show ⏳, 🗂️ and 🏁 with localized titles. A button expands
+toward the center, keeping its glyph still. Its width includes the glyph,
+the measured single-line title and 13.2pt of inner padding, capped at
+189.2pt. Folder controls also cap at 16.5% of window width. Inbox controls
+can expand to the window midpoint so localized status names fit.
 A long title truncates at the trailing edge. The same title stays mounted as
 the capsule reveals or clips it, including when a hover reverses mid-animation.
-The pointer can enter either rail button up to 12pt beyond its current horizontal edges. Its hover region has the same height as the capsule, so the gap between rows remains available to the canvas. Clicking the visible glyph or revealed title selects that filter. Each selected rail button stays expanded from initial display through pointer exit.
+The pointer can enter a rail button up to 12pt beyond its current horizontal edges. Its hover region has the same height as the capsule, so the gap between rows remains available to the canvas. Clicking the visible glyph or revealed title selects that filter. The selected rail button stays expanded from initial display through pointer exit.
 Unselected buttons expand on hover and collapse on exit. Both transitions use the Chief Bar’s 420ms smooth Overview capsule animation with zero extra bounce. Reduce Motion applies the width change immediately.
 
 Project directories and Inbox tags use native regular interactive Liquid Glass
-and system primary foreground in the top row. The left tag and right status
-buttons use native clear interactive Liquid Glass. Each selected button tints its glass. The unselected
+and system primary foreground in the top row. The left filter buttons use native clear interactive Liquid Glass. Each selected button tints its glass. The unselected
 buttons keep the base material.
 
 Semantic tags and status choices take their tint from the dominant color of
@@ -395,7 +386,7 @@ emoji. The renderer samples the system glyph in sRGB and averages pixels in
 its most common hue cluster. When colored detail covers less than one sixth
 of the visible glyph, the tint uses its average luminance as a neutral gray,
 limited to the range 0.30–0.72.
-This keeps the 🏁 status tint neutral. Top folder buttons and glyphs that
+This keeps the 🏁 Inbox status tint neutral. Top folder buttons and glyphs that
 yield no visible sample use the Overview muted gold accent (#BEA679 in light
 appearance and #D8BF8E in dark appearance). Tag emoji supply the other
 tag colors and keep their original colors when displayed.
@@ -850,11 +841,10 @@ experience measurements to benchmarks. See [PBT commands/evidence](../../../../.
 
 ## Mounted filter e2e
 
-`E2E-OVERVIEW-004` activates the mounted status and directory buttons against an
-isolated Runtime. With completed fixture tasks it checks an empty Running view
-followed by All statuses in a second space, Completed in that space, and All
-statuses on return. The supported suite includes tagged project and Inbox tasks
-and an untagged Inbox task. The
+`E2E-OVERVIEW-004` activates the mounted left filters against an isolated
+Runtime. With completed fixture tasks it checks the empty folder-wide Running
+choice, switches to another space, and returns to Running and full directory
+membership. The supported suite also selects Completed for an Inbox tag. The
 Collection suite uses two project directories. `overview-filters.json` records
 the public scope oracle and the mounted snapshots after each action. The
 [window replay](../../../../../demos/moku-landing/README.md#overview-note-click-at-actual-size)
@@ -866,8 +856,8 @@ file and a populated, isolated Runtime profile. It compares selection and
 card IDs on the first observable populated Overview, then checks mounted
 controls and cards. It uses the top folder to enter with the first tag,
 reenter with the saved child, return to full directory membership, and fall
-back when the saved child is unavailable. It relaunches with a saved
-directory child and a non-first Inbox tag, verifies the saved preference through a launch with no spaces,
+back when the saved child is unavailable. It relaunches with an explicitly selected empty Running tag, a compatible
+preference file without the built-in tag fields, a saved directory child and a non-first Inbox tag, verifies the saved preference through a launch with no spaces,
 then observes tags arriving from the Runtime. It archives the saved Inbox
 tag's only visible member before a final relaunch and checks the top-row
 fallback with a stale disk catalog still present. See the [run and evidence](../../../../../tools/e2e/README.md#overview-space-restoration).

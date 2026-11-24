@@ -123,14 +123,16 @@ class Desktop:
         def agents_in(scope):
             return {task for task in eligible if scopes[task] == scope}
 
-        def settled(status, directory_id, expected):
+        def settled(status, space, expected):
             def matches(state):
                 overview = state["overview"]
                 cards = overview["cards"]
                 agents = {card["ref"]["threadId"] for card in cards if card.get("ref", {}).get("typeId") == "agent"}
+                statuses = ["running", "all", "completed"] if space["scope"] == "inbox" else ["running"]
                 return (state["page"] == "overview" and "overview.filters.activate" in state["actions"]
-                        and state["selectedFilterId"] == directory_id and overview["status"] == status
-                        and set(overview["controls"]["status"]) == {"running", "all", "completed"}
+                        and state["selectedFilterId"] == space["id"] and overview["status"] == status
+                        and set(overview["controls"]["status"]) == set(statuses)
+                        and overview["rail"][-len(statuses):] == statuses
                         and not overview["layingOut"]
                         and set(overview["mountedCardIds"]) == {card["id"] for card in cards}
                         and agents == expected)
@@ -142,21 +144,26 @@ class Desktop:
         top = self.stable(lambda s: s["page"] == "overview" and s["overview"]["filters"])["overview"]["filters"]
         current = next(f for f in top if f["scope"] == scope)
         other = next(f for f in top if f["scope"] != scope)
-        directory = current["id"]
-        initial = settled("all", directory, agents_in(scope))
+        initial = settled("all", current, agents_in(scope))
         assert "all" not in initial["overview"]["controls"]["directory"]
         activate("status", "running")
-        running = settled("running", directory, set())
+        running = settled("running", current, set())
         assert not running["overview"]["cards"]
         activate(other["kind"], other["id"])
-        folder = settled("all", other["id"], agents_in(other["scope"]))
-        activate("status", "completed")
-        completed = settled("completed", other["id"], agents_in(other["scope"]))
-        activate("directory", directory)
-        restored = settled("all", directory, agents_in(scope))
+        folder = settled("all", other, agents_in(other["scope"]))
+        if other["scope"] == "inbox":
+            activate("status", "completed")
+            other_filtered = settled("completed", other, agents_in(other["scope"]))
+        else:
+            activate("status", "running")
+            other_filtered = settled("running", other, set())
+        activate("directory", current["id"])
+        remembered = settled("running", current, set())
+        activate("directory", current["id"])
+        restored = settled("all", current, agents_in(scope))
         save(self.session.output / "overview-filters.json", {
             "taskScopes": scopes, "reportSources": sources, "initial": initial, "running": running, "directory": folder,
-            "completedDirectory": completed, "restored": restored})
+            "otherFiltered": other_filtered, "rememberedRunning": remembered, "restored": restored})
 
     def read(self, thread, initial, followup):
         overview = self.stable(lambda s: s["page"] == "overview" and s["runtimeAvailable"])

@@ -3,8 +3,8 @@ import SwiftUI
 import AppKit
 
 /// AppKit supplies signed content motion and any inertia. Precise gestures
-/// contribute only their horizontal component. A single-axis mouse wheel
-/// uses its line delta to move along the same horizontal scroll range.
+/// contribute their horizontal component to the camera. After vertical filter
+/// routing, a horizontal or Shift-modified line wheel pans in window points.
 enum NativeOverviewScrollGeometry {
     static func distance(x: Double, y: Double, precise: Bool, pointsPerWindowPoint: Double) -> Double? {
         guard x.isFinite, y.isFinite, pointsPerWindowPoint.isFinite, pointsPerWindowPoint > 0 else { return nil }
@@ -160,7 +160,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             }
             if actions.regions.bar.contains(point, in: window) { return .conversation }
             guard actions.canFilter() else { return nil }
-            return contentPoint.x < content.bounds.midX ? .semanticFilter : .statusFilter
+            return .rail
         }
 
         /// Called by the local monitor; exposed internally for window-level replays.
@@ -181,12 +181,10 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             }
             guard event.type == .scrollWheel else { return event }
             if let swipeActions, verticalSwipe.route(event, target: { verticalTarget(event, actions: swipeActions) },
-                canReturnWithWheel: swipeActions.canReturnWithWheel,
                 perform: { target, up in
                     switch target {
                     case .conversation: swipeActions.openConversation()
-                    case .semanticFilter: swipeActions.stepSemanticFilter(up)
-                    case .statusFilter: swipeActions.stepStatusFilter(up)
+                    case .rail: swipeActions.stepRail(up)
                     }
                 }) {
                 sequence.reset()

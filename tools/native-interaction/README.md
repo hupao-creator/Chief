@@ -84,9 +84,12 @@ project’s left column is present, the group also includes a filter ID for each
 visible semantic child. Select the top folder in the `directory` group to show
 all its tagged cards.
 Use `overview.filters.scroll` to reveal an offscreen top-level folder or tag.
-The `status` group uses `running`, `all` and `completed`. Each callback performs
-the same selection as clicking that button. Wait for `selectedFilterId`,
-`overview.status` and the resulting card projection.
+The `status` group contains only `running` in a project folder. It uses
+`running`, `all` and `completed` for a top-row Inbox tag. Read `overview.rail`
+for the displayed left-column order, and `overview.selectedRailId` for its
+highlight (null for a whole folder). Folder Running uses the folder’s
+`selectedFilterId`. Each callback performs the corresponding mounted button
+action. Wait for the selected IDs, `overview.status` and the resulting cards.
 
 ## Mounted Settings controls
 

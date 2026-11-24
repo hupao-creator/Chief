@@ -27,7 +27,7 @@ def journey(desktop, app):
                                     "preference": json.loads(preferences.read_text())["overviewSelection"]}
         save(session.output / "overview-spaces.json", evidence)
 
-    def capture(stage, scope, kind, expected, *, first=False, tag=None, top_count=None):
+    def capture(stage, scope, kind, expected, *, first=False, tag=None, top_count=None, status="all"):
         def ready(state):
             overview = state["overview"]
             if state["page"] != "overview" or not overview["filters"]:
@@ -41,9 +41,15 @@ def journey(desktop, app):
             # Compare on the first observable nonempty Overview, before waiting
             # for the canvas and asynchronous button registrations to settle.
             assert state["selectedFilterId"] == selected["id"], state
-            assert overview["status"] == "all"
+            assert overview["status"] == status
+            rail_id = selected["id"] if kind == "semantic" else None
+            if scope == "inbox" or status == "running":
+                rail_id = status
+            assert overview["selectedRailId"] == rail_id
             assert {card["ref"]["threadId"] for card in overview["cards"]} == expected, overview
-            return (selected["id"] in overview["controls"][kind] and not overview["layingOut"]
+            status_buttons = {"running", "all", "completed"} if scope == "inbox" else {"running"}
+            return (selected["id"] in overview["controls"][kind] and set(overview["controls"]["status"]) == status_buttons
+                    and not overview["layingOut"]
                     and set(overview["mountedCardIds"]) == expected
                     and (top_count is None or len(top) == top_count))
 
@@ -51,6 +57,7 @@ def journey(desktop, app):
         record(stage, snapshot)
         saved = evidence["stages"][stage]["preference"]
         assert saved["scope"] == scope and saved["kind"] == kind
+        assert bool(saved.get("runningTag")) == (scope != "inbox" and status == "running")
         if tag is not None:
             assert saved["tag"] == tag
         return snapshot
@@ -76,6 +83,25 @@ def journey(desktop, app):
     folder, inbox_tag = initial["overview"]["filters"]
     assert inbox_tag["scope"] == "inbox" and inbox_tag["kind"] == "semantic"
     assert folder["children"][0]["tag"] == "Plan work"
+    desktop.request({"name": "overview.filters.activate", "group": "status", "id": "running"})
+    capture("emptyRunning", scope, "directory", set(), status="running")
+    stop()
+    reopen()
+    capture("runningRelaunch", scope, "directory", set(), status="running")
+    choose(inbox_tag)
+    capture("inboxAfterRunning", "inbox", "semantic", {inbox}, tag=inbox_tag["tag"])
+    choose(folder)
+    capture("runningFolderReentry", scope, "directory", set(), status="running")
+    choose(folder)
+    capture("runningToFolder", scope, "directory", project)
+
+    # Reopen with the desktop preference fields that predate the built-in tag.
+    stop()
+    legacy = json.loads(preferences.read_text())
+    del legacy["overviewRunningDirectories"]
+    preferences.write_text(json.dumps(legacy))
+    reopen()
+    capture("legacyFolderRelaunch", scope, "directory", project)
     choose(inbox_tag)
     capture("inboxFirstEntry", "inbox", "semantic", {inbox}, tag=inbox_tag["tag"])
     choose(folder)

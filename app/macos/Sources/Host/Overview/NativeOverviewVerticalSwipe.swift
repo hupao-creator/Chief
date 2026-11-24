@@ -11,11 +11,9 @@ struct NativeOverviewSwipeActions {
     let regions: NativeOverviewSwipeRegions
     let available: @MainActor () -> Bool
     let canFilter: @MainActor () -> Bool
-    let canReturnWithWheel: @MainActor (Bool) -> Bool
     let openNoteFromBar: @MainActor () -> Bool
     let openConversation: @MainActor () -> Void
-    let stepSemanticFilter: @MainActor (Bool) -> Void
-    let stepStatusFilter: @MainActor (Bool) -> Void
+    let stepRail: @MainActor (Bool) -> Void
 }
 
 extension EnvironmentValues {
@@ -26,7 +24,7 @@ extension EnvironmentValues {
 /// keep the rest of the contact and its momentum even if the surface changes.
 struct NativeOverviewVerticalSwipe {
     enum Target {
-        case conversation, semanticFilter, statusFilter
+        case conversation, rail
     }
     private enum Stage { case idle, possible(Target), claimed, awaitingMomentum(TimeInterval), momentum }
     private var stage = Stage.idle
@@ -34,7 +32,7 @@ struct NativeOverviewVerticalSwipe {
     private var horizontal: CGFloat = 0
 
     @MainActor mutating func route(_ event: NSEvent, target: () -> Target?,
-                                  canReturnWithWheel: (Bool) -> Bool, perform: (Target, Bool) -> Void) -> Bool {
+                                  perform: (Target, Bool) -> Void) -> Bool {
         let phase = event.phase
         if !event.momentumPhase.isEmpty {
             if case .awaitingMomentum(let end) = stage, event.timestamp - end > 0.25 { stage = .idle }
@@ -51,9 +49,8 @@ struct NativeOverviewVerticalSwipe {
         if phase.isEmpty && !event.hasPreciseScrollingDeltas {
             stage = .idle
             let up = deltaY > 0
-            guard abs(deltaY) > abs(event.scrollingDeltaX) * 1.5, canReturnWithWheel(up),
-                  target() == .statusFilter else { return false }
-            perform(.statusFilter, up)
+            guard abs(deltaY) > abs(event.scrollingDeltaX) * 1.5, target() == .rail else { return false }
+            perform(.rail, up)
             return true
         }
         let starting = phase.contains(.began) || phase.contains(.mayBegin)
@@ -76,10 +73,7 @@ struct NativeOverviewVerticalSwipe {
             return !phase.isEmpty && reserved
         }
         if case .claimed = stage { return true }
-        // Both halves are one filtering surface. Keep the half captured at
-        // contact start even if the pointer crosses the midpoint before recognition.
-        guard case .possible(let origin) = stage, let current = target(),
-              (origin == .conversation) == (current == .conversation) else {
+        guard case .possible(let origin) = stage, target() == origin else {
             stage = .idle
             return false
         }

@@ -67,9 +67,10 @@ import SwiftUI
     if let activityMotionReduced {
         // Keep the active conversation out of the canvas. Any running decoration
         // observed on this page must belong to a filter, not a task card.
-        try controls.activate(.status, id: "completed")
-        try await until("Completed status settled") {
-            model.statusFilter == .completed && !model.canvasState.isLayingOut
+        guard let reading = parent.children.first(where: { $0.tag == "Reading" }) else { throw ReplayFailure("Missing Reading tag") }
+        try controls.activate(.semantic, id: reading.id)
+        try await until("Reading tag settled") {
+            model.selectedRailID == reading.id && !model.canvasState.isLayingOut
                 && !model.canvasState.mountedCardIDs.contains("active")
         }
         try await inspectTagActivity(in: panel, directoryID: parent.id, childID: work.id, reduced: activityMotionReduced,
@@ -116,6 +117,18 @@ import SwiftUI
             let holes = shapeLayers(layer).filter { $0.path?.isEmpty == false }
             return holes.count > 1 && holes.contains { $0.animation(forKey: "badge.sweep") != nil } == !reduced
         }
+    }
+    // The header enters from above. Anchor the pixel capture after its glyph stops moving
+    // so every frame measures the dot pattern at the same window coordinates.
+    var lastFrames = [CGRect]()
+    var stationarySince = ContinuousClock.now
+    try await until("Filter glyphs settle in the window") {
+        let frames = surfaces().map { $0.convert($0.bounds, to: nil) }.sorted { $0.minX < $1.minX }
+        if frames != lastFrames {
+            lastFrames = frames
+            stationarySince = .now
+        }
+        return frames.count == 2 && ContinuousClock.now - stationarySince >= .milliseconds(200)
     }
     // Get each button's actual window frame. The folder and the tag use separate
     // glyphs and the card behind the floating controls may overlap either one.

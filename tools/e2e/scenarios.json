@@ -24,7 +24,7 @@
     {
       "id": "E2E-OVERVIEW-004",
       "implementation": "implemented",
-      "title": "Restore all statuses when switching between tagged spaces",
+      "title": "Select the left filters for project folders and Inbox tags",
       "doc": "app/macos/Sources/Host/Overview/README.md#mounted-filter-e2e",
       "evidence": ["overview-filters.json"]
     },

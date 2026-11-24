@@ -128,12 +128,9 @@ private func rowInk(_ frame: HoverFrame, roi: CGRect, centerY: CGFloat, leading:
         filter.unreadCount = counts[index]
         return filter
     }
-    let parent = NativeOverviewFilter(tag: "Workspace", scope: "/hover", count: 12, isDirectory: true, children: children)
     var measured = [String: CGRect]()
-    // Bind the production initializer so the same collector also links to the
-    // reference revision, whose width argument had a different external label.
-    let makeRail = NativeOverviewTagRail.init
-    let rail = makeRail(parent, parent.id, cap, .init(), { _ in }, nil)
+    let rail = NativeOverviewTagRail(choices: children.map(NativeOverviewRailChoice.tag), selectedID: nil,
+                                     maximumWidth: cap, strings: .init(), onSelect: { _ in })
     let root = ZStack(alignment: .leading) {
         Color(white: 0.45)
         rail.padding(.leading, 20)

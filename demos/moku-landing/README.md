@@ -57,8 +57,8 @@ python3 demos/moku-landing/verify_header.py --note-link --output .build/note-lin
 
 A window-local mouse click on a Note citation opens an ordinary Thread from
 another directory, switches between sibling tags in one directory, repeats
-the visit from the matching tag, and opens
-the owning Super Thread in a different directory. The Report cites a later
+the visit from the matching tag, reveals a completed result from that folder’s
+empty Running tag, and opens the owning Super Thread in a different directory. The Report cites a later
 run of the same task. `note-links.json` records the filter during dismissal,
 location and reading, the mounted reader, and the requested execution and entry
 position. For ordinary Threads it also checks the loaded historical row and
@@ -94,54 +94,40 @@ with ordinary tasks, running interactions, completed work and eight reports.
 `overview-status.json` records the selected scope, tag and status, card area,
 mounted Agent cards and individual or collected report members at each step.
 
-The right-half gesture traverses Running, All statuses and Completed.
-The left-half gesture enters the first semantic tag from the directory and then traverses the visible tags. Each side
-checks a contact that crosses the midpoint before recognition, the endpoints
-and momentum. The replay selects a top-level Inbox tag and checks its exact
-cards, restored All statuses and absence of a left column. It distinguishes a top-row
-tag named Inbox from a real directory named Inbox. Entering a directory with
-two visible tags selects its first tag, and clicking that directory again shows
-all its tagged cards. It opens the sole tagged
-card and removes its tag through a catalog delta while the reader is open.
-The selection clears while the covered canvas retains its old scene. Returning
-to Overview shows an empty canvas with no filter controls. Both untagged
-Threads remain in the catalog. The replay compares the measured heights of the
-top directory and Inbox chips with the left tag and right status chips.
-Window-local mouse clicks select
-the middle status and a semantic tag. Changing child or status retains the
-full-window card area within the directory. A capsule over a card accepts the click, and a click in the gap between two capsules opens the underlying task. At the production minimum of
-860 × 600 pt, a five-tag directory exposes five semantic controls and selects a tag
-with a long label. The replay reads the mounted accessible buttons to check
-their names and frames. The selected tag and status stay expanded beyond five seconds. The replay places the cursor 10 points beyond the compact left tag and right status button, then moves it away
-to check hover and exit, then restores the cursor. A click in the horizontal hover margin of the compact
-tag opens the card underneath. The same click on its expanded title selects
-the tag. With `--capture`, the cropped columns are checked for the expected
-visible tag and status titles. At the right edge the replay checks that the
-hourglass expands left on hover, a click on its title selects Running,
-the title stays open on pointer exit and a swipe selects and expands All statuses. With capture enabled, `filter-switches.mp4` records the window through status and tag swipes between a grid and a single card. Captures read the hourglass title in English and Chinese. The hovered
-tag title is read in Aqua and Dark Aqua and with a bright backdrop behind dark-appearance glass.
-Samples from inside each capsule show its glass tint changing with the
-selection on both rails and the top row. `source.json` records the checkout revision,
-source changes, macOS version and architecture. While the Runtime notice is
-visible, the replay measures the gap below the folder and Inbox buttons and
-uses window-local clicks to select both kinds of top filter.
+Window-addressed AppKit gestures from both halves traverse one left column.
+The mixed-catalog replay steps through the folder's semantic tags and the final
+Running tag, including a switch from a tag with no running tasks to running
+work elsewhere in the folder. It checks endpoints, cross-center contacts,
+system momentum, inverted device deltas, horizontal camera travel, live status
+changes, and reentry to a folder whose sole left choice is empty Running.
+A catalog delta moves a semantic tag into first place while a semantic tag
+named Running and the last built-in choice retain distinct identities.
+In macOS full screen it swipes on both empty margins and a running card.
 
-With Shipping selected, a catalog update admits and removes a card in each
-status filter. Line-wheel events on the right return to All statuses from
-either empty filter. A left-side line-wheel event keeps the empty Running
-selection. Both empty states use a 195 × 85 pt illustration. The replay checks
-that the full image fits inside the content area and its bowl center is within
-1 pt of the content centerline. With `--capture`, the replay reads both localized
-empty titles and verifies the absence of scroll hints. For the completed Codex
-card, it reads the model, effort and excerpt from the screenshot and checks the
-duration, usage and completion badge accessibility labels. The screenshot
-must contain no completion line. The distance from model to excerpt must agree within
-2 pt between All statuses and Completed. The replay checks both locales,
-with the Chinese card in Dark Aqua. The `running-empty-*.png` and
-`completed-empty-*.png` captures show both states in Aqua and Dark Aqua.
-`sleeping-skillet.mp4` spans a full sleep animation cycle when motion is enabled.
-It does not exercise a hardware trackpad or system fullscreen.
-The fixture has no Runtime connection.
+Selecting a top-row Inbox tag mounts Running, All statuses and Completed on the
+left. The replay checks their order, window positions, tag-scoped cards and
+state on entry. It distinguishes an Inbox tag named Inbox from a real directory
+of the same name. It removes and assigns tags while checking retained reader
+and catalog state. A Runtime notice leaves top-row controls clickable.
+
+At the 860 × 600 pt minimum, five semantic tags and the built-in Running button
+fit in one column. The replay measures their accessible frames, clicks a button
+over a card and opens a card through a gap. It checks the long semantic label's
+hover, truncation, tint and pointer exit, then clicks the expanded hourglass title
+and verifies that only Running is selected. With `--capture`, the run writes
+`folder-running-zh.png`, full-screen window captures, and a movie of filter changes.
+
+Window captures show [Running below five folder tags](evidence/overview-left-filters/folder-running.png),
+[a folder with no running work](evidence/overview-left-filters/folder-running-empty.png),
+[Completed for an Inbox tag](evidence/overview-left-filters/inbox-completed.png), and
+[Running after a swipe from the right edge in full screen](evidence/overview-left-filters/fullscreen-running.png).
+
+The Inbox portion checks both empty illustrations, their text, and the 195 × 85 pt
+image bounds and bowl alignment. It compares the completed card's model, excerpt,
+duration, usage, completion badge and vertical spacing in All statuses and
+Completed in English and Chinese. The fixtures use the production workspace with
+an isolated catalog. Physical trackpad hardware and model services are outside
+this replay.
 
 To exercise the completed card layout and write `overview-completed-card.json`,
 run the status replay through both localized card comparisons:
@@ -150,7 +136,7 @@ run the status replay through both localized card comparisons:
 python3 demos/moku-landing/verify_header.py --completed-card --output .build/completed-card-layout
 ```
 
-A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas switches status, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
+A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas selects the Running tag, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
 
 The header replay mounts the 46.2-point production filters at the top of a
 real window in Aqua and Dark Aqua. The initial selection is the Chief folder
@@ -172,10 +158,9 @@ spacing between adjacent controls. On fixed neutral backgrounds it clicks
 each top and side control and compares the same part of its glass face across
 selections, away from the glyph, badge and rim. The top folder shifts toward
 the muted gold accent. The selected top-level Inbox tag takes its blue tint
-from 🔵. The left rail checks warm, blue and green semantic emoji tints.
-Blue and green semantic emoji
-have distinct tints, the hourglass and dividers have warm tints and the
-checkered flag has a neutral tint. The selected controls must retain the
+from 🔵. The folder rail checks warm, blue and green semantic emoji tints
+and the hourglass. The Inbox rail checks warm tints for the hourglass and file
+dividers and a neutral tint for the checkered flag. The selected controls must retain the
 same emoji ink as their unselected counterparts.
 
 `--rail-hover` mounts three Chinese semantic tags on a neutral gray

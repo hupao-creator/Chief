@@ -232,17 +232,13 @@ private func tintResult(id: String, selected: [String: [Double]], idle: [String:
 }
 
 private struct SideTintFixture: View {
-    let folder: NativeOverviewFilter
+    let choices: [NativeOverviewRailChoice]
     let measured: ([String: CGRect]) -> Void
     @State var tag: String?
-    @State var status: NativeOverviewStatusFilter = .all
 
     var body: some View {
-        HStack {
-            NativeOverviewTagRail(parent: folder, selectedID: tag, maximumWidth: 145, strings: .init(), onTagChange: { tag = $0?.id })
-            Spacer()
-            NativeOverviewStatusRail(status: status, maximumWidth: 145, strings: .init(), onStatusChange: { status = $0 })
-        }
+        NativeOverviewTagRail(choices: choices, selectedID: tag, maximumWidth: 145, strings: .init(), onSelect: { tag = $0.id })
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(white: 0.56))
@@ -279,48 +275,51 @@ private func preservedEmoji(selected: NSBitmapImageRep, idle: NSBitmapImageRep,
     let blue = NativeOverviewFilter(tag: "Blue", emoji: "🔵", scope: "/Chief", count: 1)
     let apple = NativeOverviewFilter(tag: "Apple", emoji: "🍏", scope: "/Chief", count: 1)
     let orange = NativeOverviewFilter(tag: "Orange", emoji: "🟠", scope: "/Chief", count: 1)
-    let folder = NativeOverviewFilter(tag: "Chief", scope: "/Chief", count: 3, isDirectory: true, children: [orange, blue, apple])
-    var frames = [String: CGRect]()
-    let host = NSHostingView(rootView: SideTintFixture(folder: folder, measured: { frames = $0 }, tag: orange.id)
-        .environment(\.colorScheme, scheme))
-    host.sizingOptions = []
-    window.contentView = host
-    let configurations = [[orange.id, "all"], [blue.id, "running"], [apple.id, "completed"]]
-    let ids = configurations.flatMap { $0 }
-    var samples = [[String: [Double]]](), images = [NSBitmapImageRep]()
-    var glyphSeats = [String: CGRect]()
-    for (index, pair) in (configurations + [configurations[0]]).enumerated() {
-        if index > 0 {
-            for id in pair {
+
+    let folder = try await measure([(.tag(orange), .warm), (.tag(blue), .blue),
+                                    (.tag(apple), .green), (.status(.running), .warm)], space: "folder")
+    let inbox = try await measure([(.status(.running), .warm), (.status(.all), .warm),
+                                   (.status(.completed), .neutral)], space: "inbox")
+    return folder + inbox
+
+    @MainActor func measure(_ buttons: [(NativeOverviewRailChoice, TintHue)], space: String) async throws -> [[String: Any]] {
+        var frames = [String: CGRect]()
+        let choices = buttons.map(\.0)
+        let host = NSHostingView(rootView: SideTintFixture(choices: choices, measured: { frames = $0 }, tag: choices[0].id)
+            .environment(\.colorScheme, scheme))
+        host.sizingOptions = []
+        window.contentView = host
+        let ids = choices.map(\.id)
+        var samples = [[String: [Double]]](), images = [NSBitmapImageRep]()
+        var glyphSeats = [String: CGRect]()
+        for (index, id) in (ids + [ids[0]]).enumerated() {
+            if index > 0 {
                 guard let frame = frames[id] else { throw HeaderFailure("Missing side filter " + id) }
                 try clickFilter(in: window, at: frame)
             }
-        }
-        try await Task.sleep(for: .milliseconds(650))
-        let image = try await windowImage(window)
-        let pixels = NSBitmapImageRep(cgImage: image)
-        images.append(pixels)
-        if index == 0 {
-            // Both rails keep their glyph seats fixed as the labels open inward.
-            for (id, frame) in frames {
-                let edge: CGRectEdge = id.hasPrefix("semantic:") ? .minXEdge : .maxXEdge
-                glyphSeats[id] = frame.divided(atDistance: frame.height, from: edge).slice
+            try await Task.sleep(for: .milliseconds(650))
+            let image = try await windowImage(window)
+            let pixels = NSBitmapImageRep(cgImage: image)
+            images.append(pixels)
+            if index == 0 {
+                for (id, frame) in frames {
+                    glyphSeats[id] = frame.divided(atDistance: frame.height, from: .minXEdge).slice
+                }
             }
+            samples.append(readFaceColors(pixels, ids: ids, frames: glyphSeats))
+            try pixels.representation(using: .png, properties: [:])?.write(to: evidence.appending(path: "side-tints-\(space)-\(name)-\(index).png"))
         }
-        samples.append(readFaceColors(pixels, ids: ids, frames: glyphSeats))
-        try pixels.representation(using: .png, properties: [:])?.write(to: evidence.appending(path: "side-tints-\(name)-\(index).png"))
-    }
-    let hues: [TintHue] = [.warm, .warm, .blue, .warm, .green, .neutral]
-    return try ids.enumerated().map { offset, id in
-        let index = offset / 2
-        let next = index + 1
-        var result = try tintResult(id: id, selected: samples[index], idle: samples[next], hue: hues[offset])
-        if let frame = glyphSeats[id], let idle = samples[next][id] {
-            let (count, fraction) = preservedEmoji(selected: images[index], idle: images[next], frame: frame, idleFace: idle)
-            result["emojiInkPixels"] = count
-            result["emojiAgreement"] = fraction
-            result["passed"] = result["passed"] as? Bool == true && count >= 50 && fraction >= 0.75
+        return try ids.enumerated().map { index, id in
+            let next = index + 1
+            var result = try tintResult(id: id, selected: samples[index], idle: samples[next], hue: buttons[index].1)
+            result["space"] = space
+            if let frame = glyphSeats[id], let idle = samples[next][id] {
+                let (count, fraction) = preservedEmoji(selected: images[index], idle: images[next], frame: frame, idleFace: idle)
+                result["emojiInkPixels"] = count
+                result["emojiAgreement"] = fraction
+                result["passed"] = result["passed"] as? Bool == true && count >= 50 && fraction >= 0.75
+            }
+            return result
         }
-        return result
     }
 }

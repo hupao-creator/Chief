@@ -60,10 +60,9 @@ public struct NativeOverviewWorkspaceView: View {
             let hasFilters = !filters.isEmpty
             let viewport = Self.viewport(in: geometry.size, hasFilters: hasFilters,
                                          hasDock: model.workspace.catalog.hasMoku)
-            let directory = model.selectedDirectory
             let railEdgeInset = min(12, geometry.size.width * 0.015)
-            // Let localized status names use the available right half, even at the minimum window width.
-            let statusRailWidth = min(OverviewTagMetrics.railMaximumWidth, geometry.size.width / 2 - railEdgeInset)
+            let railWidth = model.isInboxTagSelected ? geometry.size.width / 2 - railEdgeInset
+                : geometry.size.width * 0.15 * OverviewTagMetrics.tagScale
             let headerBottom = OverviewTagMetrics.headerBottom(in: geometry.size, hasFilters: !landing && hasFilters)
             // The last card can make the Dock switch to landing before the
             // canvas admits its empty layout. Keep that exit drawable while
@@ -128,17 +127,10 @@ public struct NativeOverviewWorkspaceView: View {
             }
             .overlay(alignment: .leading) {
                 if chromeVisible && !landing {
-                    NativeOverviewTagRail(parent: directory, selectedID: model.selectedFilter?.id,
-                        maximumWidth: min(OverviewTagMetrics.railMaximumWidth, geometry.size.width * 0.15 * OverviewTagMetrics.tagScale), strings: chromeStrings,
-                        onTagChange: model.selectTag, interactions: model.chromeInteractions)
+                    NativeOverviewTagRail(choices: model.railChoices, selectedID: model.selectedRailID,
+                        maximumWidth: min(OverviewTagMetrics.railMaximumWidth, railWidth),
+                        strings: chromeStrings, onSelect: model.selectRailChoice, interactions: model.chromeInteractions)
                         .padding(.leading, railEdgeInset)
-                }
-            }
-            .overlay(alignment: .trailing) {
-                if chromeVisible && model.selectedFilter != nil && !landing {
-                    NativeOverviewStatusRail(status: model.statusFilter, maximumWidth: statusRailWidth, strings: chromeStrings,
-                        onStatusChange: model.selectStatusFilter, interactions: model.chromeInteractions)
-                        .padding(.trailing, railEdgeInset)
                 }
             }
             .overlay {
