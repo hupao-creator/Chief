@@ -65,6 +65,14 @@ With `--capture`, `idle-light.png` and `idle-dark.png` show the same empty state
 over native window backgrounds in Aqua and Dark Aqua. `status-empty-tag.png`
 captures the ordinary window material.
 
+A catalog update takes the selected tag from filled to empty in Completed.
+An upward scroll over the plate returns all statuses with the tag retained.
+The replay reenters Completed and admits the card after a new completion.
+With `--capture`, the replay recognizes the title and hint, capsule, Agent name
+and completion time in English and Chinese from the window images. It also
+saves the empty plate in Aqua and Dark Aqua. These single-window captures do
+not sample desktop wallpapers or the system accessibility tree.
+
 The [window capture](evidence/overview-idle/status-empty-tag.png),
 [Aqua](evidence/overview-idle/idle-light.png), [Dark Aqua](evidence/overview-idle/idle-dark.png)
 and [status receipt](evidence/overview-idle/overview-status.json) were captured

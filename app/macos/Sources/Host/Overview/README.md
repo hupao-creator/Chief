@@ -243,6 +243,17 @@ empty status and the two-finger swipe-down hint. The illustration passes input
 through to the canvas. The [status replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
 exercises this state as a tagged conversation starts and finishes.
 
+The [Completed presentation](NativeOverviewCompletedPresentation.swift) centers
+a checkmark, empty status and two-finger swipe-up hint on a compact regular
+glass plate when no cards match. An adaptive surface tint stabilizes the
+contrast, with an opaque fill under Reduce Transparency. The plate passes
+input through to the canvas. With matches, a **Completed only** capsule
+identifies the filter. The existing plugin cards keep their layout and
+activation. Hover outlines emphasize cards and keyboard focus outlines Agent
+cards. Agent cards show the localized time of the latest successful execution
+from its public `finishedAt` in addition to its duration. Super Threads retain
+their document update time and collection selection.
+
 A trackpad contributes its horizontal delta, including native momentum. A line
 wheel uses its horizontal delta when available and otherwise its vertical delta,
 at 40 window points per line. Pointer presses interrupt inertia. Dragging the

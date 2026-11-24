@@ -20,6 +20,8 @@ If you see three sleeping agents in Chief’s skillet, no conversations are runn
 
 Running includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. Completed includes tasks whose latest run finished successfully and have no pending input or background work. Super Threads and their collections also appear here. Idle tasks and visible interrupted tasks with no ongoing work appear in the full view.
 
+In **Completed only**, look for the checkmark label at the bottom left. Each completed task card shows when its latest run finished. Super Thread cards show when the document was last updated. Move the pointer over a card to highlight it, or use Tab to focus a task card and Return to open it. If the current tag has no completed conversations, a message in the center of Overview tells you so. Swipe up with two fingers over the message to see all statuses for the same tag.
+
 With the input box closed, swipe up over the eyes on Chief Bar to open **Chief Note**. Scroll inside an open note or a long Chief Bar message to read more.
 
 When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or turn the mouse wheel. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. Click a task card, or press Return on a focused task, to open it.

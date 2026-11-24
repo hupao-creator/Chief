@@ -1,6 +1,7 @@
 import AppKit
 import ScreenCaptureKit
 import SwiftUI
+import Vision
 import ChiefApplications
 import ChiefCore
 import ChiefHarnessCodex
@@ -147,7 +148,7 @@ private final class WheelSample: NSEvent {
             try await cardInteraction(window, directory: directory, authority: authority)
             try await fittingCards(window, directory: directory, authority: authority)
             try await statusFilters(window, directory: directory, authority: authority)
-            try await installTasks(0, revision: 12, authority: authority)
+            try await installTasks(0, revision: 13, authority: authority)
             try await Task.sleep(for: .milliseconds(800))
             guard presentation.moku.landing else { throw ReplayError("Empty Overview did not enter landing") }
             presentation.scene.setInputOpen(false)
@@ -692,18 +693,20 @@ private final class WheelSample: NSEvent {
         let running = ["Executing", "Permission", "Background", "Submitting"]
         let ordinary = running + ["Delivered", "Stopped", "Idle"]
         let reportIDs = (1...8).map { "Report-\($0)" }
+        let finishedAt = 1_790_000_000_000.0
         let permission = PublicInteraction(id: "permission", kind: .permission, title: "Review request",
             actions: [.init(id: "allow", intent: .allow, label: "Allow")], questions: [])
         func thread(_ name: String, _ status: PublicExecution.Status?, revision: Int = 1) throws -> JSONValue {
             let execution = try status.map { status in
-                try PublicExecution(executionID: JSONText("run-" + name), status: status, startedAt: 1,
-                    finishedAt: [.completed, .interrupted, .failed].contains(status) ? 2 : nil,
+                try PublicExecution(executionID: JSONText("run-" + name), status: status, startedAt: finishedAt - 33_000,
+                    finishedAt: [.completed, .interrupted, .failed].contains(status) ? finishedAt : nil,
                     interactions: status == .waitingForUser ? [permission] : [])
             }
             let observation = ThreadPublicObservation(latestExecution: execution, backgroundWork: name == "Background" ? .init() : nil)
             let tag: JSONText = name == "Delivered" ? "Shipping" : "Development"
             let thread = try HarnessThread(id: JSONText(name), harnessID: "codex", revision: revision, sessionState: .null,
-                observation: observation, cwd: "/fixture", settings: .object([:]), createdAt: 1, updatedAt: 2,
+                observation: observation, cwd: "/fixture", settings: .object([:]),
+                createdAt: finishedAt - 60_000, updatedAt: finishedAt + 86_400_000,
                 title: JSONText(name), tags: [tag], tagEmojis: [tag: name == "Delivered" ? "📦" : "🔧"],
                 directoryTag: "Fixture", directoryScope: "/fixture")
             var fields = thread.json.objectValue!
@@ -717,18 +720,33 @@ private final class WheelSample: NSEvent {
         model.selectTag(nil)
         try await installTasks(0, revision: 8, authority: authority,
             reports: reportFixtures(reportIDs.map { JSONText($0) }), extraThreads: fixtures)
-        guard let monitor = window.contentView.flatMap({ descendant(NativeOverviewScrollInput.MonitorView.self, in: $0) }) else {
+        guard let content = window.contentView,
+              let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else {
             throw ReplayError("Status replay has no window scroll router")
         }
         let tags = model.visibleFilters
         let tagIDs = tags.flatMap { [$0.id] + $0.children.map(\.id) }
         var samples = [[String: Any]]()
         func idleImage() -> NSImageView? {
-            guard let content = window.contentView else { return nil }
-            return descendant(NSImageView.self, in: content) { $0.accessibilityIdentifier() == "overview.idle" }
+            descendant(NSImageView.self, in: content) { $0.accessibilityIdentifier() == "overview.idle" }
+        }
+        func checkCompletedText(in url: URL, expected: [String]) throws -> [String] {
+            let request = VNRecognizeTextRequest()
+            request.recognitionLanguages = workspace.locale == .chinese ? ["zh-Hans", "en-US"] : ["en-US"]
+            request.minimumTextHeight = 0.008
+            try VNImageRequestHandler(url: url).perform([request])
+            let lines = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+            func normalized(_ text: String) -> String {
+                text.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
+            }
+            let actual = lines.map(normalized)
+            guard expected.allSatisfy({ text in actual.contains { $0.contains(normalized(text)) } }) else {
+                throw ReplayError("Missing Completed text in \(url.lastPathComponent): expected=\(expected), found=\(lines)")
+            }
+            return lines
         }
         func check(_ name: String, _ mode: NativeOverviewStatusFilter, _ expected: [String],
-                   selected: String = "", needsBothReportCards: Bool = false) async throws {
+                   selected: String = "", needsBothReportCards: Bool = false, checkCompletedCopy: Bool = false) async throws {
             let deadline = ContinuousClock.now + .seconds(5)
             while Set(model.items.map(\.id)) != canvas.mountedCardIDs || canvas.isLayingOut {
                 guard ContinuousClock.now < deadline else { throw ReplayError("Cards did not settle at " + name) }
@@ -768,13 +786,27 @@ private final class WheelSample: NSEvent {
                 }
                 throw ReplayError("Unexpected idle accessibility at \(name): \(label) / \(hint)")
             }
-            samples.append(["step": name, "status": mode.rawValue, "selectedTag": selected, "visibleTags": visibleTags,
+            var sample: [String: Any] = ["step": name, "status": mode.rawValue, "selectedTag": selected, "visibleTags": visibleTags,
                 "idleLabel": label, "idleHint": hint,
                 "agents": agents, "individualReports": documents, "collectionMembers": collected,
-                "mountedCardCount": canvas.mountedCardIDs.count, "noteOpen": presentation.scene.notePanelOpen])
+                "mountedCardCount": canvas.mountedCardIDs.count, "noteOpen": presentation.scene.notePanelOpen]
             if CommandLine.arguments.contains("--capture") {
-                try await capture(window, to: directory.appending(path: "status-" + name + ".png"))
+                let url = directory.appending(path: "status-" + name + ".png")
+                if checkCompletedCopy { try await Task.sleep(for: .milliseconds(450)) }
+                try await capture(window, to: url)
+                if checkCompletedCopy {
+                    let locale = workspace.locale
+                    let formattedFinish = Date(timeIntervalSince1970: finishedAt / 1_000)
+                        .formatted(.dateTime.year().month(.abbreviated).day().hour().minute().locale(Locale(identifier: locale.rawValue)))
+                    let expectedText = expected.isEmpty
+                        ? [locale.text("没有已完成的会话", "No completed conversations"),
+                           locale.text("双指上滑查看全部会话", "Swipe up with two fingers to show all conversations")]
+                        : ["Delivered", locale.text("仅已完成", "Completed only"),
+                           locale.text("已完成", "Completed") + " · " + formattedFinish]
+                    sample["completedText"] = try checkCompletedText(in: url, expected: expectedText)
+                }
             }
+            samples.append(sample)
         }
         func swipe(_ y: Int32, over location: CGPoint = CGPoint(x: 12, y: 220)) async throws {
             let point = monitor.windowPoint(location)
@@ -830,6 +862,29 @@ private final class WheelSample: NSEvent {
         try await check("live-remove", .running, [], selected: "Shipping")
         try await swipe(-40, over: CGPoint(x: monitor.configuration.size.width / 2, y: monitor.configuration.size.height / 2))
         try await check("tag-restored", .all, ["Delivered"], selected: "Shipping")
+        let center = CGPoint(x: monitor.configuration.size.width / 2, y: monitor.configuration.size.height / 2)
+        try await swipe(-40)
+        try await check("completed-tag", .completed, ["Delivered"], selected: "Shipping", checkCompletedCopy: true)
+        try await updateDelivered(.running, revision: 11)
+        try await check("completed-live-remove", .completed, [], selected: "Shipping", checkCompletedCopy: true)
+        workspace.updateSystemLocale(.chinese)
+        try await check("completed-empty-zh", .completed, [], selected: "Shipping", checkCompletedCopy: true)
+        if CommandLine.arguments.contains("--capture") {
+            defer { captureScheme = nil }
+            for (scheme, filename) in [(ColorScheme.light, "completed-empty-light"), (.dark, "completed-empty-dark")] {
+                captureScheme = scheme
+                try await Task.sleep(for: .milliseconds(450))
+                try await capture(window, to: directory.appending(path: filename + ".png"))
+            }
+        }
+        try await swipe(40, over: center)
+        try await check("back-from-completed-empty", .all, ["Delivered"], selected: "Shipping")
+        try await swipe(-40)
+        try await check("completed-empty-again", .completed, [], selected: "Shipping")
+        try await updateDelivered(.completed, revision: 12)
+        try await check("completed-live-admit", .completed, ["Delivered"], selected: "Shipping", checkCompletedCopy: true)
+        try await swipe(40)
+        try await check("completed-finished", .all, ["Delivered"], selected: "Shipping")
         try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "overview-status.json"))
     }

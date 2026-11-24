@@ -90,6 +90,8 @@ public struct NativeOverviewWorkspaceView: View {
                 if !landing && model.content.isEmpty && model.error == nil {
                     if model.statusFilter == .running {
                         NativeOverviewIdleMark(label: emptyTitle, hint: emptyDetail)
+                    } else if model.statusFilter == .completed {
+                        NativeOverviewCompletedState(title: emptyTitle, swipeHint: emptyDetail)
                     } else {
                         NativeOverviewEmptyState(title: emptyTitle, detail: emptyDetail)
                     }
@@ -119,8 +121,11 @@ public struct NativeOverviewWorkspaceView: View {
                 }
             }
             .overlay(alignment: .bottomLeading) {
-                if !landing && chromeVisible && model.statusFilter != .all && !model.content.isEmpty {
-                    Text(model.statusFilter == .running ? locale.text("仅运行中", "Running only") : locale.text("仅已完成", "Completed only"))
+                if !landing && chromeVisible && model.statusFilter == .completed && !model.content.isEmpty {
+                    NativeOverviewCompletedFilterBadge(title: locale.text("仅已完成", "Completed only"))
+                        .padding(.leading, 16).padding(.bottom, 8)
+                } else if !landing && chromeVisible && model.statusFilter == .running && !model.content.isEmpty {
+                    Text(locale.text("仅运行中", "Running only"))
                         .font(NativeTypography.inter(size: 11, weight: 590))
                         .foregroundStyle(NativePalette.overview.muted.swiftUI)
                         .padding(.leading, 16).padding(.bottom, 8)
@@ -212,15 +217,20 @@ private struct NativeOverviewWorkspaceCard: View {
     @State private var lifetime = PluginLifetime()
     @State private var error: String?
     @State private var archivePending = false
+    @State private var hovered = false
+    @FocusState private var focused: Bool
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.locale) private var locale
 
     var body: some View {
+        let completedOnly = model.statusFilter == .completed
         Group {
             switch model.snapshot(for: item) {
             case .harness(let snapshot):
                 let thread = snapshot.input.thread
                 snapshot.card(respond: { try await respond($0, thread: thread) }, openThread: { open(thread.id) })
+                    .environment(\.threadCardCompletedAt, completedOnly && NativeOverviewStatusFilter.completed.includes(thread)
+                        ? thread.observation.latestExecution?.finishedAt.map { Date(timeIntervalSince1970: $0 / 1_000) } : nil)
                     .environment(\.threadCardUnread, thread.bookmarkVersion.map {
                         model.workspace.preferences.threadReadHistory.isUnread(.init(threadID: thread.id, typeID: "agent"), version: $0)
                     } ?? false)
@@ -237,6 +247,7 @@ private struct NativeOverviewWorkspaceCard: View {
                     .contentShape(RoundedRectangle(cornerRadius: 22))
                     .onTapGesture { open(thread.id) }
                     .focusable()
+                    .focused($focused)
                     .focusEffectDisabled()
                     .onKeyPress(.return) { open(thread.id); return .handled }
                     .onKeyPress(keys: [.leftArrow, .rightArrow], action: model.canvasState.scrollWithArrow)
@@ -252,6 +263,17 @@ private struct NativeOverviewWorkspaceCard: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 22))
+        .overlay {
+            if completedOnly && (hovered || focused) {
+                RoundedRectangle(cornerRadius: NativeGeometry.overviewCardRadius)
+                    .strokeBorder(NativePalette.overview.accent.swiftUI.opacity(focused ? 1 : 0.55),
+                                  lineWidth: focused ? 2 : 1)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
+        .onHover { if completedOnly || hovered { hovered = $0 } }
+        .onChange(of: completedOnly) { _, enabled in if !enabled { hovered = false } }
         .background {
             if let request = model.readingSource, model.visibleCardID(for: request.member) == item.id,
                model.sourceCardID(for: request.member) == nil {
