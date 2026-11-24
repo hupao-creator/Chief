@@ -40,6 +40,15 @@ private struct HeaderGlassFixture: View {
 }
 
 @MainActor private func windowImage(_ window: NSWindow) async throws -> CGImage {
+    // Inactive windows suppress Liquid Glass tints. Wait for the foreground
+    // launch to settle before drawing conclusions from their pixels.
+    for _ in 0..<20 {
+        if NSApp.isActive && window.isKeyWindow && window.occlusionState.contains(.visible) { break }
+        try await Task.sleep(for: .milliseconds(100))
+    }
+    guard NSApp.isActive && window.isKeyWindow && window.occlusionState.contains(.visible) else {
+        throw HeaderFailure("Header capture window unavailable (active: \(NSApp.isActive), key: \(window.isKeyWindow), visible: \(window.occlusionState.contains(.visible)))")
+    }
     guard let target = try await SCShareableContent.currentProcess.windows.first(where: { $0.windowID == window.windowNumber }) else {
         throw HeaderFailure("Missing mounted header window")
     }
@@ -163,7 +172,7 @@ private struct HeaderGlassFixture: View {
                 let views = images.map { readFaceColors($0, ids: ids, frames: buttonFrames) }
                 let results = try [(1, 0, 1), (0, 1, 2), (2, 2, 3)].map { index, selected, idle in
                     let id = ids[index]
-                    var result = try tintResult(id: id, selected: views[selected], idle: views[idle], hue: id == blue.id ? .blue : .accent)
+                    var result = try tintResult(id: id, selected: views[selected], idle: views[idle], hue: id == blue.id ? .blue : .purple)
                     if id == blue.id, let face = views[idle][id] {
                         let (count, fraction) = preservedEmoji(selected: images[selected], idle: images[idle], frame: bounds[index], idleFace: face)
                         result["emojiInkPixels"] = count
@@ -189,7 +198,7 @@ private struct HeaderGlassFixture: View {
     try save("passed")
 }
 
-private enum TintHue: String { case accent, blue, green, warm, neutral }
+private enum TintHue: String { case purple, blue, green, warm, neutral }
 
 private func readFaceColors(_ pixels: NSBitmapImageRep, ids: [String], frames: [String: CGRect]) -> [String: [Double]] {
     Dictionary(uniqueKeysWithValues: ids.compactMap { id in
@@ -203,13 +212,19 @@ private func tintResult(id: String, selected: [String: [Double]], idle: [String:
     let r = delta[0], g = delta[1], b = delta[2]
     let visible = delta.contains { abs($0) > 0.035 }
     let pairedHue: Bool = switch hue {
-    case .accent: g - r > 0.025 && b - r > 0
-    case .blue: b - r > 0.04 && b - g > 0.02
+    case .purple: r - g > 0.025 && b - r > 0.025
+    case .blue: b - r > 0.04 && b - g > 0.02 && g > r
     case .green: g - r > 0.025 && g - b > 0.04
     case .warm: r - b > 0.03 && g - b > 0
     case .neutral: max(r, g, b) - min(r, g, b) < 0.065
     }
     return ["id": id, "hue": hue.rawValue, "selected": face, "unselected": reference, "passed": visible && pairedHue]
+}
+
+private func contrastRatio(face: [Double], inkLuminance: Double) -> Double {
+    let linear = face.map { $0 <= 0.04045 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }
+    let luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+    return (max(luminance, inkLuminance) + 0.05) / (min(luminance, inkLuminance) + 0.05)
 }
 
 @MainActor private func clickFilter(in window: NSWindow, at rect: CGRect) throws {
@@ -300,12 +315,16 @@ private func preservedEmoji(selected: NSBitmapImageRep, idle: NSBitmapImageRep,
         samples.append(readFaceColors(pixels, ids: ids, frames: glyphSeats))
         try pixels.representation(using: .png, properties: [:])?.write(to: evidence.appending(path: "side-tints-\(name)-\(index).png"))
     }
-    let hues: [TintHue] = [.accent, .warm, .blue, .warm, .green, .neutral]
+    let hues: [TintHue] = [.purple, .warm, .blue, .warm, .green, .neutral]
     return try ids.enumerated().map { offset, id in
         let index = offset / 2
         let next = index + 1
         var result = try tintResult(id: id, selected: samples[index], idle: samples[next], hue: hues[offset])
-        if hues[offset] != .accent, let frame = glyphSeats[id], let idle = samples[next][id] {
+        if id == folder.id, let face = samples[index][id] {
+            let ratio = contrastRatio(face: face, inkLuminance: scheme == .light ? 1 : 0)
+            result["contrastRatio"] = ratio
+            result["passed"] = result["passed"] as? Bool == true && ratio >= 4.5
+        } else if let frame = glyphSeats[id], let idle = samples[next][id] {
             let (count, fraction) = preservedEmoji(selected: images[index], idle: images[next], frame: frame, idleFace: idle)
             result["emojiInkPixels"] = count
             result["emojiAgreement"] = fraction

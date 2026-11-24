@@ -97,7 +97,7 @@ private struct CardPlanRow: View {
             .background(alignment: .bottomLeading) {
                 if connectsAfter {
                     Rectangle()
-                        .fill(step.status == .completed ? palette.accent.swiftUI.opacity(0.25) : palette.ink.swiftUI.opacity(0.12))
+                        .fill(step.status == .completed ? NativePalette.overviewCompletionMark.swiftUI.opacity(0.25) : palette.ink.swiftUI.opacity(0.12))
                         .frame(width: 1, height: 8)
                         .offset(x: CardPlanGeometry.rowInset + CardPlanGeometry.markerSize / 2 - 0.5, y: 6)
                         .allowsHitTesting(false)
@@ -131,7 +131,7 @@ private struct CardPlanRow: View {
                 switch step.status {
                 case .completed:
                     NativeIcon(name: "Check", size: 10, strokeWidth: 2.5)
-                        .foregroundStyle(palette.accent.swiftUI)
+                        .foregroundStyle(NativePalette.overviewCompletionMark.swiftUI)
                 case .inProgress:
                     Text("\(number)").foregroundStyle(palette.surface.swiftUI)
                 case .pending:

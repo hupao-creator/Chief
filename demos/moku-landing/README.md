@@ -137,8 +137,10 @@ catch a hard cut through the shadow. `header-glass.json` records those
 measurements, the title's luminance difference from the chip face and the
 spacing between adjacent controls. On fixed neutral backgrounds it clicks
 each top and side control and compares the same part of its glass face across
-selections, away from the glyph, badge and rim. All, the folder and Any take
-the accent. The selected top-level Inbox tag takes its blue tint from 🔵.
+selections, away from the glyph, badge and rim. All, the folder and Any tag
+must shift toward the purple accent. Any tag’s sampled face must also reach
+4.5:1 against its full-coverage ink in each appearance. The selected top-level
+Inbox tag takes its blue tint from 🔵.
 Blue and green semantic emoji
 have distinct tints, the hourglass and dividers have warm tints and the
 checkered flag has a neutral tint. The selected controls must retain the

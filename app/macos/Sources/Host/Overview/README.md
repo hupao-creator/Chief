@@ -55,7 +55,7 @@ when Liquid Glass is unavailable. Other card content keeps the shared flat
 policy for provider badges, terminal marks and plan highlights.
 Running Agent Threads show a diagonal sweep of harness-colored perforations
 behind the stationary emoji. Reduce Motion holds the pattern still. Idle badges
-have a neutral fill and completed badges have an accent-soft green fill and
+have a neutral fill and completed badges have a green completion fill and
 terminal symbol. Their accessible labels follow the projected execution status.
 The isolated `--benchmark-agent-emoji-badge liquid-glass` scenario can compare only
 Agent emoji backdrops with regular glass; ordinary launch defaults and all other
@@ -372,7 +372,9 @@ of the visible glyph, the tint uses its average luminance as a neutral gray,
 limited to the range 0.30–0.72.
 This keeps the 🏁 status tint neutral. The top folder buttons, global All,
 the Any tag asterisk and glyphs that yield no visible sample use the Overview
-accent. The emoji keeps its original colors.
+accent (#6D28D9 in light appearance and #A78BFA in dark appearance). The accent
+comes from the app palette for every profile. Tag emoji remain the saved input
+for tag colors, and the displayed emoji keeps its original colors.
 [Emoji tint sampling](NativeOverviewTagTint.swift).
 
 Selected Any tag uses an opaque Overview accent face above its glass, with
@@ -380,9 +382,9 @@ white ink in light appearance and black ink in dark appearance for both the
 asterisk and its title. The face stays opaque with Increased Contrast or Reduce
 Transparency so the cards underneath cannot change the label's contrast.
 The [header glass replay](../../../../../demos/moku-landing/verify_header.py)
-checks the selected accent on a neutral backdrop in both appearances. Text
-contrast uses the opaque sRGB accent and full-coverage ink, with a target of
-4.5:1. The replay's tint samples do not measure the expanded title's contrast.
+checks the selected accent on a neutral backdrop in both appearances. For
+Any tag it compares sampled face luminance with full-coverage ink, targeting
+at least 4.5:1 in the composited window.
 
 Each tag's red unread count follows the upper trailing corner of the glass
 at its current animated width. Increased Contrast and Reduce Transparency

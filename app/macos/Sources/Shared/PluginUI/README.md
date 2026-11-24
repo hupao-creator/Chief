@@ -780,7 +780,7 @@ emoji use static palette fills, and the in-progress plan row uses the accent-sof
 surface without a glass container or effect. The 44pt badge shows a stationary 21pt emoji, or the conversation glyph
 while the emoji is unavailable. A running status fills the disc with the
 [perforated running badge](Cards/RunningThreadBadge.swift). Idle uses a neutral
-fill and completed uses accent-soft green with a check mark. Status precedence
+fill and completed uses a green completion fill with a check mark. Status precedence
 comes from the shared execution and background-work projection. The card shell
 keeps its opaque neutral surface.
 The explicit isolated Overview benchmark can supply
@@ -791,7 +791,7 @@ plan rows and Report/collection badges retain their own materials.
 The shared glass helper still respects Reduce Transparency. This is a launch-scoped
 experiment, not a persisted preference; ordinary launches stay flat.
 Agent and Report cards share its upper-right placement and title clearance.
-Report uses the completed badge's accent-soft background without an execution
+Report uses the completed badge's green background without an execution
 terminal mark; Agent execution status and its terminal mark remain independent.
 The badge is status content with an accessible label and tooltip. When the Host
 supplies `threadCardArchiveAction`, it becomes a 44pt independent archive button:
