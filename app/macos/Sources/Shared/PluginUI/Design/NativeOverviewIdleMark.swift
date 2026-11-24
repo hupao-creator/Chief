@@ -2,12 +2,15 @@ import AppKit
 import SwiftUI
 
 package struct NativeOverviewIdleMark: NSViewRepresentable {
-    let label: String
-    let hint: String
+    private static let size = CGSize(width: 156, height: 68)
+    let label: String?
+    let hint: String?
+    let identifier: String
 
-    package init(label: String, hint: String) {
+    package init(label: String? = nil, hint: String? = nil, identifier: String = "overview.idle") {
         self.label = label
         self.hint = hint
+        self.identifier = identifier
     }
 
     package func makeNSView(context: Context) -> NSImageView {
@@ -18,15 +21,16 @@ package struct NativeOverviewIdleMark: NSViewRepresentable {
         }
         view.image = image
         view.imageScaling = .scaleProportionallyUpOrDown
-        view.setAccessibilityElement(true)
+        view.setAccessibilityElement(label != nil)
         view.setAccessibilityRole(.image)
-        view.setAccessibilityIdentifier("overview.idle")
+        view.setAccessibilityIdentifier(identifier)
         return view
     }
 
     package func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSImageView, context: Context) -> CGSize? {
-        let scale = min(1, (proposal.width ?? 312) / 312, (proposal.height ?? 136) / 136)
-        return CGSize(width: 312 * scale, height: 136 * scale)
+        let size = Self.size
+        let scale = min(1, (proposal.width ?? size.width) / size.width, (proposal.height ?? size.height) / size.height)
+        return CGSize(width: size.width * scale, height: size.height * scale)
     }
 
     package func updateNSView(_ view: NSImageView, context: Context) {

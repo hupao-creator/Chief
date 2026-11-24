@@ -239,7 +239,7 @@ Status filters apply to the selected tag's eligible members after report coverag
 Outside landing, every empty Overview shows a localized title and hint for
 the current status. When Running has no matching cards, a static, transparent
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
-appears above the text at up to 312 × 136 pt, regardless of the selected
+appears above the text at up to 156 × 68 pt, regardless of the selected
 folder or tag. The All status shows the same text treatment without the
 illustration. The centered text uses adaptive Overview ink on an opaque
 surface for contrast over window material, and wraps within the available
@@ -249,10 +249,10 @@ The [status replay](../../../../../demos/moku-landing/README.md#overview-note-sw
 exercises this state as a tagged conversation starts and finishes.
 
 The [Completed presentation](NativeOverviewCompletedPresentation.swift) centers
-a checkmark, empty status and two-finger swipe-up hint on a compact regular
-glass plate when no cards match. An adaptive surface tint stabilizes the
-contrast, with an opaque fill under Reduce Transparency. The plate passes
-input through to the canvas. With matches, a **Completed only** capsule
+the same skillet above its empty status and two-finger swipe-up hint. The text
+provides the accessible status and hint. Its adaptive fill sits above the
+frosted material and becomes opaque under Reduce Transparency. The whole group
+passes input through to the canvas. With matches, a **Completed only** capsule
 identifies the filter. The existing plugin cards keep their layout and
 activation. Hover outlines emphasize cards and keyboard focus outlines Agent
 cards. Agent cards show the localized time of the latest successful execution

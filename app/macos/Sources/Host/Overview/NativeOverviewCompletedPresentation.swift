@@ -5,33 +5,32 @@ struct NativeOverviewCompletedState: View {
     let title: String
     let swipeHint: String
     private let palette = NativePalette.overview
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: NativeGeometry.overviewCardRadius)
-        VStack(spacing: 10) {
-            NativeIcon(name: "CircleCheck", size: 21)
-                .foregroundStyle(palette.accent.swiftUI)
-                .frame(width: 40, height: 40)
-                .background(palette.accentSoft.swiftUI, in: Circle())
-            Text(title)
-                .font(NativeTypography.inter(size: 15, weight: 650))
-                .foregroundStyle(palette.ink.swiftUI)
-            HStack(spacing: 5) {
-                NativeIcon(name: "ArrowUp", size: 13)
-                Text(swipeHint)
+        VStack(spacing: 8) {
+            NativeOverviewIdleMark(identifier: "overview.completed.logo")
+                .accessibilityHidden(true)
+            VStack(spacing: 3) {
+                Text(title)
+                    .font(NativeTypography.inter(size: 15, weight: 650))
+                    .foregroundStyle(palette.ink.swiftUI)
+                HStack(spacing: 5) {
+                    NativeIcon(name: "ArrowUp", size: 13)
+                    Text(swipeHint)
+                }
+                .font(NativeTypography.inter(size: 12, weight: 520))
+                .foregroundStyle(palette.ink.swiftUI.opacity(0.90))
             }
-            .font(NativeTypography.inter(size: 12, weight: 520))
-            .foregroundStyle(palette.ink.swiftUI.opacity(0.90))
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            // Keep the adaptive fill above the material so the backdrop cannot wash out the text.
+            .background(palette.surfaceStrong.swiftUI.opacity(reduceTransparency ? 1 : 0.90), in: shape)
+            .background { if !reduceTransparency { shape.fill(.regularMaterial) } }
+            .overlay { shape.strokeBorder(palette.line.swiftUI, lineWidth: 1) }
         }
-        .multilineTextAlignment(.center)
-        .padding(.horizontal, 24)
-        .padding(.vertical, 18)
-        .background {
-            // Stabilize the text contrast when the material samples a bright or dark desktop.
-            shape.fill(palette.surfaceStrong.swiftUI.opacity(0.90))
-                .nativeRegularCardGlass(in: shape, opaque: palette.surfaceStrong.swiftUI)
-        }
-        .overlay { shape.strokeBorder(palette.line.swiftUI, lineWidth: 1) }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("overview.completed.empty")
         .padding(16)

@@ -727,8 +727,12 @@ private final class WheelSample: NSEvent {
         let tags = model.visibleFilters
         let tagIDs = tags.flatMap { [$0.id] + $0.children.map(\.id) }
         var samples = [[String: Any]]()
-        func idleImage() -> NSImageView? {
-            descendant(NSImageView.self, in: content) { $0.accessibilityIdentifier() == "overview.idle" }
+        func logoImage(_ identifier: String) -> NSImageView? {
+            descendant(NSImageView.self, in: content) { $0.accessibilityIdentifier() == identifier }
+        }
+        func completedEmptyCopy() -> [String] {
+            [workspace.locale.text("没有已完成的会话", "No completed conversations"),
+             workspace.locale.text("双指上滑查看全部会话", "Swipe up with two fingers to show all conversations")]
         }
         func checkCompletedText(in url: URL, expected: [String]) throws -> [String] {
             let request = VNRecognizeTextRequest()
@@ -769,27 +773,38 @@ private final class WheelSample: NSEvent {
                 throw ReplayError("Unexpected \(name): mode=\(model.statusFilter), agents=\(agents), reports=\(documents), grouped=\(collected), tags=\(visibleTags), selected=\(model.selectedTag)")
             }
             let expectsIdle = mode == .running && expected.isEmpty
-            var idle = idleImage()
-            while (idle != nil) != expectsIdle, ContinuousClock.now < deadline {
+            let expectsCompletedLogo = mode == .completed && expected.isEmpty
+            var idle = logoImage("overview.idle")
+            var completedLogo = logoImage("overview.completed.logo")
+            while ((idle != nil) != expectsIdle || (completedLogo != nil) != expectsCompletedLogo),
+                  ContinuousClock.now < deadline {
                 try await Task.sleep(for: .milliseconds(30))
-                idle = idleImage()
+                idle = logoImage("overview.idle")
+                completedLogo = logoImage("overview.completed.logo")
             }
+            let logoSize = CGSize(width: 156, height: 68)
             let label = idle?.accessibilityLabel() ?? ""
             let hint = idle?.accessibilityHelp() ?? ""
             guard (idle != nil) == expectsIdle,
                   !expectsIdle || (idle?.isAccessibilityElement() == true && idle?.accessibilityRole() == .image && idle?.image != nil
-                    && idle?.bounds.size == CGSize(width: 312, height: 136)
+                    && idle?.bounds.size == logoSize
                     && label == workspace.locale.text("没有运行中的会话", "No running conversations")
-                    && hint == workspace.locale.text("双指下滑查看全部会话。", "Swipe down with two fingers to show all conversations.")) else {
+                    && hint == workspace.locale.text("双指下滑查看全部会话。", "Swipe down with two fingers to show all conversations.")),
+                  (completedLogo != nil) == expectsCompletedLogo,
+                  !expectsCompletedLogo || (completedLogo?.isAccessibilityElement() == false
+                    && completedLogo?.image != nil && completedLogo?.bounds.size == logoSize) else {
                 if CommandLine.arguments.contains("--capture") {
                     try await capture(window, to: directory.appending(path: "failed-" + name + ".png"))
                 }
-                throw ReplayError("Unexpected idle accessibility at \(name): \(label) / \(hint)")
+                throw ReplayError("Unexpected logo at \(name): running=\(String(describing: idle?.bounds.size)), completed=\(String(describing: completedLogo?.bounds.size)), \(label) / \(hint)")
             }
             var sample: [String: Any] = ["step": name, "status": mode.rawValue, "selectedTag": selected, "visibleTags": visibleTags,
                 "idleLabel": label, "idleHint": hint,
                 "agents": agents, "individualReports": documents, "collectionMembers": collected,
                 "mountedCardCount": canvas.mountedCardIDs.count, "noteOpen": presentation.scene.notePanelOpen]
+            if let logo = idle ?? completedLogo {
+                sample["logoSize"] = [logo.bounds.width, logo.bounds.height]
+            }
             if CommandLine.arguments.contains("--capture") {
                 let url = directory.appending(path: "status-" + name + ".png")
                 if checkCompletedCopy { try await Task.sleep(for: .milliseconds(450)) }
@@ -799,8 +814,7 @@ private final class WheelSample: NSEvent {
                     let formattedFinish = Date(timeIntervalSince1970: finishedAt / 1_000)
                         .formatted(.dateTime.year().month(.abbreviated).day().hour().minute().locale(Locale(identifier: locale.rawValue)))
                     let expectedText = expected.isEmpty
-                        ? [locale.text("没有已完成的会话", "No completed conversations"),
-                           locale.text("双指上滑查看全部会话", "Swipe up with two fingers to show all conversations")]
+                        ? completedEmptyCopy()
                         : ["Delivered", locale.text("仅已完成", "Completed only"),
                            locale.text("已完成", "Completed") + " · " + formattedFinish]
                     sample["completedText"] = try checkCompletedText(in: url, expected: expectedText)
@@ -862,7 +876,6 @@ private final class WheelSample: NSEvent {
         try await check("live-remove", .running, [], selected: "Shipping")
         try await swipe(-40, over: CGPoint(x: monitor.configuration.size.width / 2, y: monitor.configuration.size.height / 2))
         try await check("tag-restored", .all, ["Delivered"], selected: "Shipping")
-        let center = CGPoint(x: monitor.configuration.size.width / 2, y: monitor.configuration.size.height / 2)
         try await swipe(-40)
         try await check("completed-tag", .completed, ["Delivered"], selected: "Shipping", checkCompletedCopy: true)
         try await updateDelivered(.running, revision: 11)
@@ -874,10 +887,14 @@ private final class WheelSample: NSEvent {
             for (scheme, filename) in [(ColorScheme.light, "completed-empty-light"), (.dark, "completed-empty-dark")] {
                 captureScheme = scheme
                 try await Task.sleep(for: .milliseconds(450))
-                try await capture(window, to: directory.appending(path: filename + ".png"))
+                let url = directory.appending(path: filename + ".png")
+                try await capture(window, to: url)
+                _ = try checkCompletedText(in: url, expected: completedEmptyCopy())
             }
         }
-        try await swipe(40, over: center)
+        guard let completedLogo = logoImage("overview.completed.logo") else { throw ReplayError("Missing Completed swipe target") }
+        let center = CGPoint(x: completedLogo.bounds.midX, y: completedLogo.bounds.midY)
+        try await swipe(40, over: monitor.canvasPoint(completedLogo.convert(center, to: nil)))
         try await check("back-from-completed-empty", .all, ["Delivered"], selected: "Shipping")
         try await swipe(-40)
         try await check("completed-empty-again", .completed, [], selected: "Shipping")

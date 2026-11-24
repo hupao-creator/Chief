@@ -66,17 +66,14 @@ over native window backgrounds in Aqua and Dark Aqua. `status-empty-tag.png`
 captures the ordinary window material.
 
 A catalog update takes the selected tag from filled to empty in Completed.
-An upward scroll over the plate returns all statuses with the tag retained.
+An upward scroll over the skillet returns all statuses with the tag retained.
 The replay reenters Completed and admits the card after a new completion.
+It measures the mounted skillet in both empty filters at 156 × 68 pt.
 With `--capture`, the replay recognizes the title and hint, capsule, Agent name
 and completion time in English and Chinese from the window images. It also
-saves the empty plate in Aqua and Dark Aqua. These single-window captures do
+checks the empty text in Aqua and Dark Aqua. These single-window captures do
 not sample desktop wallpapers or the system accessibility tree.
 
-The [window capture](evidence/overview-idle/status-empty-tag.png),
-[Aqua](evidence/overview-idle/idle-light.png), [Dark Aqua](evidence/overview-idle/idle-dark.png)
-and [status receipt](evidence/overview-idle/overview-status.json) were captured
-on Apple Silicon macOS 26.5.1 at 1024 × 704 pt using `--status-only --capture`.
 The fixture runs without a Runtime connection, so its window shows the sync notice.
 
 The [16-second walkthrough](evidence/overview-status/swipes.mp4) uses stills captured from the isolated production workspace. The [status receipt](evidence/overview-status/overview-status.json) records 12 steps, including selection of Shipping and its 0 → 1 → 0 running-card count. The Completed frame contains one Agent, two individual Reports and a six-member collection. The [gesture receipt](evidence/overview-status/overview-note-swipe.json) and [reminder receipt](evidence/overview-status/reminder-note-ownership.json) record the native scrolling checks. These artifacts come from the command above with `--capture` at application and replay revision `b9cc86a7cb7345470f65c1e147f0783639d7fe26`. The replay uses fixture catalog content and window-addressed AppKit events on Apple Silicon macOS 26.5.1.
