@@ -204,7 +204,7 @@ private final class WheelSample: NSEvent {
             try await cardInteraction(window, directory: directory, authority: authority)
             try await fittingCards(window, directory: directory, authority: authority)
             try await statusFilters(window, directory: directory, authority: authority)
-            try await installTasks(0, revision: 18, authority: authority)
+            try await installTasks(0, revision: 20, authority: authority)
             try await Task.sleep(for: .milliseconds(800))
             guard presentation.moku.landing else { throw ReplayError("Empty Overview did not enter landing") }
             presentation.scene.setInputOpen(false)
@@ -2558,14 +2558,30 @@ private final class WheelSample: NSEvent {
         let reorder: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(13), "revision": .integer(14),
             "threads": .object(["upserts": .array([added]), "removedIds": .array([])])])
         let reordered = try RuntimeState.applying(reorder, to: workspace.state!)
-        await workspace.installPrepared(reordered, event: .mutation(reorder, state: reordered, authority: authority))
+        await workspace.installPrepared(reordered, event: .mutation(reorder, state: reordered, authority: authority, replayed: true))
         let order = model.railChoices.map(\.id)
         guard order.count == 6, order.first == support.id, order.last == "running",
               model.selectedRailID == "running", model.items.map(\.id) == ["Compact-2"] else {
             throw ReplayError("Membership reorder moved or cleared the built-in Running tag: \(order)")
         }
         samples.append(["step": "reordered-with-semantic-running", "rail": order, "selected": "running"])
-        try await installTasks(0, revision: 15, authority: authority, extraThreads: [thread("Inbox tagged", nil)])
+        // A replayed first assignment is consumed. An ordinary update to that
+        // Thread leaves Running selected; a new Thread born with the same tag follows it.
+        func publishSupport(_ name: String, revision: Int) async throws {
+            let row = try thread(name, nil, revision: revision, semanticTag: "Support")
+            let patch: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(revision - 1),
+                "revision": .integer(revision), "threads": .object(["upserts": .array([row]), "removedIds": .array([])])])
+            let state = try RuntimeState.applying(patch, to: workspace.state!)
+            await workspace.installPrepared(state, event: .mutation(patch, state: state, authority: authority))
+        }
+        try await publishSupport("Support-backlog", revision: 15)
+        guard model.selectedRailID == "running" else { throw ReplayError("Live update repeated a replayed assignment") }
+        try await publishSupport("New support task", revision: 16)
+        guard model.selectedRailID == support.id, model.items.contains(where: { $0.id == "New support task" }) else {
+            throw ReplayError("Live tagged creation did not select Support")
+        }
+        samples.append(["step": "live-tag-after-replay", "selected": support.id])
+        try await installTasks(0, revision: 17, authority: authority, extraThreads: [thread("Inbox tagged", nil)])
         try await activate(.semantic, inboxShipping.id)
         guard model.visibleFilters.map(\.id) == [inboxShipping.id], model.selectedFilter?.id == inboxShipping.id,
               model.items.map(\.id) == ["Inbox tagged"] else { throw ReplayError("The sole Inbox tag was not selectable") }
@@ -2594,7 +2610,7 @@ private final class WheelSample: NSEvent {
         var retagged = try thread("Inbox tagged", nil, revision: 2).objectValue!
         retagged["tags"] = .array([])
         retagged["tagEmojis"] = .object([:])
-        let patch: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(15), "revision": .integer(16),
+        let patch: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(17), "revision": .integer(18),
             "threads": .object(["upserts": .array([.object(retagged), try thread("Inbox untagged", nil)]), "removedIds": .array([])])])
         let next = try RuntimeState.applying(patch, to: workspace.state!)
         await workspace.installPrepared(next, event: .mutation(patch, state: next, authority: authority))
@@ -2626,7 +2642,7 @@ private final class WheelSample: NSEvent {
                         "visibleTags": model.visibleFilters.map(\.id), "mountedCardIDs": Array(canvas.mountedCardIDs),
                         "retainedReaderScene": scene, "catalogThreadIDs": savedIDs])
         let assigned = try thread("Inbox untagged", nil, revision: 2, semanticTag: "Shipping")
-        let assignment: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(16), "revision": .integer(17),
+        let assignment: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(18), "revision": .integer(19),
             "threads": .object(["upserts": .array([assigned]), "removedIds": .array([])])])
         let taggedState = try RuntimeState.applying(assignment, to: workspace.state!)
         await workspace.installPrepared(taggedState, event: .mutation(assignment, state: taggedState, authority: authority))

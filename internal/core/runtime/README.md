@@ -345,7 +345,9 @@ checks revision, active membership and scope in the receipt transaction and retu
 current status on conflicts. [tags.go](tags.go) keeps public name/emoji projections
 and report source decoration synchronized while preserving stable tag identity.
 Archived Threads retain frozen decoration and do not consume active membership;
-restoration clears assignment before emitting `thread.restored`. Actual title
+restoration clears assignment before emitting `thread.restored`. Clearing
+labels retains the [Thread's classification history](../model/README.md).
+Actual title
 changes emit `thread.title-changed`, independently of execution terminal facts.
 
 Moku model routing presets are validated settings fields, participate in

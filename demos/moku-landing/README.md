@@ -109,8 +109,10 @@ The replay checks that further contact and momentum events keep the same selecti
 swipes both ways on a single selected choice and an empty rail. It also checks
 cross-center contacts, inverted device deltas, horizontal camera travel, live
 status changes, and reentry to a folder whose sole left choice is empty Running.
-A catalog delta moves a semantic tag into first place while a semantic tag
-named Running and the last built-in choice retain distinct identities.
+A replayed catalog delta moves a semantic tag into first place while a semantic
+tag named Running and the built-in choice retain distinct identities. A live
+update to that replayed Thread preserves Running. A newly created Thread with
+the same tag selects its semantic filter.
 In macOS full screen it swipes on both empty margins and a running card.
 
 Selecting a top-row Inbox tag mounts Running, All statuses and Completed on the

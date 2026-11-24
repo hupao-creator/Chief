@@ -87,7 +87,7 @@ public final class NativeHarnessHost {
             case .ready(let value): resource.publish(.ready(value))
             case .error(let message): resource.publish(.error(message))
             }
-        case .snapshot(_, let authority), .mutation(_, _, let authority):
+        case .snapshot(_, let authority), .mutation(_, _, let authority, _):
             if settingsAuthority != authority {
                 releaseGlobalSettings()
                 settingsAuthority = authority

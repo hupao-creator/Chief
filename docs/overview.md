@@ -6,7 +6,9 @@ Press **⌘K** to open **Overview**. Chief highlights your last folder or tag an
 
 Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. A task appears once it has a tag from Tag Agent. With only untagged tasks, Overview shows **No tagged conversations yet**. Your conversations stay saved.
 
-Once your cards appear, you can keep browsing folders and tags while Chief reconnects to its background service.
+When a task gets its first tag, Overview selects that tag and shows its cards. This also happens when you branch a conversation that already has a tag. If you’re reading a conversation or using Settings, you can keep working there. You’ll see the selected tag when you return to Overview. If a Super Thread collection is open, the switch waits until you close it.
+
+You can choose another folder or tag at any time. Later changes to the same task’s tags and reconnecting to the background service preserve your choice while it’s available.
 
 When a folder has tags to choose from, look for their emoji along the left edge. Move the pointer over or just beside an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. The selected tag keeps its name visible when you move the pointer away.
 

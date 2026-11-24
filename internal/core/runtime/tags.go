@@ -544,8 +544,7 @@ func (c tagsWriteCapability) commit(tx *store.Tx, pool []tagDefinition, redirect
 			}
 			emojis := tagEmojis(pool, tags)
 			if !same(tags, thread.Tags) || !same(emojis, thread.TagEmojis) {
-				thread.Tags = tags
-				thread.TagEmojis = emojis
+				thread.SetSemanticTags(tags, emojis)
 				thread.Revision++
 				thread.UpdatedAt = max(thread.UpdatedAt, time.Now().UnixMilli())
 				if err := tx.Put("thread:"+thread.ID, thread); err != nil {

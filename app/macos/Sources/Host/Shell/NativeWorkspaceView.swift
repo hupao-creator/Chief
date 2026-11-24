@@ -12,6 +12,7 @@ public final class NativeWorkspacePresentation {
     public let canvas = NativeOverviewCanvasState()
     @ObservationIgnored lazy var collectionPanel = NativeCollectionPanelPresentation { [weak self] in
         self?.overview.releaseCollectionRanks()
+        self?.overview.applyDeferredFirstTag()
     }
     var readingCollectionMember: Bool { collectionPanel.readingMember != nil }
     var browsingCollection: Bool { collectionPanel.owner != nil && selected == nil }
@@ -156,7 +157,8 @@ public final class NativeWorkspacePresentation {
                 guard let observation = self.workspace.catalog.thread(reference.thread.threadID)?.observation else { return false }
                 return observation.isExecutionActive && observation.latestExecution?.id == reference.executionID
             }
-            self.overview.receive(event)
+            // An expanded collection still owns its source card in the canvas.
+            self.overview.receive(event, deferFirstTag: self.collectionPanel.owner != nil)
             self.moku.receive(event)
             if case .snapshot(_, let authority) = event, self.snapshotAuthority != authority {
                 self.snapshotAuthority = authority

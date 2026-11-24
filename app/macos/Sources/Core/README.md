@@ -23,6 +23,9 @@ snapshots/reconnects still validate every identity. Whole-array readers material
 only when they request the collection. Native catalog preparation consumes the
 accepted mutation identities and decodes only changed envelopes. Activity-only
 mutations advance the stream revision without rewriting the offline state cache.
+Mutations drained during hydration, including a pending delta reapplied after
+gap recovery, carry a replay flag so consumers can update their catalog
+without triggering live-only navigation.
 
 [RuntimeSettingsReads](RuntimeSettingsReads.swift) admits settings presentation
 and single-Harness installation reads before they open HTTP connections. At most

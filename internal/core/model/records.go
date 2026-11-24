@@ -122,11 +122,20 @@ type ThreadRecord struct {
 	MokuHistory      bool              `json:"mokuHistory,omitempty"`
 	Note             *ThreadNote       `json:"note,omitempty"`
 	Transcript       []json.RawMessage `json:"transcript,omitempty"`
+	// Retain classification history when restoration or pool edits clear Tags.
+	HadSemanticTag bool `json:"hadSemanticTag,omitempty"`
 	// Only a successful Moku interrupt tool call supplies this exact execution ID.
 	// Absence is unknown provenance, never evidence of a tool interruption.
 	MokuInterruptedExecutionID string `json:"mokuInterruptedExecutionId,omitempty"`
 	// Only an acknowledged user Stop supplies this exact execution ID.
 	UserInterruptedExecutionID string `json:"userInterruptedExecutionId,omitempty"`
+}
+
+func (t *ThreadRecord) SetSemanticTags(tags []string, emojis map[string]string) {
+	if len(t.Tags) > 0 && len(tags) == 0 {
+		t.HadSemanticTag = true
+	}
+	t.Tags, t.TagEmojis = tags, emojis
 }
 
 type ThreadRef struct {

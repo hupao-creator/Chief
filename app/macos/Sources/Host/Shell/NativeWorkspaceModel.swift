@@ -163,7 +163,7 @@ public final class NativeWorkspaceModel {
                         self.settingsModel.receive(snapshot: self.state, runtimeAvailable: self.runtimeAvailable)
                         self.onCatalogChange?(event)
                     case .snapshot(let snapshot, _): await self.installPrepared(snapshot, event: event)
-                    case .mutation(_, let snapshot, let authority):
+                    case .mutation(_, let snapshot, let authority, _):
                         // The serial stream loop awaits preparation before the
                         // next event: no latest-state pull, coalescing or reordering.
                         if self.snapshotAuthority != authority || (snapshot["revision"]?.intValue ?? -1) > self.catalog.revision {
@@ -202,7 +202,7 @@ public final class NativeWorkspaceModel {
             guard !Task.isCancelled else { return }
             let authority: UUID
             switch event {
-            case .snapshot(_, let value), .mutation(_, _, let value): authority = value
+            case .snapshot(_, let value), .mutation(_, _, let value, _): authority = value
             default: throw PluginContractError("Catalog event has no authority")
             }
             if snapshotAuthority != authority { catalog.invalidateApplicationEntries() }

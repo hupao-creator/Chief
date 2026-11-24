@@ -63,14 +63,14 @@ class Peer(Provider):
             pending = sorted(self.tagged_ids.intersection(status["unassignedThreadIds"]))
             if not pending:
                 return self.response_events("Classification complete.", None)
-            label = self.tag_names.get(pending[0], "Review work")
-            tag = next((tag for tag in status["tags"] if tag["name"] == label), None)
-            if tag is None:
-                name, args = "create_tag", {"name": label, "emoji": "📌"}
+            labels = {ident: self.tag_names.get(ident, "Review work") for ident in pending}
+            tags = {tag["name"]: tag["id"] for tag in status["tags"]}
+            missing = next((label for label in labels.values() if label not in tags), None)
+            if missing is not None:
+                name, args = "create_tag", {"name": missing, "emoji": "📌"}
             else:
                 name, args = "assign_threads", {"assignments": [
-                    {"threadId": ident, "tagId": tag["id"]} for ident in pending
-                    if self.tag_names.get(ident, "Review work") == label]}
+                    {"threadId": ident, "tagId": tags[label]} for ident, label in labels.items()]}
             args["expectedRevision"] = status["revision"]
         tool, namespace = find_tool(tools, name)
         return self.response_events("", {"type": "function_call", "call_id": "e2e_tag_" + uuid.uuid4().hex,

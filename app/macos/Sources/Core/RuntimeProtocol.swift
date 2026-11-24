@@ -64,7 +64,7 @@ public enum RuntimeClientEvent: Sendable {
     /// observer catches up to the already-current state after queue overflow.
     case snapshot(JSONValue, authority: UUID)
     /// Exact post-apply state of this event, never a later actor snapshot.
-    case mutation(JSONValue, state: JSONValue, authority: UUID)
+    case mutation(JSONValue, state: JSONValue, authority: UUID, replayed: Bool = false)
     case threadContent(subscriptionId: String, state: RuntimeContentState)
     case overviewFilter(JSONValue)
     case failure(RuntimeError)

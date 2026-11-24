@@ -316,6 +316,16 @@ least one assigned semantic tag to participate in a space. Agent membership uses
 labels alone do not create a space or contribute cards, unread counts or activity.
 An untagged Report cannot hide a tagged source through execution coverage.
 
+A live first semantic assignment selects the Agent Thread's scoped filter through
+normal selection reconciliation. A fork born with an inherited tag counts as a new
+Thread. In one catalog patch, the first eligible destination in catalog order wins
+and all first assignments are consumed. The selected Inbox tag shows all statuses.
+Readers and Settings retain their route. An open collection keeps its source
+selection through the visit and applies the latest available destination on close.
+Snapshots and buffered hydration mutations establish
+tag history silently. Clearing, restoring or reclassifying a previously tagged
+Thread preserves the current selection while it remains available.
+
 Inbox groups work without a persistent directory, including managed temporary
 roots. Each exposed Inbox tag has its own button with an emoji and title.
 Overview restores the profile's last folder, Inbox tag or directory child when
@@ -871,7 +881,9 @@ back when the saved child is unavailable. It relaunches with an explicitly selec
 preference file without the built-in tag fields, a saved directory child and a non-first Inbox tag, verifies the saved preference through a launch with no spaces,
 then observes tags arriving from the Runtime. It archives the saved Inbox
 tag's only visible member before a final relaunch and checks the top-row
-fallback with a stale disk catalog still present. See the [run and evidence](../../../../../tools/e2e/README.md#overview-space-restoration).
+fallback with a stale disk catalog still present. A tagged fork arrives behind
+Settings, followed by a mixed assignment batch and reclassification after relaunch.
+See the [run and evidence](../../../../../tools/e2e/README.md#overview-space-restoration).
 
 ## Camera interaction e2e
 

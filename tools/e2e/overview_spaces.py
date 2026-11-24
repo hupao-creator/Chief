@@ -158,3 +158,71 @@ def journey(desktop, app):
     evidence["fallbackCatalog"] = {"cachedRevision": cached["revision"], "runtimeRevision": live["revision"]}
     reopen()
     capture("unavailableRelaunch", scope, "directory", project, first=True)
+
+    def fork(thread):
+        return session.runtime.invoke("thread:fork", [{"threadId": thread, "request": {}}])["threadId"]
+
+    # A fork inherits its source's tag but has its own first assignment.
+    review_tag = next(tag for tag in folder["children"] if tag["tag"] == "Review work")
+    desktop.request({"name": "settings.open"})
+    desktop.stable(lambda state: state["page"] == "settings")
+    inherited = fork(review)
+    covered = desktop.stable(lambda state: state["page"] == "settings" and state["selectedFilterId"] == review_tag["id"])
+    record("taggedForkBehindSettings", covered)
+    desktop.request({"name": "settings.close"})
+    capture("taggedFork", scope, "semantic", {inherited, review}, tag="Review work")
+
+    # Restore clears the inherited label. Reopen while it is unassigned, then
+    # reclassify it alongside two never-tagged forks in one assign_threads call.
+    archive(inherited, True)
+    archive(inherited, False)
+    first, second = fork(inherited), fork(inherited)
+    assigned = {inherited: "Review work", first: "Ship work", second: "Plan work"}
+    peer = session.peer
+    peer.tag_names.update(assigned)
+    peer.tagged_ids.update(assigned)
+    choose(folder)
+    capture("unassignedForks", scope, "directory", project)
+    stop()
+    reopen()
+    capture("beforeFirstAssignments", scope, "directory", project, first=True)
+    enable_agent(session, "tag", True)
+    classified = wait_for(session.runtime.state, lambda state: {
+        row["id"]: row["tags"][0] for row in state["threads"] if row["id"] in assigned and row["tags"]
+    } == assigned)
+    winner = next(row for row in classified["threads"] if row["id"] in (first, second))
+    tag = winner["tags"][0]
+    expected = {row["id"] for row in classified["threads"] if row["id"] in project | assigned.keys()
+                and tag in row["tags"]}
+    desktop.stable(lambda state: set(state["overview"]["mountedCardIds"]) == expected)
+    capture("firstAssignmentsInBatch", scope, "semantic", expected, tag=tag)
+    enable_agent(session, "tag", False)
+
+    # Give the same three tasks fresh classifications after an App restart.
+    # A manual folder choice survives all three updates.
+    choose(folder)
+    for thread in assigned:
+        archive(thread, True)
+        archive(thread, False)
+    desktop.stable(lambda state: set(state["overview"]["mountedCardIds"]) == project)
+    stop()
+    reopen()
+    capture("clearedTagsRelaunch", scope, "directory", project)
+    enable_agent(session, "tag", True)
+    wait_for(session.runtime.state, lambda state: assigned.keys() <= {
+        row["id"] for row in state["threads"] if row["tags"]})
+    all_threads = project | assigned.keys()
+    desktop.stable(lambda state: set(state["overview"]["mountedCardIds"]) == all_threads)
+    capture("reclassificationKeepsFolder", scope, "directory", all_threads)
+
+    archive(inbox, False)
+    desktop.stable(lambda state: any(f["id"] == inbox_tag["id"] for f in state["overview"]["filters"]))
+    reader = {"threadId": plan, "typeId": "agent"}
+    desktop.request({"name": "thread.open", **reader})
+    desktop.stable(lambda state: state["selectedThread"] == reader and state["reading"]["entranceAdmitted"])
+    inbox_fork = fork(inbox)
+    covered = desktop.stable(lambda state: state["page"] == "thread" and state["selectedThread"] == reader
+                             and state["selectedFilterId"] == inbox_tag["id"])
+    record("inboxAssignmentBehindReader", covered)
+    desktop.request({"name": "overview.show"})
+    capture("readerReturnsToInboxTag", "inbox", "semantic", {inbox, inbox_fork}, tag=inbox_tag["tag"])
