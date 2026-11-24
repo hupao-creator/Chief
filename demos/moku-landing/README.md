@@ -90,7 +90,7 @@ with ordinary tasks, running interactions, completed work and eight reports.
 `overview-status.json` records the selected scope, tag and status, card area,
 mounted Agent cards and individual or collected report members at each step.
 
-The right-half gesture traverses Running only, All statuses and Completed only.
+The right-half gesture traverses Running, All statuses and Completed.
 The left-half gesture enters the first semantic tag from the directory and then traverses the visible tags. Each side
 checks a contact that crosses the midpoint before recognition, the endpoints
 and momentum. The replay selects a top-level Inbox tag and checks its exact
@@ -113,7 +113,7 @@ to check hover and exit, then restores the cursor. A click in the horizontal hov
 tag opens the card underneath. The same click on its expanded title selects
 the tag. With `--capture`, the cropped columns are checked for the expected
 visible tag and status titles. At the right edge the replay checks that the
-hourglass expands left on hover, a click on its title selects Running only,
+hourglass expands left on hover, a click on its title selects Running,
 the title stays open on pointer exit and a swipe selects and expands All statuses. With capture enabled, `filter-switches.mp4` records the window through status and tag swipes between a grid and a single card. Captures read the hourglass title in English and Chinese. The hovered
 tag title is read in Aqua and Dark Aqua and with a bright backdrop behind dark-appearance glass.
 Samples from inside each capsule show its glass tint changing with the
@@ -132,7 +132,7 @@ empty titles and verifies the absence of scroll hints. For the completed Codex
 card, it reads the model, effort and excerpt from the screenshot and checks the
 duration, usage and completion badge accessibility labels. The screenshot
 must contain no completion line. The distance from model to excerpt must agree within
-2 pt between All statuses and Completed only. The replay checks both locales,
+2 pt between All statuses and Completed. The replay checks both locales,
 with the Chinese card in Dark Aqua. The `running-empty-*.png` and
 `completed-empty-*.png` captures show both states in Aqua and Dark Aqua.
 `sleeping-skillet.mp4` spans a full sleep animation cycle when motion is enabled.

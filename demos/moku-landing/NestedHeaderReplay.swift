@@ -1388,7 +1388,7 @@ private final class WheelSample: NSEvent {
                     sample["emptyText"] = try checkEmptyCopy(in: url, mode: mode)
                 } else if checkDeliveredLayout {
                     let locale = workspace.locale
-                    let title = locale.text("仅已完成", "Completed only")
+                    let title = locale.text("已完成", "Completed")
                     let button = try filterButton("overview-status-completed", in: window)
                     guard button.label == title || button.title == title else {
                         throw ReplayError("Completed status icon lost its localized accessible name")
@@ -1743,7 +1743,7 @@ private final class WheelSample: NSEvent {
         let leftColumn = CGRect(x: 0, y: 0.16, width: 0.20, height: 0.68)
         let rightColumn = CGRect(x: 0.80, y: 0.35, width: 0.20, height: 0.30)
         let titles = ["Any tag", "Customer", "Design", "Engineering", "Planning", "Support"]
-        let statusLabels = [("running", "Running only"), ("all", "All statuses"), ("completed", "Completed only")]
+        let statusLabels = [("running", "Running"), ("all", "All statuses"), ("completed", "Completed")]
         let side: CGFloat = 46.2
         var phases = [[String: Any]]()
         func observe(_ name: String, expanded: [String: String], expandedStatuses: Set<String> = ["all"]) async throws {
@@ -1877,7 +1877,7 @@ private final class WheelSample: NSEvent {
         guard model.statusFilter == .all else { throw ReplayError("Hovering the hourglass selected it") }
         workspace.updateSystemLocale(.chinese)
         try await Task.sleep(for: .milliseconds(450))
-        for (id, title) in [("running", "仅运行中"), ("all", "全部状态"), ("completed", "仅已完成")] {
+        for (id, title) in [("running", "运行中"), ("all", "全部状态"), ("completed", "已完成")] {
             let button = try filterButton("overview-status-" + id, in: window)
             guard button.label == title || button.title == title else { throw ReplayError("Missing status label " + title) }
         }
@@ -1885,7 +1885,7 @@ private final class WheelSample: NSEvent {
             let url = directory.appending(path: "hovered-status-zh.png")
             try await capture(window, to: url)
             phases.append(["phase": "hovered-status-zh", "statusInk": try checkStatusText(in: url,
-                expected: ["仅运行中", "全部状态"], absent: ["仅已完成"], region: rightColumn).map(\.text)])
+                expected: ["运行中", "全部状态"], absent: ["已完成"], region: rightColumn).map(\.text)])
         }
         workspace.updateSystemLocale(.english)
         try await Task.sleep(for: .milliseconds(450))
@@ -1896,7 +1896,7 @@ private final class WheelSample: NSEvent {
         try await pointAt(away)
         try await Task.sleep(for: .milliseconds(550))
         guard model.statusFilter == .running, presentation.selected == nil else {
-            throw ReplayError("Clicking the expanded status title did not select Running only")
+            throw ReplayError("Clicking the expanded status title did not select Running")
         }
         try await observe("selected-status-after-exit", expanded: design, expandedStatuses: ["running"])
         try await swipe(up: true)
@@ -1908,7 +1908,7 @@ private final class WheelSample: NSEvent {
         try await activate(.semantic, shortChild.id)
         try await Task.sleep(for: .milliseconds(600))
         guard model.statusFilter == .completed, model.items.isEmpty else {
-            throw ReplayError("Reselecting Design cleared its Completed only filter")
+            throw ReplayError("Reselecting Design cleared its Completed filter")
         }
         try await observe("same-tag-keeps-completed", expanded: design, expandedStatuses: ["completed"])
         try await activate(.directory, compactFolder.id)

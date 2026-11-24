@@ -273,7 +273,7 @@ The [status replay](../../../../../demos/moku-landing/README.md#overview-note-cl
 exercises empty and populated states and both input types.
 
 The outlined right-hand emoji identifies the status, including when the view is
-empty. Card borders stay the same on pointer hover. In **Completed only**, keyboard
+empty. Card borders stay the same on pointer hover. In **Completed**, keyboard
 focus adds a 2pt accent outline to Agent cards. A completed Agent card uses the
 completion badge and the same metadata layout in All and Completed. The model
 row is followed by the available duration and usage, with the excerpt below.
@@ -361,8 +361,8 @@ return. A change in status-filtered results alone keeps the selection.
 The left and right Liquid Glass columns sit at the window's edges, each group
 vertically centered. Compact controls are 46.2pt circles. The left controls show
 the semantic emoji or 🏷️ for a tag without an emoji.
-The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
-(Completed only), with localized titles. Hover expands a button on either
+The right controls show ⏳ (Running), 🗂️ (All statuses) and 🏁
+(Completed), with localized titles. Hover expands a button on either
 rail toward the center, keeping its glyph at the window edge. Its natural width
 is the 46.2pt glyph seat plus the measured single-line title and 13.2pt of padding
 at the inward end. Both rails cap the expanded button at 189.2pt. The left rail
