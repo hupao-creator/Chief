@@ -4,7 +4,7 @@
 
 Press **⌘K** to open **Overview**. In the filter bar at the top center, select **All** to see tasks across folders, or click a project folder to see its tasks. If the bar wraps to a second row, look below the window controls. Move the pointer over a folder with tags to pick one of its tags. Tasks with no project folder go into Inbox. Their tags appear directly in the filter bar.
 
-A red number on a folder or tag shows how many conversations in that space have an unread completed result or Super Thread document. When a folder opens, its tags show their unread counts once they settle into place. Select a tag and open a card with a red bookmark. Once the result or document appears in the foreground, the count drops by one in each space that includes it. The number disappears when you’ve read them all. Selecting a tag alone keeps its count.
+A red number on a folder or tag shows how many conversations in that space have an unread completed result or Super Thread document. When you hover over a folder, its tags settle into place and their unread counts fade in. With Reduce Motion on, the counts appear immediately. Select a tag and open a card with a red bookmark. Once the result or document appears in the foreground, the count drops by one in each space that includes it. The number disappears when you’ve read them all. Selecting a tag alone keeps its count.
 
 Folders with the same name appear separately. If a folder and its only tag show the same cards, select the folder. If your filter seems too narrow, choose **All**.
 

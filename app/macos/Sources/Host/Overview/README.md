@@ -425,9 +425,11 @@ child’s count. All and zero-count chips have no badge. The count is included
 in the accessibility value independently of member count and activity. It
 does not change chip width, selection, ordering or the Runtime filter context.
 Receipt and catalog version changes update counts even for unselected spaces.
-A child chip shows its current count once its glass reaches the expanded
-position. Closing or switching folders immediately hides the departing row’s
-badges. With Reduce Motion enabled, the measured child chips settle directly.
+A new badge fades and scales into place. On a child chip, this begins once its
+glass reaches the expanded position. Changes between positive counts update the
+digits in place. Closing or switching folders immediately hides the departing
+row’s badges. With Reduce Motion enabled, the measured chips and their badges
+appear directly.
 
 The emoji badge shows a system-red bookmark for each unseen Report content revision
 and for an ordinary Agent Thread whose latest execution completed and has no read

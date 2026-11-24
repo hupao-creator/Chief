@@ -468,8 +468,10 @@ and a Report collection. Selecting a tag preserves the count. When its last
 unread version is acknowledged the number disappears while the selected check
 and any activity ring remain. Expand a directory at normal window scale and
 capture the opening, settled and returning child row. Child badges first appear
-when their chips settle. Check the complete white digits and red capsule over
-the glass, including its upper edge. Close and reopen during travel, switch
+when their chips settle. Capture intermediate frames of the capsule fading and
+growing into place. Change a positive count on the open row and check that the
+digits update while the capsule stays visible. Check the complete white digits
+and red capsule over the glass, including its upper edge. Close and reopen during travel, switch
 folders rapidly, and change a child’s count during entry, including to zero.
 Only the settled, open row should show its latest positive counts. Repeat with
 Reduce Motion and check the folder badge throughout. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)

@@ -263,12 +263,20 @@ public struct NativeOverviewChrome: View {
         return ZStack(alignment: .topLeading) {
             ForEach(filters) { filter in
                 let count = (displayedChild(of: filter) ?? filter).unreadCount
-                if count > 0, let anchor = anchors[filter.id] {
-                    let chip = reader[anchor]
-                    OverviewTagUnreadBadge(count: count)
-                        .frame(width: chip.width, height: chip.height, alignment: .topTrailing)
-                        .position(x: chip.midX - clip.minX, y: chip.midY - clip.minY)
+                let chip = anchors[filter.id].map { reader[$0] } ?? .zero
+                let visible = count > 0 && !chip.isEmpty
+                // The slot exists before the submenu publishes its settled anchor.
+                // Animate insertion here, inside the overlay's geometry transaction.
+                ZStack {
+                    if visible {
+                        OverviewTagUnreadBadge(count: count)
+                            .transition(.asymmetric(insertion: .scale(scale: 0.85).combined(with: .opacity),
+                                                    removal: .identity))
+                    }
                 }
+                .animation(visible ? tagEntryAnimation : nil, value: visible)
+                .frame(width: chip.width, height: chip.height, alignment: .topTrailing)
+                .position(x: chip.midX - clip.minX, y: chip.midY - clip.minY)
             }
         }
         .frame(width: clip.width, height: clip.height, alignment: .topLeading)
@@ -284,7 +292,7 @@ public struct NativeOverviewChrome: View {
         ZStack {
             if (active || retiring != nil), menu.children.contains(where: { $0.count > 0 }) {
                 OverviewTagMenuViewport(maximumWidth: maximumWidth, active: active, source: source, barWidth: barWidth,
-                                        entryAnimation: submenuEntryAnimation) { progress, target, widths in
+                                        entryAnimation: tagEntryAnimation) { progress, target, widths in
                     HStack(spacing: OverviewTagMetrics.submenuSpacing) {
                         ForEach(menu.children.filter { $0.count > 0 }) { child in
                             let current = parent.children.contains { $0.id == child.id && $0.count > 0 }
@@ -361,12 +369,12 @@ public struct NativeOverviewChrome: View {
             || (!selectedTag.isEmpty && filter.matches(selectedTag, kind: selectedKind, scope: selectedScope))
     }
 
-    private var submenuEntryAnimation: Animation? { reduceMotion ? nil : .smooth(duration: 0.22, extraBounce: 0) }
+    private var tagEntryAnimation: Animation? { reduceMotion ? nil : .smooth(duration: 0.22, extraBounce: 0) }
 
     private func setHoveredScope(_ scope: String?) {
         guard hoveredScope != scope else { return }
         var transaction = Transaction(animation: scope == nil
-            ? (reduceMotion ? nil : .easeInOut(duration: 0.32)) : submenuEntryAnimation)
+            ? (reduceMotion ? nil : .easeInOut(duration: 0.32)) : tagEntryAnimation)
         trackSubmenuTransition(to: scope, in: &transaction)
         withTransaction(transaction) {
             retainClosingMenu(to: scope)
