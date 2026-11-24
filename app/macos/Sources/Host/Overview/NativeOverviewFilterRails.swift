@@ -79,9 +79,12 @@ private struct OverviewSemanticRailButton: View {
     var body: some View {
         let expanded = hovered || recent
         OverviewRailButton(title: title, titleWidth: expanded ? expandedWidth : nil,
-                           selected: selected, hasActiveTasks: hasActiveTasks, action: action) {
+                           selected: selected, action: action) {
             if let emoji {
                 Text(verbatim: emoji).font(.system(size: 19)).fixedSize()
+                    .background {
+                        if hasActiveTasks { OverviewTagActivityIndicator(diameter: 36) }
+                    }
             } else {
                 Image(systemName: "asterisk").font(.system(size: 17, weight: .semibold))
             }
@@ -143,7 +146,6 @@ private struct OverviewRailButton<Glyph: View>: View {
     let title: String
     var titleWidth: CGFloat?
     let selected: Bool
-    var hasActiveTasks = false
     let action: () -> Void
     @ViewBuilder let glyph: () -> Glyph
 
@@ -153,12 +155,6 @@ private struct OverviewRailButton<Glyph: View>: View {
             HStack(spacing: 0) {
                 glyph()
                     .frame(width: diameter, height: diameter)
-                    .overlay(alignment: .bottomTrailing) {
-                        if hasActiveTasks {
-                            OverviewTagActivityIndicator(hasActiveTasks: true)
-                                .padding(.trailing, 5).padding(.bottom, 4)
-                        }
-                    }
                     .accessibilityHidden(true)
                 if titleWidth != nil {
                     OverviewTagTitle(title: title)

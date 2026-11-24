@@ -1,21 +1,29 @@
-import SwiftUI
 import ChiefPluginUI
+import SwiftUI
 
-/// Callers omit this view and its HStack spacing for inactive tags. Once mounted
-/// for an active tag, retain its measured width while menu transitions
-/// hide the ring. The native spinner owns motion and window visibility.
+extension EnvironmentValues {
+    @Entry var overviewTagActivityVisible = true
+}
+
 struct OverviewTagActivityIndicator: View {
-    let hasActiveTasks: Bool
+    enum Space { case workspace }
+    let diameter: CGFloat
+    @State private var inViewport = false
+    @Environment(\.overviewTagActivityVisible) private var visible
+
     var body: some View {
-        ZStack {
-            Color.clear
-            if hasActiveTasks {
-                NativeStatusSpinner(size: 10 * OverviewTagMetrics.enlargement,
-                                    lineWidth: 1.5 * OverviewTagMetrics.enlargement)
+        Color.clear
+            .frame(width: diameter, height: diameter)
+            .onGeometryChange(for: Bool.self) { geometry in
+                let disk = CGRect(origin: .zero, size: geometry.size)
+                let workspace = geometry.bounds(of: .named(Space.workspace)) ?? disk
+                let scroll = geometry.bounds(of: .scrollView(axis: .horizontal)) ?? disk
+                return !disk.intersection(workspace).intersection(scroll).isEmpty
+            } action: { inViewport = $0 }
+            .overlay {
+                if visible && inViewport { NativeTagActivityPerforations() }
             }
-        }
-        .frame(width: 10 * OverviewTagMetrics.enlargement, height: 10 * OverviewTagMetrics.enlargement)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }

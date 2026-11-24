@@ -20,6 +20,13 @@ The [native badge replay](../../demos/running-emoji-badge/README.md) mounts the 
 idle and completed fixtures and the adaptive harness colors. The [Overview probe](../verification/overview-ci-performance/README.md)
 checks the active decorations in the mounted workspace against a fixture Runtime.
 
+The [mounted filter replay](../../demos/moku-panel-transition/remaining/README.md)
+checks [folder and tag activity](../../app/macos/Sources/Host/Overview/README.md#tag-activity)
+in a **Completed only** view. The fixture includes a running task in the
+selected folder and tag. The `tag-activity` and `tag-activity-reduced` cases
+inspect their dot pattern, its animation under each motion setting, and its
+removal when the task completes. The replay captures the production window.
+
 ## Harness Thread Markdown
 
 Run `python3 tools/e2e/thread-transcript/run.py --output /tmp/chief-thread-transcript-evidence` on macOS with a graphical session and the pinned dependencies cached. Specify a fresh output directory. The driver feeds Codex app-server, Claude stream-json, Pi RPC and OpenCode SSE frames to their production parsers and reducers. The replay checks the same manual input identity in all four readers. OpenCode consumes its native inbox event and also replays the authoritative message list twice.
@@ -467,10 +474,11 @@ for each step. Also check the red count on each containing tag before and after
 opening a bookmarked card, including a shared child tag, a covered execution
 and a Report collection. Selecting a tag preserves the count. When its last
 unread version is acknowledged, the number disappears while the selected
-border and any activity ring remain. Choose a directory at normal window scale.
-Capture a tag's unread badge on its compact emoji, while hovering to reveal its
-name, and when it contracts. Check that the complete white digits and red
-capsule remain visible above the glass. Switch folders rapidly and change a
+border stays visible. With an active member in the same tag, check that its
+perforated activity indicator also remains visible after the unread count clears.
+Choose a directory at normal window scale. Capture a tag's unread badge on its
+compact emoji, while hovering to reveal its name, and when it contracts. Check
+that the complete white digits and red capsule remain visible above the glass. Switch folders rapidly and change a
 tag's unread count while its title is visible, including to zero. Check the
 selected folder's count in the top bar and each visible tag's count in the left
 column. Repeat with Reduce Motion. [Bookmark contract](../../app/macos/Sources/Host/Overview/README.md#unread-bookmarks)

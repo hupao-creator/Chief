@@ -27,7 +27,9 @@ callback or GPU submission is not evidence of physical presentation or FPS.
 Running Agent Thread cards confine their status animation to the emoji badge.
 Core Animation sweeps the harness accent across fixed perforations. Reduce
 Motion holds a lit diagonal. Visibility and detachment retire the animations.
-The foreground emoji and the card body keep their positions.
+The foreground emoji and the card body keep their positions. Active Overview
+folders and tags use the same sweep in the Overview accent behind their icon
+or emoji. [Tag activity](../app/macos/Sources/Host/Overview/README.md#tag-activity).
 
 Source: [running badge](../app/macos/Sources/Shared/PluginUI/Cards/RunningThreadBadge.swift),
 [panel transition](../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingPanelTransition.swift),

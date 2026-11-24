@@ -495,7 +495,8 @@ func nativeDecorationJSON(_ root: NSView) -> [String: Any] {
         let name = String(describing: type(of: view))
         let cloud = name.contains("NativeOverviewCloudSurface")
         let scan = name.contains("NativeCardScanView")
-        if name == "RunningThreadBadgeSurface" {
+        // Count the card badges, excluding the same surface rendered in active filters.
+        if name == "RunningThreadBadgeSurface", view.identifier?.rawValue != "OverviewTagActivityPerforations" {
             badges += 1
             if let layer = view.layer, hasSweep(layer) { animatedBadges += 1 }
         }

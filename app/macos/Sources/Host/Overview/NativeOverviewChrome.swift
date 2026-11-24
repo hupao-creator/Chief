@@ -250,15 +250,17 @@ public struct NativeOverviewChrome: View {
                     onTagChange(filter)
                 } label: {
                     HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
-                        if filter.isDirectory {
-                            OverviewTagPrefix(emoji: nil)
-                        } else if let emoji = filter.emoji {
-                            OverviewTagPrefix(emoji: emoji)
+                        if filter.isDirectory || filter.emoji != nil {
+                            OverviewTagPrefix(emoji: filter.isDirectory ? nil : filter.emoji)
+                                .background {
+                                    if filter.hasActiveTasks {
+                                        OverviewTagActivityIndicator(diameter: 26)
+                                    }
+                                }
+                        } else if filter.hasActiveTasks {
+                            OverviewTagActivityIndicator(diameter: 26)
                         }
                         OverviewTagTitle(title: !filter.isDirectory && filter.emoji != nil ? filter.tag : filter.displayTag)
-                        if filter.hasActiveTasks {
-                            OverviewTagActivityIndicator(hasActiveTasks: true)
-                        }
                     }
                     .padding(.horizontal, OverviewTagMetrics.chipLabelInset)
                     .frame(height: OverviewTagMetrics.chipHeight)

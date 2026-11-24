@@ -8,6 +8,8 @@ When a folder has tags to choose from, look for their emoji along the left edge.
 
 Click the asterisk (`*`) for **Any tag** to see the whole folder, including tasks without a tag. Choosing another folder also starts you at **Any tag** and keeps your current status filter. If a folder and its only tag show the same cards, choosing the folder is enough.
 
+Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find a task that’s running or waiting for your response. Choose that folder or tag, then click ⏳ on the right to see its running tasks. With **Reduce Motion** turned on in macOS, the dots stay still.
+
 A red number on a folder counts conversations with an unread completed result or Super Thread document across the whole folder. Each tag on the left shows its own unread count. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
 If a Super Thread in the same view cites a task's latest run, its card can stand in for the task card. Open **Related executions** in the Super Thread to reach the task. A newer run can make the task card appear again. [See the work behind a Super Thread](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)

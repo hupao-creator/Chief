@@ -1061,6 +1061,11 @@ the card leaves the viewport, the window hides or is occluded, or the view
 detaches. Reduce Motion uses a fixed lit diagonal. Visible badges share a phase
 and require no per-frame SwiftUI updates. See the [mounted badge comparison](../../../../../demos/running-emoji-badge/README.md).
 
+Overview reuses the perforation renderer behind active folder icons and
+semantic-tag emoji. The chips use a transparent face and the Overview accent.
+Their glyph, selection border and unread count stay still.
+[Tag activity](../../Host/Overview/README.md#tag-activity).
+
 [NativeStatusSpinner](Design/NativeStatusSpinner.swift) supplies the production
 Codex quarter-ring indicator. Core Animation owns its 800ms linear rotation;
 resolved colors, line width and size retain the original geometry. Background
