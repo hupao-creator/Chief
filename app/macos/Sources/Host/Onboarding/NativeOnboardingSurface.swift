@@ -80,7 +80,9 @@ struct NativeOnboardingSurface: View {
     }
 
     private var panel: some View {
-        VStack(spacing: 0) {
+        let isBackgroundRole = panelStep == .tag || panelStep == .report
+        let navigationTopInset: CGFloat = 8
+        return VStack(spacing: 0) {
             HStack(spacing: 8) {
                 ForEach(NativeOnboardingStep.allCases, id: \.rawValue) { step in
                     Capsule().fill(step.rawValue <= panelStep.rawValue ? ink : secondary.opacity(0.2))
@@ -88,37 +90,11 @@ struct NativeOnboardingSurface: View {
                 }
             }.frame(height: 28).padding(.top, 16).padding(.bottom, 10)
                 .accessibilityLabel(locale.text("第 \(panelStep.rawValue + 1) 步，共 5 步", "Step \(panelStep.rawValue + 1) of 5"))
-            ScrollView(.vertical, showsIndicators: false) {
-                ZStack(alignment: .top) {
-                    VStack(spacing: 0) {
-                        if let error = state.error ?? state.settings.draft.error ?? discoveryError {
-                            NativeSettingsNotice(message: error, kind: .error, action: AnyView(
-                                HStack {
-                                    Button(locale.text("重试", "Retry"), action: state.retry)
-                                        .nativeSettingsAction("retry", label: "Retry onboarding") { state.retry() }
-                                    if state.settings.draft.conflicted {
-                                        Button(locale.text("使用已保存的配置", "Use saved settings")) { state.settings.draft.discardConflict() }
-                                    }
-                                }.buttonStyle(.borderless))).padding(.bottom, 12)
-                        }
-                        if state.admitted && panelStep == .discovery { discovery.padding(.top, 22) }
-                        else if state.admitted {
-                            NativeRoleConfigurationPanel(role: panelStep == .moku ? .moku : panelStep == .tag ? .tag : .report,
-                                harnesses: state.installed, locale: locale, showsHeading: true) {
-                                configurationForStep(panelStep).disabled(state.busy)
-                            }
-                        }
-                    }
-                    .id(panelStep).transition(.opacity.combined(with: .offset(y: 10)))
-                    .allowsHitTesting(pageReady)
-                    .accessibilityHidden(!pageReady)
-                    .frame(maxWidth: 560).padding(.horizontal, 30).padding(.bottom, 20).frame(maxWidth: .infinity)
-                }
-            }.scrollIndicators(.never)
-            .overlay {
-                if !state.admitted && state.error == nil && state.settings.draft.error == nil && discoveryError == nil {
-                    NativeSurfaceLoading()
-                }
+            GeometryReader { viewport in
+                // Balance the space below the picker with the insets above the buttons.
+                scrollContent(minHeight: isBackgroundRole ? viewport.size.height : nil,
+                              bottomInset: isBackgroundRole
+                                ? NativeApplicationBackgroundEditor.agentPickerBottomInset - navigationTopInset : 20)
             }
             HStack {
                 if panelStep != .discovery {
@@ -144,8 +120,45 @@ struct NativeOnboardingSurface: View {
                         .nativeSettingsAction("next", label: "Continue") { Task { await state.advance() } }
                         .disabled(!pageReady || !state.canAdvance)
                 }
-            }.frame(maxWidth: 560).padding(.horizontal, 30).padding(.bottom, 22).padding(.top, 8)
+            }.frame(maxWidth: 560).padding(.horizontal, 30).padding(.bottom, 22).padding(.top, navigationTopInset)
         }.foregroundStyle(ink)
+    }
+
+    private func scrollContent(minHeight: CGFloat?, bottomInset: CGFloat) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            ZStack(alignment: .top) {
+                VStack(spacing: 0) {
+                    if let error = state.error ?? state.settings.draft.error ?? discoveryError {
+                        NativeSettingsNotice(message: error, kind: .error, action: AnyView(
+                            HStack {
+                                Button(locale.text("重试", "Retry"), action: state.retry)
+                                    .nativeSettingsAction("retry", label: "Retry onboarding") { state.retry() }
+                                if state.settings.draft.conflicted {
+                                    Button(locale.text("使用已保存的配置", "Use saved settings")) { state.settings.draft.discardConflict() }
+                                }
+                            }.buttonStyle(.borderless))).padding(.bottom, 12)
+                    }
+                    if state.admitted && panelStep == .discovery { discovery.padding(.top, 22) }
+                    else if state.admitted {
+                        NativeRoleConfigurationPanel(role: panelStep == .moku ? .moku : panelStep == .tag ? .tag : .report,
+                            harnesses: state.installed, locale: locale, showsHeading: true) {
+                            configurationForStep(panelStep).disabled(state.busy)
+                        }
+                    }
+                }
+                .id(panelStep).transition(.opacity.combined(with: .offset(y: 10)))
+                .allowsHitTesting(pageReady)
+                .accessibilityHidden(!pageReady)
+                .frame(maxWidth: 560).padding(.horizontal, 30).padding(.bottom, bottomInset)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: minHeight, alignment: .top)
+            }
+        }.scrollIndicators(.never)
+        .overlay {
+            if !state.admitted && state.error == nil && state.settings.draft.error == nil && discoveryError == nil {
+                NativeSurfaceLoading()
+            }
+        }
     }
 
     private var discoveryError: String? {

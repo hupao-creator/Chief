@@ -68,8 +68,12 @@ presence of a saved profile as sufficient. Switching back to independent mode
 restores its own retained configuration.
 
 Opening the independent editor loads the selected Harness catalog in the role's
-workspace. Its read-only preview uses retained settings when available and
-Chief's saved profiles on first use. Returning to that role and Harness during
+workspace. During the read, the skillet and “Loading Agent configuration…”
+form one notice centered horizontally and vertically between the Agent choices
+and the bottom navigation. If the window is too short for the notice to fit,
+the content can scroll while the navigation stays in place. The editor's
+read-only preview uses retained settings when available and Chief's saved
+profiles on first use. Returning to that role and Harness during
 a read joins it. Once ready, the editor can reuse that role's presentation for
 five minutes across Back, mode changes, Harness switches and app activation.
 A changed saved profile, workspace, installation or connection requires its

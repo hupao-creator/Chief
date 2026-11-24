@@ -11,6 +11,8 @@ extension EnvironmentValues {
 /// Moku defaults and delegates each opaque Harness slice to its native plugin.
 @MainActor
 public struct NativeApplicationBackgroundEditor: View {
+    static let agentPickerBottomInset: CGFloat = 14
+
     private let workspace: NativeWorkspaceModel
     private let settingsModel: NativeSettingsModel
     private let settingID: JSONText
@@ -164,7 +166,7 @@ public struct NativeApplicationBackgroundEditor: View {
                         .nativeSettingsAction("harness." + harness.descriptor.id.string, label: harness.descriptor.displayName.string,
                                               selected: effective.harnessPreference == harness.descriptor.id) { selectHarness(harness.descriptor.id) }
                 }
-            }.padding(.bottom, 14)
+            }.padding(.bottom, Self.agentPickerBottomInset)
             if let host = harnesses.first(where: { $0.descriptor.id == effective.harnessPreference }) {
                 harnessFields(host, effective: effective)
             } else {
@@ -200,6 +202,7 @@ public struct NativeApplicationBackgroundEditor: View {
             let id = host.descriptor.id
             NativeHarnessSettingsView(host: workspace.harnessHost, configuration: configuration,
                 section: .thread, executionSnapshot: true, settingsFormPage: true, readOnly: inherited,
+                centersLoading: onboardingHarnessIDs != nil && !inherited,
                 value: Binding(get: { effective.harnesses[id] ?? .object([:]) },
                                set: { updateHarness(id, settings: $0) }))
                 .id(id).environment(\.nativeSettingsInteractionScope, settingID.string + "." + id.string)

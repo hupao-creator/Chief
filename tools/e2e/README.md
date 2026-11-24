@@ -182,6 +182,23 @@ and readiness at each action. Record any injected reply delay or simulated
 activation notification. A simulated notification exercises the mounted handler;
 system focus, rendered frames and native CLI launches require their own observations.
 
+### Onboarding Agent configuration loading layout
+
+On both Tag Agent and Super Thread Agent in a disposable first-run profile,
+choose **Configure separately** and select an Agent with a delayed
+first configuration reply. Capture the mounted window while **Loading Agent
+configuration…** is visible. Compare the center of the combined skillet and
+label with the horizontal center of the picker and the midpoint between the
+picker's bottom edge and the navigation row's top edge. Resize the window
+while the read is pending. Where the content fits, both centers should still
+match. Where it overflows, check that the notice can be reached by scrolling
+and that the navigation remains visible. Release the read and confirm the
+form replaces the notice.
+
+Record the tested revision, app artifact, fixture delay, window sizes, and
+captured frames. The [onboarding layout contract](../../app/macos/Sources/Host/Onboarding/README.md)
+applies to the separate configuration editor on both pages.
+
 ### Full-surface loading mark
 
 Open the native app with a disposable returning profile. Delay the start of its

@@ -332,6 +332,7 @@ public struct NativeHarnessSettingsView: View {
     private let executionSnapshot: Bool
     private let settingsFormPage: Bool
     private let readOnly: Bool
+    private let centersLoading: Bool
     private let refreshSequence: Int
     @Binding private var value: JSONValue
     @State private var surface: NativeHarnessSettingsSurface?
@@ -346,10 +347,12 @@ public struct NativeHarnessSettingsView: View {
 
     public init(host: NativeHarnessHost, configuration: NativeHarnessSettingsConfiguration,
                 section: HarnessSettingsSection, executionSnapshot: Bool = false,
-                settingsFormPage: Bool = false, readOnly: Bool = false, refreshSequence: Int = 0, value: Binding<JSONValue>) {
+                settingsFormPage: Bool = false, readOnly: Bool = false, refreshSequence: Int = 0,
+                centersLoading: Bool = false, value: Binding<JSONValue>) {
         self.host = host; self.configuration = configuration; self.section = section
         self.executionSnapshot = executionSnapshot; self.settingsFormPage = settingsFormPage; _value = value
         self.readOnly = readOnly
+        self.centersLoading = centersLoading
         self.refreshSequence = refreshSequence
     }
 
@@ -380,7 +383,14 @@ public struct NativeHarnessSettingsView: View {
                 }
                 content(surface)
             } else {
-                NativeSettingsNotice.loading(text("正在读取 Agent 配置…", "Loading Agent configuration…"))
+                let message = text("正在读取 Agent 配置…", "Loading Agent configuration…")
+                if centersLoading {
+                    NativeSettingsNotice.loading(message, alignment: .center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    NativeSettingsNotice.loading(message)
+                }
             }
         }
         .task(id: SettingsLoadIdentity(configuration: configuration, generation: host.settingsLifetime.generation,

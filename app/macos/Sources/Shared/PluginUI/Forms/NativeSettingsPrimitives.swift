@@ -495,8 +495,10 @@ public struct NativeHarnessSettingsFields<Basic: View, Advanced: View>: View {
 }
 
 public struct NativeSettingsNotice: View {
-    public static func loading(_ message: String) -> Self {
-        Self(message: message, leading: AnyView(NativeLoadingMark(size: 32)))
+    public static func loading(_ message: String, alignment: Alignment = .leading) -> Self {
+        var notice = Self(message: message, leading: AnyView(NativeLoadingMark(size: 32)))
+        notice.contentAlignment = alignment
+        return notice
     }
 
     @State private var interactionID = UUID().uuidString
@@ -505,6 +507,7 @@ public struct NativeSettingsNotice: View {
     public let kind: Kind
     private let action: AnyView?
     private let leading: AnyView?
+    private var contentAlignment: Alignment = .leading
     @Environment(\.nativeSettingsLocalAgentDetail) private var localAgentDetail
     @Environment(\.nativeSettingsCLI) private var cli
     public init(message: String, kind: Kind = .info, action: AnyView? = nil, leading: AnyView? = nil) {
@@ -517,7 +520,7 @@ public struct NativeSettingsNotice: View {
                 Text(message).modifier(NativeSettingsTextMetrics(size: localAgentDetail ? 11 : 12,
                                                                 lineHeight: (localAgentDetail ? 11 : 12) * (kind == .error ? 1.5 : 1.55)))
                     .textSelection(.enabled)
-            }.frame(maxWidth: .infinity, alignment: .leading)
+            }.frame(maxWidth: .infinity, alignment: contentAlignment)
             action
         }.font(NativeTypography.settings(size: localAgentDetail ? 11 : 12)).foregroundStyle(color)
             .padding(.top, (cli ? 3 : 12) + (localAgentDetail ? 10 : 0)).padding(.bottom, cli ? 5 : 12)
