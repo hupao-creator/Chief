@@ -342,21 +342,26 @@ return. A change in status-filtered results alone keeps the selection.
 The left and right Liquid Glass columns sit at the window's edges, each group
 vertically centered. Compact controls are 42pt circles. The left controls show
 the semantic emoji, 🏷️ for a tag without an emoji, or an asterisk for Any tag.
-Hover expands that button inward. Its natural width is the 42pt glyph seat
-plus the measured single-line title and 12pt trailing padding. The expanded
-button is capped at 172pt or 15% of the window width, whichever is smaller.
+The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
+(Completed only), with localized titles. Hover expands a button on either
+rail toward the center, keeping its glyph at the window edge. Its natural width
+is the 42pt glyph seat plus the measured single-line title and 12pt of padding
+at the inward end. Both rails cap the expanded button at 172pt. The left rail
+also caps tag names at 15% of the window width. The right rail can use the
+space from its inset to the window midpoint so status names fit at the minimum
+window size.
 A long title truncates at the trailing edge. The same title stays mounted as
 the capsule reveals or clips it, including when a hover reverses mid-animation.
-Selecting another tag shows its title for five seconds. A subsequent selection starts a
-fresh five-second interval for the latest choice. A hovered tag keeps its title
+Clicking the glyph or the revealed title selects that filter. Switching tags or
+statuses, including by swipe, shows the new selection’s title for five seconds.
+A subsequent selection starts a fresh five-second interval for the latest
+choice on that rail. A hovered button keeps its title
 until pointer exit, including after the selection interval expires. Expansion
 and contraction use the Chief Bar’s 420ms smooth Overview capsule animation
 with zero extra bounce. Reduce Motion applies the width change immediately
 and preserves the display interval.
 
-The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
-(Completed only). Hover help gives the localized status name. Global All,
-project directories and Inbox tags use native regular interactive Liquid Glass
+Global All, project directories and Inbox tags use native regular interactive Liquid Glass
 and system primary foreground in the top row. The left tag and right status
 buttons use native clear interactive Liquid Glass. Each selected button tints its glass. The unselected
 buttons keep the base material.

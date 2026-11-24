@@ -84,9 +84,11 @@ at its 42-point width. The replay places the cursor over a different tag and mov
 to check hover and exit, then restores the cursor. A click beside the compact
 tag opens the card underneath. The same click on its expanded title selects
 the tag. With `--capture`, the cropped columns are checked for the expected
-visible tag titles and the absence of written status names beside the
-hourglass, card index dividers and finish flag. The hovered title is read in
-Aqua and Dark Aqua and with a bright backdrop behind dark-appearance glass.
+visible tag and status titles. At the right edge the replay checks that the
+hourglass expands left on hover, a click on its title selects Running only,
+the title stays open on pointer exit and a swipe shows All statuses for five
+seconds. Captures read the hourglass title in English and Chinese. The hovered
+tag title is read in Aqua and Dark Aqua and with a bright backdrop behind dark-appearance glass.
 Samples from inside each capsule show its glass tint changing with the
 selection on both rails and the top row. `source.json` records the checkout revision,
 source changes, macOS version and architecture.

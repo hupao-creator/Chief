@@ -886,7 +886,8 @@ private final class WheelSample: NSEvent {
             var faces = [String: [Double]]()
             for (id, selected) in expected {
                 let frame = window.convertFromScreen(try filterButton(id, in: window).frame)
-                let top = CGRect(x: frame.minX, y: window.frame.height - frame.maxY, width: frame.width, height: frame.height)
+                let glyphX = id.hasPrefix("overview-status-") ? frame.maxX - frame.height : frame.minX
+                let top = CGRect(x: glyphX, y: window.frame.height - frame.maxY, width: frame.height, height: frame.height)
                 let rgb = filterFaceRGB(pixels, at: top, scale: CGFloat(pixels.pixelsWide) / window.frame.width)
                 faces[id] = rgb
                 // Dark Aqua frames check ink contrast on separate backdrops.
@@ -998,7 +999,9 @@ private final class WheelSample: NSEvent {
                     }
                     let formattedFinish = Date(timeIntervalSince1970: finishedAt / 1_000)
                         .formatted(.dateTime.year().month(.abbreviated).day().hour().minute().locale(Locale(identifier: locale.rawValue)))
-                    sample["completedText"] = try checkStatusText(in: url, expected: ["Delivered", locale.text("已完成", "Completed") + " · " + formattedFinish], absent: [title])
+                    let statusLeading = window.convertFromScreen(button.frame).minX / window.frame.width
+                    sample["completedText"] = try checkStatusText(in: url, expected: ["Delivered", locale.text("已完成", "Completed") + " · " + formattedFinish],
+                        absent: [title], region: CGRect(x: 0, y: 0, width: statusLeading, height: 1))
                 }
             }
             samples.append(sample)
@@ -1214,7 +1217,14 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Minimum-size fixture is missing its long tag")
         }
         try await activate(.directory, compactFolder.id)
-        try await Task.sleep(for: .milliseconds(700))
+        let fixtureIDs = Set(labels.indices.map { "Compact-\($0)" })
+        let layoutDeadline = ContinuousClock.now + .seconds(4)
+        while Set(canvas.presentedPlacements.map(\.id)) != fixtureIDs || canvas.isLayingOut {
+            guard ContinuousClock.now < layoutDeadline else {
+                throw ReplayError("Minimum window did not settle on its five tag fixtures: \(canvas.presentedPlacements.map(\.id))")
+            }
+            try await Task.sleep(for: .milliseconds(30))
+        }
         let fullViewport = CGRect(origin: .zero, size: content.bounds.size)
         guard canvas.cardRegionInWindow == fullViewport else { throw ReplayError("Filters consumed card layout space") }
         let pitch = OverviewTagMetrics.chipHeight + OverviewTagMetrics.railSpacing
@@ -1232,7 +1242,9 @@ private final class WheelSample: NSEvent {
             return nil
         }.first
         guard let (underlyingID, chip, gap, expectedStatus) = overlap else {
-            throw ReplayError("Minimum window did not put an Agent card under the status rail")
+            let frames = canvas.presentedPlacements.map { ($0.id, canvas.visibleFrame(for: $0.id)) }
+            if captureFilters { try await capture(window, to: directory.appending(path: "failed-status-overlap.png")) }
+            throw ReplayError("Minimum window needs a card under the status rail at \(center): \(frames)")
         }
         try click(window, at: monitor.windowPoint(chip))
         try await Task.sleep(for: .milliseconds(600))
@@ -1261,7 +1273,7 @@ private final class WheelSample: NSEvent {
         let statusLabels = [("running", "Running only"), ("all", "All statuses"), ("completed", "Completed only")]
         let side = OverviewTagMetrics.chipHeight
         var phases = [[String: Any]]()
-        func observe(_ name: String, expanded: [String: String]) async throws {
+        func observe(_ name: String, expanded: [String: String], expandedStatus: String? = nil) async throws {
             var widths = [String: CGFloat]()
             for id in ids {
                 let button = try filterButton(id, in: window)
@@ -1278,9 +1290,13 @@ private final class WheelSample: NSEvent {
             for (id, title) in statusLabels {
                 let button = try filterButton("overview-status-" + id, in: window)
                 let frame = button.frame
-                guard abs(frame.width - side) <= 1, abs(frame.height - side) <= 1,
+                let local = window.convertFromScreen(frame)
+                widths[id] = frame.width
+                guard abs(local.maxX - (fullViewport.maxX - 12)) <= 1, abs(frame.height - side) <= 1,
+                      id == expandedStatus ? frame.width > side + 1 : abs(frame.width - side) <= 1,
+                      frame.width <= 173, local.minX >= fullViewport.midX,
                       button.label == title || button.title == title else {
-                    throw ReplayError("Unexpected compact status button for \(title): \(frame)")
+                    throw ReplayError("Unexpected \(name) status button for \(title): \(frame)")
                 }
             }
             var sample: [String: Any] = ["phase": name, "widths": widths]
@@ -1294,7 +1310,9 @@ private final class WheelSample: NSEvent {
                 let visible = Array(expanded.values)
                 sample["visibleTitles"] = try checkStatusText(in: url, expected: visible,
                     absent: titles.filter { !visible.contains($0) }, region: leftColumn)
-                sample["statusInk"] = try checkStatusText(in: url, expected: [], absent: statusLabels.map(\.1), region: rightColumn)
+                sample["statusInk"] = try checkStatusText(in: url,
+                    expected: statusLabels.filter { $0.0 == expandedStatus }.map(\.1),
+                    absent: statusLabels.filter { $0.0 != expandedStatus }.map(\.1), region: rightColumn)
             }
             phases.append(sample)
         }
@@ -1359,24 +1377,26 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Title missed the five-second collapse or did not settle at 42pt: \(timing)")
         }
         try await observe("compact-filters", expanded: [:])
-        func waitForHoverMotion(expanded: Bool) async throws {
+        func waitForHoverMotion(_ id: String, expanded: Bool) async throws {
             var previous: CGFloat?
             var stable = 0
             let deadline = ContinuousClock.now + .seconds(1)
+            var trace = [CGFloat]()
             while ContinuousClock.now < deadline {
-                let width = try filterButton(longChild.id, in: window).frame.width
+                let width = try filterButton(id, in: window).frame.width
+                trace.append(width)
                 let reached = expanded ? width > side + 1 : abs(width - side) < 0.01
                 stable = reached && previous == width ? stable + 1 : 0
                 if stable >= 2 { return }
                 previous = width
                 try await Task.sleep(for: .milliseconds(40))
             }
-            throw ReplayError("Hover title did not settle after pointer motion")
+            throw ReplayError("Hover title for \(id) did not settle at cursor \(NSEvent.mouseLocation): \(trace)")
         }
         let hoverFrame = try filterButton(longChild.id, in: window).frame
         let hover = window.convertPoint(fromScreen: CGPoint(x: hoverFrame.midX, y: hoverFrame.midY))
         try await pointAt(hover)
-        try await waitForHoverMotion(expanded: true)
+        try await waitForHoverMotion(longChild.id, expanded: true)
         try await observe("hovered-tag", expanded: [longChild.id: "Customer"])
         let expandedTitle = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
         if captureFilters {
@@ -1389,8 +1409,45 @@ private final class WheelSample: NSEvent {
             brightCaptureBackdrop = false
         }
         try await pointAt(away)
-        try await waitForHoverMotion(expanded: false)
+        try await waitForHoverMotion(longChild.id, expanded: false)
         try await observe("pointer-left", expanded: [:])
+
+        let runningID = "overview-status-running"
+        let runningFrame = window.convertFromScreen(try filterButton(runningID, in: window).frame)
+        let hourglass = CGPoint(x: runningFrame.midX, y: runningFrame.midY)
+        try await pointAt(hourglass)
+        try await waitForHoverMotion(runningID, expanded: true)
+        try await observe("hovered-status", expanded: [:], expandedStatus: "running")
+        guard model.statusFilter == .all else { throw ReplayError("Hovering the hourglass selected it") }
+        workspace.updateSystemLocale(.chinese)
+        try await Task.sleep(for: .milliseconds(450))
+        for (id, title) in [("running", "仅运行中"), ("all", "全部状态"), ("completed", "仅已完成")] {
+            let button = try filterButton("overview-status-" + id, in: window)
+            guard button.label == title || button.title == title else { throw ReplayError("Missing status label " + title) }
+        }
+        if captureFilters {
+            let url = directory.appending(path: "hovered-status-zh.png")
+            try await capture(window, to: url)
+            phases.append(["phase": "hovered-status-zh", "statusInk": try checkStatusText(in: url,
+                expected: ["仅运行中"], absent: ["全部状态", "仅已完成"], region: rightColumn)])
+        }
+        workspace.updateSystemLocale(.english)
+        try await Task.sleep(for: .milliseconds(450))
+        let runningBounds = window.convertFromScreen(try filterButton(runningID, in: window).frame)
+        let statusTitlePoint = CGPoint(x: (runningBounds.minX + runningFrame.minX) / 2, y: runningFrame.midY)
+        try await pointAt(statusTitlePoint)
+        try click(window, at: statusTitlePoint)
+        try await pointAt(away)
+        try await Task.sleep(for: .milliseconds(550))
+        guard model.statusFilter == .running, presentation.selected == nil else {
+            throw ReplayError("Clicking the expanded status title did not select Running only")
+        }
+        try await observe("selected-status-after-exit", expanded: [:], expandedStatus: "running")
+        try await swipe(up: true)
+        let statusSwitched = ContinuousClock.now
+        try await Task.sleep(for: .milliseconds(500))
+        guard model.statusFilter == .all else { throw ReplayError("Swipe did not restore All statuses") }
+        try await observe("swiped-status", expanded: [:], expandedStatus: "all")
 
         try await activate(.semantic, compactFolder.id)
         try await Task.sleep(for: .milliseconds(700))
@@ -1408,7 +1465,7 @@ private final class WheelSample: NSEvent {
         presentation.showOverview()
         try await Task.sleep(for: .milliseconds(700))
         try await pointAt(hover)
-        try await waitForHoverMotion(expanded: true)
+        try await waitForHoverMotion(longChild.id, expanded: true)
         let expandedBounds = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
         guard expandedBounds.contains(titlePoint) else { throw ReplayError("Hovered title did not reach the click") }
         try click(window, at: titlePoint)
@@ -1445,6 +1502,11 @@ private final class WheelSample: NSEvent {
             _ = try checkStatusText(in: url, expected: ["Fixture"],
                 region: CGRect(x: 0.20, y: 0.76, width: 0.60, height: 0.15))
             window.setContentSize(CGSize(width: 860, height: 600))
+        }
+        try await Task.sleep(until: statusSwitched + .milliseconds(5600))
+        let allWidth = try filterButton("overview-status-all", in: window).frame.width
+        guard abs(allWidth - side) <= 1, model.statusFilter == .all else {
+            throw ReplayError("All statuses did not stay selected and collapse after five seconds")
         }
         try await installTasks(0, revision: 14, authority: authority, extraThreads: [thread("Inbox tagged", nil)])
         try await activate(.semantic, inboxShipping.id)

@@ -232,7 +232,7 @@ private struct SideTintFixture: View {
         HStack {
             NativeOverviewTagRail(parent: folder, selectedID: tag, maximumWidth: 145, strings: .init(), onTagChange: { tag = $0?.id })
             Spacer()
-            NativeOverviewStatusRail(status: status, strings: .init(), onStatusChange: { status = $0 })
+            NativeOverviewStatusRail(status: status, maximumWidth: 145, strings: .init(), onStatusChange: { status = $0 })
         }
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -278,6 +278,7 @@ private func preservedEmoji(selected: NSBitmapImageRep, idle: NSBitmapImageRep,
     let configurations = [[folder.id, "all"], [blue.id, "running"], [apple.id, "completed"]]
     let ids = configurations.flatMap { $0 }
     var samples = [[String: [Double]]](), images = [NSBitmapImageRep]()
+    var glyphSeats = [String: CGRect]()
     for (index, pair) in (configurations + [configurations[0]]).enumerated() {
         if index > 0 {
             for id in pair {
@@ -289,7 +290,14 @@ private func preservedEmoji(selected: NSBitmapImageRep, idle: NSBitmapImageRep,
         let image = try await windowImage(window)
         let pixels = NSBitmapImageRep(cgImage: image)
         images.append(pixels)
-        samples.append(readFaceColors(pixels, ids: ids, frames: frames))
+        if index == 0 {
+            // Both rails keep their glyph seats fixed as the labels open inward.
+            for (id, frame) in frames {
+                let edge: CGRectEdge = [folder.id, blue.id, apple.id].contains(id) ? .minXEdge : .maxXEdge
+                glyphSeats[id] = frame.divided(atDistance: frame.height, from: edge).slice
+            }
+        }
+        samples.append(readFaceColors(pixels, ids: ids, frames: glyphSeats))
         try pixels.representation(using: .png, properties: [:])?.write(to: evidence.appending(path: "side-tints-\(name)-\(index).png"))
     }
     let hues: [TintHue] = [.accent, .warm, .blue, .warm, .green, .neutral]
@@ -297,7 +305,7 @@ private func preservedEmoji(selected: NSBitmapImageRep, idle: NSBitmapImageRep,
         let index = offset / 2
         let next = index + 1
         var result = try tintResult(id: id, selected: samples[index], idle: samples[next], hue: hues[offset])
-        if hues[offset] != .accent, let frame = frames[id], let idle = samples[next][id] {
+        if hues[offset] != .accent, let frame = glyphSeats[id], let idle = samples[next][id] {
             let (count, fraction) = preservedEmoji(selected: images[index], idle: images[next], frame: frame, idleFace: idle)
             result["emojiInkPixels"] = count
             result["emojiAgreement"] = fraction

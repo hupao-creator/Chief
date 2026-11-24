@@ -8,65 +8,84 @@ struct NativeOverviewTagRail: View {
     let strings: NativeOverviewChromeStrings
     let onTagChange: (NativeOverviewFilter?) -> Void
     var interactions: NativeOverviewChromeInteractions?
-    @State private var recentID: String?
-    @State private var hoveredID: String?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            if let parent, !parent.children.isEmpty {
-                VStack(alignment: .leading, spacing: OverviewTagMetrics.railSpacing) {
-                    tagButton(parent, isParent: true)
-                        .id(parent.id)
-                    ForEach(parent.children) { child in
-                        tagButton(child, isParent: false)
-                    }
+        let hasTags = parent?.children.isEmpty == false
+        OverviewFilterRail(edge: .leading, selectedID: selectedID, hasChoices: hasTags) { recentID in
+            if let parent, hasTags {
+                tagButton(parent, isParent: true, recentID: recentID)
+                    .id(parent.id)
+                ForEach(parent.children) { child in
+                    tagButton(child, isParent: false, recentID: recentID)
                 }
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel(strings.filter)
             }
         }
-        // Observe actual selection changes, including swipes and directory navigation.
-        // Mounting the rail for an already-selected scope starts in its compact state.
-        .onChange(of: selectedID) { _, id in
-            recentID = parent?.children.isEmpty == false ? id : nil
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(strings.filter)
+        .accessibilityHidden(!hasTags)
+    }
+
+    private func tagButton(_ filter: NativeOverviewFilter, isParent: Bool, recentID: String?) -> some View {
+        let select = { onTagChange(filter) }
+        let activity = filter.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
+        return OverviewRailButton(recentlySelected: recentID == filter.id) { expansion in
+            OverviewRailCapsule(edge: .leading, title: isParent ? strings.anyTag : filter.tag,
+                emoji: isParent ? nil : filter.semanticEmoji,
+                hasActiveTasks: !isParent && filter.hasActiveTasks, selected: filter.id == selectedID,
+                unreadCount: isParent ? 0 : filter.unreadCount, maximumWidth: maximumWidth,
+                expansion: expansion, action: select)
         }
+        .overviewTagAnchor(filter.id)
+        .accessibilityIdentifier(isParent ? "overview-semantic-any" : filter.id)
+        .accessibilityLabel(Text(isParent ? strings.anyTag : filter.displayTag))
+        .accessibilityValue(Text("\(filter.count)\(activity)\(strings.unreadSuffix(filter.unreadCount))"))
+        .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .semantic, id: filter.id, action: select))
+    }
+}
+
+private struct OverviewFilterRail<Content: View>: View {
+    let edge: HorizontalEdge
+    let selectedID: String?
+    var hasChoices = true
+    @ViewBuilder var buttons: (String?) -> Content
+    @State private var recentID: String?
+
+    var body: some View {
+        VStack(alignment: edge == .leading ? .leading : .trailing, spacing: OverviewTagMetrics.railSpacing) {
+            buttons(recentID)
+        }
+        // Clicks and swipes share the selection timer. Initial selection stays compact.
+        .onChange(of: selectedID) { _, id in recentID = hasChoices ? id : nil }
         .task(id: recentID) {
             guard let id = recentID else { return }
             do { try await Task.sleep(for: .seconds(5)) } catch { return }
             if recentID == id { recentID = nil }
         }
     }
+}
 
-    private func tagButton(_ filter: NativeOverviewFilter, isParent: Bool) -> some View {
-        let select = { onTagChange(filter) }
-        let activity = filter.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
-        let expanded = hoveredID == filter.id || recentID == filter.id
-        return OverviewSemanticRailButton(title: isParent ? strings.anyTag : filter.tag,
-            emoji: isParent ? nil : filter.semanticEmoji,
-            hasActiveTasks: !isParent && filter.hasActiveTasks, selected: filter.id == selectedID,
-            unreadCount: isParent ? 0 : filter.unreadCount, maximumWidth: maximumWidth,
-            expansion: expanded ? 1 : 0, action: select)
-            .overviewTagAnchor(filter.id)
-            .onHover { inside in
-                if inside { hoveredID = filter.id }
-                else if hoveredID == filter.id { hoveredID = nil }
-            }
-            .onDisappear { if hoveredID == filter.id { hoveredID = nil } }
+private struct OverviewRailButton: View {
+    let recentlySelected: Bool
+    let capsule: (CGFloat) -> OverviewRailCapsule
+    @State private var hovered = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let expanded = hovered || recentlySelected
+        capsule(expanded ? 1 : 0)
+            .onHover { hovered = $0 }
+            .onDisappear { hovered = false }
             .animation(reduceMotion ? nil : NativeMokuCapsuleLayout.overviewExpansionAnimation, value: expanded)
-            .accessibilityIdentifier(isParent ? "overview-semantic-any" : filter.id)
-            .accessibilityLabel(Text(isParent ? strings.anyTag : filter.displayTag))
-            .accessibilityValue(Text("\(filter.count)\(activity)\(strings.unreadSuffix(filter.unreadCount))"))
-            .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .semantic, id: filter.id, action: select))
     }
 }
 
-private struct OverviewSemanticRailButton: View, @MainActor Animatable {
+private struct OverviewRailCapsule: View, @MainActor Animatable {
+    let edge: HorizontalEdge
     let title: String
     let emoji: String?
-    let hasActiveTasks: Bool
+    var hasActiveTasks = false
     let selected: Bool
-    let unreadCount: Int
+    var unreadCount = 0
     let maximumWidth: CGFloat
     var expansion: CGFloat
     let action: () -> Void
@@ -80,7 +99,7 @@ private struct OverviewSemanticRailButton: View, @MainActor Animatable {
         let progress = min(1, max(0, expansion))
         GlassEffectContainer {
             Button(action: action) {
-                OverviewSemanticLabelLayout(maximumWidth: maximumWidth, expansion: progress) {
+                OverviewRailLabelLayout(edge: edge, maximumWidth: maximumWidth, expansion: progress) {
                     glyph.accessibilityHidden(true)
                     OverviewTagTitle(title: title)
                         .modifier(OverviewCanvasLabelEdge())
@@ -126,7 +145,8 @@ struct OverviewCanvasLabelEdge: ViewModifier {
 
 /// The title keeps its final wrapping proposal while the capsule reveals it.
 /// Both its natural width and the truncation cap use the actual SwiftUI label.
-private struct OverviewSemanticLabelLayout: Layout {
+private struct OverviewRailLabelLayout: Layout {
+    let edge: HorizontalEdge
     let maximumWidth: CGFloat
     let expansion: CGFloat
     private let diameter = OverviewTagMetrics.chipHeight
@@ -138,43 +158,42 @@ private struct OverviewSemanticLabelLayout: Layout {
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        subviews[0].place(at: CGPoint(x: bounds.minX + diameter / 2, y: bounds.midY),
+        let leading = edge == .leading
+        let glyphX = leading ? bounds.minX + diameter / 2 : bounds.maxX - diameter / 2
+        subviews[0].place(at: CGPoint(x: glyphX, y: bounds.midY),
                           anchor: .center, proposal: .unspecified)
         let titleWidth = max(0, maximumWidth - diameter - OverviewTagMetrics.labelInset)
-        subviews[1].place(at: CGPoint(x: bounds.minX + diameter, y: bounds.midY),
-                          anchor: .leading, proposal: .init(width: titleWidth, height: diameter))
+        let titleX = leading ? bounds.minX + diameter : bounds.maxX - diameter
+        subviews[1].place(at: CGPoint(x: titleX, y: bounds.midY),
+                          anchor: leading ? .leading : .trailing, proposal: .init(width: titleWidth, height: diameter))
     }
 }
 
 struct NativeOverviewStatusRail: View {
     let status: NativeOverviewStatusFilter
+    let maximumWidth: CGFloat
     let strings: NativeOverviewChromeStrings
     let onStatusChange: (NativeOverviewStatusFilter) -> Void
     var interactions: NativeOverviewChromeInteractions?
 
     var body: some View {
-        GlassEffectContainer(spacing: OverviewTagMetrics.railSpacing) {
-            VStack(spacing: OverviewTagMetrics.railSpacing) {
-                statusButton(.running, emoji: "⏳", title: strings.runningOnly)
-                statusButton(.all, emoji: "🗂️", title: strings.allStatuses)
-                statusButton(.completed, emoji: "🏁", title: strings.completedOnly)
-            }
+        OverviewFilterRail(edge: .trailing, selectedID: status.rawValue) { recentID in
+            statusButton(.running, emoji: "⏳", title: strings.runningOnly, recentID: recentID)
+            statusButton(.all, emoji: "🗂️", title: strings.allStatuses, recentID: recentID)
+            statusButton(.completed, emoji: "🏁", title: strings.completedOnly, recentID: recentID)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(strings.statusFilter)
     }
 
-    private func statusButton(_ value: NativeOverviewStatusFilter, emoji: String, title: String) -> some View {
+    private func statusButton(_ value: NativeOverviewStatusFilter, emoji: String, title: String, recentID: String?) -> some View {
         let choose = { onStatusChange(value) }
-        return Button(action: choose) {
-            Text(verbatim: emoji).font(.system(size: 19)).fixedSize()
-                .frame(width: OverviewTagMetrics.chipHeight, height: OverviewTagMetrics.chipHeight)
+        return OverviewRailButton(recentlySelected: value.rawValue == recentID) { expansion in
+            OverviewRailCapsule(edge: .trailing, title: title, emoji: emoji, selected: status == value,
+                maximumWidth: maximumWidth, expansion: expansion, action: choose)
         }
-        .buttonStyle(OverviewTagButtonStyle(glass: .clear, selected: status == value, emoji: emoji))
-        .accessibilityAddTraits(status == value ? .isSelected : [])
         .overviewTagAnchor(value.rawValue)
         .accessibilityLabel(Text(title))
-        .help(title)
         .accessibilityIdentifier("overview-status-" + value.rawValue)
         .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .status, id: value.rawValue, action: choose))
     }
