@@ -41,7 +41,7 @@ func validatePackagedResources(app string) error {
 	if !info.IsDir() {
 		return fmt.Errorf("packaged UI resources must be an embedded directory")
 	}
-	for _, name := range []string{"ChiefStartupToss.gif", "ChiefStartupTossDark.gif"} {
+	for _, name := range []string{"TossPan.png", "TossCodex.png", "TossClaude.png", "TossPi.png", "TossFlick.png"} {
 		if _, err = requiredResource(bundle, name, ""); err != nil {
 			return err
 		}

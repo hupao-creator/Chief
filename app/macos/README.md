@@ -183,7 +183,9 @@ the same locale to Runtime profile metadata before connection and execution
 commands, and updates it when the language changes during a session.
 The app bundle declares English and Simplified Chinese for system-owned menus
 and panels. The Help menu opens the English product guide. While the startup surface waits for initial content, a
-120 pt skillet tosses three agent marks directly over the workspace background in a 3.2-second loop. Reduce Motion shows a still mark.
+skillet tosses three agent marks over the workspace background in a 2.8-second loop.
+Its bowl and handle span about 191 pt, matching the sleeping skillet on Overview.
+Reduce Motion shows the agents resting in the pan.
 The first live catalog replaces the mark as soon as content is ready. If
 startup has a saved catalog, the mark stays up while Chief attempts the
 initial connection. A failure allows browsing the saved catalog and

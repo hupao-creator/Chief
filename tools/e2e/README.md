@@ -256,14 +256,18 @@ applies to the separate configuration editor on both pages.
 
 ### Full-surface loading mark
 
-Open the native app with a disposable returning profile. Delay the start of its
-background service long enough to see a complete 3.2-second loop. At the center
-of the loading surface, the pan should dip, toss three colored agent marks into
-a fan and catch them. In both appearances, the surface background must remain visible
-between the marks and around the pan throughout the loop. Release the service and check that Overview replaces the
-mark as soon as initial content arrives. With Reduce Motion enabled, the same
-120 pt mark should remain still while waiting. Record the source revision,
-runtime delay, captured window frames and the first ready workspace frame.
+Run the [same-window native replay](../../demos/chief-logo-loading/README.md#原生加载标记).
+Compare the painted width from bowl to handle with the sleeping skillet on the
+Running empty state. Both should span about 191 pt at full size. Inspect two
+consecutive 2.8-second cycles for a dip, staggered release, catch and continuous
+return through the resting pose. Compare the two Reduce Motion captures for a
+stationary pan and icons. Switch motion on again and check the icons lift.
+Admitting the fixture catalog should replace the mark with the Running empty
+state in the same window. Keep the revision, window frames and recording.
+
+For a complete launch, delay the background service of a disposable returning
+profile. Release it while the mark is moving and check that the ready workspace
+takes over. Record the delay and the first ready frame.
 [Startup surface](../../app/macos/README.md#system-appearance-and-language)
 
 From a finished result, send a follow-up and hold execution admission. Inspect

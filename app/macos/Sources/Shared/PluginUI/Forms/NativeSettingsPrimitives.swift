@@ -496,7 +496,7 @@ public struct NativeHarnessSettingsFields<Basic: View, Advanced: View>: View {
 
 public struct NativeSettingsNotice: View {
     public static func loading(_ message: String, alignment: Alignment = .leading) -> Self {
-        var notice = Self(message: message, leading: AnyView(NativeLoadingMark(size: 32)))
+        var notice = Self(message: message, leading: AnyView(NativeLoadingMark().frame(width: 32, height: 32)))
         notice.contentAlignment = alignment
         return notice
     }
