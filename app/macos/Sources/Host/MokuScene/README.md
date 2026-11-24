@@ -161,6 +161,11 @@ the shell carries that seat with it.
 The Overview editor reserves one 32-point trailing action seat. A submittable
 draft shows Send, including ready attachments or directory references alone.
 Otherwise a running Chief shows Stop and an idle Chief shows disabled Send.
+Removing the last directory from an otherwise empty idle draft removes the
+43-point strip above the editor. The bottom of the Overview capsule stays
+anchored while the top moves. Send dims in place beside the editor. Attachment
+and recovery rows contribute their fitted height directly to the Dock;
+the action fade changes only glyph opacity.
 Return in the editor only attempts submission. The ordinary Dock carries Stop
 from 22 points inside the compact edge to the center of the editor’s action seat,
 29 points inside the expanded edge. Hover or focus reveals it when folded. The editor uses its final
@@ -257,7 +262,7 @@ successful response retains its receipt until the settled draft and its cleanup
 ID are durable. An owner that reopens the draft can finish the matching
 acknowledgement even if the original window closed.
 
-An empty or whitespace-only draft without attachments/directories mounts no Send
+Outside Overview, an empty or whitespace-only draft without attachments/directories mounts no Send
 button or circular background, including in accessibility. Its empty layout seat
 keeps the editor width stable. Attachment/directory-only input still exposes Send;
 importing, submission and unavailable states retain their ordinary admission rules.

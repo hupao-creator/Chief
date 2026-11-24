@@ -427,6 +427,16 @@ direct glyph and label changes. These fixture operations do not call a Harness.
 The [recordings and frame measurements](evidence/state-ink/README.md) include
 both motion settings, an interrupted fold, and receipts from the mounted routes.
 
+For the directory-removal regression, run the same preview under the shared
+leases with `--capture-overview --english --directory-removal`. The idle Dock
+starts with a directory-only draft. The fixture invokes the directory chip's
+draft removal action and checks that the same editor retains focus and the
+draft can no longer submit. With normal motion, run
+`python3 demos/moku-panel-transition/check_directory_removal.py <directory-removal>`.
+The checker tracks the arrow and plus in every recorded frame, requires their
+positions to stay within one point, and checks the 43-point shell contraction
+and the dimmed arrow at rest. The fixture uses an in-memory directory.
+
 ## Chief input replay
 
 Add `--verify-actions` to `--replay-chief-input` to check the single 32pt Send/Stop seat in the mounted

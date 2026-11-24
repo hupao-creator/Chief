@@ -1144,10 +1144,10 @@ public struct NativeMokuDock: View {
     private func send() {
         guard state.ownsComposer(draft), !state.settingsOpen, !disabled, state.inputOpen, draft.canSubmit else { return }
         guard sidecardComposer?.ready ?? true else { return }
-        state.retainDraft(draft, seal: !state.inputPinnedOpen)
         // The retiring capsule is a sealed projection, independent of the live
-        // draft. Clear it too so collapse never keeps the submitted ink visible.
+        // draft. Seal the empty snapshot directly on a fold.
         state.retainedText = ""; state.retainedAttachments = []; state.retainedDirectories = []
+        state.capsuleSealed = !state.inputPinnedOpen
         if threadID == nil { state.dismissTalk() }
         let sendingDraft = draft, send = onSend, consumed = onSendConsumed, generation = state.composerGeneration
         state.setInputOpen(false)
