@@ -38,12 +38,13 @@ scenario = parser.add_mutually_exclusive_group()
 scenario.add_argument("--note-click", action="store_true", help="run Note and scroll interactions entirely at actual size")
 scenario.add_argument("--note-link", action="store_true", help="follow Chief Note execution links across and within tag spaces")
 scenario.add_argument("--status-only", action="store_true", help="run only the mounted status-filter and idle illustration scenario")
+scenario.add_argument("--completed-card", action="store_true", help="run the mounted status replay through the bilingual completed card captures")
 parser.add_argument("--header-glass", action="store_true", help="capture and measure the production directory row over gray")
 parser.add_argument("--rail-hover", action="store_true", help="capture the mounted semantic rail during hover")
 args = parser.parse_args()
-if (args.header_glass or args.rail_hover) and (args.status_only or args.note_click or args.note_link):
+if (args.header_glass or args.rail_hover) and (args.status_only or args.completed_card or args.note_click or args.note_link):
     parser.error("choose dedicated chrome captures or the workspace scenario")
-if (args.note_link or args.status_only or args.header_glass or args.rail_hover) and args.keyboard:
+if (args.note_link or args.status_only or args.completed_card or args.header_glass or args.rail_hover) and args.keyboard:
     parser.error("--keyboard requires the card interaction scenario")
 with native_lease():
     args.output.mkdir(parents=True, exist_ok=False)
@@ -67,17 +68,19 @@ with native_lease():
             replay.compile(fixtures, extra_args=flags)
         else:
             replay.compile([source / "NestedHeaderReplay.swift", source / "FilterFacePixels.swift"])
-        arguments = ["--capture"] if args.capture else []
+        arguments = ["--capture"] if args.capture or args.completed_card else []
         if args.note_link:
             arguments.append("--note-link")
         if args.note_click:
             arguments.append("--note-click")
         if args.status_only:
             arguments.append("--status-only")
+        if args.completed_card:
+            arguments.append("--completed-card")
         if args.keyboard:
             arguments.append("--keyboard")
         with keyboard_client(replay, args.output) if args.keyboard else nullcontext():
-            status = replay.run(arguments, timeout=75 if args.note_click or args.status_only else 60)
+            status = replay.run(arguments, timeout=75 if args.note_click or args.status_only or args.completed_card else 60)
     finally:
         try:
             replay.export(args.output)
@@ -92,6 +95,8 @@ if args.header_glass or args.rail_hover:
     sys.exit(status or int(not passed))
 if args.note_link:
     sys.exit(status or int(not (args.output / "note-links.json").is_file()))
+if args.completed_card:
+    sys.exit(status or int(not (args.output / "overview-completed-card.json").is_file()))
 if args.status_only:
     sys.exit(status or int(not (args.output / "overview-status.json").is_file()))
 receipts = ["overview-scroll.json", "overview-fit.json"]

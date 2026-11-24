@@ -274,10 +274,10 @@ exercises empty and populated states and both input types.
 
 The outlined right-hand emoji identifies the status, including when the view is
 empty. Card borders stay the same on pointer hover. In **Completed only**, keyboard
-focus adds a 2pt accent outline to Agent cards. Agent cards show the localized
-time of the latest successful execution from its public `finishedAt` in addition
-to its duration. Super Threads retain their document update time and collection
-selection.
+focus adds a 2pt accent outline to Agent cards. A completed Agent card uses the
+completion badge and the same metadata layout in All and Completed. The model
+row is followed by the available duration and usage, with the excerpt below.
+Super Threads retain their document update time and collection selection.
 
 A trackpad contributes its horizontal delta, including native momentum. For
 canvas travel, a line wheel uses its horizontal delta when available and

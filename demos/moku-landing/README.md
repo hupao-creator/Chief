@@ -119,12 +119,23 @@ either empty filter. A left-side line-wheel event keeps the empty Running
 selection. Both empty states use a 195 × 85 pt illustration. The replay checks
 that the full image fits inside the content area and its bowl center is within
 1 pt of the content centerline. With `--capture`, the replay reads both localized
-empty titles and the completed task's timestamp, and verifies the absence of
-scroll hints in both empty states. The `running-empty-*.png` and
+empty titles and verifies the absence of scroll hints. For the completed Codex
+card, it reads the model, effort and excerpt from the screenshot and checks the
+duration, usage and completion badge accessibility labels. The screenshot
+must contain no completion line. The distance from model to excerpt must agree within
+2 pt between All statuses and Completed only. The replay checks both locales,
+with the Chinese card in Dark Aqua. The `running-empty-*.png` and
 `completed-empty-*.png` captures show both states in Aqua and Dark Aqua.
 `sleeping-skillet.mp4` spans a full sleep animation cycle when motion is enabled.
 It does not exercise a hardware trackpad or system fullscreen.
 The fixture has no Runtime connection.
+
+To exercise the completed card layout and write `overview-completed-card.json`,
+run the status replay through both localized card comparisons:
+
+```sh
+python3 demos/moku-landing/verify_header.py --completed-card --output .build/completed-card-layout
+```
 
 A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas switches status, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
 

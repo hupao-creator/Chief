@@ -1,10 +1,5 @@
 import SwiftUI
 
-public extension EnvironmentValues {
-    /// The host supplies the latest successful run time when browsing completed cards.
-    @Entry var threadCardCompletedAt: Date? = nil
-}
-
 /// The plugin supplies all semantic contents; this view only places/render its cells.
 public struct HarnessThreadCard: View {
     public let identity: ThreadCardIdentityView
@@ -115,7 +110,6 @@ private struct ThreadCardIdentity: View {
     @Environment(\.locale) private var locale
     @Environment(\.threadCardProviderColor) private var providerColor
     @Environment(\.agentThreadEmojiUsesLiquidGlass) private var emojiUsesLiquidGlass
-    @Environment(\.threadCardCompletedAt) private var completedAt
     private var cornerClearance: CGFloat { ThreadCardProviderStatus.cornerClearance }
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -148,15 +142,6 @@ private struct ThreadCardIdentity: View {
                 }
                 .font(NativeTypography.inter(size: 11)).foregroundStyle(NativePalette.overview.faint.swiftUI)
                 .padding(.top, 5).padding(.trailing, cornerClearance)
-            }
-            if let completedAt {
-                let date = completedAt.formatted(.dateTime.year().month(.abbreviated).day().hour().minute().locale(locale))
-                Text(locale.language.languageCode?.identifier == "zh" ? "已完成 · \(date)" : "Completed · \(date)")
-                    .font(NativeTypography.inter(size: 11, weight: 550))
-                    .foregroundStyle(NativePalette.overview.ink.swiftUI.opacity(0.82))
-                    .lineLimit(1)
-                    .padding(.top, 5).padding(.trailing, cornerClearance)
-                    .accessibilityIdentifier("overview.completed.time")
             }
             if identity.runtime != nil || projection?.usage?.parts.isEmpty == false {
                 HStack(alignment: .center, spacing: 10) {

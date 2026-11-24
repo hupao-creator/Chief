@@ -144,7 +144,7 @@ private final class WheelSample: NSEvent {
             try await noteLinks(window, directory: directory, authority: authority)
             return
         }
-        if CommandLine.arguments.contains("--status-only") {
+        if CommandLine.arguments.contains("--status-only") || CommandLine.arguments.contains("--completed-card") {
             window.center()
             try await focusReplayWindow(window)
             try await statusFilters(window, directory: directory, authority: authority)
@@ -323,29 +323,30 @@ private final class WheelSample: NSEvent {
         let label: String
     }
 
+    private func accessibilityAttribute(_ node: NSObject, _ key: String) -> Any? {
+        // SwiftUI's accessible children implement individual AppKit accessors
+        // without requiring the full NSAccessibilityProtocol conformance.
+        node.responds(to: NSSelectorFromString(key)) ? node.value(forKey: key) : nil
+    }
+
     private func filterButton(_ id: String, in window: NSWindow) throws -> AccessibleControl {
         try accessibleControl(id, role: .button, in: window)
     }
 
     private func accessibleControl(_ id: String, role: NSAccessibility.Role, in window: NSWindow) throws -> AccessibleControl {
-        // SwiftUI's accessible children implement individual AppKit accessors
-        // without requiring the full NSAccessibilityProtocol conformance.
-        func attribute(_ node: NSObject, _ key: String) -> Any? {
-            node.responds(to: NSSelectorFromString(key)) ? node.value(forKey: key) : nil
-        }
         var controlIDs: [String] = []
         func find(_ value: Any) -> AccessibleControl? {
             guard let node = value as? NSObject else { return nil }
-            if attribute(node, "accessibilityRole") as? String == role.rawValue,
-               let identifier = attribute(node, "accessibilityIdentifier") as? String {
+            if accessibilityAttribute(node, "accessibilityRole") as? String == role.rawValue,
+               let identifier = accessibilityAttribute(node, "accessibilityIdentifier") as? String {
                 controlIDs.append(identifier)
-                if identifier == id, let frame = attribute(node, "accessibilityFrame") as? NSValue {
+                if identifier == id, let frame = accessibilityAttribute(node, "accessibilityFrame") as? NSValue {
                     return AccessibleControl(frame: frame.rectValue,
-                        title: attribute(node, "accessibilityTitle") as? String ?? "",
-                        label: attribute(node, "accessibilityLabel") as? String ?? "")
+                        title: accessibilityAttribute(node, "accessibilityTitle") as? String ?? "",
+                        label: accessibilityAttribute(node, "accessibilityLabel") as? String ?? "")
                 }
             }
-            for child in attribute(node, "accessibilityChildren") as? [Any] ?? [] {
+            for child in accessibilityAttribute(node, "accessibilityChildren") as? [Any] ?? [] {
                 if let result = find(child) { return result }
             }
             return nil
@@ -354,6 +355,13 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Missing accessible control \(id). Found \(controlIDs)")
         }
         return button
+    }
+
+    private func accessibilityLabels(_ value: Any) -> [String] {
+        guard let node = value as? NSObject else { return [] }
+        let label = accessibilityAttribute(node, "accessibilityLabel") as? String
+        let children = accessibilityAttribute(node, "accessibilityChildren") as? [Any] ?? []
+        return (label.map { [$0] } ?? []) + children.flatMap(accessibilityLabels)
     }
 
     private func checkGlyphInk(_ id: String, centerInset: CGFloat? = nil, in image: URL, window: NSWindow) throws {
@@ -1087,10 +1095,27 @@ private final class WheelSample: NSEvent {
             }
             let folder: JSONText = name == namedFolderTask ? "/other/Inbox" : "/fixture"
             let label: JSONText = name == namedFolderTask ? "Inbox" : "Fixture"
-            let thread = try HarnessThread(id: JSONText(name), harnessID: "codex", revision: revision, sessionState: .null,
-                observation: observation, cwd: inbox ? "" : folder, settings: .object([:]),
+            var sessionState = JSONValue.null
+            var settings: [JSONText: JSONValue] = [:]
+            var metadata: JSONValue?
+            if name == "Delivered" {
+                settings = ["model": .text("gpt-6.1-terra"), "thinking": .object(["mode": .text("effort"), "effort": .text("medium")])]
+                metadata = .object(["kind": .text("generated-thread-metadata"), "emoji": .text("📈")])
+                if status == .completed {
+                    let turn: JSONValue = .object(["executionId": .text("run-Delivered"), "status": .text("completed"),
+                        "createdAt": .number(finishedAt - 33_000), "updatedAt": .number(finishedAt), "finishedAt": .number(finishedAt),
+                        "answer": .text("Market summary is ready."), "reasoning": .text(""),
+                        "usage": .object(["inputTokens": .integer(800), "outputTokens": .integer(47)]),
+                        "messages": .array([]), "timeline": .array([]), "activities": .array([]),
+                        "interactions": .array([]), "notices": .array([]), "plan": .array([])])
+                    sessionState = .object(["schema": .text("mokusei.harness.codex.thread.v1"), "updatedAt": .number(finishedAt),
+                        "turns": .array([turn]), "backgroundTerminals": .array([])])
+                }
+            }
+            let thread = try HarnessThread(id: JSONText(name), harnessID: "codex", revision: revision, sessionState: sessionState,
+                observation: observation, cwd: inbox ? "" : folder, settings: .object(settings),
                 createdAt: finishedAt - 60_000, updatedAt: finishedAt + 86_400_000,
-                title: JSONText(name), tags: tag.map { [$0] } ?? [],
+                title: JSONText(name), tags: tag.map { [$0] } ?? [], metadataState: metadata,
                 tagEmojis: tag.map { [$0: emoji] } ?? [:],
                 directoryTag: inbox ? "" : label, directoryScope: inbox ? "inbox" : folder)
             var fields = thread.json.objectValue!
@@ -1119,6 +1144,7 @@ private final class WheelSample: NSEvent {
         let tags = model.visibleFilters
         let tagIDs = tags.flatMap { [$0.id] + $0.children.map(\.id) }
         var samples = [[String: Any]]()
+        var deliveredGaps: [String: CGFloat] = [:]
         func logoImage(_ identifier: String) -> NSImageView? {
             descendant(NSImageView.self, in: content) { $0.accessibilityIdentifier() == identifier }
         }
@@ -1150,27 +1176,29 @@ private final class WheelSample: NSEvent {
                 isRunning ? completed : running,
                 workspace.locale.text("在右半区上滑可查看全部状态", "Scroll up on the right to show all statuses"),
                 workspace.locale.text("在右半区下滑可查看全部状态", "Scroll down on the right to show all statuses")
-            ])
+            ]).map(\.text)
         }
-        func checkStatusText(in url: URL, expected: [String], absent: [String] = [], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [String] {
+        func normalized(_ text: String) -> String {
+            text.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
+        }
+        func checkStatusText(in url: URL, expected: [String], absent: [String] = [], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [(text: String, frame: CGRect)] {
             let request = VNRecognizeTextRequest()
             request.regionOfInterest = region
             request.recognitionLanguages = workspace.locale == .chinese ? ["zh-Hans", "en-US"] : ["en-US"]
             request.minimumTextHeight = 0.008
             try VNImageRequestHandler(url: url).perform([request])
-            let lines = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
-            func normalized(_ text: String) -> String {
-                text.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
+            let lines = (request.results ?? []).compactMap { observation in
+                observation.topCandidates(1).first.map { (text: $0.string, frame: observation.boundingBox) }
             }
-            let actual = lines.map(normalized)
+            let actual = lines.map { normalized($0.text) }
             guard expected.allSatisfy({ text in actual.contains { $0.contains(normalized(text)) } }),
                   absent.allSatisfy({ text in !actual.contains { $0.contains(normalized(text)) } }) else {
-                throw ReplayError("Unexpected visible text in \(url.lastPathComponent): expected=\(expected), absent=\(absent), found=\(lines)")
+                throw ReplayError("Unexpected visible text in \(url.lastPathComponent): expected=\(expected), absent=\(absent), found=\(lines.map(\.text))")
             }
             return lines
         }
         func check(_ name: String, _ mode: NativeOverviewStatusFilter, _ expected: [String],
-                   selected: String = "Fixture", needsBothReportCards: Bool = false, checkCompletedCopy: Bool = false) async throws {
+                   selected: String = "Fixture", needsBothReportCards: Bool = false, checkDeliveredLayout: Bool = false) async throws {
             let deadline = ContinuousClock.now + .seconds(5)
             while Set(model.items.map(\.id)) != canvas.mountedCardIDs || canvas.isLayingOut {
                 guard ContinuousClock.now < deadline else { throw ReplayError("Cards did not settle at " + name) }
@@ -1224,7 +1252,7 @@ private final class WheelSample: NSEvent {
             }
             if CommandLine.arguments.contains("--capture") {
                 let url = directory.appending(path: "status-" + name + ".png")
-                if expectsStatusEmpty || checkCompletedCopy { try await Task.sleep(for: .milliseconds(450)) }
+                if expectsStatusEmpty || checkDeliveredLayout { try await Task.sleep(for: .milliseconds(450)) }
                 try await capture(window, to: url)
                 if ["all", "down", "up", "directory-selected", "inbox-label"].contains(name) {
                     var expectedFaces = Dictionary(uniqueKeysWithValues: [NativeOverviewStatusFilter.running, .all, .completed].map {
@@ -1237,18 +1265,42 @@ private final class WheelSample: NSEvent {
                 }
                 if expectsStatusEmpty {
                     sample["emptyText"] = try checkEmptyCopy(in: url, mode: mode)
-                } else if checkCompletedCopy {
+                } else if checkDeliveredLayout {
                     let locale = workspace.locale
                     let title = locale.text("仅已完成", "Completed only")
                     let button = try filterButton("overview-status-completed", in: window)
                     guard button.label == title || button.title == title else {
                         throw ReplayError("Completed status icon lost its localized accessible name")
                     }
-                    let formattedFinish = Date(timeIntervalSince1970: finishedAt / 1_000)
-                        .formatted(.dateTime.year().month(.abbreviated).day().hour().minute().locale(Locale(identifier: locale.rawValue)))
-                    let statusLeading = window.convertFromScreen(button.frame).minX / window.frame.width
-                    sample["completedText"] = try checkStatusText(in: url, expected: ["Delivered", locale.text("已完成", "Completed") + " · " + formattedFinish],
-                        absent: [title], region: CGRect(x: 0, y: 0, width: statusLeading, height: 1))
+                    guard let frame = canvas.displayedFrame(for: "Delivered") else {
+                        throw ReplayError("Missing the displayed Delivered card in \(name)")
+                    }
+                    let corner = monitor.windowPoint(CGPoint(x: frame.minX, y: frame.maxY))
+                    let region = CGRect(x: corner.x / window.frame.width, y: corner.y / window.frame.height,
+                                        width: frame.width / window.frame.width, height: frame.height / window.frame.height)
+                    let model = "gpt-6.1-terra"
+                    let excerpt = "Market summary is ready"
+                    let completion = locale.text("已完成", "Completed")
+                    let lines = try checkStatusText(in: url, expected: ["Delivered", model, "medium", excerpt],
+                        absent: [completion], region: region)
+                    let expectedLabels = [locale.text("用时：00:00:33", "Duration: 00:00:33"), "847 tokens", "Codex · " + completion]
+                    let labels = accessibilityLabels(window) + accessibilityLabels(content)
+                    guard expectedLabels.allSatisfy(labels.contains) else {
+                        throw ReplayError("Missing card accessibility labels in \(name): expected=\(expectedLabels), found=\(labels)")
+                    }
+                    guard let modelFrame = lines.first(where: { normalized($0.text).contains(normalized(model)) })?.frame,
+                          let excerptFrame = lines.first(where: { normalized($0.text).contains(normalized(excerpt)) })?.frame else {
+                        throw ReplayError("Missing model or excerpt bounds in \(name)")
+                    }
+                    let gap = (modelFrame.midY - excerptFrame.midY) * frame.height
+                    if let otherGap = deliveredGaps[locale.rawValue], abs(gap - otherGap) > 2 {
+                        throw ReplayError("Delivered card metadata shifted between status filters in \(locale.rawValue): \(gap) vs \(otherGap)pt")
+                    }
+                    deliveredGaps[locale.rawValue] = gap
+                    sample["locale"] = locale.rawValue
+                    sample["deliveredText"] = lines.map(\.text)
+                    sample["deliveredAccessibilityLabels"] = expectedLabels
+                    sample["modelToExcerptPt"] = gap
                 }
             }
             samples.append(sample)
@@ -1428,9 +1480,9 @@ private final class WheelSample: NSEvent {
         try await wheel(1, right: false)
         try await check("empty-left-wheel", .running, [], selected: "Shipping")
         try await wheel(1, right: true)
-        try await check("tag-restored", .all, ["Delivered"], selected: "Shipping")
+        try await check("tag-restored", .all, ["Delivered"], selected: "Shipping", checkDeliveredLayout: true)
         try await swipe(up: true)
-        try await check("completed-tag", .completed, ["Delivered"], selected: "Shipping", checkCompletedCopy: true)
+        try await check("completed-tag", .completed, ["Delivered"], selected: "Shipping", checkDeliveredLayout: true)
         try await updateDelivered(.running, revision: 11)
         try await check("completed-live-remove", .completed, [], selected: "Shipping")
         workspace.updateSystemLocale(.chinese)
@@ -1460,12 +1512,21 @@ private final class WheelSample: NSEvent {
         try await check("back-from-completed-wheel", .all, ["Delivered"], selected: "Shipping")
         try await swipe(up: true)
         try await updateDelivered(.completed, revision: 12)
-        try await check("completed-live-admit", .completed, ["Delivered"], selected: "Shipping", checkCompletedCopy: true)
+        if CommandLine.arguments.contains("--capture") { captureScheme = .dark }
+        try await check("completed-live-admit", .completed, ["Delivered"], selected: "Shipping", checkDeliveredLayout: true)
         try await swipe(up: false)
-        try await check("completed-finished", .all, ["Delivered"], selected: "Shipping")
+        try await check("completed-finished", .all, ["Delivered"], selected: "Shipping", checkDeliveredLayout: true)
+        captureScheme = nil
         guard canvas.cardRegionInWindow == twoRailFrame else {
             throw ReplayError("Changing a tag or a status moved the card viewport")
         }
+        if CommandLine.arguments.contains("--capture") {
+            let cards = samples.filter { $0["modelToExcerptPt"] != nil }
+            guard cards.count == 4 else { throw ReplayError("Missing a localized completed card capture") }
+            try JSONSerialization.data(withJSONObject: cards, options: [.prettyPrinted, .sortedKeys])
+                .write(to: directory.appending(path: "overview-completed-card.json"))
+        }
+        if CommandLine.arguments.contains("--completed-card") { return }
         workspace.updateSystemLocale(.english)
         model.selectTag(nil)
         let captureFilters = CommandLine.arguments.contains("--capture")
@@ -1593,10 +1654,10 @@ private final class WheelSample: NSEvent {
                 try checkGlyphInk(shortChild.id, centerInset: side / 2, in: url, window: window)
                 let visible = Array(expanded.values)
                 sample["visibleTitles"] = try checkStatusText(in: url, expected: visible,
-                    absent: titles.filter { !visible.contains($0) }, region: leftColumn)
+                    absent: titles.filter { !visible.contains($0) }, region: leftColumn).map(\.text)
                 sample["statusInk"] = try checkStatusText(in: url,
                     expected: statusLabels.filter { expandedStatuses.contains($0.0) }.map(\.1),
-                    absent: statusLabels.filter { !expandedStatuses.contains($0.0) }.map(\.1), region: rightColumn)
+                    absent: statusLabels.filter { !expandedStatuses.contains($0.0) }.map(\.1), region: rightColumn).map(\.text)
             }
             phases.append(sample)
         }
@@ -1694,7 +1755,7 @@ private final class WheelSample: NSEvent {
             let url = directory.appending(path: "hovered-status-zh.png")
             try await capture(window, to: url)
             phases.append(["phase": "hovered-status-zh", "statusInk": try checkStatusText(in: url,
-                expected: ["仅运行中", "全部状态"], absent: ["仅已完成"], region: rightColumn)])
+                expected: ["仅运行中", "全部状态"], absent: ["仅已完成"], region: rightColumn).map(\.text)])
         }
         workspace.updateSystemLocale(.english)
         try await Task.sleep(for: .milliseconds(450))
