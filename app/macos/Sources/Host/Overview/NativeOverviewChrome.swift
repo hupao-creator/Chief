@@ -14,8 +14,9 @@ public struct NativeOverviewFilter: Identifiable, Equatable, Sendable {
     public var aliases: [String]
     public var isDirectory: Bool
     public var selectionKey: String
-    /// Directory and Inbox filters own the semantic tags in their scope.
+    /// Real directories own the semantic tags shown in their left rail.
     public var children: [NativeOverviewFilter]
+    var semanticEmoji: String { emoji.flatMap { $0.isEmpty ? nil : $0 } ?? "🏷️" }
     // Membership changes counts and selectionKey, not the identity of this control.
     public var id: String { "\(isDirectory ? "directory" : "semantic"):\(scope):\(Self.key(tag))" }
 
@@ -42,6 +43,7 @@ public struct NativeOverviewFilter: Identifiable, Equatable, Sendable {
 /// Floating Liquid Glass controls. The host owns collection filtering.
 public struct NativeOverviewChrome: View {
     private let viewportHeight: CGFloat?
+    private let showsAllWhenEmpty: Bool
     public var filters: [NativeOverviewFilter]
     public var allHasActiveTasks: Bool
     public var selectedTag: String
@@ -66,7 +68,7 @@ public struct NativeOverviewChrome: View {
     @State private var interactionOwner = UUID()
 
     public init(filters: [NativeOverviewFilter], viewportHeight: CGFloat? = nil, selectedTag: String = "", selectedScope: String = "", selectedKind: NativeOverviewTagKind? = nil,
-                allHasActiveTasks: Bool = false,
+                allHasActiveTasks: Bool = false, showsAllWhenEmpty: Bool = false,
                 strings: NativeOverviewChromeStrings = .init(),
                 onTagChange: @escaping (NativeOverviewFilter?) -> Void,
                 onSettings: (() -> Void)? = nil, onRestart: (() -> Void)? = nil,
@@ -74,6 +76,7 @@ public struct NativeOverviewChrome: View {
                 onSettingsFrameChange: ((CGRect?) -> Void)? = nil,
                 interactions: NativeOverviewChromeInteractions? = nil) {
         self.viewportHeight = viewportHeight
+        self.showsAllWhenEmpty = showsAllWhenEmpty
         self.filters = filters; self.selectedTag = selectedTag; self.selectedScope = selectedScope; self.selectedKind = selectedKind
         self.allHasActiveTasks = allHasActiveTasks
         _presentedFilters = State(initialValue: filters)
@@ -85,6 +88,7 @@ public struct NativeOverviewChrome: View {
     }
 
     public var body: some View {
+        let showsFilters = showsAllWhenEmpty || !presentedFilters.isEmpty
         let stackedFilterTop = OverviewTagMetrics.stackedFilterTop(viewportHeight: viewportHeight ?? .infinity)
         GeometryReader { geometry in
             let stacked = OverviewTagMetrics.stacksFilters(in: geometry.size.width)
@@ -98,15 +102,14 @@ public struct NativeOverviewChrome: View {
                 }
                 .padding(.horizontal, inset)
                 .padding(.top, stacked ? OverviewTagMetrics.compactActionTop : OverviewTagMetrics.singleRowTop)
-                // Retain the scroll/container identities through an empty result so
-                // outgoing surfaces can finish, while hiding the empty bar as before.
+                // Retain the scroll/container identities while the last tag leaves.
                 filtersBar(maximumWidth: maximumFilterWidth)
                     .frame(width: min(naturalFilterWidth, maximumFilterWidth), height: OverviewTagMetrics.barHeight)
                     .padding(.top, stacked ? stackedFilterTop : OverviewTagMetrics.singleRowTop)
-                    .opacity(presentedFilters.isEmpty ? 0 : 1)
-                    .allowsHitTesting(!presentedFilters.isEmpty)
-                    .disabled(presentedFilters.isEmpty)
-                    .accessibilityHidden(presentedFilters.isEmpty)
+                    .opacity(showsFilters ? 1 : 0)
+                    .allowsHitTesting(showsFilters)
+                    .disabled(!showsFilters)
+                    .accessibilityHidden(!showsFilters)
             }
         }
         .frame(height: stackedFilterTop + OverviewTagMetrics.chipHeight)
@@ -156,7 +159,8 @@ public struct NativeOverviewChrome: View {
                             if let anchor = anchors[filter.id], reader[anchor].intersects(viewport) {
                                 Color.clear.frame(width: 0, height: 0)
                                     .modifier(NativeOverviewButtonRegistration(registry: interactions,
-                                        group: .directory, id: filter.id, action: { onTagChange(filter) }))
+                                        group: filter.isDirectory ? .directory : .semantic, id: filter.id,
+                                        action: { onTagChange(filter) }))
                             }
                         }
                     }
@@ -203,7 +207,7 @@ public struct NativeOverviewChrome: View {
     private var tagEntryAnimation: Animation? { reduceMotion ? nil : .smooth(duration: 0.22, extraBounce: 0) }
 
     private func filterButtons(maximumWidth: CGFloat) -> some View {
-        HStack(spacing: OverviewTagMetrics.directorySpacing) {
+        HStack(spacing: presentedFilters.isEmpty ? 0 : OverviewTagMetrics.directorySpacing) {
             Button {
                 onTagChange(nil)
             } label: {
@@ -240,28 +244,22 @@ public struct NativeOverviewChrome: View {
             ForEach(presentedFilters) { filter in
                 let active = isActive(filter)
                 let activitySuffix = filter.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
+                let emoji = filter.isDirectory ? nil : filter.semanticEmoji
                 Button {
                     onTagChange(filter)
                 } label: {
                     HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
-                        if filter.isDirectory || filter.emoji != nil {
-                            OverviewTagPrefix(emoji: filter.isDirectory ? nil : filter.emoji)
-                                .background {
-                                    if filter.hasActiveTasks {
-                                        OverviewTagActivityIndicator(diameter: 26)
-                                    }
-                                }
-                        } else if filter.hasActiveTasks {
-                            OverviewTagActivityIndicator(diameter: 26)
-                        }
-                        OverviewTagTitle(title: !filter.isDirectory && filter.emoji != nil ? filter.tag : filter.displayTag)
+                        OverviewTagPrefix(emoji: emoji)
+                            .background {
+                                if filter.hasActiveTasks { OverviewTagActivityIndicator(diameter: 26) }
+                            }
+                        OverviewTagTitle(title: filter.isDirectory ? filter.displayTag : filter.tag)
                     }
                     .padding(.horizontal, OverviewTagMetrics.chipLabelInset)
                     .frame(height: OverviewTagMetrics.chipHeight)
                     .frame(maxWidth: maximumButtonWidth)
                 }
-                .buttonStyle(OverviewTagButtonStyle(glass: .regular, selected: active,
-                                                    emoji: filter.isDirectory ? nil : filter.emoji))
+                .buttonStyle(OverviewTagButtonStyle(glass: .regular, selected: active, emoji: emoji))
                 .glassEffectID(filter.id, in: tagGlass)
                 .glassEffectTransition(.matchedGeometry)
                 .overviewTagAnchor(filter.id)
@@ -282,7 +280,10 @@ public struct NativeOverviewChrome: View {
     }
 
     private var naturalFilterWidth: CGFloat {
-        measuredAllWidth > 0 && measuredTagsWidth > 0
+        if presentedFilters.isEmpty, measuredAllWidth > 0 {
+            return measuredAllWidth + OverviewTagMetrics.barInset * 2
+        }
+        return measuredAllWidth > 0 && measuredTagsWidth > 0
             ? measuredAllWidth + measuredTagsWidth + OverviewTagMetrics.barInset * 2 + OverviewTagMetrics.directorySpacing : 10000
     }
 
@@ -558,7 +559,7 @@ private struct OverviewHorizontalScroll<Content: View>: View {
             // An overflowing list still clips horizontally before the pinned All button.
             .clipShape(OverviewDirectoryViewport(overflows: overflows))
             .scrollBounceBehavior(.basedOnSize)
-            .modifier(NativeOverviewFilterScrollRegistration(registry: interactions, root: owner, ids: ids, enabled: true,
+            .modifier(NativeOverviewFilterScrollRegistration(registry: interactions, root: owner, ids: ids, enabled: !ids.isEmpty,
                 scroll: { id in proxy.scrollTo(id, anchor: .center) }))
         }
     }

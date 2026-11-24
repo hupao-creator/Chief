@@ -90,7 +90,8 @@ Overview publishes the unread Thread count for each folder and semantic tag.
 The folder count covers the whole folder while a semantic tag is selected.
 The filter tree describes the choices in the catalog. The mounted controls
 identify the choices available on the current Overview. Filter activation
-invokes the registered button action. A hidden semantic rail has no targets.
+invokes the registered button action. Top-row Inbox tags register as semantic
+controls alongside the current project directory’s visible child controls.
 See the [socket protocol](../../../../../tools/native-interaction/README.md) for
 action arguments and snapshot fields.
 Individual report observations expose `collectionEligibility`. Collections expose

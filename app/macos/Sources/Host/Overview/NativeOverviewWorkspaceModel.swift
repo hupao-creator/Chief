@@ -675,11 +675,8 @@ public final class NativeOverviewWorkspaceModel {
         if !operationProjectionReady || operationThreadID != workspace.catalog.moku?.id
             || workspace.catalog.moku.map({ change.threadIDs.contains($0.id) }) == true { refreshMokuOperations() }
         catalogGeneration = workspace.catalog.installGeneration
-        guard presentationActive else {
-            presentationDirty = true
-            if changedMembership { publishContext() }
-            return true
-        }
+        // A covered canvas retains its cards and camera, but the published selection
+        // must already refer to the new membership when a tag or directory disappears.
         if changedMembership {
             let current = matchingFilter(tag: selectedTag, scope: selectedScope, kind: tagSelection?.kind)
             if current == nil || current?.count == 0 || affectedScopes.contains(selectedScope) {
@@ -688,6 +685,10 @@ public final class NativeOverviewWorkspaceModel {
             }
             selectedFilter = current
             publishContext()
+        }
+        guard presentationActive else {
+            presentationDirty = true
+            return true
         }
         if statusFilter != .all, changedThreads.contains(where: { thread in
             statusFilter.includes(thread) ? statusHiddenThreads.contains(thread.id) : content.activeIDs.contains(thread.id.string)

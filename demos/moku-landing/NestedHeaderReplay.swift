@@ -151,7 +151,7 @@ private final class WheelSample: NSEvent {
             try await cardInteraction(window, directory: directory, authority: authority)
             try await fittingCards(window, directory: directory, authority: authority)
             try await statusFilters(window, directory: directory, authority: authority)
-            try await installTasks(0, revision: 14, authority: authority)
+            try await installTasks(0, revision: 16, authority: authority)
             try await Task.sleep(for: .milliseconds(800))
             guard presentation.moku.landing else { throw ReplayError("Empty Overview did not enter landing") }
             presentation.scene.setInputOpen(false)
@@ -1028,9 +1028,9 @@ private final class WheelSample: NSEvent {
         }
         guard let parent = tags.first(where: { $0.scope == "/fixture" }),
               let shipping = parent.children.first(where: { $0.tag == "Shipping" }),
-              let inbox = tags.first(where: { $0.scope == "inbox" && $0.isDirectory }),
-              let inboxShipping = inbox.children.first(where: { $0.tag == "Shipping" }),
-              let inboxLabel = inbox.children.first(where: { $0.tag == "Inbox" }),
+              !tags.contains(where: { $0.scope == "inbox" && $0.isDirectory }),
+              let inboxShipping = tags.first(where: { $0.scope == "inbox" && $0.tag == "Shipping" && !$0.isDirectory }),
+              let inboxLabel = tags.first(where: { $0.scope == "inbox" && $0.tag == "Inbox" && !$0.isDirectory }),
               let namedFolder = tags.first(where: { $0.scope == "/other/Inbox" && $0.isDirectory }) else {
             throw ReplayError("Missing scoped Shipping controls")
         }
@@ -1059,16 +1059,29 @@ private final class WheelSample: NSEvent {
         try await check("up", .completed, ["Delivered"] + reportIDs, needsBothReportCards: true)
         try await swipe(up: true)
         try await check("lower-limit", .completed, ["Delivered"] + reportIDs)
-        try await activate(.directory, inbox.id)
-        try await check("inbox-keeps-status", .completed, [], selected: inbox.tag)
+        let allButton = try filterButton("overview-directory-all", in: window)
+        let shippingButton = try filterButton(inboxShipping.id, in: window)
+        let inboxButton = try filterButton(inboxLabel.id, in: window)
+        guard [shippingButton, inboxButton].allSatisfy({ abs($0.frame.midY - allButton.frame.midY) <= 1 }),
+              Set(model.chromeInteractions.mountedIDs(in: .semantic)) == [inboxShipping.id, inboxLabel.id],
+              Set(model.chromeInteractions.mountedIDs(in: .directory)) == ["all", parent.id, namedFolder.id] else {
+            throw ReplayError("Inbox tags did not mount as semantic buttons alongside All and the real folders")
+        }
+        let shippingCenter = window.convertPoint(fromScreen: CGPoint(x: shippingButton.frame.midX, y: shippingButton.frame.midY))
+        try click(window, at: shippingCenter)
+        try await check("inbox-top-keeps-status", .completed, [], selected: inboxShipping.tag)
         try await clickMiddle(right: true)
-        try await check("inbox-any", .all, inboxTasks, selected: inbox.tag)
-        try await activate(.semantic, inboxShipping.id)
-        try await check("inbox-tag", .all, ["Inbox tagged"], selected: "Shipping")
+        try await check("inbox-tag", .all, ["Inbox tagged"], selected: inboxShipping.tag)
+        try await swipe(up: true, right: false)
+        try await check("inbox-left-no-children", .all, ["Inbox tagged"], selected: inboxShipping.tag)
+        guard (try? filterButton("overview-semantic-any", in: window)) == nil, model.selectedFilter?.id == inboxShipping.id else {
+            throw ReplayError("The Inbox tag exposed an extra left column or lost its scoped selection")
+        }
         try await activate(.semantic, inboxLabel.id)
         try await check("inbox-label", .all, ["Inbox label"], selected: inboxLabel.tag)
         try await activate(.directory, namedFolder.id)
         try await check("directory-named-inbox", .all, [namedFolderTask], selected: namedFolder.tag)
+        guard model.selectedFilter?.id == namedFolder.id else { throw ReplayError("Inbox tag shadowed the real directory") }
         try await activate(.directory, parent.id)
         try await check("directory-any", .all, ordinary + reportIDs, selected: parent.tag)
         let twoRailFrame = canvas.cardRegionInWindow
@@ -1401,6 +1414,50 @@ private final class WheelSample: NSEvent {
                 region: CGRect(x: 0.20, y: 0.76, width: 0.60, height: 0.15))
             window.setContentSize(CGSize(width: 860, height: 600))
         }
+        try await installTasks(0, revision: 14, authority: authority, extraThreads: [thread("Inbox tagged", nil)])
+        try await activate(.semantic, inboxShipping.id)
+        guard model.visibleFilters.map(\.id) == [inboxShipping.id], model.selectedFilter?.id == inboxShipping.id,
+              model.items.map(\.id) == ["Inbox tagged"] else { throw ReplayError("The sole Inbox tag was not selectable") }
+        let scene = model.sceneKey
+        let cardDeadline = ContinuousClock.now + .seconds(4)
+        while !canvas.allowsActivation(cardID: "Inbox tagged") || canvas.isLayingOut {
+            guard ContinuousClock.now < cardDeadline else { throw ReplayError("Single tagged card did not become interactive") }
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        guard let frame = canvas.visibleFrame(for: "Inbox tagged") else { throw ReplayError("Single tagged card was offscreen") }
+        try click(window, at: monitor.windowPoint(CGPoint(x: frame.midX, y: frame.midY)))
+        let readerDeadline = ContinuousClock.now + .seconds(4)
+        while model.presentationActive || presentation.selected?.threadID.string != "Inbox tagged" {
+            guard ContinuousClock.now < readerDeadline else { throw ReplayError("Reader did not cover the selected Inbox tag") }
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        var retagged = try thread("Inbox tagged", nil, revision: 2).objectValue!
+        retagged["tags"] = .array([])
+        retagged["tagEmojis"] = .object([:])
+        let patch: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(14), "revision": .integer(15),
+            "threads": .object(["upserts": .array([.object(retagged), try thread("Inbox untagged", nil)]), "removedIds": .array([])])])
+        let next = try RuntimeState.applying(patch, to: workspace.state!)
+        await workspace.installPrepared(next, event: .mutation(patch, state: next, authority: authority))
+        guard !model.presentationActive, model.sceneKey == scene, model.items.map(\.id) == ["Inbox tagged"],
+              model.filterContextFacts.isEmpty, model.selectedFilter == nil, model.selectedTag.isEmpty, model.selectedScope.isEmpty else {
+            throw ReplayError("Hidden Inbox tag removal left stale filter context or rebuilt the covered Overview")
+        }
+        presentation.showOverview()
+        let deadline = ContinuousClock.now + .seconds(4)
+        while !model.presentationActive || model.chromeInteractions.mountedIDs(in: .directory) != ["all"]
+                || !model.chromeInteractions.mountedIDs(in: .semantic).isEmpty
+                || canvas.mountedCardIDs != ["Inbox tagged", "Inbox untagged"] || canvas.isLayingOut {
+            guard ContinuousClock.now < deadline else { throw ReplayError("Untagged-only workspace did not settle") }
+            try await Task.sleep(for: .milliseconds(30))
+        }
+        let global = try filterButton("overview-directory-all", in: window)
+        guard model.visibleFilters.isEmpty, model.selectedFilter == nil, model.selectedTag.isEmpty,
+              model.statusFilter == .all, abs(global.frame.midX - window.frame.midX) <= 1 else {
+            throw ReplayError("The last Inbox tag disappeared without returning to the centered All control")
+        }
+        samples.append(["step": "last-inbox-tag-removed", "previousTag": inboxShipping.id, "scope": model.selectedScope,
+                        "visibleTags": model.visibleFilters.map(\.id), "mountedCardIDs": Array(canvas.mountedCardIDs),
+                        "retainedReaderScene": scene, "globalCenterX": global.frame.midX, "windowCenterX": window.frame.midX])
         try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "overview-status.json"))
     }

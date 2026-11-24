@@ -24,7 +24,7 @@
     {
       "id": "E2E-OVERVIEW-003",
       "implementation": "implemented",
-      "title": "Keep the status selection through directory changes and restore the completed tasks in that scope",
+      "title": "Select a project folder, retain its status filter and return to all completed tasks",
       "doc": "app/macos/Sources/Host/Overview/README.md#mounted-filter-e2e",
       "evidence": ["overview-filters.json"]
     },

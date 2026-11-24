@@ -15,8 +15,14 @@ class Peer(Provider):
         self.nonce = nonce
         self.holds, self.input_cancellations = [], []
         self.collection_projects = []
+        self.overview_project = None
         self.request_context = threading.local()
         super().__init__(directory, 1)
+
+    def prepare_overview(self):
+        self.count = 12
+        self.overview_project = self.directory / "Review"
+        self.overview_project.mkdir()
 
     def prepare_collection(self):
         self.collection_projects = [self.directory / name for name in ("Library", "Studio")]
@@ -28,6 +34,8 @@ class Peer(Provider):
         args = super().creation_arguments(index)
         if self.collection_projects:
             args["cwd"] = str(self.collection_projects[index - 1])
+        elif self.overview_project and index == 1:
+            args["cwd"] = str(self.overview_project)
         return args
 
     def respond(self, request):
