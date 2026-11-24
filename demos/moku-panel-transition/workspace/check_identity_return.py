@@ -60,20 +60,25 @@ def close_leg(rows, width):
     path = column_return([r["width"] for r in rows], [r["center"] for r in rows], [r["top"] for r in rows],
                          compact, (width - 1) / 2, rows[-1]["top"], 1.8)
     folding = [r for r in rows if compact + 4 < r["width"] < opened - 4]
-    tilted = [r["frame"] for r in folding if r["face"] == "logo" and r["inkHeight"] < .8 * r["inkWidth"]]
-    eyes = [r for r in folding if r["face"] == "eyes"]
-    eye_height = max((r["inkHeight"] for r in rows if r["face"] == "eyes"), default=0)
-    revealing = [r["frame"] for r in eyes if r["inkHeight"] < .8 * eye_height]
-    first_eyes = next((r for r in rows if r["face"] == "eyes"), None)
-    passed = (not path["errors"] and sequence(rows) == ["logo", "eyes"] and bool(tilted) and bool(revealing)
-              and first_eyes == eyes[0] and abs(eyes[0]["center"] - rows[0]["center"]) <= 4)
-    return dict(passed=passed, tiltedLogoDuringFold=tilted, revealingEyesDuringFold=revealing,
-                firstEyes=first_eyes, pathFirstFrame=rows[0]["frame"], path=path)
+    upright_fold = bool(folding) and all(r["face"] == "logo" and r["inkHeight"] >= .9 * r["inkWidth"] for r in folding)
+    first_eyes = next((i for i, r in enumerate(rows) if r["face"] == "eyes"), None)
+    tilted = [i for i, r in enumerate(rows) if r["face"] == "logo" and r["inkHeight"] < .8 * r["inkWidth"]]
+    # End at the first fully revealed eyes. A later resident blink belongs to Overview.
+    full_height = max((r["inkHeight"] for r in rows if r["face"] == "eyes"), default=0)
+    landed = next((i for i, r in enumerate(rows) if r["face"] == "eyes" and r["inkHeight"] >= .94 * full_height), None)
+    turn = rows[tilted[0]:landed + 1] if tilted and landed is not None else []
+    revealing = any(r["face"] == "eyes" and r["inkHeight"] < .8 * full_height for r in turn)
+    stationary = bool(turn) and all(abs(r["width"] - compact) <= 4 and abs(r["center"] - rows[0]["center"]) <= 4
+                                    and abs(r["top"] - turn[0]["top"]) <= 4 for r in turn)
+    passed = (not path["errors"] and sequence(rows) == ["logo", "eyes"] and upright_fold and revealing and stationary)
+    return dict(passed=passed, uprightFold=upright_fold, stationaryTurn=stationary, revealingEyes=revealing,
+                tiltedLogoFrames=[rows[i]["frame"] for i in tilted], firstEyes=rows[first_eyes] if first_eyes is not None else None,
+                pathFirstFrame=rows[0]["frame"], path=path)
 
 
 def reversal(rows, width):
-    # Find the second wide plateau from the shell alone. Both appearances of
-    # the logo and eyes on either side of the interruption must be on film.
+    # Find the second wide plateau from the shell alone. An interruption
+    # before the fold settles must leave the full Harness mark in place.
     opened = rows[0]["width"]
     moving = next(i for i, r in enumerate(rows) if r["width"] < opened - 20)
     # Split at the settled editor. Its last few expanding pixels still belong
@@ -84,19 +89,17 @@ def reversal(rows, width):
     turn = min(range(moving, reopened), key=lambda i: rows[i]["width"])
     before, after = rows[:turn + 1], rows[turn:reopened + 1]
     faces = sequence(rows[:reopened + 1])
-    eyes = [r["frame"] for r in rows[:reopened + 1] if r["face"] == "eyes"]
-    tilted = [r["frame"] for r in rows[:reopened + 1] if r["face"] == "logo" and r["inkHeight"] < .8 * r["inkWidth"]]
-    two_flips = bool(eyes and tilted and tilted[0] < eyes[0] <= eyes[-1] < tilted[-1])
+    upright = all(r["face"] == "logo" and r["inkHeight"] >= .9 * r["inkWidth"] for r in rows[:reopened + 1])
     contracted = [r["width"] for r in before]
     expanded = [r["width"] for r in after]
     column_drift = max(abs(r["center"] - rows[0]["center"]) for r in rows[:reopened + 1])
-    passed = (faces == ["logo", "eyes", "logo"] and two_flips and column_drift <= 4
+    passed = (upright and column_drift <= 4
               and len(set(contracted)) >= 4 and len(set(expanded)) >= 4
               and max(b - a for a, b in zip(contracted, contracted[1:])) <= 4
               and max(a - b for a, b in zip(expanded, expanded[1:])) <= 4
               and final_close["passed"])
     return dict(passed=passed, facesBeforeReopened=faces, maxColumnDriftBeforeReopenedPx=column_drift, narrowestFrame=rows[turn],
-                tiltedLogoBeforeReopened=tilted, finalClose=final_close)
+                uprightBeforeReopened=upright, finalClose=final_close)
 
 
 def check(movie, output, reverse):

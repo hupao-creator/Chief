@@ -193,10 +193,10 @@ end the handoff.
 `inputLeaving` keeps the ordinary closing editor mounted for 420ms to retain
 its selection. Returning from an Agent conversation to Overview closes the reading
 panel's input gate while the workspace still owns the outgoing draft. The
-composer and its directory suggestions hide at that point. The accepted close
-starts the Harness-to-eyes flip, including while Overview prepares the return.
-The shell starts contracting in its reading column on the same update, easing out over the
-420ms return. Route release removes the row without a SwiftUI exit fade. Reopening
+composer and its directory suggestions hide at that point. The accepted close starts a 420ms ease-out fold in the reading column.
+The Harness mark stays upright until the presented glass is compact and column travel
+has settled. The stationary bar then flips to the eyes over 420ms. The mounted
+mark releases the reader return on animation completion or when its seat disappears. Route release removes the row without a SwiftUI exit fade. Reopening
 restores the active draft and its selection. Talk has independent presentation
 and can become readable when input closes. The shell and the single identity
 seat move in the same transaction. The editor overlay reserves its final width
@@ -205,13 +205,11 @@ the right of the Harness logo after the logo clears the final text seat. Below
 260pt of capsule width, text and attachments occupy the row above the identity
 and actions. The editor fades in during the last tenth of shell expansion.
 The retiring shell keeps its bottom center in the reading column. With no
-sidecard expanded, it folds and lifts on the workspace midline. The same
-interpolated frame sizes the glass and releases the column when it reaches
-the compact size, even when a Super Thread withdraws its execution marker or
-releases the route during the fold. The compact Dock returns horizontally at
+sidecard expanded, it folds and lifts on the workspace midline. The interpolated frame sizes the glass. The Dock retains the occupied column
+through the fold and turn even when a Super Thread withdraws its execution marker. The compact Dock returns horizontally at
 the reading height and lifts at the workspace center. If the same Agent reader
 reopens during its fold, its input expands again under the selected execution.
-An already compact bar can travel immediately. Reduce Motion settles the
+An already compact, stationary bar can start its return flip immediately. Reduce Motion settles the
 returning mark, fold and travel immediately. Resize preserves the native editor and the
 shell fits the viewport.
 The [Agent entrance replay](../../../../../demos/moku-panel-transition/README.md#agent-entrance-replay)
@@ -701,9 +699,8 @@ and accessibility hit testing. Both directions of the horizontal-axis turn use t
 in its first half and reveals the new mark in its second half. Changing Harness
 flips to the new mark; changing Threads within the same Harness keeps it steady.
 Overview and Report/Git restore Moku's theme. Settings uses the resident eyes.
-Both marks share one animated angle. Its clock is independent of the shell’s
-resize curve through input withdrawal and release of the Report column. Reopening during the fold reverses that
-angle, so only the side facing the viewer can draw. A hidden side uses an
+Both marks share one animated angle. Reopening during the fold retains the Harness mark. Reopening during the
+turn reverses the angle, so only the side facing the viewer can draw. A hidden side uses an
 identity transform to keep its coordinate space invertible. If a third Harness
 is requested mid-turn, its artwork takes the hidden seat once the turn lands.
 The current visit alone can admit the editor when its mark has settled.

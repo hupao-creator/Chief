@@ -31,7 +31,7 @@ extension ReportFollowup {
             try pressReadingPanelClose(in: window, identifier: "report-reading-panel-frame")
             if reverse {
                 try await wait("Report did not begin closing") { scene.readingPanelReturning }
-                try await Task.sleep(for: .milliseconds(230))
+                try await Task.sleep(for: .milliseconds(650))
                 guard scene.readingPanelReturning else { throw PluginContractError("Missed in-flight Close") }
                 record("reopen Report")
                 host.open(report)

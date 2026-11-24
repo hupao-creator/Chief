@@ -68,8 +68,9 @@ Returning to Overview hides the Agent composer as soon as the reading panel
 blocks input. The eyes flip to the Harness logo on entry and the logo flips
 back to the eyes on return. Both turns use the 420ms reading opening curve.
 Reduce Motion settles either direction immediately.
-The turn starts as the shell contracts
-around the bottom center of its reading column. Once compact, it glides horizontally at the reading height until
+The shell contracts around the bottom center of its reading column with the Harness logo upright.
+The turn runs in the stationary compact shell. Once the eyes settle, the reader can close
+and the bar can glide horizontally at the reading height until
 centered in the workspace, then rises vertically to its Overview seat.
 A centered reader only needs the lift. Closing a Super Thread with an
 execution selected uses the same sequence.

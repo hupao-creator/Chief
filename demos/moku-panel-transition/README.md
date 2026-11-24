@@ -342,8 +342,8 @@ of its upright height. The checker brackets each crossing with samples at most t
 60 Hz frames apart. The [420ms reading curve](../../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer)
 spends 64ms between these angles. The movie allows one frame per crossing for
 sampling and rasterization. The fully expanded bar must hold the logo at full height.
-Corresponding legs must agree within 85ms. The return must cross the edge during
-contraction, and reopening must show the partially revealed eyes narrowing back toward the logo.
+Corresponding legs must agree within 85ms. The return must flip within the stationary compact bar after contraction. Reopening
+during that turn must show the partially revealed eyes narrowing back toward the logo.
 The reduced-motion visit checks endpoint widths and a full logo in either direction.
 
 The [window recordings and frame evidence](evidence/bar-motion/README.md) include the baseline and the two measured directions.
@@ -369,11 +369,10 @@ python3 demos/moku-panel-transition/workspace/check_identity_return.py /tmp/chie
 ScreenCaptureKit records only the nonactivating panel in the replay process.
 The 4096×2450 framing preserves the reference's workspace bounds and 1.8 movie
 pixels per point. The window renders at native layout scale on a 2× display.
-The checks measure the capsule on every encoded frame. Both a foreshortened
-Codex logo and the incoming eyes must be visible during the in-column fold.
+The checks measure the capsule on every encoded frame. The Codex logo must stay upright throughout the in-column fold. Both a foreshortened
+logo and the incoming eyes must then be visible in the stationary compact bar.
 The compact bar must reach center at reading height before it lifts.
-The interrupted visit must stay in its reading column and show the logo,
-eyes and logo again before the final close. Per-frame measurements retain unresolved frames for visual inspection.
+The interrupted visit must stay in its reading column and keep the logo upright until the final close. Per-frame measurements retain unresolved frames for visual inspection.
 The [close recording](evidence/identity-return/close.mp4) and
 [interrupted return](evidence/identity-return/reverse.mp4) are untrimmed.
 The [capture record](evidence/identity-return/capture.json) identifies their

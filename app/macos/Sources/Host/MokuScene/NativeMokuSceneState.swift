@@ -30,6 +30,17 @@ import ChiefPluginUI
     private var inputIdentityReady = true
     private let readingPanelMotion: NativeReadingPageMotion?
     var readingPanelReturning: Bool { readingPanelVisible && readingPanelMotion?.isReturning == true }
+    // The mounted identity owns this token through its last frame of Harness ink.
+    // An absent or replaced seat must never hold a reader's close request.
+    var harnessSeat: UUID?
+    func waitForReturningEyes() async {
+        guard let seat = harnessSeat else { return }
+        for await waiting in Observations({
+            self.readingPanelReturning && self.windowVisible && !self.dockCovered && self.harnessSeat == seat
+        }) {
+            if !waiting { break }
+        }
+    }
     public var inputInteractionReady: Bool {
         inputAdmissionReady && inputIdentityReady && (!readingPanelVisible || readingPanelMotion?.active != true)
     }

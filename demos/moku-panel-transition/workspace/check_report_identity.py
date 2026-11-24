@@ -110,15 +110,22 @@ def check(directory, reduced):
     aligned = all(r["face"] == "logo" and r["height"] >= 22 for r in expanded)
     closing = compare(closed, "logo", "eyes")
     edge_row = next(r for r in closed if r["pts"] == closing["edgePTS"])
-    folding = closed[-1]["width"] + 4 < edge_row["width"] < closed[0]["width"] - 4
+    compact = closed[-1]["width"]
+    folding = [r for r in closed if compact + 4 < r["width"] < closed[0]["width"] - 4]
+    upright_fold = bool(folding) and all(r["face"] == "logo" and r["height"] >= 22 for r in folding)
+    turn_frames = [frame for leg in closing["legs"] for frame in leg["frames"]]
+    turn = [r for r in closed if turn_frames and min(turn_frames) <= r["frame"] <= max(turn_frames)]
+    source_center = closed[0]["left"] + closed[0]["width"] / 2
+    stationary = bool(turn) and all(abs(r["width"] - compact) <= 4 and abs(r["left"] + r["width"] / 2 - source_center) <= 4
+                                    and abs(r["top"] - edge_row["top"]) <= 4 for r in turn)
     reverse = segment(4, 6)
     sequence = faces(reverse)
     eyes = [r for r in reverse if r["face"] == "eyes"]
     reversed_midturn = sequence == ["logo", "eyes", "logo"] and eyes[0]["height"] < max(r["height"] for r in eyes) > eyes[-1]["height"]
     asymmetry = max(abs(a["edgeToFullMS"] - b["edgeToFullMS"])
                     for a, b in zip(opening["legs"], reversed(closing["legs"])))
-    return dict(passed=opening["passed"] and aligned and closing["passed"] and folding and reversed_midturn and asymmetry <= 85,
-                expandedLogoUpright=aligned,
+    return dict(passed=opening["passed"] and aligned and closing["passed"] and upright_fold and stationary and reversed_midturn and asymmetry <= 85,
+                expandedLogoUpright=aligned, uprightFold=upright_fold, stationaryTurn=stationary,
                 opening=opening, closing=closing, closingEdgeWidthPx=edge_row["width"], maxLegDifferenceMS=asymmetry,
                 interruptedSequence=sequence, interruptedEyeHeightsPt=[r["height"] for r in eyes])
 
