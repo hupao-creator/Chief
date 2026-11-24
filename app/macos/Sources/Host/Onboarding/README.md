@@ -69,8 +69,13 @@ restores its own retained configuration.
 
 Opening the independent editor loads the selected Harness catalog in the role's
 workspace. Its read-only preview uses retained settings when available and
-Chief's saved profiles on first use. Inherited discovery still joins Chief's
-resource. Confirming waits for the revision-checked save of the complete draft.
+Chief's saved profiles on first use. Returning to that role and Harness during
+a read joins it. Once ready, the editor can reuse that role's presentation for
+five minutes across Back, mode changes, Harness switches and app activation.
+A changed saved profile, workspace, installation or connection requires its
+own current resource. Tag and Super Thread have distinct workspaces, so each
+can have a cold first read for the same Harness. Inherited discovery still
+joins Chief's resource. Confirming waits for the revision-checked save of the complete draft.
 The save does not reacquire native snapshots for the copied profiles or recheck
 the selected Harness's native catalog.
 

@@ -11,7 +11,7 @@ final class NativeWorkspaceSettingsPrefetch {
     private var availablePreviews: [NativeHarnessSettingsConfiguration] = []
     private var refreshSequences: [String: Int] = [:]
     private var authority: UUID?
-    private var task: Task<Void, Never>?
+    private var tasks: [NativeHarnessSettingsConfiguration: Task<Void, Never>] = [:]
 
     init(host: NativeHarnessHost) { self.host = host }
 
@@ -56,26 +56,37 @@ final class NativeWorkspaceSettingsPrefetch {
         }
         let sequences = model.detailRefreshSequences
         guard next != configurations || previews != availablePreviews || sequences != refreshSequences || authority != workspace.snapshotAuthority else { return }
-        task?.cancel()
-        for (id, sequence) in sequences where sequence != refreshSequences[id, default: 0] {
+        let changedHarnesses = sequences.keys.filter { sequences[$0] != refreshSequences[$0, default: 0] }
+        // Discovery and saves arrive independently. Each unchanged source keeps
+        // both its pending retry and its deadline for the next catalog read.
+        let retained = Set(next)
+        for (configuration, task) in tasks where authority != workspace.snapshotAuthority ||
+            changedHarnesses.contains(configuration.harnessID.string) || !retained.contains(configuration) {
+            task.cancel()
+            tasks[configuration] = nil
+        }
+        for id in changedHarnesses {
             host.releaseGlobalSettings(harnessID: JSONText(id))
         }
         configurations = next; availablePreviews = previews; refreshSequences = sequences; authority = workspace.snapshotAuthority
         host.retainGlobalSettings(configurations: next, availablePreviews: previews)
-        task = Task { [host] in
-            await host.prefetchSettings(configurations: next)
-            // Model capabilities change independently of installation paths.
-            // Revalidate at the native catalog TTL without clearing visible
-            // editors or forcing unrelated Harness caches to expire.
-            while !Task.isCancelled {
-                do { try await Task.sleep(for: .seconds(300)) } catch { return }
-                await host.prefetchSettings(configurations: next, reload: true)
+        for configuration in next where tasks[configuration] == nil {
+            tasks[configuration] = Task { [host] in
+                while !Task.isCancelled {
+                    await host.prefetchSettings(configuration)
+                    let deadline = host.cachedSettingsSurface(configuration: configuration)?.revalidationDeadline
+                    let now = ContinuousClock.now
+                    // Failed admission can leave no current load timestamp.
+                    let nextRead = deadline.flatMap { $0 > now ? $0 : nil } ?? now.advanced(by: NativeHarnessSettingsSurface.revalidationInterval)
+                    do { try await Task.sleep(until: nextRead, clock: .continuous) } catch { return }
+                }
             }
         }
     }
 
     func stop() {
-        task?.cancel(); task = nil; configurations = []; availablePreviews = []; refreshSequences = [:]; authority = nil
+        for task in tasks.values { task.cancel() }
+        tasks.removeAll(); configurations = []; availablePreviews = []; refreshSequences = [:]; authority = nil
         host.setSettingsAvailable(false)
     }
 }

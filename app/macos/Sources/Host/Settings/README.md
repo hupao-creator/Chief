@@ -339,9 +339,13 @@ checks do not force environment invalidation. Explicit recovery and installation
 still refresh the environment. Generation checks fence late replies after reload
 or disconnect. These reads never change the settings draft.
 
-Workspace-owned settings prefetch revalidates retained editors every five minutes
-without forcing native cache invalidation; this refreshes capabilities even when
-installation paths stay unchanged. OpenCode execution editors await model availability filtering on the original read or an explicit retry. Ordinary Thread settings can present the early native list and reread while filtering finishes. The shared Agent configuration loading notice uses the compact skillet beside its localized text for every Harness and the Chief roster. Reduce Motion holds the same still artwork as workspace loading.
+Each prefetched source has its own five-minute revalidation schedule and retry
+budget. Adding a Harness or saving another role leaves its pending read, retry
+delay and readiness intact. Mounting or activating a global editor reuses a
+successful matching presentation for five minutes after the read. An expired
+on-demand preview revalidates on entry or activation. Explicit retry can refresh
+immediately. A mounted global editor keeps a settled failure available for
+retry across visits. Thread editors retain their activation refresh. OpenCode execution editors await model availability filtering on the original read or an explicit retry. Ordinary Thread settings can present the early native list and reread while filtering finishes. The shared Agent configuration loading notice uses the compact skillet beside its localized text for every Harness and the Chief roster. Reduce Motion holds the same still artwork as workspace loading.
 
 AppKit owns the system select's menu tracking, keyboard navigation and cancellation.
 Settings keeps its existing page Escape handler; embedded model popovers retain

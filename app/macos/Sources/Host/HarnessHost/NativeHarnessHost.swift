@@ -67,7 +67,7 @@ public final class NativeHarnessHost {
     }
     private var settingsAuthority: UUID?
     public let settingsLifetime = NativeHarnessSettingsLifetime()
-    private var allowedGlobalSettings: Set<NativeHarnessSettingsConfiguration>?
+    private var allowedGlobalSettings: [NativeHarnessSettingsConfiguration: NativeHarnessSettingsConfiguration]?
 
     public init(client: RuntimeClient, registry: HarnessPluginRegistry,
                 currentThread: @escaping (JSONText) -> HarnessThread?,
@@ -185,8 +185,10 @@ public final class NativeHarnessHost {
 
     public func makeSettingsSurface(configuration: NativeHarnessSettingsConfiguration) throws -> NativeHarnessSettingsSurface {
         if case .global = configuration.scope {
-            guard settingsLifetime.available,
-                  allowedGlobalSettings?.contains(configuration.editorIdentity) != false else { throw CancellationError() }
+            guard settingsLifetime.available else { throw CancellationError() }
+            if let allowedGlobalSettings, allowedGlobalSettings[configuration.editorIdentity] != configuration {
+                throw CancellationError()
+            }
         }
         if case .global = configuration.scope,
            let surface = globalSettingsSurfaces[configuration.editorIdentity], !surface.isReleased {
@@ -233,55 +235,52 @@ public final class NativeHarnessHost {
         await prefetchSettings(configurations: failed, refresh: true)
     }
 
-    /// The workspace owns these reads independently of editor mounts. A child
-    /// cancellation stops retries, while another editor can still join a read.
     public func prefetchSettings(configurations: [NativeHarnessSettingsConfiguration], reload: Bool = false, refresh: Bool = false) async {
-        guard !Task.isCancelled else { return }
-        let generation = settingsLifetime.generation
-        let loads: [Task<Void, Never>] = configurations.compactMap { configuration in
-            guard case .global = configuration.scope else { return nil }
-            return Task { @MainActor [weak self] in
-                guard let self, !Task.isCancelled, self.settingsLifetime.generation == generation,
-                      let surface = try? self.makeSettingsSurface(configuration: configuration) else { return }
-                let prefetchID = UUID()
-                surface.prefetchID = prefetchID
-                defer { if surface.prefetchID == prefetchID { surface.prefetchID = nil } }
-                for delay in [0, 1, 3] {
-                    do {
-                        if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
-                        try Task.checkCancellation()
-                        // A newer saved source owns its own prefetch. Never
-                        // let an obsolete retry restore the old source.
-                        guard self.settingsLifetime.generation == generation, surface.configuration == configuration,
-                              surface.prefetchID == prefetchID else { return }
-                        if (reload || refresh) && delay == 0 { try await surface.reload(refresh: refresh) }
-                        else { try await surface.loadIfNeeded() }
-                        if surface.preparationError == nil { return }
-                    } catch is CancellationError { return }
-                    catch { /* Keep the resource's failure visible to its editor. */ }
-                }
+        await withTaskGroup(of: Void.self) { group in
+            for configuration in configurations {
+                group.addTask { await self.prefetchSettings(configuration, reload: reload, refresh: refresh) }
             }
         }
-        await withTaskCancellationHandler {
-            for load in loads { await load.value }
-        } onCancel: {
-            for load in loads { load.cancel() }
+    }
+
+    /// Each saved scope owns its retry budget independently of other discoveries.
+    func prefetchSettings(_ configuration: NativeHarnessSettingsConfiguration, reload: Bool = false, refresh: Bool = false) async {
+        guard case .global = configuration.scope, !Task.isCancelled,
+              let surface = try? makeSettingsSurface(configuration: configuration) else { return }
+        if !reload && !refresh && surface.hasFreshPresentation { return }
+        let prefetchID = UUID()
+        surface.prefetchID = prefetchID
+        defer { if surface.prefetchID == prefetchID { surface.prefetchID = nil } }
+        for delay in [0, 1, 3] {
+            do {
+                if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
+                try Task.checkCancellation()
+                guard !surface.isReleased, surface.configuration == configuration,
+                      surface.prefetchID == prefetchID else { return }
+                if (reload || refresh) && delay == 0 { try await surface.reload(refresh: refresh) }
+                else { try await surface.loadIfNeeded() }
+                if surface.preparationError == nil { return }
+            } catch is CancellationError { return }
+            catch { /* Keep the resource's failure visible to its editor. */ }
         }
     }
 
     /// Evict removed workspaces/scopes, without retaining every previous cwd.
     public func retainGlobalSettings(configurations: [NativeHarnessSettingsConfiguration],
                                      availablePreviews: [NativeHarnessSettingsConfiguration] = []) {
-        let identities = Set((configurations + availablePreviews).map(\.editorIdentity))
+        let allowed = configurations + availablePreviews
+        let sources = Dictionary(uniqueKeysWithValues: allowed.map { ($0.editorIdentity, $0) })
         settingsLifetime.configurations = configurations
-        allowedGlobalSettings = identities
-        for (identity, surface) in Array(globalSettingsSurfaces) where !identities.contains(identity) {
-            surface.release()
+        allowedGlobalSettings = sources
+        for (identity, surface) in globalSettingsSurfaces {
+            // Fence an outstanding preview even when its editor is unmounted.
+            if let source = sources[identity] { try? surface.updateSource(source) }
+            else { surface.release() }
         }
     }
 
     public func releaseGlobalSettings(harnessID: JSONText? = nil) {
-        settingsLifetime.generation = UUID()
+        if harnessID == nil { settingsLifetime.generation = UUID() }
         let current = globalSettingsSurfaces.values.filter { harnessID == nil || $0.configuration.harnessID == harnessID }
         for surface in current { surface.release() }
     }
