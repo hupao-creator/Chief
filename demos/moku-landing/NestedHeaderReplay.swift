@@ -1448,8 +1448,11 @@ private final class WheelSample: NSEvent {
               model.items.map(\.id) == ["Inbox tagged"] else { throw ReplayError("The sole Inbox tag was not selectable") }
         let scene = model.sceneKey
         let cardDeadline = ContinuousClock.now + .seconds(4)
-        while !canvas.allowsActivation(cardID: "Inbox tagged") || canvas.isLayingOut {
-            guard ContinuousClock.now < cardDeadline else { throw ReplayError("Single tagged card did not become interactive") }
+        // The incoming card can accept activation before SwiftUI unmounts the outgoing card at the same center.
+        while canvas.mountedCardIDs != ["Inbox tagged"] || !canvas.allowsActivation(cardID: "Inbox tagged") || canvas.isLayingOut {
+            guard ContinuousClock.now < cardDeadline else {
+                throw ReplayError("Single tagged card did not settle: mounted=\(canvas.mountedCardIDs.sorted())")
+            }
             try await Task.sleep(for: .milliseconds(30))
         }
         guard let frame = canvas.visibleFrame(for: "Inbox tagged") else { throw ReplayError("Single tagged card was offscreen") }
