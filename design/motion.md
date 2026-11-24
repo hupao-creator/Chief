@@ -10,7 +10,9 @@ The settled card uses its ordinary 420ms opening, including the Agent card’s
 identity handoff when its anchors are available. The Report
 admits the cited execution after its document and sidebar layout are ready.
 The bottom Chief Dock opens and closes its Overview input over 420ms,
-carrying the eyes and Stop button with the shell. [Dock and composer](../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer)
+carrying the eyes and Stop button with the shell. A semantic tag on the left of
+Overview uses the same smooth, zero-extra-bounce timing to reveal and hide its
+name. [Overview filters](../app/macos/Sources/Host/Overview/README.md#tags-and-filter-transitions) · [Dock and composer](../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer)
 
 Application-owned animations use their authored curves and completion gates.
 Visibility, focus, occlusion, offscreen state, explicit pause, drag/resize and
