@@ -24,7 +24,7 @@ private struct ComposerInk: ViewModifier, @preconcurrency Animatable {
 }
 
 /// Propose each presented size to the glass, its overlays and their alignment
-/// together for reading columns and rows with trailing execution controls.
+/// together for the Chief row, reading columns and rows with execution controls.
 /// Note and Settings retain their own panel layout inside the same editor tree.
 private struct CapsuleSurfaceFrame: ViewModifier, @preconcurrency Animatable {
     var size: CGSize
@@ -397,7 +397,9 @@ public struct NativeMokuDock: View {
             let openColumn = expanded && (state.inputOpen || continuationPresenting)
                 ? requestedFrame.map { InputColumn(frame: $0, viewport: geometry.size) } : nil
             let executionFrame = holdingColumn ? inputColumn?.frame : requestedFrame
-            let sizesRow = (executionFrame != nil || running || state.talkPresentation.message?.dispatch != nil)
+            // A running update can arrive mid-fold. Keep the Chief row's width
+            // on the same frame throughout so the glass never takes the viewport proposal.
+            let sizesRow = (threadID == nil || executionFrame != nil || running || state.talkPresentation.message?.dispatch != nil)
                 && !state.settingsOpen && !state.notePanelOpen && !noteMounted && !settlingNoteDock
             let column = executionFrame.map {
                 CGRect(x: $0.minX, y: viewport.minY, width: $0.width, height: viewport.height).intersection(viewport)

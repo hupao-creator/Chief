@@ -8,7 +8,7 @@ Typing or pressing Delete in the open bar plays a keyboard click when your Mac h
 
 In a task conversation, the same input box shows the agent's icon and sends to that conversation. In a Super Thread, open a source conversation in **Related executions** before sending a follow-up. [Agent conversations](task-conversations.md) · [Super Threads](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 
-The button at the right of the input box shows **Send** when your message is ready, even while Chief is working. Click it or press **Return** to send. When Chief is idle, an empty or whitespace-only draft leaves **Send** disabled. A ready file or a selected folder can be sent on its own.
+The button at the right of the input box shows **Send** when your message is ready, even while Chief is working. Click it or press **Return** to send. In Overview, the bar folds back around Chief’s eyes. It expands again when Chief shows a reply or task update. When Chief is idle, an empty or whitespace-only draft leaves **Send** disabled. A ready file or a selected folder can be sent on its own.
 
 When Chief's input is at the bottom of Overview, click outside it or press **Esc** to close it. Your unsent draft is there when you reopen the box.
 

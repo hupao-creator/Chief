@@ -135,6 +135,9 @@ while reading/content readiness still gates input. See the
 The Dock clears submitted text, directory references and ready attachment
 chips in the mounted editor as soon as the draft captures the send. The
 retiring Dock capsule also clears its sealed ink snapshot before collapse.
+The same frame sizes the idle and running Chief row. If the runtime reports
+that Chief has started while the glass is folding, the fold continues to its
+compact size. A visible Talk or dispatch notice expands the row to fit its content.
 The pinned Thread editor remains editable and keeps its native first responder
 while the send awaits confirmation. A reopened ordinary Dock can also edit its
 next draft. The draft blocks further submissions until the pending send settles.
