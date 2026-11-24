@@ -16,7 +16,8 @@ struct ThreadTranscriptBody: View {
             let message = ThreadMessage(id: item.id, author: .user, content: input.text,
                 steeringLabel: agentDetail ? nil : localized(input.followUp ? "补充" : "你"),
                 annotations: input.annotations, attachments: input.attachments,
-                openExternal: openExternal, resolveMedia: context.resolveMedia, previewAttachment: context.previewAttachment)
+                openExternal: openExternal, resolveMedia: context.resolveMedia, previewAttachment: context.previewAttachment,
+                resolveAttachmentImage: agentDetail ? context.resolveAttachmentImage : nil)
             if agentDetail {
                 ThreadSteerMessage(content: input.text, createdAt: input.createdAt,
                     details: input.annotations.isEmpty && input.attachments.isEmpty ? nil : AnyView(message))

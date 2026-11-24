@@ -38,6 +38,11 @@ explicit Browser annotation retain autofocus. The Dock requests automatic focus 
 current editor's text becomes visible. Explicit focus can acquire the admitted
 editor earlier. Incoming-reader publication cannot be cleared by its outgoing owner.
 
+In Overview, swiping up on Chief Bar opens its conversation around the same
+editor. Opening from the collapsed Bar requests keyboard focus. The panel keeps
+the Chief draft and stays open through admission and the reply. See the
+[Chief Bar conversation contract](../app/macos/Sources/Host/MokuScene/README.md#chief-bar-conversation).
+
 An unselected Super Thread document/list denies input expansion through the
 shared scene gate, including capsule, shortcut/menu and automation requests.
 Its associated execution borrows the pinned Agent composer after content/column
@@ -60,8 +65,12 @@ scrollable and the shell stays within the viewport. Closing the bottom Overview
 input fades the draft as the capsule starts to fold. The native editor stays
 mounted for the 420ms return and keeps its selection for reopening.
 Returning to Overview hides the Agent composer as soon as the reading panel
-blocks input. The Harness logo flips back to Chief’s eyes as the shell contracts
-around the bottom center of its reading column. Once compact, it glides horizontally at the reading height until
+blocks input. The eyes flip to the Harness logo on entry and the logo flips
+back to the eyes on return. Both turns use the 420ms reading opening curve.
+Reduce Motion settles either direction immediately.
+The shell contracts around the bottom center of its reading column with the Harness logo upright.
+The turn runs in the stationary compact shell. Once the eyes settle, the reader can close
+and the bar can glide horizontally at the reading height until
 centered in the workspace, then rises vertically to its Overview seat.
 A centered reader only needs the lift. Closing a Super Thread with an
 execution selected uses the same sequence.

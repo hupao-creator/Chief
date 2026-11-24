@@ -130,9 +130,13 @@ This entry admits public ordinary threads, including archived and
 failed or Moku-tool-interrupted threads hidden from Overview. The reading request is
 exact and does not start execution. A missing or ineligible thread shows an
 unavailable notice; a missing execution uses the reader's unavailable page. Each click receives a fresh reading request.
-After Note dismissal, Overview retains its filter and horizontal position.
-A visible source card supplies the reader entrance. A visible collection first
-turns to the linked Report. A filtered or offscreen destination opens directly.
+After Note dismissal, Overview resolves the tag space for the reader destination.
+It retains a space containing that Thread or Report, otherwise prefers a matching sibling
+tag within the selected folder, then a matching filter by scoped membership.
+An untagged Inbox destination opens directly and keeps the current space.
+A hidden ordinary Thread can still lead to its directory when that directory exists.
+The new space finishes layout before the reader opens. A link outside a folder's Running results can reveal the source in the whole folder. A link within the same Inbox tag preserves its status selection. A visible source card supplies the entrance, and a visible collection first
+turns to the linked Report. An offscreen destination or one without a card opens directly.
 The catalog indexes Super Thread ownership by ordinary Thread, across its runs.
 A unique owner opens the Report panel with the cited run beside the document.
 Both Note routes start at the heading of the exact run. The Report’s own

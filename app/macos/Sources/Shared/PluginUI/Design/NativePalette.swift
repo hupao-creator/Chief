@@ -14,7 +14,7 @@ public enum NativePalette {
         ink: pair(0x20211e, 0xeeeee9), inkStrong: pair(0x20211e, 0xeeeee9),
         muted: pair(0x777871, 0xb1b2aa), faint: pair(0xa5a69f, 0x96988f),
         line: pair(0xdfddd6, 0x4b4d44), lineSoft: pair(0xeae8e2, 0x383a33),
-        accent: pair(0x19725f, 0x78cdb3), accentSoft: pair(0xe3f0eb, 0x283e35),
+        accent: pair(0xbea679, 0xd8bf8e), accentSoft: pair(0xf3ecd9, 0x403725),
         action: pair(0xad6a12, 0xedb562), provider: pair(0x666861, 0xb7b9b2),
         danger: pair(0xb4493f, 0xf0988d), warning: pair(0x9a6d23, 0xe6bd78),
         success: pair(0x287d54, 0x68bd8c), agentRun: pair(0x6d28d9, 0xc4b5fd))
@@ -31,6 +31,10 @@ public enum NativePalette {
         action: pair(0x5645d4, 0xb5a7ff), provider: pair(0x5645d4, 0xb5a7ff),
         danger: pair(0xb44841, 0xe69a92), warning: pair(0x986b32, 0xd4ac76),
         success: pair(0x47785b, 0x8aba9b), agentRun: pair(0x6d28d9, 0xc4b5fd))
+
+    public static let overviewAccentText = pair(0x775a2e, 0xe6ce9d)
+    static let overviewWorkStatusMark = pair(0x19725f, 0x78cdb3)
+    static let overviewWorkStatusFill = pair(0xe3f0eb, 0x283e35)
 
     public static let settings = Settings()
 

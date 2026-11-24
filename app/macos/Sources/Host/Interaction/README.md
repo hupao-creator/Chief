@@ -87,11 +87,14 @@ that time from foreground reading. Selecting a carousel page is not a reading ev
 
 
 Overview publishes the unread Thread count for each folder and semantic tag.
-The folder count covers the whole folder while a semantic tag is selected.
+The folder count covers its tagged members while a semantic tag is selected.
 The filter tree describes the choices in the catalog. The mounted controls
 identify the choices available on the current Overview. Filter activation
 invokes the registered button action. Top-row Inbox tags register as semantic
 controls alongside the current project directory’s visible child controls.
+The ordered left choices are exposed as `overview.rail`, with `selectedRailId`
+for the highlighted button. A folder has one mounted status button, Running.
+A top-level Inbox tag has Running, All statuses and Completed.
 See the [socket protocol](../../../../../tools/native-interaction/README.md) for
 action arguments and snapshot fields.
 Individual report observations expose `collectionEligibility`. Collections expose

@@ -91,4 +91,9 @@ struct NativeOverviewMembership {
         threads = collection.threads.map(\.id)
         applications = collection.applications.map(\.entry.ref)
     }
+
+    func contains(_ reference: ApplicationThreadRef) -> Bool {
+        if reference.typeID == "agent" { return threads.contains(reference.threadID) }
+        return applications.contains(reference)
+    }
 }

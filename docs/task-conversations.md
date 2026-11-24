@@ -8,7 +8,7 @@ Click **Show work** when it appears for a summary, including the number of reaso
 
 A Codex task continues normally when a command returns binary data. You can follow the agent’s next step in the same conversation.
 
-When you open a Codex task, Chief’s eyes flip to the Codex logo inside the input bar. When you close the conversation, the logo flips back to the eyes as the bar shrinks.
+When you open a Codex task, Chief’s eyes flip to the Codex logo, which settles upright at the left of the input bar. When you close the conversation, the bar shrinks with the logo still upright. Once the bar is compact, the logo flips back to Chief’s eyes. The conversation then closes. If the bar is centered below the conversation, it stays centered as it shrinks and rises back into Overview.
 
 When a conversation opens with an **Execution** sidecard on the right, the input bar glides beneath it and opens there. Click **×** at the top left of the conversation or click the blank margin to return to Overview. The bar shrinks beneath the sidecard, moves left at the same height, then rises into place at the center of Overview.
 
@@ -23,6 +23,8 @@ To stop the current run, click **Stop this thread**. The button shares the **Sen
 Type your follow-up in **Type a message…** and click **Send** or press Return. Use Shift+Return for a new line. When you send to a running agent, your message fades into place alongside the agent’s work. With Reduce Motion on, it appears in place immediately. If the run has ended, sending starts a new run in the same conversation. Answer any pending question or permission request first.
 
 Click **+** to attach files or point the agent to a folder on your Mac. Command-click to select several items together. Their names or image previews appear above your draft. Supported attachments vary by agent. If the agent rejects an attachment, remove it and try a supported type or describe it in text. You can return to finish an unsent draft after opening a different conversation.
+
+When a follow-up appears in the conversation, click **Show full text** to see its attachments. Available images appear as thumbnails. Click a thumbnail to view the original in Quick Look, where you can open it in an app. Other files and images that Chief can't read appear by filename. Click **Collapse text** to return to the compact message.
 
 If Chief is still connected to a background service from before an update, your message appears when the agent records it.
 

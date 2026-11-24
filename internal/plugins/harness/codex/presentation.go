@@ -302,11 +302,18 @@ func stOverviewTurns(turns []any) map[int]bool {
 	if len(turns) > 0 {
 		result[len(turns)-1] = true
 	}
-	card, reply := false, false
+	remaining, reply := 2, false
 	for i := len(turns) - 1; i >= 0; i-- {
 		turn := stMap(turns[i])
-		if !card && (stCardMessage(turn) != nil || turn["status"] == "completed" && (strings.TrimSpace(stString(turn["answer"])) != "" || strings.TrimSpace(stString(turn["reasoning"])) != "")) {
-			result[i], card = true, true
+		if remaining > 0 {
+			count := len(stCardMessages(turn, remaining))
+			if count == 0 && turn["status"] == "completed" && (strings.TrimSpace(stString(turn["answer"])) != "" || strings.TrimSpace(stString(turn["reasoning"])) != "") {
+				count = 1
+			}
+			if count > 0 {
+				result[i] = true
+				remaining -= count
+			}
 		}
 		if !reply && turn["status"] == "completed" && stLastAssistant(turn) != nil {
 			result[i], reply = true, true
@@ -315,16 +322,29 @@ func stOverviewTurns(turns []any) map[int]bool {
 	return result
 }
 
-func stCardMessage(turn Map) Map {
+func stCardMessages(turn Map, limit int) []Map {
 	eligible := stActive(turn) || turn["status"] == "completed"
 	timeline := stArray(turn["timeline"])
+	var messages []Map
+	var lastAssistantID string
 	for i := len(timeline) - 1; i >= 0; i-- {
 		item := stMap(timeline[i])
-		if (item["kind"] == "assistant" && item["status"] == "complete" || item["kind"] == "reasoning" && eligible) && strings.TrimSpace(stString(item["content"])) != "" {
-			return item
+		if !(item["kind"] == "assistant" && item["status"] == "complete" || item["kind"] == "reasoning" && eligible) || strings.TrimSpace(stString(item["content"])) == "" {
+			continue
+		}
+		if item["kind"] == "assistant" {
+			id := stString(item["itemId"])
+			if id != "" && id == lastAssistantID {
+				continue
+			}
+			lastAssistantID = id
+		}
+		messages = append(messages, item)
+		if len(messages) == limit {
+			break
 		}
 	}
-	return nil
+	return messages
 }
 
 func stLastAssistant(turn Map) Map {
@@ -405,10 +425,14 @@ func stCompactTurn(turn Map, preview, current, overview bool) Map {
 			result["lastAssistantMessage"] = snapshot
 		}
 		if overview {
-			card := stCardMessage(turn)
-			var reply Map
+			selected := map[string]bool{}
+			for _, item := range stCardMessages(turn, 2) {
+				selected[stString(item["id"])] = true
+			}
 			if turn["status"] == "completed" {
-				reply = stLastAssistant(turn)
+				if reply := stLastAssistant(turn); reply != nil {
+					selected[stString(reply["id"])] = true
+				}
 			}
 			hasText := false
 			for _, value := range stArray(turn["timeline"]) {
@@ -416,7 +440,7 @@ func stCompactTurn(turn Map, preview, current, overview bool) Map {
 				if item["kind"] == "assistant" || item["kind"] == "reasoning" {
 					hasText = true
 				}
-				if card != nil && item["id"] == card["id"] || reply != nil && item["id"] == reply["id"] {
+				if selected[stString(item["id"])] {
 					projected := stClone(item)
 					projected["content"] = stHead(strings.TrimSpace(stString(item["content"])), 1200)
 					result["timeline"] = append(stArray(result["timeline"]), projected)

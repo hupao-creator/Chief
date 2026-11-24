@@ -108,7 +108,7 @@ A settings save that races configuration discovery causes re-resolution within
 the same batch attempt, without failure backoff. Existing idle-session reuse
 passes the same saved-version check.
 
-The Swift [Report application](../../../../app/macos/Sources/Plugins/Applications/Report/) supplies cards and a native HTML reading route using the shared navigation stack. Report documents have no ordinary task execution lifecycle. Their tags decorate the document and do not independently create Overview filter membership.
+The Swift [Report application](../../../../app/macos/Sources/Plugins/Applications/Report/) supplies cards and a native HTML reading route using the shared navigation stack. Report documents have no ordinary task execution lifecycle. Reports inherit semantic tags from their cited tasks. Overview can show a tagged Report in its folder even when its sources are archived. A Report with only a directory label stays outside Tag Spaces.
 
 The body uses `data-chief-html-content`, the `--chief-safe-area-top` and
 `--chief-safe-area-left` variables, and optional `--chief-html-top-space`.

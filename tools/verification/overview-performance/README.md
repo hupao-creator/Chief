@@ -20,6 +20,7 @@ samples, environment and process-load observations. Preparation/output are
 outside the timed operations; native scheduling and background work remain
 measurement limitations.
 
+Catalogs distribute tagged tasks round-robin across ten directories; initial admission and reset project the first available directory.
 The current workload covers fresh model admission, unchanged catalog admission,
 projection/reconciliation, filters and the production window-size layout entry. Initial layout and resize include window margins and horizontal fitting. The mixed resize workload alternates 900pt and 1440pt widths with two tall reports, two wide tasks and one single-cell task. It times packing and filling interior openings. Mounted tag selection and WebKit cover readiness have a [separate probe](../tag-space/README.md). It uses three
 untimed warmups and repeated operations. Monotonic elapsed latency is not

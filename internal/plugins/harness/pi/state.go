@@ -389,16 +389,17 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 		latest = *state.LatestExecutionID
 	}
 	live := activeExecution(&state) != nil
-	card, reply := -1, -1
-	for i := len(state.Messages) - 1; i >= 0; i-- {
+	var cards []int
+	reply := -1
+	for i := len(state.Messages) - 1; i >= 0 && len(cards) < 2; i-- {
 		row := state.Messages[i]
 		if row.Role != "assistant" {
 			continue
 		}
 		complete := row.Status == "complete"
 		current := row.ExecutionID == latest && live
-		if card < 0 && (complete || current) && (complete && strings.TrimSpace(row.Text) != "" || (completed[row.ExecutionID] || current) && strings.TrimSpace(row.Thinking) != "") {
-			card = i
+		if (complete || current) && (complete && strings.TrimSpace(row.Text) != "" || (completed[row.ExecutionID] || current) && strings.TrimSpace(row.Thinking) != "") {
+			cards = append(cards, i)
 		}
 	}
 	for e := len(state.Executions) - 1; e >= 0 && reply < 0; e-- {
@@ -414,10 +415,13 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 		}
 	}
 	selected, preview := map[int]bool{}, map[int]bool{}
-	for _, i := range []int{card, reply} {
-		if scope.Kind == "overview" && i >= 0 {
-			selected[i] = true
-			preview[i] = true
+	cardPreview := map[int]bool{}
+	if scope.Kind == "overview" {
+		for _, i := range cards {
+			selected[i], preview[i], cardPreview[i] = true, true, true
+		}
+		if reply >= 0 {
+			selected[reply], preview[reply] = true, true
 		}
 	}
 	groups := map[string][]int{}
@@ -490,7 +494,7 @@ func (stateAdapter) ProjectRenderer(raw json.RawMessage, scope model.RendererSco
 			result.Model = row.Model
 			result.Provider = row.Provider
 			result.Usage = row.Usage
-			if scope.Kind == "overview" && i == card && (row.Status != "complete" || strings.TrimSpace(row.Text) == "") {
+			if cardPreview[i] && (row.Status != "complete" || strings.TrimSpace(row.Text) == "") {
 				result.Thinking = clean(strings.TrimSpace(row.Thinking), 1200)
 			}
 		}

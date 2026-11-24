@@ -121,11 +121,12 @@ struct NativeMokuCapsuleEyes: Shape {
     }
 }
 
-/// Note reads on dark Regular glass. Other capsule states retain their warm
-/// gradient above clear glass; Reduce Transparency supersedes both materials.
+/// Note uses dark regular glass and the conversation follows the workspace appearance.
+/// The compact Bar keeps its warm finish. Reduce Transparency makes the shell opaque.
 struct NativeMokuCapsuleGlass: View {
     var interactive = true
     var regular = false
+    var appearance: ColorScheme = .dark
     var strength = 0.85
     /// A local preview override; system Reduce Transparency always takes priority.
     var forceOpaque = false
@@ -133,12 +134,16 @@ struct NativeMokuCapsuleGlass: View {
     private var opaque: Bool { systemOpaque || forceOpaque }
 
     var body: some View {
-        material.environment(\.colorScheme, .dark)
+        material.environment(\.colorScheme, appearance)
     }
 
     @ViewBuilder private var material: some View {
         if opaque {
-            NativeMokuCapsuleFinish(opaque: true)
+            if appearance == .light {
+                RoundedRectangle(cornerRadius: NativeMokuCapsuleLayout.cornerRadius).fill(.background)
+            } else {
+                NativeMokuCapsuleFinish(opaque: true)
+            }
         } else {
             Color.clear
                 // Keep one glass node while Note changes the capsule's size and

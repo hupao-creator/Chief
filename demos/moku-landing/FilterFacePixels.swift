@@ -1,7 +1,6 @@
 import AppKit
 
 // The lower inner face clears the 19pt emoji, label, corner badge and reflected rim.
-// Sampling below the glyph also clears the workspace fixture's top connection notice.
 func filterFaceRGB(_ pixels: NSBitmapImageRep, at frame: CGRect, scale: CGFloat) -> [Double] {
     let cx = frame.minX + frame.height / 2
     let cy = frame.midY + 12

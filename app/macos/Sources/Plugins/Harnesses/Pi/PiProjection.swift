@@ -8,6 +8,7 @@ public struct PiOverviewView {
     let presentation: ThreadCardPresentation
     let excerpt: JSONText
     let message: ThreadCardMessage?
+    let previousMessage: ThreadCardMessage?
     let initialResponseContent: Bool
     let initialResponse: ThreadCardInitialResponse?
     let steer: JSONText?
@@ -26,7 +27,8 @@ func piOverview(input: HarnessThreadInput, availableColumns: Int) throws -> Harn
     let latest = input.thread.observation.latestExecution
     let status = latest?.executionID == executionID ? latest?.status : state.executions.first { $0.executionID == executionID }?.status
     let prompt = current.last { $0.role == "user" }
-    let agent = piOverviewMessage(state, executionID: executionID, status: status)
+    let previews = piOverviewMessages(state, executionID: executionID, status: status, limit: 2)
+    let agent = previews.first
     let source = agent ?? prompt.map {
         (id: piKey([$0.executionID, $0.role, $0.id]), text: piTrim($0.text))
     }
@@ -62,6 +64,7 @@ func piOverview(input: HarnessThreadInput, availableColumns: Int) throws -> Harn
         ? threadCardInitialResponse(pendingInput: input.thread.pendingInput, observation: input.thread.observation,
                                     hasVisibleInteraction: pending.map { !$0.questions.contains(where: \.secret) } ?? false) : nil
     let view = PiOverviewView(presentation: presentation, excerpt: initial == nil ? excerpt : "", message: initial == nil ? message : nil,
+        previousMessage: previews.dropFirst().first.map { ThreadCardMessage(id: $0.id, text: $0.text.string) },
         initialResponseContent: state.initialResponseScope && agent != nil && input.thread.moku != true, initialResponse: initial, steer: steer,
         model: model.isEmpty ? "Pi" : model, effort: piThinkingLabel(input.thread.settings["thinking"]) ?? "未选择",
         status: latest?.status.rawValue ?? "idle", pendingInteractionID: pending?.id)
@@ -70,6 +73,11 @@ func piOverview(input: HarnessThreadInput, availableColumns: Int) throws -> Harn
 }
 
 func piOverviewMessage(_ state: PiState, executionID: JSONText?, status: PublicExecution.Status?, exactExecution: Bool = false) -> (id: JSONText, text: JSONText)? {
+    piOverviewMessages(state, executionID: executionID, status: status, exactExecution: exactExecution, limit: 1).first
+}
+
+private func piOverviewMessages(_ state: PiState, executionID: JSONText?, status: PublicExecution.Status?, exactExecution: Bool = false, limit: Int) -> [(id: JSONText, text: JSONText)] {
+    var previews: [(id: JSONText, text: JSONText)] = []
     let completed = Set(state.executions.filter { $0.status == .completed }.map(\.executionID))
     let live = status == .running || status == .waitingForUser
     for message in state.messages.reversed() where message.role == "assistant" {
@@ -81,10 +89,11 @@ func piOverviewMessage(_ state: PiState, executionID: JSONText?, status: PublicE
         let reasoning = completed.contains(message.executionID) || (current && live) ? message.thinking.map(piTrim) : nil
         let text = answer.codeUnits.isEmpty ? reasoning : answer
         if let text, !text.codeUnits.isEmpty {
-            return (id: piKey([message.executionID, message.role, message.id, answer.codeUnits.isEmpty ? "reasoning" : "text"]), text: text)
+            previews.append((id: piKey([message.executionID, message.role, message.id, answer.codeUnits.isEmpty ? "reasoning" : "text"]), text: text))
+            if previews.count == limit { break }
         }
     }
-    return nil
+    return previews
 }
 
 func piCompactTokens(_ value: Double) -> String {
@@ -156,7 +165,7 @@ struct PiOverviewCard: View {
             harness: ThreadCardHarnessBrand(brandKey: "pi", label: "Pi Agent", logoSource: PiHarnessPlugin.logo),
             model: projection.model, effort: projection.effort,
             runtime: execution.map { ThreadCardRuntimeValue(startedAt: $0.startedAt, endedAt: $0.finishedAt) },
-            steer: projection.steer?.string, excerpt: projection.excerpt.string, message: projection.message, initialResponse: projection.initialResponse, initialResponseContent: projection.initialResponseContent)
+            steer: projection.steer?.string, excerpt: projection.excerpt.string, message: projection.message, previousMessage: projection.previousMessage, initialResponse: projection.initialResponse, initialResponseContent: projection.initialResponseContent)
     }
     private func respond(_ response: ThreadCardInterventionResponse) async throws {
         failure = nil

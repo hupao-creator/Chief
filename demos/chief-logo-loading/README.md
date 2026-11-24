@@ -1,6 +1,6 @@
 # Chief logo 加载动效
 
-各段动效取自同一张[应用图标原画](../../design/chief-logo.webp)。表中以原生[启动加载标记](../../app/macos/Sources/Shared/PluginUI/Design/NativeSurfaceLoading.swift)的 120 pt 布局尺寸并排展示。点开名称可查看 384 × 384 的透明循环 WebP。动画按 25 fps 采样。
+各段动效取自同一张[应用图标原画](../../design/chief-logo.webp)。下表并排展示动作草图。点开名称可查看 384 × 384 的透明循环 WebP。动画按 25 fps 采样。
 
 | [颠勺](toss.webp) | [三拍接力](relay.webp) | [锅底余火](ember.webp) |
 | :---: | :---: | :---: |
@@ -20,4 +20,15 @@
 
 双颠的两次抛接共用一次短停顿。高抛在顶点放慢，使三个标记充分展开。沿锅翻炒让每个标记轮流经过同一条弧线。逐个抛接时，其余两个标记贴着锅沿随锅身起伏。
 
-启动、打开对话和其他整页加载界面使用 B「高抛慢接」。锅、三个 Agent 和动作线直接叠在页面背景上。原生资源以 120 pt 显示，深色版给深色笔画加了一道细灰边。加载状态和结束时机见 [NativeRuntimeSurface](../../app/macos/Sources/Host/Shell/NativeRuntimeSurface.swift)。
+## 原生加载标记
+
+启动、打开对话和其他整页加载界面共用颠勺动效。锅和三个角色取自应用图标原画。锅口随锅柄下压、上挑，角色依次离锅，落回锅口后锅身轻轻回弹。开启「减少动态效果」时，三个角色停在锅中。启动状态由 [NativeRuntimeSurface](../../app/macos/Sources/Host/Shell/NativeRuntimeSurface.swift) 控制。
+
+[原生回放](Replay.swift) 在同一个 900 × 560 pt 内容区挂载真实启动界面，在注入会话目录后显示 Overview 的「没有运行中的会话」组件。回放录制连续两个以上周期，切换窗口内的「减少动态效果」与外观，并保存开启减少动态效果后相隔约一秒的两个画面。截图校验对比两张静帧、恢复动效后的画面及两只锅的可见宽度。运行时使用独立的临时 profile。
+
+[等比例截图对照](evidence/comparison.png) · [原生窗口录像](evidence/window.mp4)
+
+```sh
+swift build --package-path app/macos --product Chief
+python3 demos/chief-logo-loading/replay.py .build/loading-replay/current
+```

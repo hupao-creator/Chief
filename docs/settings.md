@@ -8,7 +8,7 @@ Settings opens on **Chief Agent**, with Overview blurred behind it. Close Settin
 
 ## Choose who coordinates and who can take tasks
 
-On the **Chief Agent** tab, choose the coordinating agent in the top row and at least one agent it can assign tasks to in the bottom row. Dashed lines connect Chief to the agents it can assign work to. Use **Chief Model** to choose the coordinating agent’s model. Before switching the coordinating agent, finish work that's running, waiting for a response, or waiting to send. Switching to a different agent starts a new Chief conversation and keeps your note.
+On the **Chief Agent** tab, choose the coordinating agent in the top row and at least one agent it can assign tasks to in the bottom row. Dashed lines connect Chief to the agents it can assign work to. Use **Chief Model** to choose the coordinating agent’s model. Before switching the coordinating agent, finish work that's running, waiting for a response, or waiting to send. Switching to a different agent starts a new Chief session and keeps your note. You can still read the saved messages from the previous agent by swiping up on Chief Bar in Overview.
 
 If Chief says no agents are available, install and sign in to a supported agent on your Mac, then return to the **Chief Agent** tab and click **Retry**. [Supported agents](getting-started.md#connect-an-agent)
 
@@ -24,7 +24,7 @@ Use **Auto-Categorization** to set up Tag Agent and **Super Thread** to set up S
 - **Use Chief** uses Chief's agent and model settings for future work.
 - **Configure separately** lets you choose an agent and model for the role. If its configuration fails to load, use **Retry** in the form. Chief keeps those choices if you later switch to **Use Chief** or **Agent off**.
 
-When you choose **OpenCode**, wait for **Loading Agent configuration…** to finish. Choose your provider, model and variant from the available options. If your saved model is marked **Unavailable in catalog**, check the provider in OpenCode or choose another listed model.
+Choose **OpenCode** to see its providers, models and variants. If **Loading Agent configuration…** appears, wait for the options to open, then make your selections. If your saved model is marked **Unavailable in catalog**, check the provider in OpenCode or choose another listed model.
 
 [Find tags and Super Threads](reports-tags-and-changes.md)
 

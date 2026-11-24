@@ -75,9 +75,11 @@ send context only; Moku remains the destination. The application-owned query
 resolves the actual report and related executions rather than trusting client
 content. Existing requests may omit it.
 
-Archived ordinary Thread `tags` and `tagEmojis` form frozen historical decoration,
-not active Tag pool membership. Restoration clears them for reclassification;
-public field shapes are unchanged.
+Archived ordinary Thread `tags` and `tagEmojis` retain their historical
+decoration. Clearing a nonempty assignment sets the optional `hadSemanticTag`
+flag. It stays set across later classifications and restarts. Forks inherit
+current labels and start their own classification history. Records without
+the flag supply classification evidence through their current tags.
 
 `MokuSettings.routingPreset` optionally selects `economy`, `balanced`,
 `performance` or `custom`; explicit Custom is retained even with empty guidance.

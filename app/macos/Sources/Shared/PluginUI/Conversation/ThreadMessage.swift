@@ -1,12 +1,27 @@
 import SwiftUI
 import ChiefCore
+import UniformTypeIdentifiers
 
 public struct ThreadMessageAttachment: Identifiable, Hashable, Sendable {
     public let id: JSONText
     public let label: String
     public let title: String?
-    public init(id: JSONText, label: String, title: String? = nil) {
+    private let mimeType: String?
+    private let kind: String?
+    public init(id: JSONText, label: String, title: String? = nil, mimeType: String? = nil, kind: String? = nil) {
         self.id = id; self.label = label; self.title = title
+        self.mimeType = mimeType; self.kind = kind
+    }
+
+    var mayPreviewImage: Bool {
+        // Remote and native-only attachment references have synthetic IDs.
+        guard UUID(uuidString: id.string) != nil else { return false }
+        if kind == "image" { return true }
+        if let mime = mimeType?.lowercased(), !mime.isEmpty, mime != "application/octet-stream" {
+            return mime.hasPrefix("image/")
+        }
+        let ext = (label as NSString).pathExtension
+        return UTType(filenameExtension: ext)?.conforms(to: .image) == true
     }
 }
 
@@ -38,19 +53,23 @@ public struct ThreadMessage: View {
     public let openExternal: ((URL) -> Void)?
     public let resolveMedia: NativeMarkdownMediaResolver?
     public let previewAttachment: ((JSONText) async throws -> Data)?
+    private let resolveAttachmentImage: ((JSONText) async throws -> URL)?
     @Environment(\.locale) private var locale
     @State private var annotationsExpanded = false
+    @State private var attachmentPreviewURL: URL?
 
     public init(id: JSONText, author: Author, content: String, streaming: Bool = false,
                 steeringLabel: String? = nil, annotations: [ThreadMessageAnnotation] = [],
                 attachments: [ThreadMessageAttachment] = [], actions: AnyView? = nil,
                 openExternal: ((URL) -> Void)? = nil,
                 resolveMedia: NativeMarkdownMediaResolver? = nil,
-                previewAttachment: ((JSONText) async throws -> Data)? = nil) {
+                previewAttachment: ((JSONText) async throws -> Data)? = nil,
+                resolveAttachmentImage: ((JSONText) async throws -> URL)? = nil) {
         self.id = id; self.author = author; self.content = content; self.streaming = streaming
         self.contentBytes = Data(content.utf8)
         self.steeringLabel = steeringLabel; self.annotations = annotations; self.attachments = attachments
         self.actions = actions; self.openExternal = openExternal; self.resolveMedia = resolveMedia; self.previewAttachment = previewAttachment
+        self.resolveAttachmentImage = resolveAttachmentImage
     }
     public var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -64,17 +83,12 @@ public struct ThreadMessage: View {
                 if !attachments.isEmpty {
                     ThreadAttachmentFlow {
                         ForEach(attachments) { attachment in
-                            HStack(spacing: 5) {
-                                NativeIcon(name: "Paperclip", size: 12)
-                                Text(attachment.label).lineLimit(1)
-                            }.font(NativeTypography.inter(size: 11))
-                                .foregroundStyle(NativeAppKitPalette.thread.muted.swiftUI)
-                                .padding(.horizontal, 8).padding(.vertical, 5)
-                                .background(NativeAppKitPalette.thread.canvas.swiftUI, in: RoundedRectangle(cornerRadius: 4))
-                                .overlay(RoundedRectangle(cornerRadius: 4).stroke(NativeAppKitPalette.thread.line.swiftUI))
-                                .help(attachment.title ?? attachment.label)
+                            ThreadAttachmentTile(attachment: attachment, resolve: resolveAttachmentImage) {
+                                attachmentPreviewURL = $0
+                            }
                         }
                     }
+                    .quickLookPreview($attachmentPreviewURL)
                 }
                 if !annotations.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -97,6 +111,50 @@ public struct ThreadMessage: View {
         .padding(.vertical, author == .user ? 14 : 0)
         .padding(.horizontal, author == .user ? 16 : 0)
         .background(author == .user ? NativeAppKitPalette.thread.surface.swiftUI : .clear, in: RoundedRectangle(cornerRadius: 5))
+    }
+}
+
+private struct ThreadAttachmentTile: View {
+    let attachment: ThreadMessageAttachment
+    let resolve: ((JSONText) async throws -> URL)?
+    let preview: (URL) -> Void
+    @State private var thumbnail: (attachment: ThreadMessageAttachment, image: CGImage, url: URL)?
+
+    var body: some View {
+        Group {
+            if let thumbnail, thumbnail.attachment == attachment {
+                let image = thumbnail.image
+                let width = CGFloat(image.width)
+                let height = CGFloat(image.height)
+                let scale = min(360 / width, 220 / height, 1)
+                Button { preview(thumbnail.url) } label: {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .aspectRatio(width / height, contentMode: .fit)
+                        .frame(idealWidth: width * scale, maxWidth: width * scale)
+                        .clipShape(.rect(cornerRadius: 5))
+                }.buttonStyle(.plain)
+                    .accessibilityLabel(attachment.label)
+            } else {
+                HStack(spacing: 5) {
+                    NativeIcon(name: "Paperclip", size: 12)
+                    Text(attachment.label).lineLimit(1)
+                }.font(NativeTypography.inter(size: 11))
+                    .foregroundStyle(NativeAppKitPalette.thread.muted.swiftUI)
+                    .padding(.horizontal, 8).padding(.vertical, 5)
+                    .background(NativeAppKitPalette.thread.canvas.swiftUI, in: RoundedRectangle(cornerRadius: 4))
+                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(NativeAppKitPalette.thread.line.swiftUI))
+            }
+        }
+        .help(attachment.title ?? attachment.label)
+        .task(id: attachment) {
+            thumbnail = nil
+            guard attachment.mayPreviewImage, let resolve,
+                  let url = try? await resolve(attachment.id), !Task.isCancelled,
+                  let image = await NativeComposerThumbnailLoader.load(path: url.path, maxPixelSize: 720),
+                  !Task.isCancelled else { return }
+            thumbnail = (attachment, image, url)
+        }
     }
 }
 
@@ -167,7 +225,11 @@ private struct ThreadAttachmentFlow: Layout {
         var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
         var frames: [CGRect] = []
         for item in subviews {
-            var size = item.sizeThatFits(.unspecified); size.width = min(size.width, width)
+            var size = item.sizeThatFits(.unspecified)
+            if size.width > width {
+                size = item.sizeThatFits(.init(width: width, height: nil))
+                size.width = min(size.width, width)
+            }
             if x > 0 && x + size.width > width { x = 0; y += rowHeight + 6; rowHeight = 0 }
             frames.append(CGRect(origin: CGPoint(x: x, y: y), size: size))
             x += size.width + 6; rowHeight = max(rowHeight, size.height)

@@ -105,19 +105,21 @@ public final class NativeHarnessSettingsSurface {
     public private(set) var threadSettingsFailure: String?
     public private(set) var threadSettingsEditorID = UUID()
     private var baselineThreadSettings: ThreadSettingsSnapshot?
+    private let catalogIndependentOfProfile: Bool
     @ObservationIgnored private let host: NativeHarnessHost
     @ObservationIgnored private var session: HarnessSettingsSession!
     @ObservationIgnored private var sequence = 0
-    @ObservationIgnored private var needsReload = true
+    static let revalidationInterval: Duration = .seconds(300)
+    @ObservationIgnored private var lastLoad: ContinuousClock.Instant?
     var prefetchID: UUID?
     private var loadingSequence: Int?
 
     public var isReady: Bool { !isReleased && session.isReady }
     public var loadState: NativeHarnessSettingsLoadState {
         guard !isReleased, host.settingsLifetime.available else { return .loading }
-        if prefetchID != nil || loadingSequence != nil { return .loading }
+        guard prefetchID == nil, loadingSequence == nil, lastLoad != nil else { return .loading }
         if let error = preparationError { return .failed(error) }
-        return isReady && !needsReload ? .ready : .loading
+        return isReady ? .ready : .loading
     }
     var preparationError: String? {
         if let error = executionSnapshotError?.string ?? session.preparationError { return error }
@@ -137,6 +139,7 @@ public final class NativeHarnessSettingsSurface {
     }
 
     init(host: NativeHarnessHost, plugin: AnyHarnessPlugin, configuration: NativeHarnessSettingsConfiguration) {
+        catalogIndependentOfProfile = plugin.executionCatalogIndependentOfProfile
         self.host = host; self.configuration = configuration
         baselineThreadSettings = ThreadSettingsSnapshot(configuration)
         session = plugin.makeSettingsSession(load: { [weak self] refresh in
@@ -149,9 +152,29 @@ public final class NativeHarnessSettingsSurface {
         try await session.reload(refresh)
     }
 
+    var revalidationDeadline: ContinuousClock.Instant? {
+        lastLoad?.advanced(by: Self.revalidationInterval)
+    }
+
+    private var presentationIsCurrent: Bool {
+        guard let revalidationDeadline else { return false }
+        if case .thread = configuration.scope { return true }
+        return .now < revalidationDeadline
+    }
+
+    var hasFreshPresentation: Bool { loadState == .ready && presentationIsCurrent }
+
+    fileprivate var needsEditorLoad: Bool {
+        // A mounted editor observes workspace retries and their terminal error.
+        // Revisiting the page must not start another retry budget.
+        if prefetchID != nil { return false }
+        if case .failed = loadState { return false }
+        return !hasFreshPresentation
+    }
+
     public func loadIfNeeded() async throws {
         try checkAuthority()
-        if needsReload || !session.isReady || preparationError != nil { try await reload() }
+        if !presentationIsCurrent || !session.isReady || preparationError != nil { try await reload() }
     }
 
     /// Global resources outlive tab/host selection; thread resources still
@@ -160,11 +183,18 @@ public final class NativeHarnessSettingsSurface {
         if case .thread = configuration.scope { release() }
     }
 
-    func updateSource(_ next: NativeHarnessSettingsConfiguration) throws {
+    func updateSource(_ next: NativeHarnessSettingsConfiguration, localChiefEdit: Bool = false) throws {
         try checkAuthority()
         guard next.editorIdentity == configuration.editorIdentity else { throw CancellationError() }
         guard next != configuration else { return }
-        configuration = next; sequence += 1; needsReload = true
+        // Only an exact local save may carry its already usable catalog across
+        // the edit. Preserve the original freshness deadline.
+        if localChiefEdit, catalogIndependentOfProfile, hasFreshPresentation {
+            configuration = next
+            return
+        }
+        configuration = next; sequence += 1; lastLoad = nil
+        prefetchID = nil; loadingSequence = nil; executionSnapshotError = nil
         session.sourceChanged()
     }
 
@@ -199,7 +229,10 @@ public final class NativeHarnessSettingsSurface {
         sequence += 1
         let requestSequence = sequence
         loadingSequence = requestSequence
-        defer { if loadingSequence == requestSequence { loadingSequence = nil } }
+        defer {
+            if sequence == requestSequence { lastLoad = .now }
+            if loadingSequence == requestSequence { loadingSequence = nil }
+        }
         let result = try await host.client.invoke("harness:settings-presentation", args: [configuration.request(refresh: refresh)])
         try checkAuthority()
         guard requestSequence == sequence else { throw CancellationError() }
@@ -216,9 +249,6 @@ public final class NativeHarnessSettingsSurface {
             guard case .string(let text) = error else { throw PluginContractError("Invalid execution settings snapshot error") }
             executionSnapshotError = text
         } else { executionSnapshotError = nil }
-        // Plugin-owned refresh/retry also enters this loader. Settle source
-        // invalidation here so those successful reads can restore readiness.
-        needsReload = false
         return value
     }
 
@@ -310,6 +340,7 @@ public struct NativeHarnessSettingsView: View {
     private let executionSnapshot: Bool
     private let settingsFormPage: Bool
     private let readOnly: Bool
+    private let centersLoading: Bool
     private let refreshSequence: Int
     @Binding private var value: JSONValue
     @State private var surface: NativeHarnessSettingsSurface?
@@ -324,29 +355,32 @@ public struct NativeHarnessSettingsView: View {
 
     public init(host: NativeHarnessHost, configuration: NativeHarnessSettingsConfiguration,
                 section: HarnessSettingsSection, executionSnapshot: Bool = false,
-                settingsFormPage: Bool = false, readOnly: Bool = false, refreshSequence: Int = 0, value: Binding<JSONValue>) {
+                settingsFormPage: Bool = false, readOnly: Bool = false, refreshSequence: Int = 0,
+                centersLoading: Bool = false, value: Binding<JSONValue>) {
         self.host = host; self.configuration = configuration; self.section = section
         self.executionSnapshot = executionSnapshot; self.settingsFormPage = settingsFormPage; _value = value
         self.readOnly = readOnly
+        self.centersLoading = centersLoading
         self.refreshSequence = refreshSequence
-        _surface = State(initialValue: host.cachedSettingsSurface(configuration: configuration))
     }
 
     public var body: some View {
         // Resource acquisition and incomplete plugin input independently report
         // readiness; neither may overwrite the other's current value.
+        let cached = host.cachedSettingsSurface(configuration: configuration)
+        let displayed = cached ?? surface
         let resourceReady = host.settingsLifetime.available && !opening && failure == nil
-            && surface?.configuration.editorIdentity == configuration.editorIdentity
-            && surface?.isReleased == false && surface?.loadState == .ready
-            && (!executionSnapshot || (surface?.executionSnapshotError == nil && value != .null && value != .object([:])))
+            && displayed?.configuration == configuration
+            && displayed?.isReleased == false && displayed?.loadState == .ready
+            && (!executionSnapshot || (displayed?.executionSnapshotError == nil && value != .null && value != .object([:])))
         VStack(alignment: .leading, spacing: 8) {
             if !host.settingsLifetime.available {
                 NativeSettingsNotice(message: text("连接后台服务后可读取 Agent 配置。", "Connect to the runtime service to load Agent configuration."))
             } else if let failure, !opening {
                 NativeSettingsNotice(message: text("读取设置失败：", "Unable to load settings: ") + failure, kind: .error,
                                      action: AnyView(retry))
-            } else if let surface, surface.configuration.editorIdentity == configuration.editorIdentity, !surface.isReleased,
-                      surface.isReady || !opening {
+            } else if let surface = displayed, surface.configuration.editorIdentity == configuration.editorIdentity, !surface.isReleased,
+                      surface.isReady || surface.loadState != .loading {
                 if case .failed(let error) = surface.loadState {
                     NativeSettingsNotice(message: text("读取配置失败：", "Unable to load configuration: ") + error,
                                          kind: .error, action: AnyView(retry))
@@ -357,11 +391,18 @@ public struct NativeHarnessSettingsView: View {
                 }
                 content(surface)
             } else {
-                NativeSettingsNotice.loading(text("正在读取 Agent 配置…", "Loading Agent configuration…"))
+                let message = text("正在读取 Agent 配置…", "Loading Agent configuration…")
+                if centersLoading {
+                    NativeSettingsNotice.loading(message, alignment: .center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    NativeSettingsNotice.loading(message)
+                }
             }
         }
         .task(id: SettingsLoadIdentity(configuration: configuration, generation: host.settingsLifetime.generation,
-                                      resourceID: host.cachedSettingsSurface(configuration: configuration)?.id)) {
+                                      resourceID: cached?.id)) {
             if host.settingsLifetime.available { await open() }
         }
         .onChange(of: refreshSequence) { _, _ in refresh() }
@@ -386,24 +427,36 @@ public struct NativeHarnessSettingsView: View {
     }
 
     private func open(refresh: Bool? = nil) async {
-        if refresh == nil, surface?.configuration == configuration, surface?.loadState == .ready { return }
+        guard !Task.isCancelled else { return }
+        if refresh != true, let cached = host.cachedSettingsSurface(configuration: configuration),
+           !cached.needsEditorLoad {
+            openID = UUID(); opening = false; failure = nil; surface = cached
+            return
+        }
         let requestID = UUID(); openID = requestID; opening = true; failure = nil
         defer { if openID == requestID { opening = false } }
         do {
-            try Task.checkCancellation()
-            failure = nil
-            if let surface, !surface.isReleased, surface.configuration.editorIdentity == configuration.editorIdentity {
+            let next: NativeHarnessSettingsSurface
+            if case .thread = configuration.scope, let surface, !surface.isReleased,
+               surface.configuration.editorIdentity == configuration.editorIdentity {
                 try surface.updateSource(configuration)
-                if let refresh { try await surface.reload(refresh: refresh) }
-                else { try await surface.loadIfNeeded() }
-                return
+                next = surface
+            } else {
+                surface?.unmount()
+                next = try host.makeSettingsSurface(configuration: configuration)
+                surface = next
             }
-            surface?.unmount(); surface = nil
-            let next = try host.makeSettingsSurface(configuration: configuration)
-            surface = next
-            try await next.loadIfNeeded()
+            if let refresh { try await next.reload(refresh: refresh) }
+            else { try await next.loadIfNeeded() }
         } catch is CancellationError { }
-        catch { if !Task.isCancelled, openID == requestID { failure = error.localizedDescription } }
+        catch {
+            // A shared read publishes its own error and may recover during a
+            // workspace retry. Only keep errors the surface cannot present.
+            guard !Task.isCancelled, openID == requestID else { return }
+            if surface?.configuration != configuration || surface?.preparationError == nil {
+                failure = error.localizedDescription
+            }
+        }
     }
     private func refresh(force: Bool = true) {
         guard !opening, host.settingsLifetime.available else { return }

@@ -8,7 +8,8 @@ accounting budget); the consumer ID retires immediately and its live wire can
 transfer to a fresh reader. Idle entries continue receiving patches and expire on
 stream retirement/reset, errors, gaps or budget pressure. Pending reads never
 transfer. Connected reads await fresh snapshots; persisted content is an offline
-fallback. Route-owned prefetch uses the same production subscription path; opening a reading view does not start an agent process.
+fallback. The cached catalog has a distinct authority from live hydration.
+Route-owned prefetch uses the same production subscription path; opening a reading view does not start an agent process.
 
 Catalog arrays are admitted once into [persistent ordered records](RuntimeRecordCollection.swift).
 An ordinary upsert copies logarithmic index paths and retains earlier event
@@ -22,6 +23,9 @@ snapshots/reconnects still validate every identity. Whole-array readers material
 only when they request the collection. Native catalog preparation consumes the
 accepted mutation identities and decodes only changed envelopes. Activity-only
 mutations advance the stream revision without rewriting the offline state cache.
+Mutations drained during hydration, including a pending delta reapplied after
+gap recovery, carry a replay flag so consumers can update their catalog
+without triggering live-only navigation.
 
 [RuntimeSettingsReads](RuntimeSettingsReads.swift) admits settings presentation
 and single-Harness installation reads before they open HTTP connections. At most

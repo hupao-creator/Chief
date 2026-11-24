@@ -124,6 +124,13 @@ public final class NativeHarnessThreadSurface {
                     let data = try await preview(threadID, attachmentID)
                     try checkLifetime(); return data
                 }
+            }, resolveAttachmentImage: host.callbacks.resolveAttachmentImage.map { resolve in
+                { [weak self] attachmentID in
+                    guard let self else { throw CancellationError() }; try checkLifetime()
+                    _ = try host.authoritativeThread(threadID: threadID, harnessID: harnessID, source: source)
+                    let url = try await resolve(threadID, attachmentID)
+                    try checkLifetime(); return url
+                }
             }, resolveMedia: host.callbacks.resolveMedia)
         let result = try plugin.threadView(input: materialized, actions: actions, context: context)
         return AnyView(result.environment(\.steerThreadID, threadID).environment(\.threadAuthorHarness,

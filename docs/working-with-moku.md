@@ -8,11 +8,11 @@ Typing or pressing Delete in the open bar plays a keyboard click when your Mac h
 
 In a task conversation, the same input box shows the agent's icon and sends to that conversation. In a Super Thread, open a source conversation in **Related executions** before sending a follow-up. [Agent conversations](task-conversations.md) · [Super Threads](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 
-The button at the right of the input box shows **Send** when your message is ready, even while Chief is working. Click it or press **Return** to send. When Chief is idle, an empty or whitespace-only draft leaves **Send** disabled. A ready file or a selected folder can be sent on its own.
+The button at the right of the input box shows **Send** when your message is ready, even while Chief is working. Click it or press **Return** to send. When you send from the compact input, the bar folds back around Chief’s eyes. It expands again when Chief shows a reply or task update. When Chief is idle, an empty or whitespace-only draft leaves **Send** disabled. A ready file or a selected folder can be sent on its own.
 
 When Chief's input is at the bottom of Overview, click outside it or press **Esc** to close it. Your unsent draft is there when you reopen the box.
 
-When the bar is folded, three dots fade in and circle its edge while Chief thinks or uses tools such as updating its note. They keep circling as Chief switches tools and fade out when the work ends. If Chief needs your permission or an answer, a request appears above the bar.
+When the bar is folded, watch the three dots beneath it while Chief thinks or uses a tool. They brighten in turn, lift off and circle the bar once as Chief’s eyes follow. The dots settle back into a row and Chief briefly squints before the sequence repeats. Switching tools keeps the rhythm. The dots fade out when the work ends. If Chief needs your permission or an answer, a request appears above the bar.
 
 To check your OpenCode Go allowance, ask Chief how much of your subscription is left. You can keep your usual default model. After you switch accounts in OpenCode, Chief checks the new account on your next message. If the reading is still pending, ask again after the refresh finishes.
 
@@ -24,7 +24,7 @@ Click **+** just to the right of Chief's eyes to open the file chooser. It start
 
 To browse the connected host, Control-click **+** and choose **Choose host files** to attach files or **Choose a host directory** to reference a folder.
 
-When you send from Overview, Chief takes the current Overview folder into account. A folder you select with **+** or **Choose a host directory** takes priority. To find a task created without a project folder, open Overview and choose its tag at the top. **All** includes untagged tasks too.
+When you send from Overview, Chief takes the current Overview folder into account. A folder you select with **+** or **Choose a host directory** takes priority. To find a task created without a project folder, open Overview after Tag Agent has assigned it a tag, then choose that tag at the top.
 
 Click an image thumbnail to preview it, or click **×** on a file or folder to remove it. Wait for the files to finish preparing, then click **Send**. You can attach up to 20 files per message. Size limits apply, and the agent running Chief determines which attachment types it can use. If you want Chief to delegate work on a file, say which file the agent should use in your request.
 
@@ -46,9 +46,17 @@ After a successful removal, the checkout folder is gone. The task conversation s
 
 ## Find Chief's replies and notes
 
-- **Replies.** A direct reply appears where you typed your request. You can select the text and scroll through a longer reply. The reply closes on its own, so ask Chief to put anything you want to keep in its note.
+In Overview, swipe up with two fingers over Chief’s eyes to read your conversation. The conversation opens above the input. If you already have a draft open, swipe up over the eyes beside the text to see the conversation and keep typing. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see the time beside each message, swipe left in the conversation and hold. Release to tuck the times away.
+
+Each time you open the panel, you can see the end of the latest message once the messages load. A larger gap marks a change of speaker. A short exchange fits in a compact panel. Longer conversations can fill most of a small window, with the input at the bottom. Scroll up above the input to read earlier messages. Your place stays put as new replies arrive while you’re reading further up. At the top of a page, **Earlier messages** takes you further back. **Newer messages** at the bottom takes you forward.
+
+Use the input at the bottom to reply. A draft you started in the compact bar is already there. Press **Return** or click **Send**. Your message appears on the right as soon as you send it, and the panel stays open for Chief’s reply. You can also send from the compact bar and swipe up over the eyes to see your message while Chief is working. Press **Esc** or click outside the bar to close it and keep your draft.
+
+You can revisit these messages after restarting Chief in the same profile, including saved exchanges with a previous coordinating agent. A message can be recovered as long as Chief still has its conversation record. Clearing the history removes those exchanges. Messages you sent directly to a task stay in that task’s conversation.
+
+- **Replies.** Chief also shows its latest reply briefly on the compact bar. You can select the text, scroll through a longer reply, or swipe up to read it again.
 - **Task updates.** Watch the bar for **Dispatching task**. **Thread started** means the task is ready to open. If the handoff fails, the bar shows **Dispatch failed**. Open the task card in Overview to see how the work is going.
-- **Notes.** In Overview, press **⌘⇧N** to open **Chief Note**. With the input box closed, you can also swipe up with two fingers over the eyes on Chief Bar. Click the eyes centered below the note to start a message, or click a run’s link to read it. The note closes. Overview keeps your selected filter and scroll position. If the conversation belongs to exactly one Super Thread, its card opens with the run you clicked in **Related executions**. If its collection is visible, it turns to that Super Thread’s page first. Other links open the cited run in the task conversation. In both readers, you start at the top of the run. Click the **×** at the top left of the reader or press **⌘K** to return to Overview with the note closed. To resume the note from a task conversation, press **Esc** in the run you opened. In a Super Thread, you can use **Back to related executions** to browse other runs before closing the report. To reopen the note from Overview, press **⌘⇧N**.
+- **Notes.** In Overview, right-click Chief Bar with the input box closed to open **Chief Note**. You can also press **⌘⇧N**. Click the eyes centered below the note to start a message, or click a run’s link to read it. The note closes. If the conversation or its Super Thread is outside your selected folder or tag, Overview switches to a matching view before the reader opens. If the conversation belongs to exactly one Super Thread, its card opens with the run you clicked in **Related executions**. If its collection is visible, it turns to that Super Thread’s page first. Other links open the cited run in the task conversation. In both readers, you start at the top of the run. Click the **×** at the top left of the reader or press **⌘K** to return to Overview with the note closed. To resume the note from a task conversation, press **Esc** in the run you opened. In a Super Thread, you can use **Back to related executions** to browse other runs before closing the report. To reopen the note from Overview, right-click Chief Bar again.
 
 ## Stop work or acknowledge an alert
 

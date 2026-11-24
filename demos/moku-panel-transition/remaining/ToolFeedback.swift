@@ -19,7 +19,7 @@ private struct ToolFeedbackDock: View {
     }
 }
 
-@MainActor func toolFeedbackVisit(orbitFade: Bool = false) async throws {
+@MainActor func toolFeedbackVisit(orbitFade: Bool = false, recordGaze: Bool = false) async throws {
     let directory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     let client = RuntimeClient(profile: try RuntimeProfile(dataDirectory: directory))
     // The replay supplies catalog deliveries in place of a live service.
@@ -70,6 +70,66 @@ private struct ToolFeedbackDock: View {
             "toolName": .text(name), "callId": .text(call)]))
         try check(host.moku.activity?.body == .toolCall(callID: JSONText(call), toolName: JSONText(name)),
                   "Foreground lost the tool name or call ID")
+    }
+
+    if recordGaze {
+        try deliver(.completed)
+        try await until("Mounted idle bar") { host.scene.dockCharacter?.input?.running == false }
+        let movie = try await DockMovieCapture(window: panel, folder: "gaze")
+        let start = CACurrentMediaTime()
+        var events = [[String: Any]]()
+        func record(_ action: String) { events.append(["action": action, "seconds": CACurrentMediaTime() - start]) }
+        try await pause(400)
+        record("start")
+        try tool("update_note", sequence: 1)
+        try await pause(3416)
+        record("first lap")
+        try await pause(850)
+        record("replace tool")
+        try tool("ask_thread", sequence: 2)
+        try await pause(650)
+        record("pause")
+        host.scene.setWindowVisible(false)
+        try await until("Hidden motion paused") { host.scene.dockCharacter?.hasScheduledFrame == false }
+        let held = host.scene.dockCharacter?.clock
+        try await pause(750)
+        try check(host.scene.dockCharacter?.clock == held, "Hidden time advanced the character")
+        record("resume")
+        host.scene.setWindowVisible(true)
+        try await pause(1500)
+        record("retire")
+        try deliver(.completed)
+        try await pause(240)
+        record("reverse fade")
+        executionID = "replacement"
+        try tool("update_note", sequence: 3)
+        // Retirement reversed just after the lap. Keep recording through the
+        // landing, lid recovery and next relay before measuring pursuit again.
+        try await pause(4440)
+        record("reversed lap")
+        try await pause(3000)
+        record("open editor")
+        host.scene.setInputOpen(true)
+        try await pause(850)
+        record("close editor")
+        host.scene.setInputOpen(false)
+        try await pause(280)
+        record("reopen editor")
+        host.scene.setInputOpen(true)
+        try await pause(350)
+        record("close editor again")
+        host.scene.setInputOpen(false)
+        try await pause(3416)
+        record("folded lap")
+        try await pause(3000)
+        record("finish")
+        try deliver(.completed)
+        try await pause(800)
+        try await movie.finish()
+        try FileManager.default.moveItem(at: movie.directory.appendingPathComponent("window.mp4"),
+                                         to: evidence.appendingPathComponent("window.mp4"))
+        try save(events, "events.json")
+        return
     }
 
     if orbitFade {

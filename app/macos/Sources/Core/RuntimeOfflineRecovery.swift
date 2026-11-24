@@ -90,7 +90,10 @@ extension RuntimeClient {
     func restoreOfflineState() {
         guard !offlineRestored else { return }
         offlineRestored = true
-        if state == nil { state = offlineStore.state() }
+        if state == nil, let cached = offlineStore.state() {
+            state = cached
+            stateAuthority = cachedSnapshotAuthority
+        }
         try? refreshCommandJournal()
     }
 

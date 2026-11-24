@@ -265,7 +265,7 @@ real-time visits for focus timing at normal speed.
 
 On all four returns the checker measures from the Close marker to the first
 frame showing 10% of the width change from expanded to idle. That frame must
-fall within the first half of the 420ms panel return. Until the shell reaches
+fall within the first half of the 420ms shell fold. Until the shell reaches
 idle width, its center must stay at the source column within two points. The compact shell must then
 reach the workspace center at the reading height, then show intermediate
 heights at that fixed center. It finishes at the initial height and width.
@@ -280,9 +280,8 @@ Overview endpoint after the mark retires. On the second visit the fixture occupi
 120ms during expansion and again during folding. The marker changes before and
 after each hold. During each marked hold the checker measures shell and mark progress separately.
 The SwiftUI shell can hold its last layout while the main thread is occupied.
-The mark must stay inside the shell through the hold and subsequent fold. During the
-fold it also requires at least three positions of the reading panel’s visible
-left edge. The result includes per-frame width, mark and panel position, and
+The mark must stay inside the shell through the hold and subsequent fold. The reading panel must stay still during the fold. A separate 120ms hold
+during panel return requires at least three positions of the panel’s visible left edge. The result includes per-frame width, mark and panel position, and
 the largest interval between recorded frames. This controlled workload measures
 already-submitted motion. Attributing a stall to a particular reader operation
 requires a trace of that session.
@@ -320,6 +319,71 @@ draft through AppKit marked text. The fixture returns to Overview and rejects
 the earlier send. It checks the exact restored Agent draft and that Overview
 keeps its own draft and focus.
 
+### Overview filters on Report Close
+
+Build the runtime with `python3 tools/e2e/build.py --go ./scripts/go.sh --with-app`.
+The replay runs with normal motion and again with Reduce Motion enabled in the
+replay window. It tags a completed Inbox task, creates a Super Thread and opens
+its related list in a 1280 × 820 pt native workspace. It presses the Report’s
+Close button, returns to Overview, then interrupts another Close by reopening
+the same Report through the workspace. The mounted filter actions must stay
+unavailable during that return and reappear after the final Close.
+
+```sh
+python3 demos/moku-panel-transition/workspace/report_followup.py --tag-return /private/tmp/report-tags
+python3 demos/moku-panel-transition/workspace/check_tag_return.py /private/tmp/report-tags/tag-return
+python3 demos/moku-panel-transition/workspace/check_tag_return.py /private/tmp/report-tags/tag-return-reduced --reduced
+```
+
+The checker uses FFmpeg and NumPy. It compares the left status icon and top tag label with
+their original positions in the same window recording and writes offsets in
+points and relative contrast for every encoded frame to `filter-frames.csv`.
+At rest, both landmarks must be within 1pt of their reference. Normal travel
+requires intermediate positions in each direction, and Reduce Motion keeps the
+landmarks in place whenever their ink is visible.
+The [Overview contract](../../app/macos/Sources/Host/Overview/README.md#tags-and-filter-transitions)
+defines the motion and input handoff.
+
+### Report identity flip
+
+Build the private runtime and native modules with `tools/e2e/build.py --go ./scripts/go.sh --with-app`.
+Run the Report workspace with its deterministic peer and the current-process window recorder.
+The replay selects the related execution, presses the mounted Report close button and reopens
+the same Report during its return. A separate process sets Reduce Motion in the workspace
+environment. Both windows keep the system setting and the user's Chief profile untouched.
+
+```sh
+python3 demos/moku-panel-transition/workspace/report_followup.py --identity /private/tmp/report-identity
+python3 demos/moku-panel-transition/workspace/check_report_identity.py /private/tmp/report-identity/identity
+python3 demos/moku-panel-transition/workspace/check_report_identity.py /private/tmp/report-identity/identity-reduced --reduced
+```
+
+The checker measures the ink at native 2× resolution against each encoded frame's
+timestamp. For each half turn it uses the nearby full height of that face and
+requires a measured thin projection (at most 45% of full height). Rotation about
+the horizontal axis compresses height while the two eyes keep their horizontal
+separation. If the usual mark detector misses one frame directly between the
+eyes and logo, the checker searches the neighboring eyes’ footprint for two
+isolated neutral strokes up to four backing pixels high. The CSV records measured
+ink bounds in backing pixels relative to the glass and identifies recovered pairs.
+The seam permits at most one unresolved sample and at most two frame periods
+between identified faces.
+At 45° and 135° the visible face projects to about 71%
+of its upright height. The checker brackets each crossing with samples at most two
+60 Hz frames apart. The [420ms reading curve](../../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer)
+spends 64ms between these angles. The movie allows one frame per crossing for
+sampling and rasterization. An intermediate projection between 45% and 80% of
+full height can fall between exposures. In that case both samples bracketing the
+45° crossing must be consecutive tilted frames below 94% height, and their
+inferred angular step must fit the steepest slope of the 420ms cubic over their
+timestamp interval. The JSON distinguishes observed and bracketed intermediate
+heights. The fully expanded bar must hold the logo at full height.
+Corresponding legs must agree within 85ms. The return must flip within the stationary compact bar after contraction. Reopening
+during that turn must show the partially revealed eyes narrowing back toward the logo.
+The reduced-motion visit checks endpoint widths and a full logo in either direction.
+
+The [window recordings and frame evidence](evidence/bar-motion/README.md) include the baseline and the two measured directions.
+
 ### Right-column identity return
 
 This offscreen replay mounts the production workspace with a completed Codex
@@ -341,11 +405,10 @@ python3 demos/moku-panel-transition/workspace/check_identity_return.py /tmp/chie
 ScreenCaptureKit records only the nonactivating panel in the replay process.
 The 4096×2450 framing preserves the reference's workspace bounds and 1.8 movie
 pixels per point. The window renders at native layout scale on a 2× display.
-The checks measure the capsule on every encoded frame. Both a foreshortened
-Codex logo and the incoming eyes must be visible during the in-column fold.
+The checks measure the capsule on every encoded frame. The Codex logo must stay upright throughout the in-column fold. Both a foreshortened
+logo and the incoming eyes must then be visible in the stationary compact bar.
 The compact bar must reach center at reading height before it lifts.
-The interrupted visit must stay in its reading column and show the logo,
-eyes and logo again before the final close. Per-frame measurements retain unresolved frames for visual inspection.
+The interrupted visit must stay in its reading column and keep the logo upright until the final close. Per-frame measurements retain unresolved frames for visual inspection.
 The [close recording](evidence/identity-return/close.mp4) and
 [interrupted return](evidence/identity-return/reverse.mp4) are untrimmed.
 The [capture record](evidence/identity-return/capture.json) identifies their
@@ -372,7 +435,8 @@ python3 demos/moku-panel-transition/check_centered_handoff.py window.mp4 positio
 
 The checker measures both directions independently on either side of the widest
 reader frame. It requires intermediate glass widths, the eyes and logo in
-sequence, and a visibly tilted logo on each leg. It reports any localized ink
+sequence, and a visibly tilted logo on each leg. Across both legs the center
+of the visible glass must stay within 2pt of the window midline. It reports any localized ink
 more than 2pt outside the capsule and saves all frame positions. Inspect the
 listed unresolved frames for an edge-on flip, blink or occlusion.
 
@@ -402,6 +466,16 @@ the local SwiftUI accessibility setting enabled. The checker then requires
 direct glyph and label changes. These fixture operations do not call a Harness.
 The [recordings and frame measurements](evidence/state-ink/README.md) include
 both motion settings, an interrupted fold, and receipts from the mounted routes.
+
+For the directory-removal regression, run the same preview under the shared
+leases with `--capture-overview --english --directory-removal`. The idle Dock
+starts with a directory-only draft. The fixture invokes the directory chip's
+draft removal action and checks that the same editor retains focus and the
+draft can no longer submit. With normal motion, run
+`python3 demos/moku-panel-transition/check_directory_removal.py <directory-removal>`.
+The checker tracks the arrow and plus in every recorded frame, requires their
+positions to stay within one point, and checks the 43-point shell contraction
+and the dimmed arrow at rest. The fixture uses an in-memory directory.
 
 ## Chief input replay
 

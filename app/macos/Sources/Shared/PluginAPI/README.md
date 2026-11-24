@@ -96,7 +96,11 @@ Global Harness settings sessions belong to the connected workspace and may be
 prefetched before any editor mounts. Editors join the resource's pending read;
 unmounting a global editor keeps its typed presentation cached. Source changes
 invalidate pending results, while disconnect/reload or scope removal releases
-the resource. Thread settings sessions still belong to their mounted editor.
+the resource. A Harness can declare `executionCatalogIndependentOfProfile`
+when changing a saved profile cannot change the global execution presentation.
+Codex declares this capability. The host can then retain a fresh catalog for
+a matching local Chief profile save. Thread settings sessions still belong to
+their mounted editor.
 `settingsPresentationIssue` lets each Harness identify a decoded but unusable
 presentation without mounting an editor: CLI/catalog errors and unfinished model
 availability are distinct from transport completion. The host uses that result

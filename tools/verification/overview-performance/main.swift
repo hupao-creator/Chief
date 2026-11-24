@@ -86,13 +86,14 @@ private func snapshot(count: Int) throws -> JSONValue {
         var records: [[String: Any]] = []
         for count in [0, 5, 30, 100, 500] {
             let catalog = try snapshot(count: count)
+            let firstSpaceCount = (count + 9) / 10
             var fresh: [Double] = []
             for _ in 0..<5 {
                 let fixture = try Fixture()
                 let start = DispatchTime.now().uptimeNanoseconds
                 try fixture.install(catalog)
                 fresh.append(Double(DispatchTime.now().uptimeNanoseconds - start) / 1e6)
-                guard fixture.model.items.count == count else { throw Failure(message: "Initial membership mismatch") }
+                guard fixture.model.items.count == firstSpaceCount else { throw Failure(message: "Initial membership mismatch") }
                 await fixture.close()
             }
             records.append(["scenario": "fresh-model", "count": count, "iterations": 5, "elapsedMs": fresh])
@@ -113,7 +114,7 @@ private func snapshot(count: Int) throws -> JSONValue {
                 fixture.model.selectTag(i.isMultiple(of: 3) || filters.isEmpty ? nil : filters[i % filters.count])
             })
             fixture.model.selectTag(nil)
-            guard fixture.model.items.count == count, fixture.model.error == nil else { throw Failure(message: "Final membership mismatch") }
+            guard fixture.model.items.count == firstSpaceCount, fixture.model.error == nil else { throw Failure(message: "Final membership mismatch") }
             records.append(["scenario": "counters", "count": count, "membershipBuilds": fixture.model.membershipBuildCount])
             await fixture.close()
         }

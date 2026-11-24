@@ -22,6 +22,9 @@ public struct CodexHarnessPlugin: HarnessPlugin {
     }
     public var threadSettingsCodec: PluginValueCodec<CodexThreadSettingsUpdate> { CodexThreadSettingsUpdate.codec }
     public var harnessSettingsCodec: PluginValueCodec<CodexHarnessSettings> { CodexHarnessSettings.codec }
+    // Codex global presentation enumerates the workspace CLI and its catalog.
+    // Profile choices are rendered from the separate value binding.
+    public var executionCatalogIndependentOfProfile: Bool { true }
     public var settingsPresentationCodec: PluginValueCodec<CodexSettingsPresentationData> { CodexSettingsPresentationData.codec }
 
     public func readingPrefetchScopes(input: HarnessThreadInput) -> [HarnessContentScope] {

@@ -84,6 +84,7 @@ func (r *Runtime) ForkThread(ctx context.Context, id string, request json.RawMes
 	}
 	next := source
 	next.ID = id
+	next.HadSemanticTag = false
 	// A fork is a new visible Thread, independent of the source's visibility.
 	archived := false
 	next.Archived = &archived
@@ -183,8 +184,7 @@ func (r *Runtime) SetArchived(ctx context.Context, id string, value bool) error 
 		// Archived label decoration is frozen outside the active pool. Restoring
 		// starts a new classification instead of reviving a retired category.
 		if archived(t) && !value {
-			t.Tags = []string{}
-			t.TagEmojis = map[string]string{}
+			t.SetSemanticTags([]string{}, map[string]string{})
 		}
 		t.Archived = &value
 		return nil

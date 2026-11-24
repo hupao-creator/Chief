@@ -7,7 +7,13 @@ extension: `.env` becomes `env`, `.gitignore` becomes `gitignore`, and
 `.config.json` becomes `config.json`. Normalization never duplicates an extension.
 
 Thread ownership retains admitted files independently of temporary composer
-chips. Preview and cleanup validate that ownership and the immutable content.
+chips. Preview validates that ownership and the immutable content.
+The read-only `attachment:image-path` command accepts a Thread ID and a managed
+attachment UUID. It uses the same owner and canonical file checks as the
+annotation preview and returns the local path for an image, for the native
+reader to decode and preview. The separate `attachment:preview` command returns
+validated PNG screenshot bytes for web annotations. Both read existing
+attachment records and ownership without a format change.
 
 `NewWithClientStorage` binds the production repository to the same local profile
 as the native client. A staged file records the importing process's private

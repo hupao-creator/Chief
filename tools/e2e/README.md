@@ -13,6 +13,23 @@ content reads establish prerequisites and independent result evidence. Runtime
 invariants belong to PBT. Benchmarks own general UX timing, resource use and
 visual-performance measurements.
 
+## Overview task card preview capacity
+
+In a native Overview replay, use a running Codex task with an unfinished plan,
+Git changes, three eligible message previews and six eligible tool calls. At a
+width that gives the main section two rows, check that the two newest previews
+appear oldest first, followed by the five latest tool calls in their existing
+order. Use long message and tool text to check truncation and verify that every
+row fits inside the main section beside the plan and Git panels. Remove the Git
+changes from the fixture so the composer gives the main section one row, then
+check for the latest message and zero tool rows. Repeat the two-row layout
+with one eligible message and two eligible
+tools and check that all three appear once. The
+[Overview contract](../../app/macos/Sources/Host/Overview/README.md#card-update-isolation)
+defines which section controls capacity. A fixture replay can use the
+production catalog projector and mounted card to verify presentation without a
+live agent session.
+
 ## Agent Thread running badge
 
 The [native badge replay](../../demos/running-emoji-badge/README.md) mounts the default
@@ -22,8 +39,7 @@ checks the active decorations in the mounted workspace against a fixture Runtime
 
 The [mounted filter replay](../../demos/moku-panel-transition/remaining/README.md)
 checks [folder and tag activity](../../app/macos/Sources/Host/Overview/README.md#tag-activity)
-in a **Completed only** view. The fixture includes a running task in the
-selected folder and tag. The `tag-activity` and `tag-activity-reduced` cases
+while **Reading** is selected. The fixture includes a running task under **Work** in the same folder. The `tag-activity` and `tag-activity-reduced` cases
 inspect their dot pattern, its animation under each motion setting, and its
 removal when the task completes. The replay captures the production window.
 
@@ -36,6 +52,21 @@ The replay first checks the manifest preview, the turn projection with deferred 
 A nonactivating panel mounts the ordinary Agent workspace with an isolated content store and live subscriptions. The replay checks native Markdown order, turn state, work controls, group counts and metadata during execution, settlement, permission requests, success and failure. It records paragraph geometry and fonts, unfolds the work summary and remounts the saved turn. The Codex case separates catalog and scoped completion updates and locates an earlier reply by its message link.
 
 The evidence directory contains the revision, platform, source projections, comparison results and images captured from the replay's own windows. Codex samples record changing pixels in the last work summary and its stationary text after the reply begins and after completion. These frames check whether the sweep appears at the right time. Installed CLI transport, real account permissions, database transactions and rendering latency have separate verification boundaries. [Reading contract](../../design/reading.md#content-and-execution-identity) · [Fixtures and launcher](thread-transcript)
+
+### Follow-up image attachments
+
+Use an isolated app and Runtime profile on a graphical Mac. Keep an ordinary
+Codex execution running while a follow-up with a managed raster and a text file
+is admitted, then open its task card from Overview. To exercise an unavailable
+image, remove its managed copy in the disposable profile after admission.
+Check the compact text and time, press **Show full text** and capture the
+expanded row with **Collapse text** visible. The image should fit without
+cropping, and the text file and unavailable image should still show their
+filenames. Click the image to check Quick Look opens the original, dismiss it,
+and press **Collapse text** to confirm the compact row returns. Record the
+revision, attachment inputs, native window captures and observed results.
+This check covers the mounted ordinary Agent reader with a retained follow-up.
+See the [attachment presentation contract](../../app/macos/Sources/Shared/PluginUI/README.md#harness-transcript).
 
 ## AA evaluation context
 
@@ -69,12 +100,13 @@ contains every requested ID, including blocked and unreached entries.
 | ID | Implemented interaction and criterion | Prerequisite / evidence | Coverage boundary |
 | --- | --- | --- | --- |
 | `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Page changes take under 1,000ms each. The final Dock handoff takes under 1,560ms. | Fresh profile, authorized system AX driver, exclusive desktop. Each press verifies the private runtime PID/epoch, target button and focused test window. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
-| `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve completed tasks in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
-| `E2E-OVERVIEW-003` | Select Running, open the fixture directory with the result empty, then select Completed. Check its exact scoped Agent IDs, return to global All and restore all statuses. | Completed tasks in a project directory and untagged Inbox tasks in the supported suite, or two project directories in the Collection suite. `overview-filters.json` records each settled page and the scope of each prepared task and the independent reports’ source references from Runtime. | The mounted directory and status controls, status retention, empty results and untagged membership. The [window replay](../../demos/moku-landing/README.md) exercises top-level Inbox tags, project tag selection and window-local swipe events. |
+| `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve tagged tasks in the selected folder in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
+| `E2E-OVERVIEW-004` | Select the folder’s Running tag, switch spaces and return. Choose Completed in a top-level Inbox tag. | Tagged project and Inbox tasks plus an untagged Inbox task in the supported suite, or tagged reports and tasks across two folders in the Collection suite. `overview-filters.json` records the Runtime scope and source references alongside the mounted pages. | Checks scoped membership, the available left buttons, the empty Running view and the remembered folder choice. The [window replay](../../demos/moku-landing/README.md) also checks live removal and assignment of the last and first tag. |
+| `E2E-OVERVIEW-005` | Launch, select filters through mounted controls, relaunch the same isolated profile, fork tasks and classify them. | Three tagged project tasks with distinct tags, one tagged Inbox task and forks with inherited or empty tags. | Checks launch and folder defaults, preference restoration, empty-catalog and unavailable-space fallback, first-assignment selection, batch order, Settings focus and reclassification. |
 | `E2E-CHIEF-001` | Open Note and switch to Compose. The legacy command is rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
 | `E2E-SETTINGS-001` | Open Settings with Chief Agent selected and only Chief Agent, Auto-Categorization and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief Agent and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
-| `E2E-COLLECTION-001` | Open a grouped member, return, then revisit and read. Switch directory and archive/restore unrelated reports while All remains mounted. | Two isolated directories, two completed tasks and eight reports from a deterministic peer. | In the three-column replay window, All groups six fresh reports and a four-report directory groups two. A brief visit holds the cover, a qualified visit promotes the report, and archiving down to three reports releases the group. Restoring reports groups them again. Each fresh directory shows five unread Threads. Visiting the same Report twice removes one from its directory’s count. |
+| `E2E-COLLECTION-001` | Switch folders, open a grouped report, return and revisit it. Archive and restore other reports while the folder stays selected. | The Library and Studio fixtures contain eight and four tagged reports respectively. Each cites a distinct completed task. Each folder also has a standalone tagged task. | Checks grouping under viewport pressure, selection on return, promotion after reading, folder unread counts, release after archive and regrouping on restore. |
 | `E2E-COMPOSER-001` | Type a follow-up and activate the actual Send button; observe accepted draft clearing and completed output; send a held task, observe Stop in the empty action seat, activate it and observe interruption and an editable empty composer without navigating away | Exclusive desktop, accessible isolated bundle, external operator; `operator-send/stop.json` AX observations, exact persisted prompts, `composer-send-content/oracle/ui.json`, `composer-running/stopped/stop-content/stop-ui.json` | Operator-assisted OS input, not unattended CI; current ordinary Thread text input and cancellation only, not pause/resume, historical forks, IME or uncertain receipt recovery |
 
 The implemented desktop scenarios require execution evidence before they can be
@@ -152,16 +184,90 @@ The `onboarding` suite runs separately from prepared-profile suites, including
 journeys. Onboarding requires a local AX-authorized graphical session. The
 driver records macOS and accessibility settings for that session.
 
+### Onboarding Agent configuration reuse
+
+Use a disposable first-run profile with OpenCode and a second ready Agent.
+Drive the mounted setup controls and observe `onboarding.canContinue` and
+`onboarding.editorReady` through the [interaction socket](../native-interaction/README.md).
+For request attribution, count Runtime entries to `harness:settings-presentation`
+by Harness, execution owner, application setting and refresh flag. A disabled
+confirmation alone cannot establish that a read occurred. These checks concern
+the [onboarding resource contract](../../app/macos/Sources/Host/Onboarding/README.md).
+
+1. On Tag Agent, choose **Configure separately** and select OpenCode. With a
+   delayed first Tag/OpenCode reply, switch to another Agent and back before
+   the reply arrives. Expect one Tag/OpenCode presentation and confirmation
+   gated until the selected catalog and draft are ready.
+2. Within five minutes, choose **Use Chief**, restore the separate settings,
+   go **Back** to Chief and return to Tag. Leave and reactivate the app twice.
+   Expect zero additional Tag/OpenCode presentations for those actions.
+3. Continue to Super Thread, then return to the saved Tag step. Check that
+   the same profile is selected. Change the saved Tag/OpenCode profile from a
+   second client and watch the Tag editor revalidate. Expect a read for its
+   new source and an enabled confirmation after it settles.
+4. Open Super Thread’s separate OpenCode editor. Count its first presentation
+   under `report.settings`. On a failed read, check that the error and retry
+   are accessible and that **Start using Chief** waits for a usable result.
+
+Record the source revisions, build identities, request starts and completions,
+and readiness at each action. Record any injected reply delay or simulated
+activation notification. A simulated notification exercises the mounted handler;
+system focus, rendered frames and native CLI launches require their own observations.
+
+### Onboarding Chief reasoning effort
+
+Use a fresh profile with Codex and a second ready Agent. Record the build,
+the mounted confirmation's enabled state, `onboarding.editorReady`, the draft
+and catalog revisions, and Runtime starts for `harness:settings-presentation`.
+Use the [interaction socket](../native-interaction/README.md) for choices and
+a separate Runtime client for persisted readback.
+
+1. On Chief, switch to Codex and select a different supported reasoning effort.
+   Exercise the ordering where the settings event arrives before the save
+   response. Once the receipt arrives, expect the new effort in the saved
+   revision, an enabled **Continue**, and zero new Codex/Chief presentation
+   reads. Confirm and check that Tag Agent opens.
+2. On another visit to Chief, change the saved Codex profile from the second
+   client. Hold the new Codex presentation response. Check that **Continue**
+   rejects activation on Codex, becomes available on the other ready Agent,
+   and waits again on returning to Codex. Release the response. Expect a single
+   Codex/Chief read, the externally saved value and an enabled confirmation.
+
+Record any synthetic delays separately from time observed in a screen recording.
+The [first-run contract](../../app/macos/Sources/Host/Onboarding/README.md)
+defines the resource and save gates.
+
+### Onboarding Agent configuration loading layout
+
+On both Tag Agent and Super Thread Agent in a disposable first-run profile,
+choose **Configure separately** and select an Agent with a delayed
+first configuration reply. Capture the mounted window while **Loading Agent
+configuration…** is visible. Compare the center of the combined skillet and
+label with the horizontal center of the picker and the midpoint between the
+picker's bottom edge and the navigation row's top edge. Resize the window
+while the read is pending. Where the content fits, both centers should still
+match. Where it overflows, check that the notice can be reached by scrolling
+and that the navigation remains visible. Release the read and confirm the
+form replaces the notice.
+
+Record the tested revision, app artifact, fixture delay, window sizes, and
+captured frames. The [onboarding layout contract](../../app/macos/Sources/Host/Onboarding/README.md)
+applies to the separate configuration editor on both pages.
+
 ### Full-surface loading mark
 
-Open the native app with a disposable returning profile. Delay the start of its
-background service long enough to see a complete 3.2-second loop. At the center
-of the loading surface, the pan should dip, toss three colored agent marks into
-a fan and catch them. In both appearances, the surface background must remain visible
-between the marks and around the pan throughout the loop. Release the service and check that Overview replaces the
-mark as soon as initial content arrives. With Reduce Motion enabled, the same
-120 pt mark should remain still while waiting. Record the source revision,
-runtime delay, captured window frames and the first ready workspace frame.
+Run the [same-window native replay](../../demos/chief-logo-loading/README.md#原生加载标记).
+Compare the painted width from bowl to handle with the sleeping skillet on the
+Running empty state. Both should span about 191 pt at full size. Inspect two
+consecutive 2.8-second cycles for a dip, staggered release, catch and continuous
+return through the resting pose. Compare the two Reduce Motion captures for a
+stationary pan and icons. Switch motion on again and check the icons lift.
+Admitting the fixture catalog should replace the mark with the Running empty
+state in the same window. Keep the revision, window frames and recording.
+
+For a complete launch, delay the background service of a disposable returning
+profile. Release it while the mark is moving and check that the ready workspace
+takes over. Record the delay and the first ready frame.
 [Startup surface](../../app/macos/README.md#system-appearance-and-language)
 
 From a finished result, send a follow-up and hold execution admission. Inspect
@@ -329,7 +435,8 @@ Collection on All. Record the isolated window continuously and save the filter,
 carousel member, execution identities and link position alongside the recording.
 
 1. In the other directory, scroll the Note to the ordinary link and click it
-   with the system pointer. Check that the Note closes and the selected filter and canvas offset stay put.
+   with the system pointer. Check that the Note closes, Overview switches to the
+   target directory, then the reader opens.
    The reader should open at the cited run’s heading. After the scoped body has loaded, check that its timeline
    height exceeds its viewport, `top` is zero and `following` is false. Repeat from a filter that already contains the target and check that
    its selection stays put. Click the reader’s **×** and verify the Note stays
@@ -338,7 +445,8 @@ carousel member, execution identities and link position alongside the recording.
    link’s window position. On separate visits, use the Overview command and
    click the reader backdrop. Both Overview exits leave the Note closed.
 2. Open the associated link from a different directory. Check the Report title
-   and the exact cited execution in its open side panel. Apply the same scroll
+   and the exact cited execution in its open side panel. Verify the directory
+   containing the Report was selected before its reader opened. Apply the same scroll
    checks to that timeline. Close the expanded visit with the Report’s **×**
    and verify Overview settles with the Note closed. Reopen the link. Use the conversation
    contents to visit current and historical rows. Type a draft on the historical
@@ -362,9 +470,18 @@ carousel member, execution identities and link position alongside the recording.
    Chinese. Record the capture rate. Track source revision, executable identity, scoped replies,
    input targets and returned state for each visit.
 
-The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size) checks the Overview status filters, live card membership, retained tags and the Chief Bar scroll-event path to Chief Note. The semantic Note toggle exercises the Note entrance. Mounted route identity
+The [Note link replay](../../demos/moku-landing/README.md#chief-note-execution-links) checks the click, space ordering, reader and execution target in an isolated window. The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-click-at-actual-size) checks windowed and full-screen left-rail navigation, Inbox statuses, live card membership, retained tags and direct Chief Bar right-click and Control-click, upward swipe into the conversation, primary click to compose, and draft-preserving outside dismissal through posted AppKit events. Its [live conversation replay](../../demos/moku-landing/verify_conversation.py) checks native Return, public dialogue, and App and Runtime restart in one isolated profile. The semantic Note toggle exercises the Note entrance. Mounted route identity
 and window frame recordings supply separate evidence.
 [Note and link behavior](../../app/macos/Sources/Host/MokuScene/README.md)
+
+### Chief Bar opening
+
+The [mounted opening replay](../../demos/moku-landing/README.md#chief-bar-opening)
+checks the latest message’s visible end, scrolls to the first message, visits
+the earlier page and returns through the production scroll route. It checks
+the reading position across a content revision and window resize.
+Its window movie supports frame-by-frame review of
+the eyes, composer and transcript during expansion and dismissal.
 
 ### Chief navigation
 
@@ -461,6 +578,10 @@ can exercise this visually with synthetic data and a window recording.
 
 ### Overview unread bookmarks
 
+The [native tag press replay](../../demos/moku-landing/README.md#mark-a-tag-as-read)
+checks bulk acknowledgment from the left rail, pointer cancellation, shared
+counts, saved version receipts and a later completed run.
+
 Use a private profile with an individual Super Thread and an ordinary completed
 Agent Thread. In the native window, capture the two emoji badges, open each
 reader, wait for its content in the key window and return to Overview. The red
@@ -477,10 +598,8 @@ unread version is acknowledged, the number disappears and the selected
 glass keeps its tint. With an active member in the same tag, check that its
 perforated activity indicator also remains visible after the unread count clears.
 Choose a directory at normal window scale. Select a tag with an unread count
-and move the pointer away. After its five-second title has closed, capture
-the compact tag, hover to reveal its title, then move away and capture it
-during contraction. The selected tint should fill the button at each width and
-the complete red badge should stay at its upper trailing corner. Try a short
+and move the pointer away. Capture the expanded selected tag. Click the top folder button, hover over the previous tag to reveal its title, then move away and capture it during contraction. Check the selected tint and confirm that
+the complete red badge stays at its upper trailing corner. Try a short
 name and one long enough to truncate. Switch folders rapidly and change a tag's
 unread count while its title is visible, including to zero. Check the selected
 folder's count in the top bar and each visible tag's count in the left column.
@@ -608,6 +727,26 @@ manual shared-desktop scheduling remains necessary. The App's existing explicit
 `--benchmark-scenario overview` prepares onboarding in the fresh profile; it
 does not certify first-run onboarding.
 
+### Overview space restoration
+
+Run the [desktop command](#build-and-run) with `--suite overview-spaces`. This
+suite starts the normal application with its private profile and automation
+socket. A prepared Runtime supplies completed tasks, with no desktop
+preferences at the first launch. It relaunches with an explicitly selected empty Running tag and with the older directory preference fields. Mounted filter buttons select the left tag,
+top folder and Inbox tag. The folder button exercises first entry, restoration,
+invalid-child fallback and return to the entire folder. Runtime archive and classification operations vary tag availability. The final relaunch leaves an older saved catalog on disk and
+checks selection against the Runtime. The first observable
+populated Overview must already select the expected filter and project its
+exact card IDs. The settled state must also mount those cards and the selected
+control. `overview-spaces.json` records process IDs, preference values and
+snapshots for each stage. A tagged fork created while Settings is open selects
+its source tag behind Settings. A mixed classification batch selects the first
+newly tagged fork in Runtime catalog order. Restoring and reclassifying these
+tasks after relaunch keeps a manually selected folder. An Inbox fork switches
+the underlying tag while a project reader stays open. Returning shows the
+Inbox cards. This semantic replay does not measure pixels or
+system pointer input.
+
 ### Collection member opening
 
 Open the page count with two reports, then with enough covered reports to fill
@@ -620,6 +759,11 @@ between the side margins, with individual cards capped at 360pt. The
 [before](../../demos/super-thread-carousel/evidence/member-grid-before.png)
 and [after](../../demos/super-thread-carousel/evidence/member-grid-after.png)
 frames use the same 17 covered reports and one report without a cover.
+
+With Reduce Transparency off, check that the gaps between cards share the
+workspace backdrop with the area outside the grid. With Reduce Transparency
+on, check that the panel has its opaque reading fill. In both cases the
+member cards retain their own surfaces and Close retains its glass style.
 
 Resize the open window to 1192×780pt, then to 860×600pt. Scroll
 with the pointer over the grid and check that it clears Close.

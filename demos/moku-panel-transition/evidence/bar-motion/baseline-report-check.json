@@ -1,0 +1,107 @@
+{
+  "passed": false,
+  "opening": {
+    "edgePTS": 2.545,
+    "legs": [
+      {
+        "face": "eyes",
+        "fullHeightPt": 18,
+        "edgeToFullMS": 55,
+        "frames": [
+          142,
+          141,
+          140
+        ],
+        "heightsPt": [
+          9,
+          13,
+          15
+        ],
+        "passed": false
+      },
+      {
+        "face": "logo",
+        "fullHeightPt": 24,
+        "edgeToFullMS": 53,
+        "frames": [
+          144,
+          145,
+          146
+        ],
+        "heightsPt": [
+          12,
+          18,
+          20
+        ],
+        "passed": false
+      }
+    ],
+    "passed": false
+  },
+  "closing": {
+    "edgePTS": 3.783333,
+    "legs": [
+      {
+        "face": "logo",
+        "fullHeightPt": 24,
+        "edgeToFullMS": 68,
+        "frames": [
+          212,
+          211,
+          210,
+          209
+        ],
+        "heightsPt": [
+          13,
+          19,
+          21,
+          22
+        ],
+        "passed": false
+      },
+      {
+        "face": "eyes",
+        "fullHeightPt": 22,
+        "edgeToFullMS": 73,
+        "frames": [
+          214,
+          215,
+          216,
+          217
+        ],
+        "heightsPt": [
+          10,
+          18,
+          20,
+          20
+        ],
+        "passed": false
+      }
+    ],
+    "passed": false
+  },
+  "closingEdgeWidthPx": 562,
+  "maxLegDifferenceMS": 18,
+  "interruptedSequence": [
+    "logo",
+    "eyes",
+    "logo"
+  ],
+  "interruptedEyeHeightsPt": [
+    10,
+    10,
+    10,
+    10,
+    21,
+    21,
+    21,
+    21,
+    20,
+    20,
+    20,
+    19,
+    18,
+    18,
+    16
+  ]
+}

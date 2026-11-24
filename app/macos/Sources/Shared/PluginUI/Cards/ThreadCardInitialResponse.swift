@@ -82,6 +82,7 @@ struct ThreadCardInitialResponseView: View {
 /// subsequent text revisions use the excerpt's existing scheduling unchanged.
 struct ThreadCardBody: View {
     let identity: ThreadCardIdentityView
+    var showsPreviousMessage = false
     @Environment(\.threadCardCloudAnimationsEnabled) private var enabled
     @Environment(\.threadCardAnimationVisibility) private var visibility
     @State private var awaitingContent = false
@@ -92,8 +93,15 @@ struct ThreadCardBody: View {
             if let initial = identity.initialResponse {
                 ThreadCardInitialResponseView(value: initial)
             } else {
-                ThreadCardExcerpt(content: identity.excerpt, messageId: identity.message?.id, messageText: identity.message?.text)
-                    .lineLimit(nil).opacity(opacity)
+                VStack(alignment: .leading, spacing: 4) {
+                    if showsPreviousMessage, let previous = identity.previousMessage {
+                        ThreadCardExcerpt(content: previous.text, messageId: previous.id, messageText: previous.text)
+                            .lineLimit(3)
+                    }
+                    ThreadCardExcerpt(content: identity.excerpt, messageId: identity.message?.id, messageText: identity.message?.text)
+                        .lineLimit(nil)
+                }
+                .opacity(opacity)
             }
         }
         .task(id: identity.initialResponse != nil) {

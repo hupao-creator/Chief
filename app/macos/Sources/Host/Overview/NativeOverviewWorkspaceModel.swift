@@ -45,15 +45,6 @@ public enum NativeOverviewCardSnapshot {
 enum NativeOverviewStatusFilter: String {
     case running, all, completed
 
-    // Moving the content up brings the option below the current one into view.
-    func stepped(swipeUp: Bool) -> Self {
-        switch self {
-        case .running: swipeUp ? .all : .running
-        case .all: swipeUp ? .completed : .running
-        case .completed: swipeUp ? .completed : .all
-        }
-    }
-
     func includes(_ thread: HarnessThread) -> Bool {
         switch self {
         case .all: true
@@ -74,14 +65,32 @@ public final class NativeOverviewWorkspaceModel {
     public let applicationFactories: NativeOverviewApplicationFactories
     public let chromeInteractions = NativeOverviewChromeInteractions()
     public private(set) var tagSelection: NativeOverviewTagSelection?
-    private(set) var statusFilter = NativeOverviewStatusFilter.all
+    private var inboxStatus = NativeOverviewStatusFilter.all
+    var isInboxTagSelected: Bool { selectedScope == NativeOverviewSelection.inboxScope }
+    var statusFilter: NativeOverviewStatusFilter {
+        if tagSelection?.runningTag == true { return .running }
+        return isInboxTagSelected ? inboxStatus : .all
+    }
+    var railChoices: [NativeOverviewRailChoice] {
+        guard selectedFilter != nil else { return [] }
+        if let directory = selectedDirectory {
+            return directory.children.map(NativeOverviewRailChoice.tag) + [.status(.running)]
+        }
+        return [.status(.running), .status(.all), .status(.completed)]
+    }
+    var selectedRailID: String? {
+        if isInboxTagSelected || tagSelection?.runningTag == true {
+            return statusFilter.rawValue
+        }
+        guard let selectedFilter, !selectedFilter.isDirectory else { return nil }
+        return selectedFilter.id
+    }
     // The delta path must also detect a selected tag member becoming visible.
     @ObservationIgnored private var statusHiddenThreads = Set<JSONText>()
     public private(set) var selectedTag = ""
     public private(set) var selectedScope = ""
     public private(set) var selectedFilter: NativeOverviewFilter?
     public private(set) var filters: [NativeOverviewFilter] = []
-    public private(set) var allHasActiveTasks = false
     public var visibleFilters: [NativeOverviewFilter] {
         filters.filter { $0.count > 0 }.map(visibleDirectory)
     }
@@ -142,8 +151,6 @@ public final class NativeOverviewWorkspaceModel {
     @ObservationIgnored private var membershipIndex = NativeOverviewMembershipIndex()
     private var filterMembers: [String: NativeOverviewMembership] { membershipIndex.members }
     private var redundantSemanticFilterKeys: Set<String> { membershipIndex.redundant }
-    @ObservationIgnored private var allMembers = NativeOverviewMembership()
-    @ObservationIgnored private var allMembersDirty = false
     @ObservationIgnored private var unreadVersions: [ApplicationThreadRef: JSONText] = [:]
     @ObservationIgnored private var activeThreadIDs = Set<JSONText>()
     @ObservationIgnored private var globalApplicationIDs = Set<JSONText>()
@@ -167,6 +174,8 @@ public final class NativeOverviewWorkspaceModel {
     @ObservationIgnored private var retainedPresentationIDs = Set<String>()
     @ObservationIgnored private var revision: UInt64 = 0
     @ObservationIgnored private var snapshotAuthority: UUID?
+    @ObservationIgnored private var previouslyTagged = Set<JSONText>()
+    @ObservationIgnored private var deferredFirstTag: NativeOverviewTagSelection?
     @ObservationIgnored private var contextID = UUID().uuidString
     @ObservationIgnored private var contextRevision = 0
     @ObservationIgnored private var committedContext: JSONValue?
@@ -181,26 +190,87 @@ public final class NativeOverviewWorkspaceModel {
         self.workspace = workspace; applicationFactories = applications; self.canvasState = canvasState
     }
 
-    public func receive(_ event: RuntimeClientEvent) {
+    public func receive(_ event: RuntimeClientEvent, deferFirstTag: Bool = false) {
         guard active else { return }
         switch event {
         case .snapshot(_, let authority):
             acceptAuthority(authority)
+            baselineTagHistory()
             // Observer overflow replays the same authority's current catalog.
             // Refresh its content without invalidating an already issued filter
             // request or discarding the structural stages still in flight.
             reconcile(captureMutation: false)
-        case .mutation(_, _, let authority):
+        case .mutation(_, _, let authority, let replayed):
+            let hasBaseline = snapshotAuthority == authority && !workspace.catalog.changes.reset
             acceptAuthority(authority)
-            reconcile(captureMutation: true)
+            if hasBaseline {
+                let first = recordTagAssignments()
+                let assignments = replayed ? [] : first
+                reconcile(captureMutation: true, firstAssignments: deferFirstTag ? [] : assignments)
+                if deferFirstTag, let filter = firstAssignedFilter(assignments) { deferredFirstTag = filter.selection }
+            } else {
+                baselineTagHistory()
+                reconcile(captureMutation: true)
+            }
         case .connection, .synchronizing: publishContext()
         case .overviewFilter(let request): receiveFilter(request)
         case .failure, .threadContent: break
         }
     }
 
+    private func baselineTagHistory() {
+        previouslyTagged = Set(catalogThreads.lazy.filter {
+            self.previouslyTagged.contains($0.id) || $0.hadSemanticTag || !$0.tags.isEmpty
+        }.map(\.id))
+    }
+
+    private func recordTagAssignments() -> [HarnessThread] {
+        var first: [HarnessThread] = []
+        for id in workspace.catalog.changes.threadIDs {
+            guard let thread = workspace.catalog.thread(id), thread.moku != true else {
+                previouslyTagged.remove(id)
+                continue
+            }
+            guard thread.hadSemanticTag || !thread.tags.isEmpty else { continue }
+            let newlyObserved = previouslyTagged.insert(id).inserted
+            if newlyObserved, !thread.hadSemanticTag, thread.archived != true, !thread.isHiddenFromUser {
+                first.append(thread)
+            }
+        }
+        // All assignments are consumed, even when only one destination can win.
+        return first.sorted { workspace.catalog.threadPosition($0.id)! < workspace.catalog.threadPosition($1.id)! }
+    }
+
+    private func firstAssignedFilter(_ threads: [HarnessThread]) -> NativeOverviewFilter? {
+        for thread in threads {
+            let scope = NativeOverviewSelection.scope(thread)
+            for tag in thread.tags {
+                // A semantic tag named after its folder is represented by that folder.
+                let filter = matchingFilter(tag: tag.string, scope: scope, kind: .semantic)
+                    ?? matchingFilter(tag: tag.string, scope: scope, kind: .directory)
+                if let filter, filter.count > 0 { return filter }
+            }
+        }
+        return nil
+    }
+
+    func applyDeferredFirstTag() {
+        guard let requested = deferredFirstTag else { return }
+        deferredFirstTag = nil
+        guard let selection = redirected(requested),
+              let filter = matchingFilter(tag: selection.tag, scope: selection.scope, kind: selection.kind),
+              filter.count > 0 else { return }
+        inboxStatus = .all
+        selectTagValue(filter.tag, scope: filter.scope, kind: selection.kind)
+    }
+
     private func acceptAuthority(_ authority: UUID) {
         if snapshotAuthority != authority {
+            if snapshotAuthority == workspace.client.cachedSnapshotAuthority {
+                // A fallback shown offline is provisional. The live catalog
+                // resolves the saved preference again.
+                tagSelection = nil
+            }
             snapshotAuthority = authority
             catalogGeneration = nil; membershipFacts = nil
             overviewEntries.removeAll()
@@ -259,6 +329,24 @@ public final class NativeOverviewWorkspaceModel {
         publishContext()
     }
 
+    func selectTopFilter(_ filter: NativeOverviewFilter?) {
+        guard let filter, filter.isDirectory, filter.scope != selectedScope,
+              let directory = filters.first(where: { $0.isDirectory && $0.scope == filter.scope && $0.count > 0 }) else {
+            selectTag(filter)
+            return
+        }
+        if workspace.preferences.overviewRunningDirectories.contains(directory.scope) {
+            selectRunningTag(in: directory)
+            return
+        }
+        let children = visibleDirectory(directory).children
+        let saved = workspace.preferences.overviewDirectoryTags[directory.scope].flatMap { tag in
+            redirected(.init(tag: tag, kind: .semantic, scope: directory.scope))
+        }
+        let child = saved.flatMap { selection in children.first { $0.matches(selection.tag) } }
+        selectTag(child ?? children.first ?? directory)
+    }
+
     public func selectTag(_ filter: NativeOverviewFilter?) {
         let tag = filter?.tag ?? ""
         appendAction(["kind": .text("filter"), "tag": tag.isEmpty ? .null : .text(tag)])
@@ -266,33 +354,46 @@ public final class NativeOverviewWorkspaceModel {
                        kind: filter.map { $0.isDirectory ? .directory : .semantic })
     }
 
-    func canReturnToAllWithWheel(up: Bool) -> Bool {
-        content.isEmpty && error == nil && statusFilter.stepped(swipeUp: up) == .all
+    func stepRail(up: Bool) {
+        let choices = railChoices
+        let target: NativeOverviewRailChoice
+        if let selectedRailID {
+            guard choices.count > 1, let index = choices.firstIndex(where: { $0.id == selectedRailID }) else { return }
+            target = choices[(index + (up ? 1 : choices.count - 1)) % choices.count]
+        } else {
+            guard up, let first = choices.first else { return }
+            target = first
+        }
+        let previousScene = sceneKey, previousRevision = content.structureRevision
+        selectRailChoice(target)
+        if sceneKey != previousScene || content.structureRevision != previousRevision {
+            canvasState.pendingRailSwipe = (sceneKey, content.structureRevision, up)
+        }
     }
 
-    func stepStatusFilter(up: Bool) {
-        selectStatusFilter(statusFilter.stepped(swipeUp: up))
+    func selectRailChoice(_ choice: NativeOverviewRailChoice) {
+        canvasState.pendingRailSwipe = nil
+        switch choice {
+        case .tag(let filter):
+            selectTag(filter)
+        case .status(let status):
+            if let directory = selectedDirectory {
+                if status == .running { selectRunningTag(in: directory) }
+            } else if isInboxTagSelected, inboxStatus != status {
+                inboxStatus = status
+                reconcile(captureMutation: false, refreshSelection: false)
+            }
+        }
     }
 
-    func stepSemanticFilter(up: Bool) {
-        guard let directory = selectedDirectory, !directory.children.isEmpty,
-              let selected = selectedFilter else { return }
-        let options = [directory] + directory.children
-        guard let index = options.firstIndex(where: { $0.selectionKey == selected.selectionKey }) else { return }
-        let next = index + (up ? 1 : -1)
-        guard options.indices.contains(next) else { return }
-        selectTag(options[next])
-    }
-
-    func selectStatusFilter(_ status: NativeOverviewStatusFilter) {
-        guard status != statusFilter else { return }
-        statusFilter = status
-        reconcile(captureMutation: false, refreshSelection: false)
+    private func selectRunningTag(in directory: NativeOverviewFilter) {
+        // Running owns the folder's membership, including work under its other tags.
+        selectTagValue(directory.tag, scope: directory.scope, kind: .directory, runningTag: true)
     }
 
     private var browseSceneKey: String {
         (selectedFilter?.selectionKey.nonEmpty ?? (selectedScope.isEmpty ? selectedTag : "\(selectedScope)\u{0}\(selectedTag)"))
-            + "\u{0}default"
+            + (tagSelection?.runningTag == true ? "\u{0}running" : "\u{0}default")
     }
 
     public func consumeRevisions(through value: UInt64) {
@@ -310,6 +411,30 @@ public final class NativeOverviewWorkspaceModel {
     func visibleCardID(for reference: ApplicationThreadRef) -> String? {
         let id = sourceCardID(for: reference) ?? reference.threadID.string
         return content.activeIDs.contains(id) ? id : nil
+    }
+
+    func revealNoteDestination(_ reference: ApplicationThreadRef) {
+        if let current = selectedFilter, filterMembers[current.selectionKey]?.contains(reference) == true {
+            if tagSelection?.runningTag == true,
+               reference.typeID != "agent" || workspace.catalog.thread(reference.threadID).map(statusFilter.includes) != true {
+                selectTag(current)
+            }
+            return
+        }
+        // A citation from a semantic tag can lead to a sibling in the same folder.
+        // Keep that level of detail before broadening to the directory.
+        func matches(_ filter: NativeOverviewFilter) -> Bool {
+            filterMembers[filter.selectionKey]?.contains(reference) == true
+        }
+        let sibling = tagSelection?.kind == .semantic ? selectedDirectory?.children.first(where: matches) : nil
+        if let match = sibling ?? allFilters.first(where: matches) {
+            selectTag(match)
+        } else if reference.typeID == "agent", let thread = workspace.catalog.thread(reference.threadID),
+                  let directory = filters.first(where: { $0.isDirectory && $0.scope == NativeOverviewSelection.scope(thread) }),
+                  directory.selectionKey != selectedFilter?.selectionKey {
+            // An archived or failed Thread can still have a directory even without a card.
+            selectTag(directory)
+        }
     }
 
     public func selectedCollectionMember(for item: NativeOverviewItem) -> ApplicationThreadRef? {
@@ -468,11 +593,14 @@ public final class NativeOverviewWorkspaceModel {
         await publication?.value
     }
 
-    private func selectTagValue(_ tag: String, scope: String = "", kind: NativeOverviewTagKind? = nil) {
+    private func selectTagValue(_ tag: String, scope: String = "", kind: NativeOverviewTagKind? = nil, runningTag: Bool = false) {
+        deferredFirstTag = nil
+        canvasState.pendingRailSwipe = nil
         let filter = matchingFilter(tag: tag, scope: scope, kind: kind)
         let resolvedKind = kind ?? (filter?.isDirectory == true ? .directory : .semantic)
-        tagSelection = tag.isEmpty ? nil : .init(tag: tag, kind: resolvedKind, scope: filter?.scope ?? scope)
-        reconcile(captureMutation: false)
+        tagSelection = tag.isEmpty ? filters.first(where: { $0.count > 0 })?.selection
+            : .init(tag: tag, kind: resolvedKind, scope: filter?.scope ?? scope, runningTag: runningTag)
+        reconcile(captureMutation: false, explicitSelection: true)
     }
 
     private var allFilters: [NativeOverviewFilter] {
@@ -484,9 +612,31 @@ public final class NativeOverviewWorkspaceModel {
         return allFilters.first { $0.matches(tag, kind: kind, scope: scope.isEmpty ? nil : scope) }
     }
 
-    private func reconcile(captureMutation: Bool, refreshSelection: Bool = true) {
+    private func redirected(_ selection: NativeOverviewTagSelection) -> NativeOverviewTagSelection? {
+        NativeOverviewSelection.resolve(selection, redirects: workspace.catalog.tagRedirects)
+    }
+
+    private func resolveSelection(_ requested: NativeOverviewTagSelection?, refreshRedirects: Bool) -> NativeOverviewFilter? {
+        // Use the same top-row order and eligibility as the mounted chrome.
+        // An unloaded or temporarily empty catalog must leave the saved choice intact.
+        guard let first = filters.first(where: { $0.count > 0 }) else { return nil }
+        guard let selection = requested else { return first }
+        let directory = filters.first { $0.isDirectory && $0.scope == selection.scope && $0.count > 0 }
+        if selection.kind == .directory { return directory ?? first }
+        let candidate = refreshRedirects ? redirected(selection) : selection
+        if let candidate, let match = matchingFilter(tag: candidate.tag, scope: candidate.scope, kind: candidate.kind),
+           match.count > 0 {
+            return match
+        }
+        // Keep the existing in-session child-removal behavior. A saved child
+        // missing on first admission falls back in top-row order.
+        return (tagSelection != nil ? directory : nil) ?? first
+    }
+
+    private func reconcile(captureMutation: Bool, refreshSelection: Bool = true, explicitSelection: Bool = false,
+                           firstAssignments: [HarnessThread] = []) {
         do {
-            if try applyCatalogChanges(captureMutation: captureMutation) { return }
+            if try applyCatalogChanges(captureMutation: captureMutation, hasFirstAssignments: !firstAssignments.isEmpty) { return }
             let previousCatalogIDs = catalogIDs
             let previousItems = items
             let previousScene = sceneKey
@@ -539,23 +689,23 @@ public final class NativeOverviewWorkspaceModel {
             }
             // Redirects depend on selection too; selecting another tag must not
             // wait for the next catalog transaction.
-            if let selection = tagSelection {
-                let candidate = refreshSelection
-                    ? NativeOverviewSelection.resolve(selection, redirects: workspace.catalog.tagRedirects,
-                        directoryTags: filters.filter { $0.isDirectory && $0.scope == selection.scope }.map(\.tag))
-                    : selection
-                if let candidate, matchingFilter(tag: candidate.tag, scope: candidate.scope, kind: candidate.kind)?.count ?? 0 > 0 {
-                    tagSelection = candidate
-                } else {
-                    // If a child disappears, keep browsing the same directory while it exists.
-                    tagSelection = filters.first { $0.isDirectory && $0.count > 0 && $0.scope == selection.scope }
-                        .map { .init(tag: $0.tag, kind: .directory, scope: $0.scope) }
-                }
+            let assigned = firstAssignedFilter(firstAssignments)
+            let requested = assigned?.selection ?? tagSelection ?? workspace.preferences.overviewSelection
+            let nextFilter = resolveSelection(requested, refreshRedirects: refreshSelection || tagSelection == nil)
+            var resolved = nextFilter?.selection
+            if requested?.runningTag == true, requested?.kind == .directory,
+               nextFilter?.isDirectory == true, requested?.scope == nextFilter?.scope {
+                resolved?.runningTag = true
             }
-            let chosenTag = tagSelection?.tag ?? ""
-            selectedTag = filters.isEmpty ? "" : chosenTag
+            tagSelection = resolved
+            selectedTag = tagSelection?.tag ?? ""
             selectedScope = tagSelection?.scope ?? ""
-            selectedFilter = matchingFilter(tag: selectedTag, scope: selectedScope, kind: tagSelection?.kind)
+            if assigned != nil || selectedFilter?.id != nextFilter?.id { inboxStatus = .all }
+            selectedFilter = nextFilter
+            if let tagSelection, explicitSelection || snapshotAuthority != workspace.client.cachedSnapshotAuthority {
+                do { try workspace.preferences.selectOverviewSpace(tagSelection) }
+                catch { workspace.report(error) }
+            }
             guard presentationActive else {
                 presentationDirty = true
                 publishContext()
@@ -564,9 +714,8 @@ public final class NativeOverviewWorkspaceModel {
             // Scene identity belongs to the retained presentation too. Advancing
             // it while hidden could bookmark the old camera under a new selection.
             sceneKey = browseSceneKey
-            let selectedTags = selectedFilter.map { [$0.tag] + $0.aliases } ?? (selectedTag.isEmpty ? [] : [selectedTag])
             let selected = selectedFilter.flatMap { filterMembers[$0.selectionKey] }.map(resolve)
-                ?? (selectedTags.isEmpty ? resolve(allMembership()) : collection(tags: selectedTags, kind: tagSelection?.kind, scope: selectedScope))
+                ?? NativeOverviewCollection(threads: [], applications: [])
             let nextItems = try project(filterByStatus(selected))
             if sceneKey != previousScene { revisions.removeAll() }
             if captureMutation, facts.overviewVisible, previousScene == sceneKey,
@@ -586,7 +735,7 @@ public final class NativeOverviewWorkspaceModel {
 
     /// A catalog mutation carries its accepted identities all the way to card
     /// slots. Unchanged membership/order leaves every other card and filter alone.
-    private func applyCatalogChanges(captureMutation: Bool) throws -> Bool {
+    private func applyCatalogChanges(captureMutation: Bool, hasFirstAssignments: Bool) throws -> Bool {
         let change = workspace.catalog.changes
         guard error == nil, let generation = catalogGeneration, generation &+ 1 == workspace.catalog.installGeneration,
               !change.reset, let membershipFacts, membershipFacts.localeIsCurrent,
@@ -664,7 +813,7 @@ public final class NativeOverviewWorkspaceModel {
         }
         var affectedScopes = Set<String>()
         if changedMembership {
-            membershipBuildCount += 1; allMembersDirty = true
+            membershipBuildCount += 1
             affectedScopes = membershipIndex.update(threadIDs: membershipThreads, applicationIDs: membershipApplications,
                 catalog: workspace.catalog, directoryTags: directoryTags.values, application: { applicationRecords[$0] })
             publishMembership(); refreshGlobalAvailability()
@@ -675,6 +824,9 @@ public final class NativeOverviewWorkspaceModel {
         if !operationProjectionReady || operationThreadID != workspace.catalog.moku?.id
             || workspace.catalog.moku.map({ change.threadIDs.contains($0.id) }) == true { refreshMokuOperations() }
         catalogGeneration = workspace.catalog.installGeneration
+        // Resolve a live assignment against the updated filters before publishing
+        // a selection or projecting the canvas for this transaction.
+        if hasFirstAssignments { return false }
         // A covered canvas retains its cards and camera, but the published selection
         // must already refer to the new membership when a tag or directory disappears.
         if changedMembership {
@@ -721,13 +873,14 @@ public final class NativeOverviewWorkspaceModel {
 
     private func filterByStatus(_ selected: NativeOverviewCollection) -> NativeOverviewCollection {
         statusHiddenThreads.removeAll(keepingCapacity: true)
-        guard statusFilter != .all else { return selected }
+        let status = statusFilter
+        guard status != .all else { return selected }
         let threads = selected.threads.filter { thread in
-            if statusFilter.includes(thread) { return true }
+            if status.includes(thread) { return true }
             statusHiddenThreads.insert(thread.id)
             return false
         }
-        return .init(threads: threads, applications: statusFilter == .completed ? selected.applications : [])
+        return .init(threads: threads, applications: status == .completed ? selected.applications : [])
     }
 
     private func refreshMokuOperations() {
@@ -739,28 +892,14 @@ public final class NativeOverviewWorkspaceModel {
         }
     }
 
-    private func collection(tags: [String], kind: NativeOverviewTagKind?, scope: String? = nil) -> NativeOverviewCollection {
-        NativeOverviewSelection.select(threads: catalogThreads, applications: catalogApplications,
-            tags: tags, kind: kind, scope: scope, directoryTags: directoryTags.values)
-    }
-
     private func resolve(_ membership: NativeOverviewMembership) -> NativeOverviewCollection {
         .init(threads: membership.threads.map { workspace.catalog.thread($0)! },
               applications: membership.applications.map { applicationsByRef[$0]! })
     }
 
-    private func allMembership() -> NativeOverviewMembership {
-        if allMembersDirty {
-            allMembers = NativeOverviewMembership(collection(tags: [], kind: nil))
-            allMembersDirty = false
-        }
-        return allMembers
-    }
-
     private func rebuildMembership() {
         membershipBuildCount += 1
         let threads = catalogThreads, applications = catalogApplications
-        allMembersDirty = true
         let candidates = NativeOverviewSelection.candidates(threads: threads, applications: applications)
         globalThreadIDs = Set(candidates.threads.map(\.id))
         globalApplicationIDs = Set(candidates.applications.map { $0.entry.ref.threadID })
@@ -799,9 +938,6 @@ public final class NativeOverviewWorkspaceModel {
         }
         let next = source.map(decorated)
         if filters != next { filters = next }
-        // All uses its existing lazy membership too; an active task covered by
-        // a Report must not keep an otherwise settled All collection marked.
-        allHasActiveTasks = !activeThreadIDs.isEmpty && hasActiveTasks(allMembership())
     }
 
     private func unreadVersion(_ ref: ApplicationThreadRef, _ version: JSONText?) -> JSONText? {
@@ -822,10 +958,34 @@ public final class NativeOverviewWorkspaceModel {
     }
 
     func markRead(_ ref: ApplicationThreadRef, version: JSONText) throws {
+        if try recordReadReceipt(ref, version: version) { refreshUnreadIndicators() }
+    }
+
+    func clearUnread(inTag id: String) {
+        // Resolve the mounted choice again so a hold cannot acknowledge a tag
+        // that moved out of the rail while the catalog or selection changed.
+        guard let filter = selectedDirectory?.children.first(where: { $0.id == id }),
+              filter.unreadCount > 0, let members = filterMembers[filter.selectionKey] else { return }
+        let agents = members.threads.map { ApplicationThreadRef(threadID: $0, typeID: "agent") }
+        var changed = false
+        for ref in agents + members.applications {
+            guard let version = unreadVersions[ref] else { continue }
+            do {
+                if try recordReadReceipt(ref, version: version) { changed = true }
+            } catch { workspace.report(error) }
+        }
+        if changed { refreshUnreadIndicators() }
+    }
+
+    private func recordReadReceipt(_ ref: ApplicationThreadRef, version: JSONText) throws -> Bool {
         try workspace.preferences.threadReadHistory.markRead(ref, version: version)
         // A ready reader can still acknowledge an older document during a revision change.
-        guard unreadVersions[ref] == version else { return }
+        guard unreadVersions[ref] == version else { return false }
         unreadVersions.removeValue(forKey: ref)
+        return true
+    }
+
+    private func refreshUnreadIndicators() {
         refreshFilterIndicators(filters)
         selectedFilter = matchingFilter(tag: selectedTag, scope: selectedScope, kind: tagSelection?.kind)
     }
@@ -987,12 +1147,13 @@ public final class NativeOverviewWorkspaceModel {
               let expiry = request["expiresAt"]?.numberValue, Date().timeIntervalSince1970 * 1000 < expiry else { return "unavailable" }
         guard request["contextId"] == context["contextId"], request["revision"] == context["revision"] else { return "stale" }
         let scope = request["scope"]?.stringValue ?? ""
-        if request["tag"] != .null {
-            guard allFilters.contains(where: { .text($0.tag) == request["tag"] && (scope.isEmpty || $0.scope == scope) }) else {
-                return "unavailable"
-            }
+        if request["tag"] == .null { return selectedFilter == nil ? "unchanged" : "unavailable" }
+        guard allFilters.contains(where: { $0.count > 0 && .text($0.tag) == request["tag"] && (scope.isEmpty || $0.scope == scope) }) else {
+            return "unavailable"
         }
-        return request["tag"] == context["selectedTag"] && (scope.isEmpty || scope == selectedScope) ? "unchanged" : nil
+        // A catalog request for the directory itself also leaves its Running tag.
+        return tagSelection?.runningTag != true && request["tag"] == context["selectedTag"]
+            && (scope.isEmpty || scope == selectedScope) ? "unchanged" : nil
     }
 
     public func stop() async {
@@ -1005,9 +1166,11 @@ public final class NativeOverviewWorkspaceModel {
         try? await workspace.client.updateOverviewContext(nil)
         content.stop()
         snapshots.removeAll(); revisions.removeAll(); harnessCache.removeAll(); applicationCache.removeAll(); directoryTags.removeAll()
-        membershipFacts = nil; membershipIndex = .init(); allMembers = .init(); allMembersDirty = false; applicationsByRef.removeAll()
+        membershipFacts = nil; membershipIndex = .init(); applicationsByRef.removeAll()
         statusHiddenThreads.removeAll()
-        unreadVersions.removeAll(); activeThreadIDs.removeAll(); allHasActiveTasks = false
+        previouslyTagged.removeAll()
+        deferredFirstTag = nil
+        unreadVersions.removeAll(); activeThreadIDs.removeAll()
         globalThreadIDs.removeAll(); globalConversationCount = nil; hasEstablishedConversation = false
         applicationRecords = .init(); catalogIDs.removeAll()
         globalApplicationIDs.removeAll(); establishedThreadIDs.removeAll(); pendingInsertedIDs.removeAll()

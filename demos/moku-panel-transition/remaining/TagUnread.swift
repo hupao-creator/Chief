@@ -18,11 +18,11 @@ import SwiftUI
             let complete = name != "active" || finished
             let execution = try PublicExecution(executionID: JSONText(name), status: complete ? .completed : .running,
                 startedAt: 1, finishedAt: complete ? 2 : nil)
-            let tags: [JSONText] = name == "second" ? [] : ["Work"]
+            let tag: JSONText = name == "second" ? "Reading" : "Work"
             return try HarnessThread(id: JSONText(name), harnessID: "codex", revision: revision, sessionState: .null,
                 observation: .init(latestExecution: execution), cwd: "/fixture", settings: .object([:]),
-                createdAt: 1, updatedAt: 2, title: JSONText(name), tags: tags,
-                tagEmojis: tags.isEmpty ? [:] : ["Work": "🔎"], directoryTag: "Project", directoryScope: "/fixture").json
+                createdAt: 1, updatedAt: 2, title: JSONText(name), tags: [tag],
+                tagEmojis: [tag: "🔎"], directoryTag: "Project", directoryScope: "/fixture").json
         }
         let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
             "defaultCwd": .text("/fixture"), "settings": .object([:]), "threads": .array(threads),
@@ -41,7 +41,6 @@ import SwiftUI
             .overlayPreferenceValue(OverviewTagBounds.self) { anchors in
                 GeometryReader { proxy in
                     Color.clear.onChange(of: anchors.mapValues { proxy[$0] }, initial: true) { _, frames in
-                        // A selected directory also supplies the left "Any tag" button's ID.
                         // Accept directory frames only inside the measured header scroll region.
                         guard let bar = frames["__scroll__"] else { return }
                         for (id, rect) in frames where !rect.isEmpty {
@@ -68,9 +67,10 @@ import SwiftUI
     if let activityMotionReduced {
         // Keep the active conversation out of the canvas. Any running decoration
         // observed on this page must belong to a filter, not a task card.
-        try controls.activate(.status, id: "completed")
-        try await until("Completed status settled") {
-            model.statusFilter == .completed && !model.canvasState.isLayingOut
+        guard let reading = parent.children.first(where: { $0.tag == "Reading" }) else { throw ReplayFailure("Missing Reading tag") }
+        try controls.activate(.semantic, id: reading.id)
+        try await until("Reading tag settled") {
+            model.selectedRailID == reading.id && !model.canvasState.isLayingOut
                 && !model.canvasState.mountedCardIDs.contains("active")
         }
         try await inspectTagActivity(in: panel, directoryID: parent.id, childID: work.id, reduced: activityMotionReduced,
@@ -118,6 +118,18 @@ import SwiftUI
             return holes.count > 1 && holes.contains { $0.animation(forKey: "badge.sweep") != nil } == !reduced
         }
     }
+    // The header enters from above. Anchor the pixel capture after its glyph stops moving
+    // so every frame measures the dot pattern at the same window coordinates.
+    var lastFrames = [CGRect]()
+    var stationarySince = ContinuousClock.now
+    try await until("Filter glyphs settle in the window") {
+        let frames = surfaces().map { $0.convert($0.bounds, to: nil) }.sorted { $0.minX < $1.minX }
+        if frames != lastFrames {
+            lastFrames = frames
+            stationarySince = .now
+        }
+        return frames.count == 2 && ContinuousClock.now - stationarySince >= .milliseconds(200)
+    }
     // Get each button's actual window frame. The folder and the tag use separate
     // glyphs and the card behind the floating controls may overlap either one.
     func attribute(_ node: NSObject, _ name: String) -> Any? {
@@ -133,8 +145,6 @@ import SwiftUI
             buttonFrames(child, into: &result)
         }
     }
-    // The five-second selected title must finish collapsing before the pixel samples.
-    try await pause(5300)
     let buttons = currentButtons()
     var panelAX = [String: CGRect](), hostAX = [String: CGRect]()
     buttonFrames(panel, into: &panelAX)
@@ -145,7 +155,7 @@ import SwiftUI
              "tag-activity-geometry.json")
     var samples = [[String: Any]]()
     var regions = [String: CGRect]()
-    for (id, diameter) in [(directoryID, CGFloat(26)), (childID, CGFloat(36))] {
+    for (id, diameter) in [(directoryID, CGFloat(28.6)), (childID, CGFloat(39.6))] {
         guard let button = buttons[id] else { throw ReplayFailure("Missing measured button " + id) }
         guard let view = surfaces().first(where: {
             let frame = $0.convert($0.bounds, to: nil)

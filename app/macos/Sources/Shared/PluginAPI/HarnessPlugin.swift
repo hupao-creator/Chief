@@ -153,6 +153,9 @@ public protocol HarnessPlugin {
     var threadSettingsCodec: PluginValueCodec<ThreadSettingsUpdate> { get }
     var harnessSettingsCodec: PluginValueCodec<HarnessSettings> { get }
     var settingsPresentationCodec: PluginValueCodec<SettingsPresentation> { get }
+    /// True when global execution presentation does not depend on any field
+    /// of the saved profile, including model and executable selection.
+    var executionCatalogIndependentOfProfile: Bool { get }
     /// A decoded response may still contain a failed CLI or an incomplete catalog.
     /// Keep that interpretation in the owning Harness, independent of mounted UI.
     func settingsPresentationIssue(_ presentation: SettingsPresentation) -> String?
@@ -174,6 +177,7 @@ public protocol HarnessPlugin {
 
 extension HarnessPlugin {
     public var themeColor: Color? { nil }
+    public var executionCatalogIndependentOfProfile: Bool { false }
     public func settingsPresentationIssue(_ presentation: SettingsPresentation) -> String? { nil }
     public func readingPrefetchScopes(input: HarnessThreadInput) -> [HarnessContentScope] { [] }
     public var translations: HarnessTranslationCatalog { [:] }

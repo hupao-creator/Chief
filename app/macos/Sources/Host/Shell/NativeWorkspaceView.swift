@@ -12,6 +12,7 @@ public final class NativeWorkspacePresentation {
     public let canvas = NativeOverviewCanvasState()
     @ObservationIgnored lazy var collectionPanel = NativeCollectionPanelPresentation { [weak self] in
         self?.overview.releaseCollectionRanks()
+        self?.overview.applyDeferredFirstTag()
     }
     var readingCollectionMember: Bool { collectionPanel.readingMember != nil }
     var browsingCollection: Bool { collectionPanel.owner != nil && selected == nil }
@@ -104,7 +105,7 @@ public final class NativeWorkspacePresentation {
         publishPresence()
     }
     @ObservationIgnored private var started = false
-    public var interactionReady: Bool { started && !workspace.stopping }
+    public var interactionReady: Bool { started && !workspace.stopping && !workspace.waitingForInitialCatalog }
     @ObservationIgnored private var restored = false
     @ObservationIgnored private var snapshotAuthority: UUID?
     @ObservationIgnored private var releaseTask: Task<Void, Never>?
@@ -156,7 +157,8 @@ public final class NativeWorkspacePresentation {
                 guard let observation = self.workspace.catalog.thread(reference.thread.threadID)?.observation else { return false }
                 return observation.isExecutionActive && observation.latestExecution?.id == reference.executionID
             }
-            self.overview.receive(event)
+            // An expanded collection still owns its source card in the canvas.
+            self.overview.receive(event, deferFirstTag: self.collectionPanel.owner != nil)
             self.moku.receive(event)
             if case .snapshot(_, let authority) = event, self.snapshotAuthority != authority {
                 self.snapshotAuthority = authority
@@ -310,6 +312,12 @@ public final class NativeWorkspacePresentation {
         overview.readingSource = nil
         guard let request else { return }
         guard request.space == scene.noteReadingOrigin?.space else { scene.cancelPendingNoteReading(); return }
+        overview.revealNoteDestination(request.destination)
+        if request.space != overview.sceneKey {
+            // The locating task for the new space must wait for its own canvas layout.
+            scene.noteReadingOrigin?.space = overview.sceneKey
+            return
+        }
         if overview.error == nil {
             await canvas.prepareForPresentation()
             guard !Task.isCancelled, request == noteSourcePreparation else { return }
@@ -394,6 +402,7 @@ public final class NativeWorkspacePresentation {
     }
 
     fileprivate func prepareOverviewReturn() async {
+        await scene.waitForReturningEyes()
         guard !Task.isCancelled else { return }
         if readingCollectionMember {
             readingPanelSource = collectionPanel.memberFrame ?? readingPanelSource
@@ -551,9 +560,11 @@ public final class NativeWorkspacePresentation {
         let input = submission.input(knownDirectoryReferencesAsText: true)
         request["input"] = input
         workspace.dismissOperationError()
-        try await mokuSubmission.send(input: input, source: source, commandID: submission.commandID) {
-            await overview.recordUserAction(kind: "moku-input", text: JSONText(submission.text))
-            return .object(request)
+        try await moku.showConversationSend(submission, input: input) {
+            try await mokuSubmission.send(input: input, source: source, commandID: submission.commandID) {
+                await overview.recordUserAction(kind: "moku-input", text: JSONText(submission.text))
+                return .object(request)
+            }
         }
     }
 
@@ -846,7 +857,7 @@ public final class NativeWorkspacePresentation {
     fileprivate var overviewSwipeAvailable: Bool {
         started && scene.overviewVisible && !workspace.stopping && !scene.dockCovered
             && !onboarding.blocksWorkspace && scene.windowVisible && scene.inputInteractionReady
-            && !scene.inputOpen && !scene.inputLeaving && !scene.notePanelOpen
+            && !scene.conversationOpen && !scene.inputLeaving && !scene.notePanelOpen
             && !scene.dockInteractionVisible && moku.interaction == nil
             && !browsingCollection && !messageMotion.active
     }
@@ -947,12 +958,6 @@ public struct NativeWorkspaceView: View {
             onDismiss: { model.dismissOperationError() }) {
             workspaceScene
         }
-        .overlay(alignment: .top) {
-            NativeRuntimeConnectionNotice(model: model).padding(.top, 12)
-                .blur(radius: presentation.scene.settingsExpanded ? 12 : 0)
-                .allowsHitTesting(!presentation.scene.settingsOpen)
-                .accessibilityHidden(presentation.scene.settingsOpen)
-        }
         .modifier(NativeMokuTimerPlacement(timer: model.timer, scene: presentation.scene,
             dockAvailable: { model.catalog.hasMoku && presentation.onboarding.mountDock
                 && presentation.onboarding.dockVisible && !presentation.onboarding.blocksWorkspace
@@ -988,7 +993,7 @@ public struct NativeWorkspaceView: View {
     private var workspaceScene: some View {
         let routeID = presentation.navigationRouteID
         return NativeMokuScene(state: presentation.scene) {
-            NativeRuntimeSurface(model: model, showsConnectionNotice: false) {
+            NativeRuntimeSurface(model: model) {
                 if presentation.onboarding.blocksWorkspace { Color.clear }
                 else { outside }
             }
@@ -1120,15 +1125,24 @@ public struct NativeWorkspaceView: View {
                         onSettings: { presentation.openSettings() }),
                     interactionPaused: presentation.scene.interactionPaused || presentation.messageMotion.active,
                     landing: presentation.moku.landing,
-                    chromeVisible: presentation.selected == nil)
+                    chromeVisible: presentation.selected == nil,
+                    readingMotion: presentation.messageMotion)
                     .environment(\.overviewSwipeActions, NativeOverviewSwipeActions(
                         regions: presentation.scene.swipeRegions,
                         available: { presentation.overviewSwipeAvailable },
-                        canFilter: { !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
-                        canReturnWithWheel: { presentation.overview.canReturnToAllWithWheel(up: $0) },
-                        openNote: { if presentation.canToggleMokuNote { presentation.scene.openNotePanelFromUser() } },
-                        stepSemanticFilter: { presentation.overview.stepSemanticFilter(up: $0) },
-                        stepStatusFilter: { presentation.overview.stepStatusFilter(up: $0) }))
+                        canFilter: { !presentation.scene.inputOpen && !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
+                        openNoteFromBar: {
+                            guard presentation.overviewSwipeAvailable, !presentation.scene.inputOpen, presentation.canToggleMokuNote,
+                                  model.timer.current == nil else { return false }
+                            presentation.scene.openNotePanelFromUser()
+                            return true
+                        },
+                        openConversation: {
+                            guard presentation.overviewSwipeAvailable, model.catalog.hasMoku,
+                                  model.timer.current == nil else { return }
+                            presentation.scene.openConversation()
+                        },
+                        stepRail: { presentation.overview.stepRail(up: $0) }))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen
                         && !presentation.onboarding.blocksWorkspace),
                         presentation: presentation.collectionPanel)

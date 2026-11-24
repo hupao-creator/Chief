@@ -42,12 +42,16 @@ def check(positions):
         # Measure visible cap widths, clear of the rounded endpoints of the
         # 168pt compact shell and the 560pt reader. Both legs must actually move.
         intermediate = len({width for width in span if 170 < width < 535})
+        # measure() downsamples the 3770px window to 1885 point-sized pixels.
+        # Use the window edges as the reference even if both endpoints drift.
+        axis = (1885 - 1) / 2
+        center_error = max(abs((int(r["glass_left"]) + int(r["glass_right"])) / 2 - axis) for r in leg)
         results[direction] = dict(
             sequence=sequence, escapedFrames=escaped, tiltedLogoFrames=tilted,
             unresolvedFrames=[int(r["frame"]) for r in leg if r["candidate"] == "unresolved"],
             minimumClearancePt=min((float(r["clearance"]) for r in visible), default=None),
-            intermediateWidths=intermediate,
-            passed=sequence == roles and bool(tilted) and not escaped and intermediate >= 3,
+            intermediateWidths=intermediate, maxCenterErrorPt=center_error,
+            passed=sequence == roles and bool(tilted) and not escaped and intermediate >= 3 and center_error <= 2,
         )
     compact = all(150 <= width <= 168 for width in (widths[0], widths[-1]))
     expanded = 540 <= widths[peak] <= 560

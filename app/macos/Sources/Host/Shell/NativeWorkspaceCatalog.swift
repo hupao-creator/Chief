@@ -219,14 +219,14 @@ actor NativeCatalogPreparation {
     private var authority: UUID?
     func prepare(_ snapshot: JSONValue, event: RuntimeClientEvent) throws -> NativePreparedCatalog {
         let next: NativePreparedCatalog
-        if case .mutation(let mutation, _, let authority) = event,
+        if case .mutation(let mutation, _, let authority, _) = event,
            self.authority == authority, let previous,
            mutation["type"]?.stringValue == "state-patched", mutation["baseRevision"] == previous.snapshot["revision"],
            snapshot["threads"]?.catalogValue != nil, snapshot["applicationThreads"]?.catalogValue != nil {
             next = try NativePreparedCatalog(snapshot: snapshot, mutation: mutation, previous: previous)
         } else { next = try NativePreparedCatalog(snapshot: snapshot, previous: previous?.records ?? .init()) }
         switch event {
-        case .snapshot(_, let authority), .mutation(_, _, let authority): self.authority = authority
+        case .snapshot(_, let authority), .mutation(_, _, let authority, _): self.authority = authority
         default: break
         }
         previous = next

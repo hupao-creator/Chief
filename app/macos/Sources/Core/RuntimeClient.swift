@@ -4,6 +4,8 @@ import CryptoKit
 /// One client owns its subscriptions; only explicit start/retry can launch the shared service.
 public actor RuntimeClient {
     public nonisolated let storageDirectory: URL
+    /// The disk catalog has its own authority until the first live hydration.
+    public nonisolated let cachedSnapshotAuthority = UUID()
     let manager: any RuntimeConnectionSource
     let transport = RuntimeTransport()
     var connection: RuntimeConnection?
@@ -356,7 +358,7 @@ public actor RuntimeClient {
                 stateAuthority = token
                 bufferedMutations.removeAll(); bufferedMutationBytes = 0
                 emit(.snapshot(snapshot, authority: stateAuthority))
-                for entry in applied { emit(.mutation(entry.mutation, state: entry.state, authority: stateAuthority)) }
+                for entry in applied { emit(.mutation(entry.mutation, state: entry.state, authority: stateAuthority, replayed: true)) }
                 return merged
             }
             throw RuntimeError("REVISION_GAP", "Runtime snapshot requires a new subscription")
@@ -385,7 +387,8 @@ public actor RuntimeClient {
         guard let current = state, let revision = mutation["revision"]?.intValue,
               let old = current["revision"]?.intValue else { throw RuntimeError("INVALID_EVENT", "State mutation arrived without a snapshot") }
         if revision <= old { return }
-        if mutation["baseRevision"]?.intValue != old {
+        let recoveringGap = mutation["baseRevision"]?.intValue != old
+        if recoveringGap {
             let expected = generation; let epoch = connection?.epoch; let id = streamID
             _ = try await loadState()
             try assertHydrationCurrent(generation: expected, epoch: epoch, stream: id)
@@ -395,7 +398,7 @@ public actor RuntimeClient {
             if let newRevision = refreshed["revision"]?.intValue, revision <= newRevision { return }
             state = try RuntimeState.applying(mutation, to: refreshed)
         } else { state = try RuntimeState.applying(mutation, to: current) }
-        emit(.mutation(mutation, state: state!, authority: stateAuthority))
+        emit(.mutation(mutation, state: state!, authority: stateAuthority, replayed: recoveringGap))
         if RuntimeState.hasStateChanges(mutation) { readingStateDirty = true; scheduleReadingCache() }
     }
 

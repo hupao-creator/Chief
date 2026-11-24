@@ -53,7 +53,8 @@ func claudeTranscript(_ records: [JSONValue], turn: ClaudeTurn? = nil, presence:
                 annotations: list.compactMap { $0["annotation"] }.map(ThreadMessageAnnotation.init(json:)),
                 attachments: list.filter { $0["annotation"] == nil }.map { attachment in
                     .init(id: attachment.claudeID("id"), label: attachment["name"]?.stringValue ?? "",
-                          title: "\(attachment["mimeType"]?.stringValue ?? "") · \(Int(attachment["size"]?.numberValue ?? 0)) B")
+                          title: "\(attachment["mimeType"]?.stringValue ?? "") · \(Int(attachment["size"]?.numberValue ?? 0)) B",
+                          mimeType: attachment["mimeType"]?.stringValue, kind: attachment["kind"]?.stringValue)
                 }))
         case "assistant":
             body = .reply(text, phase: .init(status: item["status"]?.stringValue), anchor: anchors[item.claudeID("messageId")] ?? id)

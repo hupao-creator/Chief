@@ -22,17 +22,31 @@ import ChiefPluginUI
     // The handoff can cue only the Dock currently mounted in this scene.
     @ObservationIgnored weak var dockCharacter: NativeMokuCharacterMotion?
     public private(set) var inputOpen = false {
-        didSet { if !inputOpen { cancelComposerFocusRequest() } }
+        didSet { if !inputOpen { conversationOpen = false; cancelComposerFocusRequest() } }
     }
+    private(set) var conversationOpen = false
     public private(set) var inputPinnedOpen = false
     public private(set) var inputAdmissionReady = true
     private var inputIdentityReady = true
     private let readingPanelMotion: NativeReadingPageMotion?
     var readingPanelReturning: Bool { readingPanelVisible && readingPanelMotion?.isReturning == true }
+    // The mounted identity owns this token through its last frame of Harness ink.
+    // An absent or replaced seat must never hold a reader's close request.
+    var harnessSeat: UUID?
+    func waitForReturningEyes() async {
+        guard let seat = harnessSeat else { return }
+        for await waiting in Observations({
+            self.readingPanelReturning && self.windowVisible && !self.dockCovered && self.harnessSeat == seat
+        }) {
+            if !waiting { break }
+        }
+    }
     public var inputInteractionReady: Bool {
         inputAdmissionReady && inputIdentityReady && (!readingPanelVisible || readingPanelMotion?.active != true)
     }
-    public private(set) var inputLeaving = false
+    enum RetiringInput { case composer, conversation }
+    private(set) var retiringInput: RetiringInput?
+    public var inputLeaving: Bool { retiringInput != nil }
     public private(set) var composerGeneration = UUID() {
         didSet { cancelComposerFocusRequest() }
     }
@@ -206,7 +220,7 @@ import ChiefPluginUI
                 // may cross the primary entrance into a replacement visit.
                 composerGeneration = UUID()
                 capsuleTask?.cancel(); capsuleTask = nil
-                inputOpen = false; inputLeaving = false; capsuleSealed = false
+                inputOpen = false; retiringInput = nil; capsuleSealed = false
             }
         }
         guard composerIdentity != identity else { return }
@@ -214,7 +228,7 @@ import ChiefPluginUI
         composerAutofocus = autofocus
         composerGeneration = UUID()
         capsuleTask?.cancel(); capsuleTask = nil
-        inputOpen = retainOpenInput; inputLeaving = false; capsuleSealed = false
+        inputOpen = retainOpenInput; retiringInput = nil; capsuleSealed = false
         retainedSelection = nil; retainedSelectionText = nil
         retainDraft(draft)
         setInputOpen(opensInput)
@@ -235,6 +249,18 @@ import ChiefPluginUI
     func ownsComposer(_ draft: NativeComposerDraft) -> Bool {
         composerIdentity == nil || composerIdentity == ObjectIdentifier(draft)
     }
+    func openConversation() {
+        guard overviewVisible, !readingPanelVisible, !dockCovered, !dockInteractionVisible,
+              !notePanelOpen, !disabled, inputInteractionReady else { return }
+        let openingEditor = !inputOpen
+        setInputOpen(true)
+        conversationOpen = true
+        if openingEditor { focusOpenComposer(bufferOpeningKeys: true) }
+    }
+    func closeConversation() {
+        if !landingActive { setInputOpen(false) }
+        conversationOpen = false
+    }
     public func setInputOpen(_ open: Bool) {
         guard !open || inputInteractionReady else { return }
         guard !settingsOpen else { return }
@@ -247,14 +273,15 @@ import ChiefPluginUI
         if open {
             talkPresentation.setPresented(false)
             closeNotePanel()
-            inputLeaving = false; capsuleSealed = false; inputOpen = true
+            retiringInput = nil; capsuleSealed = false; inputOpen = true
         }
         else if inputOpen {
-            inputOpen = false; inputLeaving = true
+            retiringInput = conversationOpen ? .conversation : .composer
+            inputOpen = false
             capsuleTask = Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(420))
                 guard !Task.isCancelled, let self else { return }
-                self.inputLeaving = false
+                self.retiringInput = nil
             }
         }
         command?(.position)
@@ -263,8 +290,8 @@ import ChiefPluginUI
     /// Outside clicks leave bottom-Dock input mode; landing keeps its composer open.
     @discardableResult
     public func dismissInputForOutsideClick() -> Bool {
-        guard inputOpen, !inputPinnedOpen, !landingActive, dockRouteVisible, !dockCovered else { return false }
-        setInputOpen(false)
+        guard inputOpen, !inputPinnedOpen, !landingActive || conversationOpen, dockRouteVisible, !dockCovered else { return false }
+        closeConversation()
         inputHandledOutsideClick = true
         return true
     }
@@ -280,8 +307,8 @@ import ChiefPluginUI
     /// moved away from the editor. Landing retains input, just as for outside clicks.
     /// This retires presentation, never its draft.
     func dismissInputForEscape() -> Bool {
-        guard inputOpen, !inputPinnedOpen, !landingActive, dockContentVisible, !dockInteractionVisible else { return false }
-        setInputOpen(false)
+        guard inputOpen, !inputPinnedOpen, !landingActive || conversationOpen, dockContentVisible, !dockInteractionVisible else { return false }
+        closeConversation()
         return true
     }
     public func receiveTalk(_ message: NativeMokuTalkMessage?) { talkPresentation.receive(message) }

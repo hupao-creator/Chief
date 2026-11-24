@@ -97,7 +97,7 @@ private struct CardPlanRow: View {
             .background(alignment: .bottomLeading) {
                 if connectsAfter {
                     Rectangle()
-                        .fill(step.status == .completed ? palette.accent.swiftUI.opacity(0.25) : palette.ink.swiftUI.opacity(0.12))
+                        .fill(step.status == .completed ? NativePalette.overviewWorkStatusMark.swiftUI.opacity(0.25) : palette.ink.swiftUI.opacity(0.12))
                         .frame(width: 1, height: 8)
                         .offset(x: CardPlanGeometry.rowInset + CardPlanGeometry.markerSize / 2 - 0.5, y: 6)
                         .allowsHitTesting(false)
@@ -111,12 +111,12 @@ private struct CardPlanRow: View {
     @ViewBuilder private var surface: some View {
         if step.status == .inProgress {
             if flatMaterials {
-                content.background(palette.accentSoft.swiftUI, in: .rect(cornerRadius: CardPlanGeometry.cornerRadius))
+                content.background(NativePalette.overviewWorkStatusFill.swiftUI, in: .rect(cornerRadius: CardPlanGeometry.cornerRadius))
             } else if reduceTransparency {
                 content.background(palette.surfaceStrong.swiftUI, in: .rect(cornerRadius: CardPlanGeometry.cornerRadius))
             } else {
                 content
-                    .glassEffect(.regular.tint(palette.accent.swiftUI.opacity(0.08)), in: .rect(cornerRadius: CardPlanGeometry.cornerRadius))
+                    .glassEffect(.regular.tint(NativePalette.overviewWorkStatusMark.swiftUI.opacity(0.08)), in: .rect(cornerRadius: CardPlanGeometry.cornerRadius))
                     .glassEffectID(lensID, in: lens)
             }
         } else {
@@ -127,11 +127,11 @@ private struct CardPlanRow: View {
     private var content: some View {
         HStack(spacing: 10) {
             ZStack {
-                Circle().fill(step.status == .inProgress ? palette.accent.swiftUI : palette.ink.swiftUI.opacity(step.status == .completed ? 0.06 : 0.035))
+                Circle().fill(step.status == .inProgress ? NativePalette.overviewWorkStatusMark.swiftUI : palette.ink.swiftUI.opacity(step.status == .completed ? 0.06 : 0.035))
                 switch step.status {
                 case .completed:
                     NativeIcon(name: "Check", size: 10, strokeWidth: 2.5)
-                        .foregroundStyle(palette.accent.swiftUI)
+                        .foregroundStyle(NativePalette.overviewWorkStatusMark.swiftUI)
                 case .inProgress:
                     Text("\(number)").foregroundStyle(palette.surface.swiftUI)
                 case .pending:

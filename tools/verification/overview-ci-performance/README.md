@@ -10,7 +10,7 @@ explicit dispatch workflow; it does not configure remote required checks.
 ## Workload and sampling contract
 
 The suite ID is `overview-release`; scenario IDs are `R0`, `S4`, `A4`.
-All use N=40 with four running 2×1 cards fully visible at the fixed opening scroll position, dark
+All use N=40 tagged fixture tasks with four running 2×1 cards fully visible at the fixed opening scroll position, dark
 appearance, product-owned animation, Reduce Transparency disabled and the
 product's default card materials. The probe checks all four scan animations and
 the running decoration before warmup and after sampling. Badge-enabled products

@@ -98,9 +98,9 @@ The collector records the actual input and original frames. The measured
 interval contains no semantic polling. The AppKit horizontal and wrong-axis
 controls check that measurement; the SwiftUI and AppKit drag controls exercise
 the drag collector used by older artifacts. On the product Overview, a physical two-finger
-vertical swipe steps through tags when it begins on the left half and through statuses on the right half. Keep pan and tail probes horizontal. The
+vertical swipe anywhere on the canvas steps through the choices displayed in the left column. Keep pan and tail probes horizontal. The
 wrong-axis control exercises the collector against the control app. The
-[workspace replay](../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
+[workspace replay](../../demos/moku-landing/README.md#overview-note-click-at-actual-size)
 covers the product gesture.
 
 ## Scenarios and metrics

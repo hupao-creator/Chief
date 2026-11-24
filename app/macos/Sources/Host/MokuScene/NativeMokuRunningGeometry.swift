@@ -10,17 +10,24 @@ struct NativeMokuRunningGeometry {
         path = Self.orbitPath(in: size, cornerRadius: cornerRadius)
     }
 
-    func dots(milliseconds: Double) -> [MokuRunningFrame.Dot] {
-        let lap = milliseconds / (MokuRunningStory.orbitBeats * MokuRunningStory.beatMS)
-        let palettePhase = milliseconds / (MokuRunningStory.cycleBeats * MokuRunningStory.beatMS)
-        return (0..<3).map { index in
-            let phase = lap + Double(1 - index) * 0.17 / (2 * .pi)
-            let progress = phase - floor(phase)
-            let point = path.trimmedPath(from: 0, to: progress).currentPoint
+    func sample(milliseconds: Double) -> MokuRunningFrame {
+        // The story uses a 640-point view box. The Dock paints in capsule-local points.
+        let scale = 0.075
+        let radii = CGSize(width: size.width / 2 + 5.5, height: size.height / 2 + 5.5)
+        var frame = MokuRunningStory.sample(time: milliseconds / MokuRunningStory.beatMS,
+            restingY: 300 + radii.height / scale, restingSpacing: 8 / scale,
+            orbitRadii: CGSize(width: radii.width / scale, height: radii.height / scale)) { angle in
+            let lap = (angle - .pi / 2) / (2 * .pi)
+            let point = path.trimmedPath(from: 0, to: lap - floor(lap)).currentPoint
                 ?? CGPoint(x: size.width / 2, y: size.height + 5.5)
-            return .init(x: point.x - size.width / 2, y: point.y - size.height / 2,
-                         opacity: 1, color: MokuRunningStory.color(palettePhase + Double(index) / 3))
+            return CGPoint(x: 320 + (point.x - size.width / 2) / scale,
+                           y: 300 + (point.y - size.height / 2) / scale)
         }
+        for index in frame.dots.indices {
+            frame.dots[index].x = (frame.dots[index].x - 320) * scale
+            frame.dots[index].y = (frame.dots[index].y - 300) * scale
+        }
+        return frame
     }
 
     private static func orbitPath(in size: CGSize, cornerRadius: CGFloat) -> Path {

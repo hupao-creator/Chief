@@ -45,7 +45,8 @@ their own selection, playback and
 data lifetimes.
 The collection parent remains mounted for those updates while drawing, input and
 accessibility are suppressed. The shared compositor's auxiliary lane stays
-outside the collection's Liquid Glass panel. Close floats over the panel and
+outside the collection's panel. The grid shares the workspace backdrop and
+uses an opaque fill with Reduce Transparency. Close floats over the panel and
 stays fixed while the member grid scrolls. The collection and a report opened
 from it host SwiftUI content in window points.
 Blank-margin dismissal ignores nonfocusable system child accessories such as the
@@ -256,8 +257,11 @@ column. Inline placeholders reserve only their text/padding height, independent
 of eventual short or overflowing content. Neither form imposes a fixed width.
 
 The shared [surface loading view](Design/NativeSurfaceLoading.swift) centers the
-120 pt high-toss skillet on a transparent canvas, preserves the surface's localized status caption where
-present, and holds a still frame with Reduce Motion. Agent configuration notices use the same mark at 32 pt, with the adjacent localized text providing their accessible status. The reading placeholder
+bowl of the skillet above its optional localized caption. A 250 × 152 pt
+transparent canvas fits proportionally in smaller viewports. At full size the
+pan paints about 191 pt across, matching the visible width of the Running
+empty-state skillet. Three agents leave the rim in sequence and settle into
+the pan as it rebounds. Reduce Motion holds that resting pose. Agent configuration notices use the same mark at 32 pt, with the adjacent localized text providing their accessible status. The reading placeholder
 shows it after a cancellable 180ms grace period without taking focus or pointer input. Its layout is reserved during the delay,
 and it is absent from accessibility until visible. Unmounting cancels the delay
 and resets visibility; errors and retry controls appear immediately. The shared
@@ -554,7 +558,14 @@ ordinary follow-ups in Agent detail as one line of literal text and one line of
 recorded message time. It has no author/sequence heading, receipt state or status
 icon. Missing time is not replaced by the execution timestamp. Text that does not
 fit the actual reading width can expand; attachment/annotation detail reuses the
-Harness's existing user-message renderer only after expansion.
+Harness's existing user-message renderer only after expansion. It resolves a
+managed image by its recorded attachment ID and decodes a thumbnail off the
+main actor using the composer’s ImageIO loader. Thumbnails fit the available
+width within 360 × 220 pt, preserve aspect ratio and open the original in the
+same system Quick Look presentation as the composer. A legacy filename can
+identify an image candidate when media metadata is absent or generic. Other
+files, unavailable references and failed decodes retain the filename chip.
+Collapsing the message retires the thumbnail task and preview.
 `.steer` rows render only while their execution is running and become invisible
 once it is no longer running
 (completed, failed, interrupted or waiting for input), even though the model, wire
@@ -776,11 +787,13 @@ including when the card resizes; Report descriptions keep their explicit three-l
 limit. The bounded source preview and streaming batch policy remain unchanged.
 `HarnessThreadCard` and the Overview semantic boundary supply
 `threadCardUsesFlatMaterials`: terminal badges and provider badges without an
-emoji use static palette fills, and the in-progress plan row uses the accent-soft
-surface without a glass container or effect. The 44pt badge shows a stationary 21pt emoji, or the conversation glyph
+emoji use static palette fills, and the in-progress plan row uses a soft green
+fill without a glass container or effect. The in-progress plan marker, completed
+plan check and running tool indicator use the green work status color. The 44pt
+badge shows a stationary 21pt emoji, or the conversation glyph
 while the emoji is unavailable. A running status fills the disc with the
 [perforated running badge](Cards/RunningThreadBadge.swift). Idle uses a neutral
-fill and completed uses accent-soft green with a check mark. Status precedence
+fill and completed uses a green completion fill with a check mark. Status precedence
 comes from the shared execution and background-work projection. The card shell
 keeps its opaque neutral surface.
 The explicit isolated Overview benchmark can supply
@@ -791,7 +804,7 @@ plan rows and Report/collection badges retain their own materials.
 The shared glass helper still respects Reduce Transparency. This is a launch-scoped
 experiment, not a persisted preference; ordinary launches stay flat.
 Agent and Report cards share its upper-right placement and title clearance.
-Report uses the completed badge's accent-soft background without an execution
+Report uses the completed badge's green background without an execution
 terminal mark; Agent execution status and its terminal mark remain independent.
 The badge is status content with an accessible label and tooltip. When the Host
 supplies `threadCardArchiveAction`, it becomes a 44pt independent archive button:
@@ -1592,10 +1605,11 @@ Report Sidecards opt into the same native host inside `NativeSidecardFold`; thei
 carrier changes opacity only while the fold memo retains its aperture/offset.
 Agent Sidecards do not mount this additional Report host.
 Both carriers use the stack's monotonic start time, duration and Agent return
-curve `(0.3, 0, 0.2, 1)`. Native completion remains generation-fenced. Cancelling
-return removes
-carrier animations and restores its untransformed reader; route unmount retires
-the hosting content. There is one live reader per surface, without a bitmap copy.
+curve `(0.3, 0, 0.2, 1)`. Native completion remains generation-fenced. Cancelling return restores the
+untransformed reader and lets the partially revealed Overview backdrop fade
+back out. Its native host stays drawable until that reversal finishes. A new
+transition supersedes the pending freeze. The [Overview filters](../../Host/Overview/README.md#tags-and-filter-transitions)
+share this return and reversal clock. Route unmount retires the hosting content. There is one live reader per surface, without a bitmap copy.
 No native carrier-return correctness replay is configured for this surface path. See [Report Close](../../../../../design/reading.md)
 for the native-host return and ownership contract.
 

@@ -16,6 +16,9 @@ public final class NativeWorkspaceModel {
     public let timer: NativeMokuTimerController
     public let catalog = NativeWorkspaceCatalog()
     public var hasInitialContent: Bool { hasSnapshot && catalog.hasMoku }
+    var waitingForInitialCatalog: Bool {
+        snapshotAuthority == client.cachedSnapshotAuthority && connectionError == nil
+    }
     private var hasSnapshot = false
     public private(set) var connection: RuntimeConnectionStatus = .connecting
     private(set) var supportsFollowUpRowIdentity = false
@@ -80,6 +83,10 @@ public final class NativeWorkspaceModel {
             previewAttachment: { [weak self] thread, attachment in
                 guard let self else { throw CancellationError() }
                 return try await self.services.preview(threadID: thread, attachmentID: attachment)
+            },
+            resolveAttachmentImage: { [weak self] thread, attachment in
+                guard let self else { throw CancellationError() }
+                return try await self.services.attachmentImageURL(threadID: thread, attachmentID: attachment)
             }
         )
     )
@@ -127,6 +134,10 @@ public final class NativeWorkspaceModel {
         model.receive(snapshot: state, runtimeAvailable: runtimeAvailable)
         model.activeHostHarnessID = catalog.moku?.harnessID.string
         model.mokuRunning = catalog.executions.contains { $0["threadId"] == catalog.moku.map { .string($0.id) } }
+        model.draft.onSavedSettingsChange = { [weak self] submitted in
+            guard let self else { return }
+            self.settingsPrefetch.update(workspace: self, submittedChiefProfiles: submitted?["moku"]?["executionHarnesses"]?.objectValue ?? [:])
+        }
         return model
     }
 
@@ -152,7 +163,7 @@ public final class NativeWorkspaceModel {
                         self.settingsModel.receive(snapshot: self.state, runtimeAvailable: self.runtimeAvailable)
                         self.onCatalogChange?(event)
                     case .snapshot(let snapshot, _): await self.installPrepared(snapshot, event: event)
-                    case .mutation(_, let snapshot, let authority):
+                    case .mutation(_, let snapshot, let authority, _):
                         // The serial stream loop awaits preparation before the
                         // next event: no latest-state pull, coalescing or reordering.
                         if self.snapshotAuthority != authority || (snapshot["revision"]?.intValue ?? -1) > self.catalog.revision {
@@ -191,7 +202,7 @@ public final class NativeWorkspaceModel {
             guard !Task.isCancelled else { return }
             let authority: UUID
             switch event {
-            case .snapshot(_, let value), .mutation(_, _, let value): authority = value
+            case .snapshot(_, let value), .mutation(_, _, let value, _): authority = value
             default: throw PluginContractError("Catalog event has no authority")
             }
             if snapshotAuthority != authority { catalog.invalidateApplicationEntries() }

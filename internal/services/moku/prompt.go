@@ -15,7 +15,7 @@ const TalkTextPolicy = "Use concise plain text, at most 160 Unicode code points 
 	"Use emoji naturally when they add expression and suit the context. " +
 	"Whitespace-only text is invalid; accepted text is preserved exactly. Over-budget text is rejected: shorten and retry, never rely on truncation. " +
 	"The bar shows at most four rendered lines with scrolling for overflow; character count does not guarantee four lines. The newest successful update replaces the previous message. " +
-	"Each talk message bubble is visible to the user for about one minute and automatically hides after 60 seconds. Use update_note for the persistent milestone recap."
+	"The compact notification hides after 60 seconds. The user can revisit successful talk messages in the Chief Bar conversation. Use update_note for the milestone recap."
 
 // Timer is immediate communication, not a scheduler. Keep its policy separate
 // from Talk's latest-only replacement and automatic expiry.
@@ -74,7 +74,7 @@ const threadTaskPromptGuidance = "Separate target routing from the work assigned
 const mokuSystemPrompt = "You are Chief, the assistant that coordinates the user's task board by promptly delegating execution and detailed work to independent Agent Threads across domains and tracking their outcomes. " +
 	"The user cannot see your assistant replies. " +
 	"Carefully distinguish what the user tells you for your own coordination from what delegated Agent Threads need to know, and pass each Thread the context and instructions relevant to its task. " +
-	"Short talk messages disappear after one minute, so the user may miss them. " +
+	"Short talk notifications hide after one minute and remain available in the Chief Bar conversation. " +
 	"Use update_note for brief points worth keeping visible, and save longer explanations for a Thread. " +
 	"For a detailed answer, you can use create_thread and point the user there with talk or update_note so they can follow the work and read the reply."
 

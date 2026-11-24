@@ -40,6 +40,15 @@ private struct HeaderGlassFixture: View {
 }
 
 @MainActor private func windowImage(_ window: NSWindow) async throws -> CGImage {
+    // Inactive windows suppress Liquid Glass tints. Wait for the foreground
+    // launch to settle before drawing conclusions from their pixels.
+    for _ in 0..<20 {
+        if NSApp.isActive && window.isKeyWindow && window.occlusionState.contains(.visible) { break }
+        try await Task.sleep(for: .milliseconds(100))
+    }
+    guard NSApp.isActive && window.isKeyWindow && window.occlusionState.contains(.visible) else {
+        throw HeaderFailure("Header capture window unavailable (active: \(NSApp.isActive), key: \(window.isKeyWindow), visible: \(window.occlusionState.contains(.visible)))")
+    }
     guard let target = try await SCShareableContent.currentProcess.windows.first(where: { $0.windowID == window.windowNumber }) else {
         throw HeaderFailure("Missing mounted header window")
     }
@@ -78,7 +87,7 @@ private struct HeaderGlassFixture: View {
             window.contentView = host
             try await Task.sleep(for: .milliseconds(680))
             let image = try await windowImage(window)
-            let bounds = try ["__all__", chief.id, blue.id].map { id in
+            let bounds = try [chief.id, blue.id].map { id in
                 guard let rect = buttonFrames[id] else { throw HeaderFailure("Missing production header anchor " + id) }
                 return rect
             }
@@ -97,11 +106,11 @@ private struct HeaderGlassFixture: View {
             }
             func gray(_ c: NSColor) -> CGFloat { 0.21 * c.redComponent + 0.72 * c.greenComponent + 0.07 * c.blueComponent }
             func modulation(_ y: CGFloat) -> CGFloat {
-                let middle = bounds[1].midX
+                let middle = bounds[0].midX
                 let levels = (0..<56).map { gray(color(middle - 14 + CGFloat($0) / 2, y)) }.sorted()
                 return levels[50] - levels[5]
             }
-            let selected = bounds[1]
+            let selected = bounds[0]
             // Sample only exposed background just outside the curved capsules.
             // The two pixels straddle the previous rectangular viewport cut.
             func across(_ x: CGFloat, _ y: CGFloat, horizontal: Bool = false) -> CGFloat {
@@ -110,9 +119,9 @@ private struct HeaderGlassFixture: View {
                 return abs(gray(color(x - dx, y - dy)) - gray(color(x + dx, y + dy)))
             }
             let clippingSteps = [across(selected.minX + 0.25, selected.maxY),
-                                 across((selected.maxX + bounds[2].minX) / 2, selected.maxY),
-                                 across(bounds[2].maxX, bounds[2].midY - 7, horizontal: true)]
-            let gaps = [bounds[1].minX - bounds[0].maxX, bounds[2].minX - bounds[1].maxX]
+                                 across((selected.maxX + bounds[1].minX) / 2, selected.maxY),
+                                 across(bounds[1].maxX, bounds[1].midY - 7, horizontal: true)]
+            let gaps = [bounds[1].minX - bounds[0].maxX]
             let face = gray(color(selected.midX, selected.maxY - 7))
             let ink = (-8...8).flatMap { row in
                 (0..<36).map { column in gray(color(selected.midX + CGFloat(column) / 2, selected.midY + CGFloat(row) / 2)) }
@@ -128,7 +137,7 @@ private struct HeaderGlassFixture: View {
                 }
                 return red
             }
-            let red = badgePixels(selected), semanticBadge = badgePixels(bounds[2])
+            let red = badgePixels(selected), semanticBadge = badgePixels(bounds[1])
             let request = VNRecognizeTextRequest()
             request.recognitionLanguages = ["zh-Hans", "en-US"]
             try VNImageRequestHandler(cgImage: header).perform([request])
@@ -140,29 +149,30 @@ private struct HeaderGlassFixture: View {
             observations.append(receipt)
             let text = labels.joined()
             guard red > 80, semanticBadge > 80, contrast > 0.20,
-                  ["全部", "Chief", "Blue", "8", "3"].allSatisfy(text.contains),
+                  bounds.allSatisfy({ abs($0.height - OverviewTagMetrics.railDiameter) <= 0.5 }), !text.contains("全部"), !text.contains("…"),
+                  ["Chief", "Blue", "8", "3"].allSatisfy(text.contains),
                   textured || clippingSteps.allSatisfy({ $0 < 0.018 }),
                   !textured || modulation(selected.minY + 6) < modulation(selected.minY - 5) else {
                 try save("failed")
                 throw HeaderFailure("Header badge or text missing: \(receipt)")
             }
             if !textured {
-                let ids = ["__all__", chief.id, blue.id]
+                let ids = [chief.id, blue.id]
                 var images = [pixels]
-                for index in [0, 2, 1] {
+                for index in [1, 0] {
                     try clickFilter(in: window, at: bounds[index])
                     try await Task.sleep(for: .milliseconds(550))
                     let changed = try await windowImage(window)
                     images.append(NSBitmapImageRep(cgImage: changed))
-                    if index == 2, let cropped = changed.cropping(to: crop) {
+                    if index == 1, let cropped = changed.cropping(to: crop) {
                         try NSBitmapImageRep(cgImage: cropped).representation(using: .png, properties: [:])?
                             .write(to: evidence.appending(path: "inbox-tag-" + name + ".png"))
                     }
                 }
                 let views = images.map { readFaceColors($0, ids: ids, frames: buttonFrames) }
-                let results = try [(1, 0, 1), (0, 1, 2), (2, 2, 3)].map { index, selected, idle in
+                let results = try [(0, 0, 1), (1, 1, 2)].map { index, selected, idle in
                     let id = ids[index]
-                    var result = try tintResult(id: id, selected: views[selected], idle: views[idle], hue: id == blue.id ? .blue : .accent)
+                    var result = try tintResult(id: id, selected: views[selected], idle: views[idle], hue: id == blue.id ? .blue : .gold)
                     if id == blue.id, let face = views[idle][id] {
                         let (count, fraction) = preservedEmoji(selected: images[selected], idle: images[idle], frame: bounds[index], idleFace: face)
                         result["emojiInkPixels"] = count
@@ -188,7 +198,7 @@ private struct HeaderGlassFixture: View {
     try save("passed")
 }
 
-private enum TintHue: String { case accent, blue, green, warm, neutral }
+private enum TintHue: String { case gold, blue, green, warm, neutral }
 
 private func readFaceColors(_ pixels: NSBitmapImageRep, ids: [String], frames: [String: CGRect]) -> [String: [Double]] {
     Dictionary(uniqueKeysWithValues: ids.compactMap { id in
@@ -202,8 +212,8 @@ private func tintResult(id: String, selected: [String: [Double]], idle: [String:
     let r = delta[0], g = delta[1], b = delta[2]
     let visible = delta.contains { abs($0) > 0.035 }
     let pairedHue: Bool = switch hue {
-    case .accent: g - r > 0.025 && b - r > 0
-    case .blue: b - r > 0.04 && b - g > 0.02
+    case .gold: r - g > 0.015 && g - b > 0.035
+    case .blue: b - r > 0.04 && b - g > 0.02 && g > r
     case .green: g - r > 0.025 && g - b > 0.04
     case .warm: r - b > 0.03 && g - b > 0
     case .neutral: max(r, g, b) - min(r, g, b) < 0.065
@@ -222,17 +232,13 @@ private func tintResult(id: String, selected: [String: [Double]], idle: [String:
 }
 
 private struct SideTintFixture: View {
-    let folder: NativeOverviewFilter
+    let choices: [NativeOverviewRailChoice]
     let measured: ([String: CGRect]) -> Void
     @State var tag: String?
-    @State var status: NativeOverviewStatusFilter = .all
 
     var body: some View {
-        HStack {
-            NativeOverviewTagRail(parent: folder, selectedID: tag, maximumWidth: 145, strings: .init(), onTagChange: { tag = $0?.id })
-            Spacer()
-            NativeOverviewStatusRail(status: status, strings: .init(), onStatusChange: { status = $0 })
-        }
+        NativeOverviewTagRail(choices: choices, selectedID: tag, maximumWidth: 145, strings: .init(), onSelect: { tag = $0.id }, onClearUnread: { _ in })
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(white: 0.56))
@@ -268,40 +274,52 @@ private func preservedEmoji(selected: NSBitmapImageRep, idle: NSBitmapImageRep,
 @MainActor private func sideTints(in window: NSWindow, scheme: ColorScheme, name: String, evidence: URL) async throws -> [[String: Any]] {
     let blue = NativeOverviewFilter(tag: "Blue", emoji: "🔵", scope: "/Chief", count: 1)
     let apple = NativeOverviewFilter(tag: "Apple", emoji: "🍏", scope: "/Chief", count: 1)
-    let folder = NativeOverviewFilter(tag: "Chief", scope: "/Chief", count: 2, isDirectory: true, children: [blue, apple])
-    var frames = [String: CGRect]()
-    let host = NSHostingView(rootView: SideTintFixture(folder: folder, measured: { frames = $0 }, tag: folder.id)
-        .environment(\.colorScheme, scheme))
-    host.sizingOptions = []
-    window.contentView = host
-    let configurations = [[folder.id, "all"], [blue.id, "running"], [apple.id, "completed"]]
-    let ids = configurations.flatMap { $0 }
-    var samples = [[String: [Double]]](), images = [NSBitmapImageRep]()
-    for (index, pair) in (configurations + [configurations[0]]).enumerated() {
-        if index > 0 {
-            for id in pair {
+    let orange = NativeOverviewFilter(tag: "Orange", emoji: "🟠", scope: "/Chief", count: 1)
+
+    let folder = try await measure([(.tag(orange), .warm), (.tag(blue), .blue),
+                                    (.tag(apple), .green), (.status(.running), .warm)], space: "folder")
+    let inbox = try await measure([(.status(.running), .warm), (.status(.all), .warm),
+                                   (.status(.completed), .neutral)], space: "inbox")
+    return folder + inbox
+
+    @MainActor func measure(_ buttons: [(NativeOverviewRailChoice, TintHue)], space: String) async throws -> [[String: Any]] {
+        var frames = [String: CGRect]()
+        let choices = buttons.map(\.0)
+        let host = NSHostingView(rootView: SideTintFixture(choices: choices, measured: { frames = $0 }, tag: choices[0].id)
+            .environment(\.colorScheme, scheme))
+        host.sizingOptions = []
+        window.contentView = host
+        let ids = choices.map(\.id)
+        var samples = [[String: [Double]]](), images = [NSBitmapImageRep]()
+        var glyphSeats = [String: CGRect]()
+        for (index, id) in (ids + [ids[0]]).enumerated() {
+            if index > 0 {
                 guard let frame = frames[id] else { throw HeaderFailure("Missing side filter " + id) }
                 try clickFilter(in: window, at: frame)
             }
+            try await Task.sleep(for: .milliseconds(650))
+            let image = try await windowImage(window)
+            let pixels = NSBitmapImageRep(cgImage: image)
+            images.append(pixels)
+            if index == 0 {
+                for (id, frame) in frames {
+                    glyphSeats[id] = frame.divided(atDistance: frame.height, from: .minXEdge).slice
+                }
+            }
+            samples.append(readFaceColors(pixels, ids: ids, frames: glyphSeats))
+            try pixels.representation(using: .png, properties: [:])?.write(to: evidence.appending(path: "side-tints-\(space)-\(name)-\(index).png"))
         }
-        try await Task.sleep(for: .milliseconds(650))
-        let image = try await windowImage(window)
-        let pixels = NSBitmapImageRep(cgImage: image)
-        images.append(pixels)
-        samples.append(readFaceColors(pixels, ids: ids, frames: frames))
-        try pixels.representation(using: .png, properties: [:])?.write(to: evidence.appending(path: "side-tints-\(name)-\(index).png"))
-    }
-    let hues: [TintHue] = [.accent, .warm, .blue, .warm, .green, .neutral]
-    return try ids.enumerated().map { offset, id in
-        let index = offset / 2
-        let next = index + 1
-        var result = try tintResult(id: id, selected: samples[index], idle: samples[next], hue: hues[offset])
-        if hues[offset] != .accent, let frame = frames[id], let idle = samples[next][id] {
-            let (count, fraction) = preservedEmoji(selected: images[index], idle: images[next], frame: frame, idleFace: idle)
-            result["emojiInkPixels"] = count
-            result["emojiAgreement"] = fraction
-            result["passed"] = result["passed"] as? Bool == true && count >= 50 && fraction >= 0.75
+        return try ids.enumerated().map { index, id in
+            let next = index + 1
+            var result = try tintResult(id: id, selected: samples[index], idle: samples[next], hue: buttons[index].1)
+            result["space"] = space
+            if let frame = glyphSeats[id], let idle = samples[next][id] {
+                let (count, fraction) = preservedEmoji(selected: images[index], idle: images[next], frame: frame, idleFace: idle)
+                result["emojiInkPixels"] = count
+                result["emojiAgreement"] = fraction
+                result["passed"] = result["passed"] as? Bool == true && count >= 50 && fraction >= 0.75
+            }
+            return result
         }
-        return result
     }
 }

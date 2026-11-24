@@ -6,6 +6,7 @@ owns e2e payloads, never Runtime or UI state.
 import hashlib
 import json
 import threading
+import uuid
 
 from provider import Provider, declared_tools, find_tool
 
@@ -16,47 +17,97 @@ class Peer(Provider):
         self.holds, self.input_cancellations = [], []
         self.collection_projects = []
         self.overview_project = None
+        self.overview_project_count = 0
+        self.tagged_ids = set()
+        self.tag_names = {}
+        self.report_sources = {}
         self.request_context = threading.local()
         super().__init__(directory, 1)
 
-    def prepare_overview(self):
-        self.count = 12
+    def prepare_overview(self, count=14, project_count=12):
+        self.count = count
+        self.overview_project_count = project_count
         self.overview_project = self.directory / "Review"
         self.overview_project.mkdir()
 
     def prepare_collection(self):
         self.collection_projects = [self.directory / name for name in ("Library", "Studio")]
-        self.count = len(self.collection_projects)
+        self.count = 14  # One standalone task and eight/four report sources per folder.
         for project in self.collection_projects:
             project.mkdir()
 
     def creation_arguments(self, index):
         args = super().creation_arguments(index)
         if self.collection_projects:
-            args["cwd"] = str(self.collection_projects[index - 1])
-        elif self.overview_project and index == 1:
+            library, studio = self.collection_projects
+            args["cwd"] = str(library if index <= 9 else studio)
+        elif self.overview_project and index <= self.overview_project_count:
             args["cwd"] = str(self.overview_project)
         return args
 
+    def tag_response(self, request, tools):
+        # Read the real pool, then use each mutation's revision-fenced result.
+        status = None
+        for item in reversed(request.get("input", [])):
+            if item.get("role") == "user":
+                break
+            if item.get("type") == "function_call_output" and item.get("call_id", "").startswith("e2e_tag_"):
+                raw = json.loads(item["output"].split("\nOutput:\n")[-1])
+                if "content" in raw:
+                    raw = json.loads(next(part["text"] for part in raw["content"] if part["type"] == "text"))
+                status = raw.get("statusbar", raw)
+                break
+        if status is None:
+            name, args = "read_statusbar", {}
+        else:
+            pending = sorted(self.tagged_ids.intersection(status["unassignedThreadIds"]))
+            if not pending:
+                return self.response_events("Classification complete.", None)
+            labels = {ident: self.tag_names.get(ident, "Review work") for ident in pending}
+            tags = {tag["name"]: tag["id"] for tag in status["tags"]}
+            missing = next((label for label in labels.values() if label not in tags), None)
+            if missing is not None:
+                name, args = "create_tag", {"name": missing, "emoji": "📌"}
+            else:
+                name, args = "assign_threads", {"assignments": [
+                    {"threadId": ident, "tagId": tags[label]} for ident, label in labels.items()]}
+            args["expectedRevision"] = status["revision"]
+        tool, namespace = find_tool(tools, name)
+        return self.response_events("", {"type": "function_call", "call_id": "e2e_tag_" + uuid.uuid4().hex,
+            "name": tool, "namespace": namespace, "arguments": json.dumps(args)})
+
     def respond(self, request):
-        if self.collection_projects and (create := find_tool(declared_tools(request), "create_report")):
-            if request.get("model") != self.model or request.get("stream") is not True:
-                raise ValueError("unexpected collection peer request")
+        tools = declared_tools(request)
+        if find_tool(tools, "assign_threads"):
             self.request_count += 1
-            # Each directory's real Report Agent receives its own completion batch.
-            # Native tool results drive the next call and the public catalog
-            # independently establishes the eight document identities.
-            done = {item.get("call_id") for item in request.get("input", [])
-                    if item.get("type") == "function_call_output"}
-            for index in range(1, 5):
-                call_id = f"collection_report_{index}"
-                if call_id not in done:
-                    title = f"Collection report {index}"
-                    args = {"title": title, "emoji": "📚", "shortDescription": "Collection budget fixture",
-                            "html": f"<p>{title}</p>", "coverHTML": f"<div>{title}</div>", "relatedExecutions": []}
-                    return self.response_events("", {"type": "function_call", "call_id": call_id, "name": create[0],
-                        "namespace": create[1], "arguments": json.dumps(args)})
-            return self.response_events("Reports complete.", None)
+            return self.tag_response(request, tools)
+        if self.collection_projects and (create := find_tool(tools, "create_report")):
+            self.request_count += 1
+            inputs = request.get("input", [])
+            done = {item.get("call_id") for item in inputs if item.get("type") == "function_call_output"}
+            for item in reversed(inputs):
+                if item.get("role") != "user":
+                    continue
+                for part in item["content"]:
+                    text = part.get("text", "")
+                    if "\nStatusbar: " not in text:
+                        continue
+                    status, _ = json.JSONDecoder().raw_decode(text.rsplit("\nStatusbar: ", 1)[1])
+                    for row in status["unassignedThreads"]:
+                        thread = row["id"]
+                        if thread not in self.report_sources:
+                            continue
+                        call_id = "report_" + thread
+                        if call_id in done:
+                            continue
+                        args = {"title": "Collection report " + thread[:8], "emoji": "📚",
+                                "shortDescription": "Collection budget fixture", "html": "<p>Review</p>",
+                                "coverHTML": "<div>Review</div>", "relatedExecutions": [
+                                    {"threadId": thread, "executionId": self.report_sources[thread]}]}
+                        return self.response_events("", {"type": "function_call", "call_id": call_id,
+                            "name": create[0], "namespace": create[1], "arguments": json.dumps(args)})
+                    return self.response_events("Reports complete.", None)
+            raise ValueError("missing report statusbar")
         events = super().respond(request)
         # A real model-service stream remains active until the UI cancels it.
         # No Runtime operation or internal state is used to hold execution.

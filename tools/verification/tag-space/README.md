@@ -9,7 +9,7 @@ defines cover loading and playback.
 The [collector](main.swift) mounts the production Overview, tag controls, canvas,
 Codex cards and Report renderer in a nonactivating 2048 × 1225 point dark panel.
 A fresh temporary profile contains five Agent cards and twelve recent 1×2
-reports in one Chief directory, a second same-named directory, and one Inbox
+reports tagged 共享 in one Chief directory, a second same-named directory, and one Inbox
 card tagged 股票行情. The local Report query serves a distinct HTML/CSS chart for
 each report. The renderer uses real WebKit. The fixture does not start a Runtime
 or contact a provider.

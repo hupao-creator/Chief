@@ -3,8 +3,8 @@ import SwiftUI
 import AppKit
 
 /// AppKit supplies signed content motion and any inertia. Precise gestures
-/// contribute only their horizontal component. A single-axis mouse wheel
-/// uses its line delta to move along the same horizontal scroll range.
+/// contribute their horizontal component to the camera. After vertical filter
+/// routing, a horizontal or Shift-modified line wheel pans in window points.
 enum NativeOverviewScrollGeometry {
     static func distance(x: Double, y: Double, precise: Bool, pointsPerWindowPoint: Double) -> Double? {
         guard x.isFinite, y.isFinite, pointsPerWindowPoint.isFinite, pointsPerWindowPoint > 0 else { return nil }
@@ -158,25 +158,35 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                    document.bounds.height > scroll.contentView.bounds.height + 1 { return nil }
                 view = current.superview
             }
-            if actions.regions.note.contains(point, in: window) { return .note }
-            if actions.regions.bar.contains(point, in: window) || !actions.canFilter() { return nil }
-            return contentPoint.x < content.bounds.midX ? .semanticFilter : .statusFilter
+            if actions.regions.bar.contains(point, in: window) { return .conversation }
+            guard actions.canFilter() else { return nil }
+            return .rail
         }
 
         /// Called by the local monitor; exposed internally for window-level replays.
         func handle(_ event: NSEvent) -> NSEvent? {
             guard let window, event.window === window else { return event }
             if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
-                interruptGestures(); return event
+                interruptGestures()
+                // A system secondary click arrives as rightMouseDown. AppKit
+                // can also deliver Control-click as a modified leftMouseDown.
+                let secondaryClick = event.type == .rightMouseDown
+                    || (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
+                let point = event.locationInWindow
+                if secondaryClick, window.isVisible, let swipeActions,
+                   swipeActions.regions.bar.contains(point, in: window),
+                   !swipeActions.regions.controls.contains(point, in: window),
+                   swipeActions.openNoteFromBar() { return nil }
+                return event
             }
             guard event.type == .scrollWheel else { return event }
+            // The router may consume this contact before AppKit dispatches it to the pressed tag.
+            if event.momentumPhase.isEmpty { swipeActions?.regions.pressedTag?.cancelPress() }
             if let swipeActions, verticalSwipe.route(event, target: { verticalTarget(event, actions: swipeActions) },
-                canReturnWithWheel: swipeActions.canReturnWithWheel,
                 perform: { target, up in
                     switch target {
-                    case .note: swipeActions.openNote()
-                    case .semanticFilter: swipeActions.stepSemanticFilter(up)
-                    case .statusFilter: swipeActions.stepStatusFilter(up)
+                    case .conversation: swipeActions.openConversation()
+                    case .rail: swipeActions.stepRail(up)
                     }
                 }) {
                 sequence.reset()

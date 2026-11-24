@@ -37,11 +37,16 @@ public struct RuntimeError: Error, Sendable, LocalizedError, Equatable {
 public enum RuntimeConnectionStatus: String, Sendable { case connecting, connected, disconnected, stopped }
 public enum RuntimeContentScope: Sendable, Equatable {
     case thread
+    case mokuConversation(before: JSONText?)
     case turn(key: JSONText)
     case execution(key: JSONText)
     var json: JSONValue {
         switch self {
         case .thread: return runtimeObject(["kind": .text("thread")])
+        case .mokuConversation(let before):
+            var fields = ["kind": JSONValue.text("moku-conversation")]
+            if let before { fields["key"] = .string(before) }
+            return runtimeObject(fields)
         case .turn(let key): return runtimeObject(["kind": .text("turn"), "key": .string(key)])
         case .execution(let key): return runtimeObject(["kind": .text("execution"), "key": .string(key)])
         }
@@ -59,7 +64,7 @@ public enum RuntimeClientEvent: Sendable {
     /// observer catches up to the already-current state after queue overflow.
     case snapshot(JSONValue, authority: UUID)
     /// Exact post-apply state of this event, never a later actor snapshot.
-    case mutation(JSONValue, state: JSONValue, authority: UUID)
+    case mutation(JSONValue, state: JSONValue, authority: UUID, replayed: Bool = false)
     case threadContent(subscriptionId: String, state: RuntimeContentState)
     case overviewFilter(JSONValue)
     case failure(RuntimeError)

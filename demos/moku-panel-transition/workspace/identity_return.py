@@ -27,7 +27,7 @@ def capture(output):
     session = Session(runtime, output, uuid.uuid4().hex, log)
     replay = NativeReplay(ROOT, "IdentityReturn", "com.chief.replay.identity-return")
     try:
-        replay.compile([Path(__file__).with_name("IdentityReturn.swift"), DEMO / "CollapseCapture.swift"])
+        replay.compile([Path(__file__).with_name("ReadingPanelClose.swift"), Path(__file__).with_name("IdentityReturn.swift"), DEMO / "CollapseCapture.swift"])
         save(output / "build.json", {**build, "captureHostSHA256": sha256(replay.executable)})
         session.prepare()
         session.start()

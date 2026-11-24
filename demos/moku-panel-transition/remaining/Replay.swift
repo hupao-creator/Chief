@@ -129,6 +129,7 @@ extension NSView {
                 switch CommandLine.arguments.last {
                 case "--eyes": try await eyeVisit()
                 case "--tag-unread": try await tagUnreadVisit()
+                case "--orbit-gaze": try await toolFeedbackVisit(recordGaze: true)
                 case "--tag-activity", "--tag-activity-reduced":
                     try await tagUnreadVisit(activityMotionReduced: CommandLine.arguments.last == "--tag-activity-reduced")
                 case "--orbit-fade": try await toolFeedbackVisit(orbitFade: true)

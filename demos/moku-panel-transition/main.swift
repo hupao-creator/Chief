@@ -76,7 +76,8 @@ private struct Surface: View {
             if model.agentEntranceCapture {
                 NativeReadingPageStack(open: model.thread, identity: JSONText(model.readingRoute.uuidString),
                     motion: model.readingMotion, stationaryParent: true, panel: true,
-                    threadPanelMotion: true, onClose: model.finishReturn) {
+                    threadPanelMotion: true, prepareParent: { await model.scene.waitForReturningEyes() },
+                    onClose: model.finishReturn) {
                     Color(white: 0.91)
                 } front: {
                     ColumnMarker(model: model)
@@ -345,6 +346,11 @@ private struct Controls: View {
         Task {
             do {
                 try await Task.sleep(for: .milliseconds(400))
+                if args.contains("--directory-removal") {
+                    try await captureDirectoryRemoval(panel)
+                    NSApp.terminate(nil)
+                    return
+                }
                 if args.contains("--control-ink") {
                     try await captureControlInk(panel)
                     NSApp.terminate(nil)
@@ -409,6 +415,25 @@ private struct Controls: View {
                 exit(EXIT_FAILURE)
             }
             NSApp.terminate(nil)
+        }
+    }
+
+    private func captureDirectoryRemoval(_ panel: NSPanel) async throws {
+        model.running = false
+        let directory = NativeComposerDirectory(name: "Chief", path: "/fixture/Chief")
+        model.draft.insertDirectory(directory)
+        model.scene.toggleInput(focusOnOpening: true)
+        try await Task.sleep(for: .milliseconds(750))
+        guard let editor = panel.firstResponder as? NSTextView, model.draft.canSubmit else {
+            throw NSError(domain: "Directory-only input did not settle", code: 1)
+        }
+        let movie = try await DockMovieCapture(window: panel, folder: "directory-removal")
+        try await Task.sleep(for: .milliseconds(350))
+        model.draft.removeDirectory(directory.path)
+        try await Task.sleep(for: .milliseconds(650))
+        try await movie.finish()
+        guard model.scene.inputOpen, !model.draft.canSubmit, panel.firstResponder === editor else {
+            throw NSError(domain: "Removing the directory lost the editor or left Send enabled", code: 1)
         }
     }
 

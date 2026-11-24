@@ -69,7 +69,7 @@ private func rowInk(_ frame: HoverFrame, roi: CGRect, centerY: CGFloat, leading:
     let result: RowInk? = frame.pixels.withUnsafeBytes { raw in
         let bytes = raw.bindMemory(to: UInt8.self)
         var redMin = w, redMax = -1
-        for y in (center - Int(26 * scale))...(center - Int(10 * scale)) {
+        for y in (center - Int(28.6 * scale))...(center - Int(10 * scale)) {
             for x in from...through {
                 let i = 4 * (y * w + x)
                 let b = Int(bytes[i]), g = Int(bytes[i + 1]), r = Int(bytes[i + 2])
@@ -120,7 +120,7 @@ private func rowInk(_ frame: HoverFrame, roi: CGRect, centerY: CGFloat, leading:
         original.makeKeyAndOrderFront(nil)
         if let originalCursor { CGWarpMouseCursorPosition(originalCursor) }
     }
-    let cap: CGFloat = 172
+    let cap: CGFloat = 189.2
     let labels = ["界面问题", "代码审查", "需要截断的很长的界面设计评审与代码审查"]
     let icons = ["🎨", "🔍", "🧰"], counts = [5, 2, 1]
     let children = labels.indices.map { index in
@@ -128,12 +128,9 @@ private func rowInk(_ frame: HoverFrame, roi: CGRect, centerY: CGFloat, leading:
         filter.unreadCount = counts[index]
         return filter
     }
-    let parent = NativeOverviewFilter(tag: "Workspace", scope: "/hover", count: 12, isDirectory: true, children: children)
     var measured = [String: CGRect]()
-    // Bind the production initializer so the same collector also links to the
-    // reference revision, whose width argument had a different external label.
-    let makeRail = NativeOverviewTagRail.init
-    let rail = makeRail(parent, children[1].id, cap, .init(), { _ in }, nil)
+    let rail = NativeOverviewTagRail(choices: children.map(NativeOverviewRailChoice.tag), selectedID: nil,
+                                     maximumWidth: cap, strings: .init(), onSelect: { _ in }, onClearUnread: { _ in })
     let root = ZStack(alignment: .leading) {
         Color(white: 0.45)
         rail.padding(.leading, 20)
@@ -163,7 +160,7 @@ private func rowInk(_ frame: HoverFrame, roi: CGRect, centerY: CGFloat, leading:
     try move(to: away)
     try await Task.sleep(for: .milliseconds(400))
     let initial = try children.map { child in
-        guard let frame = measured[child.id], abs(frame.width - 42) <= 1 else { throw HoverFailure("Missing compact \(child.tag): \(measured)") }
+        guard let frame = measured[child.id], abs(frame.width - 46.2) <= 1 else { throw HoverFailure("Missing compact \(child.tag): \(measured)") }
         return frame
     }
     let scale: CGFloat = 2
@@ -187,7 +184,7 @@ private func rowInk(_ frame: HoverFrame, roi: CGRect, centerY: CGFloat, leading:
         for (name, index, dwell) in [("review", 1, 700), ("ui", 0, 700), ("long", 2, 700),
                                      ("reverse-review", 1, 75), ("reverse-ui", 0, 75), ("reverse-away", -1, 700)] {
             events.append((name, CACurrentMediaTime()))
-            try move(to: index < 0 ? away : CGPoint(x: initial[index].minX + 21, y: initial[index].midY))
+            try move(to: index < 0 ? away : CGPoint(x: initial[index].midX, y: initial[index].midY))
             try await Task.sleep(for: .milliseconds(dwell))
             if dwell == 700 && index >= 0 { widths.append(measured[children[index].id]?.width ?? 0) }
         }
@@ -261,7 +258,7 @@ private func rowInk(_ frame: HoverFrame, roi: CGRect, centerY: CGFloat, leading:
     // for font metric and backing-pixel rounding in the mounted SwiftUI title.
     let font = NSFont.systemFont(ofSize: OverviewTagMetrics.chipFont, weight: .semibold)
     let fitted = [labels[1], labels[0]].map {
-        42 + ceil(($0 as NSString).size(withAttributes: [.font: font]).width) + 12
+        46.2 + ceil(($0 as NSString).size(withAttributes: [.font: font]).width) + 13.2
     } + [cap]
     if widths.count != 3 || zip(widths, fitted).contains(where: { abs($0 - $1) > 2 }) {
         failures.append("Unexpected fitted widths (review, ui, long): \(widths)")

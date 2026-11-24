@@ -7,6 +7,9 @@ import ChiefCore
 @MainActor @Observable
 public final class DesktopPreferences {
     public private(set) var selectedThreadID: String?
+    private(set) var overviewSelection: NativeOverviewTagSelection?
+    private(set) var overviewRunningDirectories: Set<String> = []
+    private(set) var overviewDirectoryTags: [String: String] = [:]
     public private(set) var applicationLastOpened: [String: Double] = [:]
     public private(set) var applicationCollectionReading: [String: ApplicationCollectionReading] = [:]
     public private(set) var onboardingCompleted: Bool
@@ -19,6 +22,9 @@ public final class DesktopPreferences {
     private struct SavedState: Codable {
         // Unknown keys in earlier files, including the old UI overrides, are ignored.
         var selectedThreadId: String?
+        var overviewSelection: NativeOverviewTagSelection?
+        var overviewDirectoryTags: [String: String]?
+        var overviewRunningDirectories: Set<String>?
         var onboardingCompleted: Bool?
         var applicationLastOpened: [String: Double]?
         var applicationCollectionReading: [String: ApplicationCollectionReading]?
@@ -33,6 +39,9 @@ public final class DesktopPreferences {
         do {
             let state = try JSONDecoder().decode(SavedState.self, from: Data(contentsOf: fileURL))
             selectedThreadID = state.selectedThreadId
+            overviewSelection = state.overviewSelection
+            overviewDirectoryTags = state.overviewDirectoryTags ?? [:]
+            overviewRunningDirectories = state.overviewRunningDirectories ?? []
             if let opened = state.applicationLastOpened {
                 guard opened.allSatisfy({ !$0.key.isEmpty && $0.key.utf16.count <= 512 && $0.value.isFinite && $0.value >= 0 }) else {
                     throw CocoaError(.fileReadCorruptFile)
@@ -82,11 +91,36 @@ public final class DesktopPreferences {
         onboardingPending = !completed
     }
 
+    func selectOverviewSpace(_ selection: NativeOverviewTagSelection) throws {
+        guard overviewSelection != selection else { return }
+        var directoryTags = overviewDirectoryTags
+        var runningDirectories = overviewRunningDirectories
+        if selection.runningTag == true {
+            runningDirectories.insert(selection.scope)
+            directoryTags.removeValue(forKey: selection.scope)
+        } else if selection.kind == .semantic, selection.scope != NativeOverviewSelection.inboxScope {
+            runningDirectories.remove(selection.scope)
+            directoryTags[selection.scope] = selection.tag
+        }
+        try persist(selectedThreadID: selectedThreadID, overviewSelection: selection, overviewDirectoryTags: directoryTags,
+                    overviewRunningDirectories: runningDirectories)
+        overviewSelection = selection
+        overviewDirectoryTags = directoryTags
+        overviewRunningDirectories = runningDirectories
+    }
+
     private func persist(selectedThreadID: String?, onboardingCompleted: Bool? = nil,
-                         applicationCollectionReading: [String: ApplicationCollectionReading]? = nil) throws {
+                         applicationCollectionReading: [String: ApplicationCollectionReading]? = nil,
+                         overviewSelection: NativeOverviewTagSelection? = nil,
+                         overviewDirectoryTags: [String: String]? = nil,
+                         overviewRunningDirectories: Set<String>? = nil) throws {
         let data = try JSONEncoder().encode(SavedState(
             selectedThreadId: selectedThreadID,
-            onboardingCompleted: onboardingCompleted ?? self.onboardingCompleted,
+            overviewSelection: overviewSelection ?? self.overviewSelection,
+            overviewDirectoryTags: overviewDirectoryTags ?? self.overviewDirectoryTags,
+            overviewRunningDirectories: overviewRunningDirectories ?? self.overviewRunningDirectories,
+            onboardingCompleted: onboardingCompleted ?? (
+                self.onboardingCompleted || onboardingPending ? self.onboardingCompleted : nil),
             applicationLastOpened: applicationLastOpened,
             applicationCollectionReading: applicationCollectionReading ?? self.applicationCollectionReading
         ))

@@ -40,7 +40,7 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 	switch channel {
 	case "state:load", "history:clear", "moku:clear", "moku:deliveries", "harness:detect-installations", "workspace:list-known-directories":
 		arity = 0
-	case "attachment:preview", "thread:set-archived", "application:archive":
+	case "attachment:preview", "attachment:image-path", "thread:set-archived", "application:archive":
 		arity = 2
 	}
 	if len(args) != arity {
@@ -80,7 +80,7 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 		}
 		return nil
 	}
-	if arity == 2 && channel != "attachment:preview" {
+	if channel == "thread:set-archived" || channel == "application:archive" {
 		second, err := Decode(args[1])
 		if err != nil {
 			return err
@@ -110,7 +110,7 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 			return errors.New("invalid note exposure signal")
 		}
 		return nil
-	case "attachment:preview":
+	case "attachment:preview", "attachment:image-path":
 		if err = text(value, 128); err != nil {
 			return err
 		}

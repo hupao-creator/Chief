@@ -32,11 +32,23 @@ collector and executable fingerprints.
 
 - `orbit-fade` mounts the production 168 × 44-point Dock entirely offscreen.
   Catalog fixtures start, interrupt, reverse, replace and complete executions.
-  The replay advances the production display-frame step by 25ms. Each visible
-  sample must stay on the capsule contour, advance with an uninterrupted peer
-  and paint three 5-point dots at the current fade opacity. The evidence includes
+  The replay advances the production display-frame step by 25ms. Every visible
+  sample must match the authored compact geometry, stay in phase with an
+  uninterrupted peer and paint the three dots at their faded pulse opacity.
+  The full-cycle visit checks the top of the lap, the landing row, the
+  recovery squint and the next relay. The evidence includes
   intermediate Dock images, 1-pixel-per-point decoration rasters and
   `orbit-frames.json`. This fixture checks drawing and state, not display pacing.
+- `orbit-gaze` records a 2× nonactivating window through tool replacement, a
+  750ms visibility pause, interrupted retirement and rapid editor reopening.
+  The catalog fixture supplies execution changes. The native visibility gate
+  pauses the display clock while the window remains recordable. The movie
+  and event times are in `orbit-gaze/window.mp4` and `orbit-gaze/events.json`.
+  Run `python3 demos/moku-panel-transition/remaining/check_orbit_gaze.py <output>/orbit-gaze`
+  to measure the dot and eye centroids. After the eye handoff, both axes must correlate
+  above 0.8 in the lap, resumed, reversed and folded intervals. The check requires
+  three dots and two eyes in at least 85% of each interval, within one pixel of drift
+  during the pause, and no dot ink in the settled editor or idle bar.
 - `tool-feedback` mounts the production Dock and delivers Codex catalog fixtures
   to its workspace presentation. The check observes painted dots, the mounted
   character and its animation input across consecutive named calls and reasoning.
@@ -50,9 +62,9 @@ experiments and their limitations. Their collectors and rejected candidates are
 available in Git object `9979d53b15b04243d87000e390d1d90d39d0ac6a` under
 `demos/moku-panel-transition/remaining/`.
 
-The `tag-unread` case mounts the production Overview in an offscreen panel with isolated read history. It selects Project from the header and Work from the left column. Project starts with two unread tasks, one tagged Work and one untagged. The replay checks both counts with Work selected and saves the window image before reading, after a receipt, after rereading the same version and after the final receipt.
+The `tag-unread` case mounts the production Overview in an offscreen panel with isolated read history. It selects Project from the header and Work from the left column. Project starts with two unread tasks, one tagged Work and one tagged Reading. The replay checks both counts with Work selected and saves the window image before reading, after a receipt, after rereading the same version and after the final receipt.
 
-The `tag-activity` and `tag-activity-reduced` cases select Work and Completed only. The running task is outside that card selection. They locate the perforation surfaces inside Project's folder button and Work's emoji button using the controls’ production layout anchors. The normal-motion visit requires sweeping Core Animation layers and changes in the captured pixels behind both glyphs. The Reduce Motion visit requires static perforations. Completing the active task removes both decorations. The nonactivating panel leaves an edge on screen for WindowServer composition. The evidence contains window images, a sequence of glyph crops, `tag-activity.json` and the button, AX and native-surface frames in `tag-activity-geometry.json`.
+The `tag-activity` and `tag-activity-reduced` cases select Reading. The running Work task is outside that card selection. They locate the perforation surfaces inside Project's folder button and Work's emoji button using the controls’ production layout anchors. Once the glyph positions have settled, the replay captures fourteen frames. The normal-motion visit requires sweeping Core Animation layers and changes in the captured pixels behind both glyphs. The Reduce Motion visit requires static perforations. Completing the active task removes both decorations. The nonactivating panel leaves an edge on screen for WindowServer composition. The evidence contains window images, the glyph crops, `tag-activity.json` and the button, AX and native-surface frames in `tag-activity-geometry.json`.
 
 ```sh
 python3 demos/moku-panel-transition/remaining/run.py .build/overview-tag-activity tag-unread tag-activity tag-activity-reduced

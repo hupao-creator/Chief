@@ -114,6 +114,7 @@ struct NativeMokuComposerInput: View {
     var onEditorSeatChange: (CGFloat) -> Void = { _ in }
     var onEscape: (() -> Void)?
     let onSend: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.locale) private var locale
     @Environment(\.nativeOfflineDraftEditing) private var offlineDraftEditing
     @State private var editorRowHeight: CGFloat = 58
@@ -151,9 +152,6 @@ struct NativeMokuComposerInput: View {
                 containerRadius: NativeMokuCapsuleLayout.cornerRadius,
                 onRemove: { id in Task { await draft.removeAttachment(id) } }, onRemoveDirectory: draft.removeDirectory)
                 .disabled(actionsUnavailable || readOnly)
-                .mokuInk(value: attachments.map(\.id))
-                .mokuInk(value: attachments.map(\.pending))
-                .mokuInk(value: directories.map(\.path))
             NativeMokuComposerRowLayout(compact: compact) {
                 eyeSeat
                 attachmentButton
@@ -162,9 +160,6 @@ struct NativeMokuComposerInput: View {
             }.padding(.leading, 6).padding(.trailing, Self.actionTrailingInset)
                 .onGeometryChange(for: CGFloat.self) { compact ? 34 : $0.size.height } action: { editorRowHeight = $0 }
             footer
-                .mokuInk(value: draft.interruptedInput != nil)
-                .mokuInk(value: draft.cleanupReceipt != nil && !draft.submitting)
-                .mokuInk(value: draft.error != nil)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
         }.foregroundStyle(.primary).disabled(editingUnavailable || readOnly)
             // Sizes are local to the row. Resolving an editor anchor through
@@ -277,10 +272,10 @@ struct NativeMokuComposerInput: View {
         ZStack {
             NativeIcon(name: "ArrowUp", size: 16).frame(width: 32, height: 32)
                 .background(Color.primary.opacity(0.18), in: Circle())
-                .opacity(send ? (enabled ? 1 : 0.3) : 0)
-                .mokuInk(value: send)
-                .mokuInk(value: enabled)
-            stopMark.opacity(stop ? 1 : 0).mokuInk(value: stop)
+                // A chip can disappear in the same update. Only the ink fades;
+                // the glyph must move with the bottom-anchored editor row.
+                .animation(reduceMotion ? nil : .mokuInk) { $0.opacity(send ? (enabled ? 1 : 0.3) : 0) }
+            stopMark.animation(reduceMotion ? nil : .mokuInk) { $0.opacity(stop ? 1 : 0) }
         }
         .accessibilityHidden(true)
         .allowsHitTesting(false)
@@ -316,10 +311,10 @@ struct NativeMokuComposerInput: View {
         } label: {
             ZStack {
                 Image(systemName: "plus").font(.system(size: 14, weight: .medium))
-                    .opacity(annotating ? 0 : 1)
-                NativeIcon(name: "X", size: 16).opacity(annotating ? 1 : 0)
+                    .animation(reduceMotion ? nil : .mokuInk) { $0.opacity(annotating ? 0 : 1) }
+                NativeIcon(name: "X", size: 16)
+                    .animation(reduceMotion ? nil : .mokuInk) { $0.opacity(annotating ? 1 : 0) }
             }.frame(width: 28, height: 32).contentShape(Rectangle())
-                .mokuInk(value: annotating)
         }
         .buttonStyle(.plain)
         .contextMenu {

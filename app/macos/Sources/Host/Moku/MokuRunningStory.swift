@@ -18,20 +18,32 @@ public struct MokuRunningFrame {
 /// Authored running choreography: relay, lift, one revolution, landing, recovery.
 public enum MokuRunningStory {
     public static let beatMS: Double = 2800
+    static let liftEnd = 1.22
     public static let orbitBeats: Double = 3000 / beatMS
-    public static let cycleBeats: Double = 1.22 + orbitBeats + 0.45
+    public static let cycleBeats: Double = liftEnd + orbitBeats + 0.45
     public static let dotRadius: Double = 3.5 * 640 / 210
     private static let unit: Double = 640 / 210
     private static let palette: [[Double]] = [[231,128,134],[217,170,90],[128,184,139],
                                               [105,185,191],[127,159,225],[184,138,206]]
 
+    static func recoverySquint(at beat: Double) -> Double {
+        let recovery = smooth((beat - (liftEnd + orbitBeats + 0.23)) / 0.22)
+        return 0.78 * pow(sin(.pi * recovery), 8)
+    }
+
+    static func orbitEyes(direction: CGPoint, progress: Double) -> MokuRunningFrame.Eyes {
+        .init(x: 34 * direction.x, y: 16 + 38 * direction.y,
+              scaleY: 1 + 0.055 * sin(.pi * progress))
+    }
+
     /// Optional orbit targets use the same authored coordinates as the returned frame.
     public static func sample(time: Double,
                               restingY: Double? = nil, restingSpacing: Double? = nil,
+                              orbitRadii: CGSize? = nil,
                               orbitPoint: ((Double) -> CGPoint)? = nil) -> MokuRunningFrame {
         let t = (time.truncatingRemainder(dividingBy: cycleBeats) + cycleBeats).truncatingRemainder(dividingBy: cycleBeats)
-        let landAt = 1.22 + orbitBeats, recoverAt = landAt + 0.23
-        let lap = clamp((t - 1.22) / orbitBeats)
+        let landAt = liftEnd + orbitBeats, recoverAt = landAt + 0.23
+        let lap = clamp((t - liftEnd) / orbitBeats)
         let orbit = pow(lap, 3) * (lap * (lap * 6 - 15) + 10)
         let angle = Double.pi / 2 + Double.pi * 2 * orbit
         let departure = smooth((t - 1) / 0.22)
@@ -40,24 +52,31 @@ public enum MokuRunningStory {
         let orbitWeight = departure * (1 - arrival)
         var eyes = MokuRunningFrame.Eyes()
         let lead = angle + 0.17
+        func target(at angle: Double) -> CGPoint {
+            orbitPoint?(angle) ?? CGPoint(x: 320 + 78 * unit * cos(angle), y: 300 + 78 * unit * sin(angle))
+        }
+        let leadingPoint = target(at: lead)
+        let direction = orbitRadii.map {
+            CGPoint(x: (leadingPoint.x - 320) / $0.width, y: (leadingPoint.y - 300) / $0.height)
+        } ?? CGPoint(x: cos(lead), y: sin(lead))
         let anticipate = 26 * smooth((t - 0.8) / 0.2)
-        eyes.x = 34 * cos(lead) * orbitWeight
-        eyes.y = mix(anticipate, 16 + 38 * sin(lead), departure) * (1 - arrival) + 26 * arrival * (1 - recover)
-        eyes.scaleY = 1 + 0.055 * sin(.pi * orbit) * orbitWeight
-            - (t > recoverAt ? 0.78 * pow(sin(.pi * recover), 8) : 0)
+        let tracking = orbitEyes(direction: direction, progress: orbit)
+        eyes.x = tracking.x * orbitWeight
+        eyes.y = mix(anticipate, tracking.y, departure) * (1 - arrival) + 26 * arrival * (1 - recover)
+        eyes.scaleY = 1 + (tracking.scaleY - 1) * orbitWeight
+            - recoverySquint(at: t)
         let dots = (0..<3).map { index -> MokuRunningFrame.Dot in
             let baseX = 320 + Double(index - 1) * (restingSpacing ?? (13 * unit))
             let beat = t * 3 - Double(index)
             let pulse = t < 1 && beat >= 0 && beat < 1 ? pow(sin(.pi * beat), 2) : 0
             let dotAngle = angle + Double(1 - index) * 0.17
-            let target = orbitPoint?(dotAngle) ?? CGPoint(x: 320 + 78 * unit * cos(dotAngle),
-                                                         y: 300 + 78 * unit * sin(dotAngle))
-            return .init(x: mix(baseX, target.x, orbitWeight),
-                         y: mix((restingY ?? (464 + 16.5 * unit)) - 3 * unit * pulse, target.y, orbitWeight),
+            let point = index == 0 ? leadingPoint : target(at: dotAngle)
+            return .init(x: mix(baseX, point.x, orbitWeight),
+                         y: mix((restingY ?? (464 + 16.5 * unit)) - 3 * unit * pulse, point.y, orbitWeight),
                          opacity: mix(0.65 + 0.35 * pulse, 1, orbitWeight),
                          color: color(t / cycleBeats + Double(index) / 3))
         }
-        let stage = t < 1 ? "三拍接力" : t < 1.22 ? "准备起飞"
+        let stage = t < 1 ? "三拍接力" : t < liftEnd ? "准备起飞"
             : t < landAt ? "环绕一圈" : t < recoverAt ? "回到底部" : "恢复自然"
         return MokuRunningFrame(stage: stage, eyes: eyes, dots: dots)
     }
