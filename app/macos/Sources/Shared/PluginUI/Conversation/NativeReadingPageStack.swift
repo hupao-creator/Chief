@@ -32,7 +32,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     public var focusBlur: Bool
     public var stationaryParent: Bool
     public var panel: Bool
-    private let panelUsesGlass: Bool
+    private let collectionPanel: Bool
     public var isolatesParent: Bool
     public var panelSource: CGRect?
     public var panelIdentity: NativeThreadIdentityVisit?
@@ -72,7 +72,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     public init(open: Bool, identity: JSONText, motion: NativeReadingPageMotion,
                 enabled: Bool = true, focusBlur: Bool = false, stationaryParent: Bool = false,
                 emphasizedOpening: Bool = false, panel: Bool = false,
-                panelUsesGlass: Bool = false,
+                collectionPanel: Bool = false,
                 isolatesParent: Bool = false, panelSource: CGRect? = nil,
                 panelIdentity: NativeThreadIdentityVisit? = nil, panelFrontIdentity: JSONText? = nil, threadPanelMotion: Bool = false, reportPanelMotion: Bool = false,
                 requiresPanelSource: Bool = false,
@@ -88,7 +88,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         self.focusBlur = focusBlur; self.stationaryParent = stationaryParent
         self.emphasizedOpening = emphasizedOpening; self.duration = duration
         self.panel = panel; self.panelSource = panelSource
-        self.panelUsesGlass = panelUsesGlass
+        self.collectionPanel = collectionPanel
         self.isolatesParent = isolatesParent
         self.panelIdentity = panelIdentity; self.panelFrontIdentity = panelFrontIdentity
         self.requiresPanelSource = requiresPanelSource
@@ -205,7 +205,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             }
             if open && panel {
                 NativeReadingPanelViewport(target: panelBounds, source: panelSource,
-                    usesGlass: panelUsesGlass,
+                    collectionPanel: collectionPanel,
                     open: panelContentReady || panelTransition != nil,
                     transition: panelTransition, contentReady: panelContentReady,
                     readerPreloading: panelReaderPreloading,

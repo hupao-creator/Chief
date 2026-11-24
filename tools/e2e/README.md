@@ -738,6 +738,11 @@ between the side margins, with individual cards capped at 360pt. The
 and [after](../../demos/super-thread-carousel/evidence/member-grid-after.png)
 frames use the same 17 covered reports and one report without a cover.
 
+With Reduce Transparency off, check that the gaps between cards share the
+workspace backdrop with the area outside the grid. With Reduce Transparency
+on, check that the panel has its opaque reading fill. In both cases the
+member cards retain their own surfaces and Close retains its glass style.
+
 Resize the open window to 1192×780pt, then to 860×600pt. Scroll
 with the pointer over the grid and check that it clears Close.
 Click a scrolled member, confirm its report title and body, and use Back.

@@ -676,9 +676,9 @@ The count expands from the collection card into the workspace's centered reading
 panel, using `NativeCollectionPanelPresentation`, the same `NativeReadingPageStack`
 compositor, window-relative margins and emphasized 420ms opening as Agent/Report
 readers. Overview and Dock fade out and reject input/accessibility while the panel
-is open; this is not a screen-sized popover or a zoomed canvas child. The panel
-uses a rounded regular Liquid Glass backdrop throughout opening, scrolling and
-return. Close floats in the upper-left corner and stays fixed as rows scroll.
+is open; this is not a screen-sized popover or a zoomed canvas child. The
+member grid shares the workspace window's ultra-thin material. Close floats in
+the upper-left corner and stays fixed as rows scroll.
 Resizing reflows the open grid even if its source card temporarily leaves the
 Overview viewport.
 The grid uses the panel width and member count to fit 280–360pt cards with

@@ -45,7 +45,8 @@ their own selection, playback and
 data lifetimes.
 The collection parent remains mounted for those updates while drawing, input and
 accessibility are suppressed. The shared compositor's auxiliary lane stays
-outside the collection's Liquid Glass panel. Close floats over the panel and
+outside the collection's panel. The grid shares the workspace backdrop and
+uses an opaque fill with Reduce Transparency. Close floats over the panel and
 stays fixed while the member grid scrolls. The collection and a report opened
 from it host SwiftUI content in window points.
 Blank-margin dismissal ignores nonfocusable system child accessories such as the
