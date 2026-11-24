@@ -10,7 +10,7 @@ import time
 import uuid
 
 from capture import DEMO, ROOT, Session, completed, declared_tools, find_tool, lease, native_lease, save, sha256, wait_for
-from collection import enable_reports
+from collection import enable_agent
 
 sys.path.insert(0, str(ROOT / "tools/verification"))
 from native_replay import NativeReplay
@@ -70,7 +70,7 @@ def capture(runtime, output, identity=False):
             return respond(request)
 
         peer.respond = report_response
-        enable_reports(session, True)
+        enable_agent(session, "report", True)
         session.runtime.invoke("moku:submit", [{"input": {"parts": [{"kind": "text",
             "text": "BENCHMARK CREATE 1 completed task. E2E " + session.nonce}]}}])
         wait_for(lambda: peer.receipts, lambda refs: len(refs) == 1, 60)
@@ -80,7 +80,7 @@ def capture(runtime, output, identity=False):
         finished_source.set()
         reports = wait_for(lambda: [item for item in session.runtime.state()["applicationThreads"]
             if item["ref"]["typeId"] == "report.document"], bool, 90)
-        enable_reports(session, False)
+        enable_agent(session, "report", False)
         for scenario in (["identity", "identity-reduced"] if identity else ["report-send"]):
             process = session.spawn([replay.executable, session.profile, reports[0]["ref"]["threadId"],
                                      thread, execution, scenario], "report")

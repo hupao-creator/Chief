@@ -63,14 +63,16 @@ def close_leg(rows, width):
     upright_fold = bool(folding) and all(r["face"] == "logo" and r["inkHeight"] >= .9 * r["inkWidth"] for r in folding)
     first_eyes = next((i for i, r in enumerate(rows) if r["face"] == "eyes"), None)
     tilted = [i for i, r in enumerate(rows) if r["face"] == "logo" and r["inkHeight"] < .8 * r["inkWidth"]]
-    # End at the first fully revealed eyes. A later resident blink belongs to Overview.
-    full_height = max((r["inkHeight"] for r in rows if r["face"] == "eyes"), default=0)
-    landed = next((i for i, r in enumerate(rows) if r["face"] == "eyes" and r["inkHeight"] >= .94 * full_height), None)
-    turn = rows[tilted[0]:landed + 1] if tilted and landed is not None else []
+    # The symmetric 420ms curve passes edge-on halfway through. Bound the
+    # turn by its visible edge, independently of shell geometry. Overview's
+    # later idle eyes have a taller contour than the returning focused eyes.
+    edge = rows[first_eyes]["pts"] if first_eyes is not None else None
+    turn = [r for r in rows if edge is not None and abs(r["pts"] - edge) <= .21]
+    full_height = max((r["inkHeight"] for r in turn if r["face"] == "eyes"), default=0)
     revealing = any(r["face"] == "eyes" and r["inkHeight"] < .8 * full_height for r in turn)
     stationary = bool(turn) and all(abs(r["width"] - compact) <= 4 and abs(r["center"] - rows[0]["center"]) <= 4
                                     and abs(r["top"] - turn[0]["top"]) <= 4 for r in turn)
-    passed = (not path["errors"] and sequence(rows) == ["logo", "eyes"] and upright_fold and revealing and stationary)
+    passed = (not path["errors"] and sequence(rows) == ["logo", "eyes"] and upright_fold and bool(tilted) and revealing and stationary)
     return dict(passed=passed, uprightFold=upright_fold, stationaryTurn=stationary, revealingEyes=revealing,
                 tiltedLogoFrames=[rows[i]["frame"] for i in tilted], firstEyes=rows[first_eyes] if first_eyes is not None else None,
                 pathFirstFrame=rows[0]["frame"], path=path)
