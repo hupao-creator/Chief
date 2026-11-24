@@ -13,6 +13,23 @@ content reads establish prerequisites and independent result evidence. Runtime
 invariants belong to PBT. Benchmarks own general UX timing, resource use and
 visual-performance measurements.
 
+## Overview task card preview capacity
+
+In a native Overview replay, use a running Codex task with an unfinished plan,
+Git changes, three eligible message previews and six eligible tool calls. At a
+width that gives the main section two rows, check that the two newest previews
+appear oldest first, followed by the five latest tool calls in their existing
+order. Use long message and tool text to check truncation and verify that every
+row fits inside the main section beside the plan and Git panels. Remove the Git
+changes from the fixture so the composer gives the main section one row, then
+check for the latest message and zero tool rows. Repeat the two-row layout
+with one eligible message and two eligible
+tools and check that all three appear once. The
+[Overview contract](../../app/macos/Sources/Host/Overview/README.md#card-update-isolation)
+defines which section controls capacity. A fixture replay can use the
+production catalog projector and mounted card to verify presentation without a
+live agent session.
+
 ## Agent Thread running badge
 
 The [native badge replay](../../demos/running-emoji-badge/README.md) mounts the default

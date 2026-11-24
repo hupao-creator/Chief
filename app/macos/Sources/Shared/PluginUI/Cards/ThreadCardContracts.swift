@@ -46,6 +46,7 @@ public struct ThreadCardIdentityView: Hashable, Sendable {
     public let steer: String?
     public let excerpt: String
     public let message: ThreadCardMessage?
+    public let previousMessage: ThreadCardMessage?
     public let initialResponse: ThreadCardInitialResponse?
     /// Eligible first-execution agent content, so leaving scope alone never animates a fallback.
     public let initialResponseContent: Bool
@@ -53,11 +54,13 @@ public struct ThreadCardIdentityView: Hashable, Sendable {
                 harness: ThreadCardHarnessBrand? = nil, model: String? = nil, effort: String? = nil,
                 fastMode: Bool = false, runtime: ThreadCardRuntimeValue? = nil, cwd: String? = nil,
                 cwdName: String? = nil, usesWorktree: Bool = false, steer: String? = nil,
-                excerpt: String, message: ThreadCardMessage? = nil, initialResponse: ThreadCardInitialResponse? = nil, initialResponseContent: Bool = false) {
+                excerpt: String, message: ThreadCardMessage? = nil, previousMessage: ThreadCardMessage? = nil,
+                initialResponse: ThreadCardInitialResponse? = nil, initialResponseContent: Bool = false) {
         self.title = title; self.providerStatus = providerStatus; self.state = state; self.harness = harness
         self.model = model; self.effort = effort; self.fastMode = fastMode; self.runtime = runtime
         self.cwd = cwd; self.cwdName = cwdName; self.usesWorktree = usesWorktree; self.steer = steer
-        self.excerpt = excerpt; self.message = message; self.initialResponse = initialResponse; self.initialResponseContent = initialResponseContent
+        self.excerpt = excerpt; self.message = message; self.previousMessage = previousMessage
+        self.initialResponse = initialResponse; self.initialResponseContent = initialResponseContent
     }
 }
 public enum ThreadCardActivityStatus: String, Hashable, Sendable { case running, completed, failed, cancelled }

@@ -36,33 +36,49 @@ func compactRuntime(s *State) {
 		notice["summary"] = clip(str(notice["summary"]), 1200)
 	}
 }
-func cardItem(turn *Turn) map[string]any {
+func cardItems(turn *Turn, limit int) []map[string]any {
 	unfinished := map[string]bool{}
 	for _, item := range turn.Timeline {
 		if str(item["kind"]) == "assistant" && str(item["messageId"]) != "" && str(item["status"]) != "complete" {
 			unfinished[str(item["messageId"])] = true
 		}
 	}
-	// Prefer an assistant reply over a later reasoning segment. Failed and
-	// cancelled assistant bodies remain the user-visible terminal preview.
-	for i := len(turn.Timeline) - 1; i >= 0; i-- {
-		item := turn.Timeline[i]
-		if str(item["kind"]) != "assistant" {
-			continue
+	// Prefer the latest assistant reply. Continue from its position so the
+	// preceding excerpt follows timeline order and never repeats a segment.
+	var result []map[string]any
+	seen := map[string]bool{}
+	for end := len(turn.Timeline); end > 0 && len(result) < limit; {
+		assistant, reasoning := -1, -1
+		for i := end - 1; i >= 0; i-- {
+			item := turn.Timeline[i]
+			if strings.TrimSpace(str(item["content"])) == "" {
+				continue
+			}
+			kind, status := str(item["kind"]), str(item["status"])
+			id := str(item["messageId"])
+			if kind == "assistant" && !seen[id] && (status == "complete" && !unfinished[id] || status == "failed" || status == "cancelled") {
+				assistant = i
+				break
+			}
+			if reasoning < 0 && kind == "reasoning" && (turn.Status == "running" || turn.Status == "completed") {
+				reasoning = i
+			}
 		}
-		status := str(item["status"])
-		allowed := status == "complete" && !unfinished[str(item["messageId"])] || status == "failed" || status == "cancelled"
-		if allowed && strings.TrimSpace(str(item["content"])) != "" {
-			return item
+		index := assistant
+		if index < 0 {
+			index = reasoning
 		}
+		if index < 0 {
+			break
+		}
+		item := turn.Timeline[index]
+		if id := str(item["messageId"]); str(item["kind"]) == "assistant" && id != "" {
+			seen[id] = true
+		}
+		result = append(result, item)
+		end = index
 	}
-	for i := len(turn.Timeline) - 1; i >= 0; i-- {
-		item := turn.Timeline[i]
-		if str(item["kind"]) == "reasoning" && (turn.Status == "running" || turn.Status == "completed") && strings.TrimSpace(str(item["content"])) != "" {
-			return item
-		}
-	}
-	return nil
+	return result
 }
 func replyItem(turn *Turn) map[string]any {
 	if turn.Status != "completed" {
@@ -83,11 +99,18 @@ func compactRenderer(s *State, scope model.RendererScope, initialResponseScope b
 	if current != nil {
 		preview[current] = true
 	}
-	for i := len(s.Turns) - 1; i >= 0; i-- {
+	remaining := 2
+	keepCompletedPreview := true
+	for i := len(s.Turns) - 1; i >= 0 && remaining > 0; i-- {
 		turn := s.Turns[i]
-		if cardItem(turn) != nil || turn.Status == "completed" && (timelineHasText(turn.Timeline, "assistant") || timelineHasText(turn.Timeline, "reasoning")) {
+		count := len(cardItems(turn, remaining))
+		if count > 0 {
 			preview[turn] = true
-			break
+			remaining -= count
+			keepCompletedPreview = false
+		} else if keepCompletedPreview && turn.Status == "completed" && (timelineHasText(turn.Timeline, "assistant") || timelineHasText(turn.Timeline, "reasoning")) {
+			preview[turn] = true
+			keepCompletedPreview = false
 		}
 	}
 	for i := len(s.Turns) - 1; i >= 0; i-- {
@@ -151,7 +174,7 @@ func compactRenderer(s *State, scope model.RendererScope, initialResponseScope b
 }
 func compactTurn(t *Turn, preview, current, overview bool) {
 	originalTimeline := t.Timeline
-	card, reply := cardItem(t), replyItem(t)
+	cards, reply := cardItems(t, 2), replyItem(t)
 	visible := []string{}
 	first, last := -1, -1
 	for index, prompt := range t.Prompts {
@@ -191,9 +214,15 @@ func compactTurn(t *Turn, preview, current, overview bool) {
 	}
 	t.Timeline = []map[string]any{}
 	if overview && preview {
+		selected := map[string]bool{}
+		for _, item := range cards {
+			selected[str(item["id"])] = true
+		}
+		if reply != nil {
+			selected[str(reply["id"])] = true
+		}
 		for _, item := range originalTimeline {
-			selected := card != nil && str(item["id"]) == str(card["id"]) || reply != nil && str(item["id"]) == str(reply["id"])
-			if !selected {
+			if !selected[str(item["id"])] {
 				continue
 			}
 			item["content"] = timelineExcerpt(item, originalTimeline, 1200, false)
@@ -203,7 +232,11 @@ func compactTurn(t *Turn, preview, current, overview bool) {
 		// Catalog Overview keeps a bounded assistant/reasoning item so exact
 		// historical execution previews still derive from the timeline rather
 		// than a second aggregate body.
-		if item := overviewItem(card, reply); item != nil {
+		item := reply
+		if len(cards) > 0 {
+			item = cards[0]
+		}
+		if item != nil {
 			copy := cloneObject(item)
 			copy["content"] = timelineExcerpt(item, originalTimeline, 600, false)
 			t.Timeline = append(t.Timeline, copy)
@@ -276,13 +309,6 @@ func compactTurn(t *Turn, preview, current, overview bool) {
 		t.Foreground = nil
 	}
 }
-func overviewItem(card, reply map[string]any) map[string]any {
-	if card != nil {
-		return card
-	}
-	return reply
-}
-
 func latestAssistantItem(timeline []map[string]any) map[string]any {
 	for index := len(timeline) - 1; index >= 0; index-- {
 		item := timeline[index]

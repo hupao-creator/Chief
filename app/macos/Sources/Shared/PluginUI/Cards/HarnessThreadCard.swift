@@ -38,8 +38,10 @@ public struct HarnessThreadCard: View {
             let cell = CGSize(width: max(0, (geometry.size.width - CGFloat(columns - 1) * 16) / CGFloat(columns)),
                               height: max(0, (geometry.size.height - CGFloat(rows - 1) * 16) / CGFloat(rows)))
             ZStack(alignment: .topLeading) {
+                let expanded = presentation.composition.identitySize.rows > 1
+                let expandedStandard: Bool = if case .standard = presentation.composition { expanded } else { false }
                 ThreadCardIdentity(identity: identity, projection: presentation.projection.identity,
-                                   expanded: presentation.composition.identitySize.rows > 1,
+                                   expanded: expanded, expandedStandard: expandedStandard,
                                    status: status, emoji: emoji, providerStatus: providerStatus, state: state,
                                    harnessLogo: harnessLogo, hovered: hovered)
                     .frame(width: span(presentation.composition.identitySize.cols, cell.width),
@@ -101,6 +103,7 @@ private struct ThreadCardIdentity: View {
     let identity: ThreadCardIdentityView
     let projection: ThreadCardIdentityProjection?
     let expanded: Bool
+    let expandedStandard: Bool
     let status: ThreadCardStatusProjection?
     let emoji: String?
     let providerStatus: AnyView?
@@ -161,7 +164,8 @@ private struct ThreadCardIdentity: View {
             }
             // The excerpt yields height to identity metadata and tools, then
             // truncates to the remaining proposal rather than a fixed row count.
-            ThreadCardBody(identity: identity).padding(.top, 10).layoutPriority(-1)
+            ThreadCardBody(identity: identity, showsPreviousMessage: expandedStandard)
+                .padding(.top, 10).layoutPriority(-1)
             if expanded {
                 ForEach(Array(recentTools.enumerated()), id: \.offset) { index, tool in
                     ThreadCardLatestTool(tool: tool).padding(.top, index == 0 ? 14 : 7)
@@ -199,7 +203,7 @@ private struct ThreadCardIdentity: View {
         return identity.model == nil ? nil : cardLocalized("默认", locale)
     }
     private var recentTools: [ThreadCardIdentityTool] {
-        Array((projection?.recentTools ?? projection?.latestTool.map { [$0] } ?? []).suffix(3))
+        Array((projection?.recentTools ?? projection?.latestTool.map { [$0] } ?? []).suffix(expandedStandard ? 5 : 3))
     }
 }
 

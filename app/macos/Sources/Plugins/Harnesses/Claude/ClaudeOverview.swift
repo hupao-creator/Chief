@@ -23,7 +23,8 @@ public func projectClaudeOverview(input: HarnessThreadInput, availableColumns: I
     let state = try ClaudeState(input.thread.sessionState), turn = state.turns.last
     let pending = turn?.interactions.first { $0["status"]?.stringValue == "pending" }
     let publicInteraction = pending.flatMap { claudePublicInteractions(state, input.thread.observation)[$0.claudeID("id")] }
-    let agent = claudeOverviewAgentMessage(state.turns)
+    let messages = claudeOverviewAgentMessages(state.turns, limit: 2)
+    let agent = messages.first
     let message = agent ?? claudeOverviewFallback(state, fallback: input.thread.title), summary = claudeBoundedText(message.text, 600)
     let card = claudeCardProjection(turn: turn, tasks: state.tasks, pending: pending, publicInteraction: publicInteraction)
     let presentation = try composeThreadCard(card.0, git: input.git, layoutContext: ThreadCardLayoutContext(availableCols: availableColumns))
@@ -45,6 +46,7 @@ public func projectClaudeOverview(input: HarnessThreadInput, availableColumns: I
         cwd: visibleCwd, usesWorktree: input.thread.worktree != nil && input.thread.worktree != .null,
         steer: prompts.count > 1 ? prompts.last?.stringValue : nil,
         excerpt: initial == nil ? summary.string : "", message: initial == nil ? message.display : nil,
+        previousMessage: messages.dropFirst().first?.display,
         initialResponse: initial, initialResponseContent: state.initialResponseScope && agent != nil && input.thread.moku != true)
     let view = ClaudeOverviewView(identity: identity, presentation: presentation,
         status: pending != nil ? "waiting" : input.thread.observation.isExecutionActive || turn?.status == "running" ? "running" : turn?.status ?? "idle",
@@ -102,24 +104,38 @@ struct ClaudeOverviewMessage {
     var display: ThreadCardMessage { ThreadCardMessage(id: id, text: text.string) }
 }
 func claudeOverviewAgentMessage(_ turns: [ClaudeTurn]) -> ClaudeOverviewMessage? {
+    claudeOverviewAgentMessages(turns, limit: 1).first
+}
+
+private func claudeOverviewAgentMessages(_ turns: [ClaudeTurn], limit: Int) -> [ClaudeOverviewMessage] {
+    var messages: [ClaudeOverviewMessage] = []
     for turn in turns.reversed() {
         let unfinished = Set(turn.timeline.filter { $0.claudeKind == "assistant" && $0["messageId"] != nil && $0["status"]?.stringValue != "complete" }.map { $0.claudeID("messageId") })
         // A later reasoning segment must not replace the assistant reply.
         // Failed/cancelled assistant bodies stay readable terminal previews.
-        let assistant = turn.timeline.last {
+        let assistant: (JSONValue) -> Bool = {
             guard $0.claudeKind == "assistant", !claudeTrim($0["content"]).isEmpty else { return false }
             let status = $0["status"]?.stringValue
             return status == "failed" || status == "cancelled" || status == "complete" && !unfinished.contains($0.claudeID("messageId"))
         }
-        let reasoning = turn.timeline.last {
+        let reasoning: (JSONValue) -> Bool = {
             $0.claudeKind == "reasoning" && ["running","completed"].contains(turn.status) && !claudeTrim($0["content"]).isEmpty
         }
-        guard let latest = assistant ?? reasoning else { continue }
-        let nativeID = latest.claudeKind == "assistant" ? latest["messageId"] : nil
-        let content = nativeID.map { id in JSONText(codeUnits: turn.timeline.filter { $0.claudeKind == "assistant" && $0["messageId"] == id }.flatMap { $0.claudeID("content").codeUnits }) } ?? latest.claudeID("content")
-        return ClaudeOverviewMessage(id: JSONText(claudeJSONString(.array([.string(turn.id), .text(latest.claudeKind), nativeID ?? latest["id"]!]))), text: claudeTrimText(content))
+        var earlier = turn.timeline[...]
+        var seen: Set<JSONValue> = []
+        while let index = earlier.lastIndex(where: { assistant($0) && !seen.contains($0["messageId"] ?? $0["id"]!) })
+            ?? earlier.lastIndex(where: reasoning) {
+            let latest = earlier[index]
+            earlier = earlier[..<index]
+            let nativeID = latest.claudeKind == "assistant" ? latest["messageId"] : nil
+            let id = nativeID ?? latest["id"]!
+            if latest.claudeKind == "assistant" { seen.insert(id) }
+            let content = nativeID.map { id in JSONText(codeUnits: turn.timeline.filter { $0.claudeKind == "assistant" && $0["messageId"] == id }.flatMap { $0.claudeID("content").codeUnits }) } ?? latest.claudeID("content")
+            messages.append(ClaudeOverviewMessage(id: JSONText(claudeJSONString(.array([.string(turn.id), .text(latest.claudeKind), id]))), text: claudeTrimText(content)))
+            if messages.count == limit { return messages }
+        }
     }
-    return nil
+    return messages
 }
 private func claudeOverviewFallback(_ state: ClaudeState, fallback: JSONText) -> ClaudeOverviewMessage {
     let turn = state.turns.last
@@ -138,7 +154,7 @@ private func claudeCardProjection(turn: ClaudeTurn?, tasks: [JSONValue], pending
     for interaction in turn?.interactions ?? [] where interaction["status"]?.stringValue == "pending" {
         excluded.insert((interaction["toolName"]?.stringValue ?? "").lowercased()); excluded.insert((interaction["title"]?.stringValue ?? "").lowercased())
     }
-    let tools = (turn?.activities ?? []).filter { ["command","file","search","tool"].contains($0.claudeKind) && !claudeTrim($0["label"]).isEmpty && !excluded.contains(claudeTrim($0["label"]).lowercased()) }.suffix(3).map { activity in
+    let tools = (turn?.activities ?? []).filter { ["command","file","search","tool"].contains($0.claudeKind) && !claudeTrim($0["label"]).isEmpty && !excluded.contains(claudeTrim($0["label"]).lowercased()) }.suffix(5).map { activity in
         let label = (activity["label"]?.stringValue ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
         let kind = ThreadCardIdentityToolKind(rawValue: activity.claudeKind) ?? .tool
         let subject = kind == .command && (label.contains(" ") || label.hasPrefix("/")) ? "Shell" : kind == .file && (label.contains("/") || label.contains("\\")) ? "File" : nil

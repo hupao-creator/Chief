@@ -8,6 +8,7 @@ public struct OpenCodeOverviewView {
     public let presentation: ThreadCardPresentation
     public let excerpt: String
     public let message: ThreadCardMessage?
+    let previousMessage: ThreadCardMessage?
     public let initialResponseContent: Bool
     public let initialResponse: ThreadCardInitialResponse?
     public let steer: String?
@@ -23,7 +24,8 @@ func projectOpenCodeOverview(input: HarnessThreadInput, availableColumns: Int) t
     let messages = state.messages.filter { $0.executionID == latest?.executionID && !$0.inherited }
     let prompts = messages.filter { $0.role == "user" && ($0.nativeSessionID == nil || $0.nativeSessionID == state.nativeSessionID) }
     let steer = prompts.count > 1 ? prompts.last.map { ocTrim($0.text) } : nil
-    let agent = ocOverviewMessage(messages, sessionID: state.nativeSessionID, status: latest?.status)
+    let previews = ocOverviewMessages(messages, sessionID: state.nativeSessionID, status: latest?.status, limit: 2)
+    let agent = previews.first
     let sourceMessage = agent ?? prompts.last.map {
         (id: ocJSONStringID([.string($0.executionID), .text($0.role), .string($0.id)]), text: ocTrimText($0.raw.ocID("text")))
     }
@@ -64,12 +66,18 @@ func projectOpenCodeOverview(input: HarnessThreadInput, availableColumns: Int) t
         ? threadCardInitialResponse(pendingInput: input.thread.pendingInput, observation: input.thread.observation,
                                     hasVisibleInteraction: pending != nil) : nil
     let view = OpenCodeOverviewView(presentation: presentation, excerpt: initial == nil ? excerpt : "", message: initial == nil ? message : nil,
+        previousMessage: previews.dropFirst().first.map { ThreadCardMessage(id: $0.id, text: $0.text.string) },
         initialResponseContent: state.initialResponseScope && agent != nil && input.thread.moku != true, initialResponse: initial, steer: steer,
         model: model.isEmpty ? "OpenCode" : model, effort: settings["thinking"].map(ocThinkingLabel) ?? "未选择", pendingInteractionID: pending?.id, openForm: openForm,
         contentTruncated: state.contentTruncated)
     return .init(footprint: .init(columns: presentation.size.cols, rows: presentation.size.rows), structureKey: JSONText(presentation.key), excerpt: excerptRaw, view: view)
 }
 func ocOverviewMessage(_ messages: [OpenCodeMessage], sessionID: JSONText?, status: PublicExecution.Status?) -> (id: JSONText, text: JSONText)? {
+    ocOverviewMessages(messages, sessionID: sessionID, status: status, limit: 1).first
+}
+
+private func ocOverviewMessages(_ messages: [OpenCodeMessage], sessionID: JSONText?, status: PublicExecution.Status?, limit: Int) -> [(id: JSONText, text: JSONText)] {
+    var previews: [(id: JSONText, text: JSONText)] = []
     let live = status == .running || status == .waitingForUser
     let reasoningEligible = status == .completed || live
     for message in messages.reversed() {
@@ -90,9 +98,12 @@ func ocOverviewMessage(_ messages: [OpenCodeMessage], sessionID: JSONText?, stat
         // the selected part has the returned kind; otherwise the anchor would
         // claim text while pointing at a reasoning row.
         let ordinal = part?["type"]?.stringValue == kind ? part?["ordinal"] ?? .null : .null
-        if !text.codeUnits.isEmpty { return (id: ocJSONStringID([.string(message.executionID), .text(message.role), .string(message.id), .text(kind), ordinal]), text: text) }
+        if !text.codeUnits.isEmpty {
+            previews.append((id: ocJSONStringID([.string(message.executionID), .text(message.role), .string(message.id), .text(kind), ordinal]), text: text))
+            if previews.count == limit { break }
+        }
     }
-    return nil
+    return previews
 }
 public struct OpenCodeOverviewCard: View {
     public let input: HarnessThreadInput
@@ -109,7 +120,7 @@ public struct OpenCodeOverviewCard: View {
         let identity = ThreadCardIdentityView(title: input.thread.title.string, harness: .init(brandKey: "opencode", label: "OpenCode", logoSource: OpenCodeLogo.source),
             model: projection.model, effort: projection.effort,
             runtime: execution.map { .init(startedAt: $0.startedAt, endedAt: $0.finishedAt) }, steer: projection.steer,
-            excerpt: projection.excerpt, message: projection.message, initialResponse: projection.initialResponse, initialResponseContent: projection.initialResponseContent)
+            excerpt: projection.excerpt, message: projection.message, previousMessage: projection.previousMessage, initialResponse: projection.initialResponse, initialResponseContent: projection.initialResponseContent)
         HarnessThreadCard(identity: identity, presentation: projection.presentation, onRespond: respond,
             onOpen: openThread,
             interventionActionLabel: { $0.id == "open-native-form" ? ocLocalized("打开 OpenCode 表单", locale: locale) : $0.label },

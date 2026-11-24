@@ -311,14 +311,14 @@ func rendererDirectory(state *State, base Object, scope model.RendererScope, sou
 			break
 		}
 	}
-	var card *Message
+	cards := make(map[*Message]bool)
 	var todo *Message
 	if scope.Kind == "overview" {
-		card = rendererCardMessage(state, latest, cardStatus)
-		for _, message := range []*Message{card, rendererReplyMessage(state)} {
-			if message != nil {
-				selected[message], previews[message] = true, true
-			}
+		for _, message := range rendererCardMessages(state, latest, cardStatus) {
+			selected[message], previews[message], cards[message] = true, true, true
+		}
+		if reply := rendererReplyMessage(state); reply != nil {
+			selected[reply], previews[reply] = true, true
 		}
 		for i := len(state.Messages) - 1; i >= 0; i-- {
 			message := state.Messages[i]
@@ -391,7 +391,7 @@ func rendererDirectory(state *State, base Object, scope model.RendererScope, sou
 	messages := make([]Object, 0)
 	for _, message := range state.Messages {
 		if selected[message] {
-			messages = append(messages, rendererCompactMessage(message, previews[message], scope.Kind == "overview" && message == card, scope.Kind == "overview" && message == todo, usages[message], cardStatus, source))
+			messages = append(messages, rendererCompactMessage(message, previews[message], cards[message], scope.Kind == "overview" && message == todo, usages[message], cardStatus, source))
 		}
 	}
 	base["messages"] = messages
@@ -422,19 +422,20 @@ func rendererDirectory(state *State, base Object, scope model.RendererScope, sou
 }
 
 func rendererLive(status string) bool { return status == "running" || status == "waiting-for-user" }
-func rendererCardMessage(state *State, latest, status string) *Message {
+func rendererCardMessages(state *State, latest, status string) []*Message {
 	live := rendererLive(status)
-	for i := len(state.Messages) - 1; i >= 0; i-- {
+	var cards []*Message
+	for i := len(state.Messages) - 1; i >= 0 && len(cards) < 2; i-- {
 		message := state.Messages[i]
 		if message.ExecutionID != latest || message.Inherited || message.Role != "assistant" || message.Status != "complete" && !live || message.NativeSessionID != "" && message.NativeSessionID != state.NativeSessionID {
 			continue
 		}
 		text, thinking := messageText(message), messageThinking(message)
 		if message.Status == "complete" && rendererTrim(text) != "" || (live || status == "completed") && rendererTrim(thinking) != "" || rendererCardPart(message, status) != nil {
-			return message
+			cards = append(cards, message)
 		}
 	}
-	return nil
+	return cards
 }
 func rendererCardPart(message *Message, status string) *Part {
 	live := rendererLive(status)

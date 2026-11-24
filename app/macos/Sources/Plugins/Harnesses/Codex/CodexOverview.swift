@@ -81,7 +81,7 @@ public struct CodexOverviewCard: View {
             model: value.model.map { $0 == "未知模型" ? codexLocalized($0, locale: locale) : $0 },
             effort: value.effort, fastMode: value.fastMode, runtime: value.runtime, cwd: value.cwd,
             cwdName: value.cwdName, usesWorktree: value.usesWorktree, steer: value.steer,
-            excerpt: value.excerpt, message: value.message, initialResponse: value.initialResponse, initialResponseContent: value.initialResponseContent)
+            excerpt: value.excerpt, message: value.message, previousMessage: value.previousMessage, initialResponse: value.initialResponse, initialResponseContent: value.initialResponseContent)
     }
 
     private var localizedPresentation: ThreadCardPresentation {
@@ -118,6 +118,7 @@ private enum CodexCardAdapter {
             usesWorktree: raw["usesWorktree"]?.boolValue == true, steer: raw["steer"]?.stringValue,
             excerpt: initialResponse == nil ? raw["excerpt"]?.stringValue ?? "" : "",
             message: initialResponse == nil ? raw["message"].map { ThreadCardMessage(id: $0.codexIdentity("id"), text: $0["text"]?.stringValue ?? "") } : nil,
+            previousMessage: raw["previousMessage"].map { ThreadCardMessage(id: $0.codexIdentity("id"), text: $0["text"]?.stringValue ?? "") },
             initialResponse: initialResponse, initialResponseContent: initialResponseContent)
     }
 
@@ -207,7 +208,11 @@ enum CodexOverviewProjector {
         let prompt = preview?.messages.last(where: {
             $0.role == "user" && !$0.isInternal && !codexTrim($0.raw["content"]).codeUnits.isEmpty
         })
-        let agent = overviewMessage(state.turns) ?? overviewMessage(state.forkHistory)
+        var messages = overviewMessages(state.turns, limit: 2)
+        if messages.count < 2 {
+            messages += overviewMessages(state.forkHistory, limit: 2 - messages.count)
+        }
+        let agent = messages.first
         let message: JSONValue
         if let found = agent {
             message = found
@@ -237,6 +242,7 @@ enum CodexOverviewProjector {
             "title": thread["title"] ?? .text(""), "model": .string(model),
             "effort": effort, "excerpt": .string(excerpt), "message": message
         ]
+        if messages.count == 2 { identity["previousMessage"] = messages[1] }
         // A reported null means standard service; only omission falls back.
         let serviceTier = turn?.raw["runtimeServiceTier"] ?? settings["serviceTier"]
         if serviceTier?.stringValue == "priority" { identity["fastMode"] = .bool(true) }
@@ -269,29 +275,35 @@ enum CodexOverviewProjector {
     }
 
     static func overviewMessage(_ turns: [CodexTurn]) -> JSONValue? {
+        overviewMessages(turns, limit: 1).first
+    }
+
+    private static func overviewMessages(_ turns: [CodexTurn], limit: Int) -> [JSONValue] {
+        var messages: [JSONValue] = []
         for turn in turns.reversed() {
-            if let item = turn.timeline.last(where: {
-                (($0.kind == "assistant" && $0.status == "complete") ||
-                    ($0.kind == "reasoning" && (turn.active || turn.status == "completed"))) &&
-                    !codexTrim($0.raw["content"]).codeUnits.isEmpty
-            }) {
-                return codexObject([
-                    "id": .text(codexJSONString(.array([.string(turn.executionId), .text(item.kind),
-                        item.kind == "assistant" ? item.raw["itemId"] ?? .null : .string(item.id)]))),
-                    "text": .string(codexTrim(item.raw["content"]))
-                ])
+            for item in turn.timeline.reversed() {
+                guard (item.kind == "assistant" && item.status == "complete") ||
+                    (item.kind == "reasoning" && (turn.active || turn.status == "completed")) else { continue }
+                let text = codexTrim(item.raw["content"])
+                guard !text.codeUnits.isEmpty else { continue }
+                let nativeID = item.kind == "assistant" ? item.raw["itemId"] ?? .null : .string(item.id)
+                let id = codexJSONString(.array([.string(turn.executionId), .text(item.kind), nativeID]))
+                guard !messages.contains(where: { $0["id"]?.stringValue == id }) else { continue }
+                messages.append(codexObject(["id": .text(id), "text": .string(text)]))
+                if messages.count == limit { return messages }
             }
             if turn.status == "completed" && !turn.timeline.contains(where: { $0.kind == "assistant" || $0.kind == "reasoning" }) {
                 let text = codexTrim(!turn.answer.isEmpty ? turn.raw["answer"] : turn.raw["reasoning"])
                 if !text.codeUnits.isEmpty {
-                    return codexObject([
+                    messages.append(codexObject([
                         "id": .text(codexJSONString(.array([.string(turn.executionId), .text("answer")]))),
                         "text": .string(text)
-                    ])
+                    ]))
+                    if messages.count == limit { return messages }
                 }
             }
         }
-        return nil
+        return messages
     }
 
     private static func cardProjection(state: CodexState, turn: CodexTurn?, publicInteractions: [JSONText: JSONValue]) -> JSONValue {
@@ -330,7 +342,7 @@ enum CodexOverviewProjector {
             let label = singleLine(activity.label)
             guard !label.isEmpty && !excluded.contains(JSONText(normalizedToolName(label))) else { continue }
             recent.insert(safeTool(kind: activity.kind, label: label, status: activity.status), at: 0)
-            if recent.count == 3 { break }
+            if recent.count == 5 { break }
         }
         var identity: [String: JSONValue] = [:]
         if let latest = recent.last { identity["recentTools"] = .array(recent); identity["latestTool"] = latest }

@@ -90,6 +90,16 @@ Tool dispatch errors remain failures. [Operation projection](NativeOverviewMokuO
 
 ## Card update isolation
 
+In a standard Agent card, preview capacity follows the composed identity
+section. A one-row identity shows a single excerpt and no tool rows. A two-row
+identity shows up to two eligible messages in timeline order and up to five
+eligible recent tools in their existing order. Custom slot layouts keep their
+own capacity. The Harness selects from its bounded Overview projection using
+its existing eligibility rules. The earlier excerpt uses the shared preview
+renderer with a three-line limit to reserve room for the latest excerpt and
+tool rows. The one-message Overview envelope and exact-execution Report preview
+still use the Harness's primary selection.
+
 [NativeOverviewContentStore](NativeOverviewContentStore.swift) separates the
 latest semantic snapshots from the canvas's structural inputs. The workspace
 installs it synchronously at each admitted catalog transaction; the canvas reads
