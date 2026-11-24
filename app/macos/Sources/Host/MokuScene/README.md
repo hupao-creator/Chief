@@ -648,7 +648,7 @@ finishes and the main document is ready, then the folded Agent workspace
 commits. That visit-scoped boundary admits the Sidecard reveal (380ms). If its
 execution column owns the Dock, the compact Moku travels there first; the actual
 horizontal animation's final completion then admits the
-360ms Harness flip and subsequent 420ms input expansion.
+420ms Harness flip and subsequent 420ms input expansion.
 The native geometry bridge fences completion to the current destination revision,
 and the workspace retains the existing route-visit admission check. A folded,
 ineligible or absent execution Sidecard releases the identity stage at layout commit without
@@ -683,8 +683,9 @@ The host resolves the current target's `harnessID` on each render, including tar
 changes; unknown/empty IDs use a neutral terminal mark, never Moku's Harness.
 Registered custom Harnesses supply their own mark through the same registry.
 The passive logo occupies a 34×25pt seat only in Agent input and ignores pointer
-and accessibility hit testing. The constant-speed horizontal-axis turn takes 360ms
-to reveal a Harness logo and 320ms to return to the eyes. It retires the old mark
+and accessibility hit testing. Both directions of the horizontal-axis turn use the
+420ms reading opening curve (cubic Bézier with control points (0.76, 0) and
+(0.24, 1)). The turn is fastest as the mark passes edge-on. It retires the old mark
 in its first half and reveals the new mark in its second half. Changing Harness
 flips to the new mark; changing Threads within the same Harness keeps it steady.
 Overview and Report/Git restore Moku's theme. Settings uses the resident eyes.

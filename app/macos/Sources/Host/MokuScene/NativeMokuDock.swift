@@ -989,7 +989,7 @@ public struct NativeMokuDock: View {
                 showsHarness: showsHarness,
                 entranceReady: state.inputAdmissionReady, generation: generation,
                 animation: state.windowVisible && !reduceMotion
-                    ? .linear(duration: showsHarness ? 0.36 : 0.32) : nil,
+                    ? NativeReadingPageTiming.openingAnimation : nil,
                 onSettled: { state.completeInputIdentity(generation: generation) }) {
                 face(characterInput)
             }

@@ -3,6 +3,7 @@ import argparse
 import csv
 import itertools
 import json
+import math
 from pathlib import Path
 import subprocess
 import sys
@@ -31,13 +32,14 @@ def read_frames(directory):
             if len(caps) != 1:
                 raise ValueError(f"Ambiguous glass at frame {index}: {caps}")
             x, y, w = caps[0]
-            region = cv2.resize(image[y:y + 108, x:x + w], None, fx=.5, fy=.5, interpolation=cv2.INTER_AREA)
-            ink = list(marks(region))
+            # Keep both backing pixels per point; downsampling can give two
+            # equally thin eyes unequal heights at the edge of the turn.
+            ink = list(marks(image[y:y + 108, x:x + w], scale=2))
             if len(ink) > 1:
                 raise ValueError(f"Multiple visible marks at frame {index}: {ink}")
             face, bounds = ink[0] if ink else ("unresolved", (0, 0, -1, -1))
             rows.append(dict(frame=index, pts=float(stamp["best_effort_timestamp_time"]), left=x, top=y,
-                             width=w, face=face, height=bounds[3] - bounds[1] + 1))
+                             width=w, face=face, height=(bounds[3] - bounds[1] + 1) / 2))
         if capture.read()[0]:
             raise ValueError("Missing movie timestamps")
     finally:
@@ -61,6 +63,7 @@ def compare(rows, before, after):
     # different contours. Exclude travel and late idle blinks from calibration.
     edge = rows[cut]["pts"]
     legs = []
+    crossings = []
     for name, part in [(before, rows[:cut]), (after, rows[cut:])]:
         visible = [r for r in part if abs(r["pts"] - edge) < .34 and r["face"] == name]
         full = max(r["height"] for r in visible)
@@ -68,14 +71,24 @@ def compare(rows, before, after):
         end = next(i for i, r in enumerate(ordered) if r["height"] >= full * .94)
         tilted = ordered[:end]
         heights = [r["height"] for r in tilted]
-        # Require both a thin and intermediate projection, and enough distinct
-        # samples/time to distinguish a turning face from an endpoint swap.
+        # At 45° the projected face is about 71% of its upright height.
+        # Bracket the crossing with actual tilted frames from this face.
+        threshold = full * math.cos(math.pi / 4)
+        for thin, wide in zip(tilted, ordered[1:end + 1]):
+            if thin["height"] < threshold <= wide["height"] and abs(wide["pts"] - thin["pts"]) <= 2 / 60:
+                fraction = (threshold - thin["height"]) / (wide["height"] - thin["height"])
+                crossings.append(thin["pts"] + fraction * (wide["pts"] - thin["pts"]))
+                break
         elapsed = abs(ordered[end]["pts"] - ordered[0]["pts"])
         legs.append(dict(face=name, fullHeightPt=full, edgeToFullMS=round(1000 * elapsed),
                          frames=[r["frame"] for r in tilted], heightsPt=heights,
-                         passed=len(set(heights)) >= 4 and elapsed >= .09 and min(heights, default=full) <= .45 * full
+                         passed=min(heights, default=full) <= .45 * full
                          and any(.45 * full < h < .8 * full for h in heights)))
-    return dict(edgePTS=edge, legs=legs, passed=all(leg["passed"] for leg in legs))
+    # The 420ms reading curve traverses 45°–135° in 64ms. Allow one
+    # capture frame per crossing for rasterization and frame sampling.
+    middle = crossings[1] - crossings[0] if len(crossings) == 2 else None
+    return dict(edgePTS=edge, legs=legs, middle90MS=round(1000 * middle) if middle is not None else None,
+                passed=all(leg["passed"] for leg in legs) and middle is not None and abs(middle - .064) <= 2 / 60)
 
 
 def check(directory, reduced):
