@@ -12,8 +12,10 @@ struct NativeOverviewSwipeActions {
     let regions: NativeOverviewSwipeRegions
     let available: @MainActor () -> Bool
     let canFilter: @MainActor () -> Bool
+    let canReturnWithWheel: @MainActor (Bool) -> Bool
     let openNote: @MainActor () -> Void
-    let stepFilter: @MainActor (Bool) -> Void
+    let stepSemanticFilter: @MainActor (Bool) -> Void
+    let stepStatusFilter: @MainActor (Bool) -> Void
 }
 
 extension EnvironmentValues {
@@ -23,13 +25,18 @@ extension EnvironmentValues {
 /// Classify the starting surface before native scrolling. After recognition,
 /// keep the rest of the contact and its momentum even if the surface changes.
 struct NativeOverviewVerticalSwipe {
-    enum Target { case note, filter }
+    enum Target {
+        case note, semanticFilter, statusFilter
+
+        var isFilter: Bool { self != .note }
+    }
     private enum Stage { case idle, possible(Target), claimed, awaitingMomentum(TimeInterval), momentum }
     private var stage = Stage.idle
     private var vertical: CGFloat = 0
     private var horizontal: CGFloat = 0
 
-    @MainActor mutating func route(_ event: NSEvent, target: () -> Target?, perform: (Target, Bool) -> Void) -> Bool {
+    @MainActor mutating func route(_ event: NSEvent, target: () -> Target?,
+                                  canReturnWithWheel: (Bool) -> Bool, perform: (Target, Bool) -> Void) -> Bool {
         let phase = event.phase
         if !event.momentumPhase.isEmpty {
             if case .awaitingMomentum(let end) = stage, event.timestamp - end > 0.25 { stage = .idle }
@@ -41,6 +48,15 @@ struct NativeOverviewVerticalSwipe {
                 stage = .idle
                 return false
             }
+        }
+        let deltaY = event.isDirectionInvertedFromDevice ? -event.scrollingDeltaY : event.scrollingDeltaY
+        if phase.isEmpty && !event.hasPreciseScrollingDeltas {
+            stage = .idle
+            let up = deltaY > 0
+            guard abs(deltaY) > abs(event.scrollingDeltaX) * 1.5, canReturnWithWheel(up),
+                  target() == .statusFilter else { return false }
+            perform(.statusFilter, up)
+            return true
         }
         let starting = phase.contains(.began) || phase.contains(.mayBegin)
         if starting {
@@ -62,15 +78,17 @@ struct NativeOverviewVerticalSwipe {
             return !phase.isEmpty && reserved
         }
         if case .claimed = stage { return true }
-        guard case .possible(let origin) = stage, starting || origin == target() else {
+        // Both halves are one filtering surface. Keep the half captured at
+        // contact start even if the pointer crosses the midpoint before recognition.
+        guard case .possible(let origin) = stage, starting || target()?.isFilter == origin.isFilter else {
             stage = .idle
             return false
         }
         if phase.contains(.mayBegin) { return false }
-        vertical += event.isDirectionInvertedFromDevice ? -event.scrollingDeltaY : event.scrollingDeltaY
+        vertical += deltaY
         horizontal += abs(event.scrollingDeltaX)
         if vertical == 0 && horizontal == 0 { return false }
-        guard abs(vertical) > horizontal * 1.5, origin == .filter || vertical > 0 else {
+        guard abs(vertical) > horizontal * 1.5, origin.isFilter || vertical > 0 else {
             stage = .idle
             return false
         }

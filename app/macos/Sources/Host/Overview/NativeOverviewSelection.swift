@@ -291,6 +291,9 @@ enum NativeOverviewSelection {
         return nil
     }
     static let inboxScope = "inbox"
+    // The navigation wire addresses filters by (scope, tag), without a kind.
+    // Semantic names cannot start with an emoji, even if the plain name is "Inbox".
+    static let inboxDirectoryTag = "📥 Inbox"
 
     /// Stable scope identity matching the Go directorytag.Scope contract.
     /// Linked worktrees fold onto the owning repository root; ordinary
@@ -396,6 +399,10 @@ enum NativeOverviewSelection {
                 if let ownerScope = item.entry.scope?.string {
                     if ownerScope != selectedScope { return false }
                     if kind == .directory { return true }
+                } else if selectedScope == inboxScope && kind == .directory {
+                    // The parent supplies the same legacy labels as its children.
+                    // An unscoped document never acquires Inbox ownership by name.
+                    return !item.directoryOnly && item.entry.tags.tags.contains { keys.contains(key($0.string)) }
                 } else if selectedScope != inboxScope && kind != .directory { return false }
             }
             if item.directoryOnly {
@@ -456,16 +463,17 @@ enum NativeOverviewSelection {
         var top: [NativeOverviewFilter] = []
         for (scopeID, group) in scopes {
             let labelKey = key(group.label)
-            let children = group.tags.values.filter { key($0.tag) != labelKey }.map { value in
+            let children = group.tags.values.filter { scopeID == inboxScope || key($0.tag) != labelKey }.map { value in
                 NativeOverviewFilter(tag: value.tag, displayTag: SemanticTagLabel.display(name: value.tag, emoji: value.emoji), emoji: value.emoji, scope: scopeID, count: value.members.count,
                                      isDirectory: false, selectionKey: "scope:\(scopeID):tag:\(key(value.tag))")
             }.sorted { a, b in a.count != b.count ? a.count > b.count : compare(a.tag, b.tag) == .orderedAscending }
             let limited = Array(children.prefix(5))
-            if scopeID == inboxScope {
-                top.append(contentsOf: limited)
-            } else if !group.label.isEmpty {
-                top.append(NativeOverviewFilter(tag: group.label, scope: scopeID, count: group.members.count,
-                                                isDirectory: true, selectionKey: "scope:\(scopeID):all", children: limited))
+            let inbox = scopeID == inboxScope
+            if inbox || !group.label.isEmpty {
+                top.append(NativeOverviewFilter(tag: inbox ? inboxDirectoryTag : group.label,
+                                                displayTag: inbox ? "Inbox" : group.label, scope: scopeID,
+                                                count: group.members.count, isDirectory: true,
+                                                selectionKey: "scope:\(scopeID):all", children: limited))
             }
         }
         return orderedFilters(top, key: key)
@@ -476,9 +484,9 @@ enum NativeOverviewSelection {
         var top = filters
         var labelCounts: [String: Int] = [:]
         for filter in top where filter.isDirectory {
-            labelCounts[key(filter.tag), default: 0] += 1
+            labelCounts[key(filter.displayTag), default: 0] += 1
         }
-        for index in top.indices where top[index].isDirectory && (labelCounts[key(top[index].tag)] ?? 0) > 1 {
+        for index in top.indices where top[index].isDirectory && top[index].scope != inboxScope && (labelCounts[key(top[index].displayTag)] ?? 0) > 1 {
             let parent = (top[index].scope as NSString).deletingLastPathComponent
             let hint = (parent as NSString).lastPathComponent
             if !hint.isEmpty { top[index].displayTag = "\(top[index].tag) — \(hint)" }
@@ -486,7 +494,7 @@ enum NativeOverviewSelection {
         return top.sorted { a, b in
             if a.count != b.count { return a.count > b.count }
             if a.isDirectory != b.isDirectory { return a.isDirectory }
-            return compare(a.tag, b.tag) == .orderedAscending
+            return compare(a.displayTag, b.displayTag) == .orderedAscending
         }
     }
     static func compare(_ a: String, _ b: String) -> ComparisonResult { a.compare(b, locale: .current) }

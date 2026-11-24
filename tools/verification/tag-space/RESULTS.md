@@ -1,6 +1,6 @@
 # Mounted tag-switch measurements
 
-On 2026-11-23 the [window-local workload](README.md) ran on an Apple M1 Pro
+On 2026-11-23 the collector in the [sample manifests](samples.json.gz) ran in a 2048 × 1225 panel on an Apple M1 Pro
 (10 cores, 16 GB), macOS 26.5.1 (25F80), Swift 6.3.2, Release with testing
 access. Four pairs alternated baseline/candidate and candidate/baseline. Each
 binary ran in four fresh processes, each with one cold visit, three revisits

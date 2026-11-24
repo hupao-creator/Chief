@@ -59,6 +59,9 @@ public struct NativeOverviewWorkspaceView: View {
             let viewport = Self.viewport(in: geometry.size, hasFilters: !model.filters.isEmpty,
                                          hasDock: model.workspace.catalog.hasMoku)
             let filters = landing ? [] : model.visibleFilters
+            let directory = model.selectedDirectory
+            let hasTags = directory?.children.isEmpty == false
+            let railEdgeInset = min(12, geometry.size.width * 0.015)
             let headerBottom = OverviewTagMetrics.headerBottom(in: geometry.size, hasFilters: !filters.isEmpty)
             // The last card can make the Dock switch to landing before the
             // canvas admits its empty layout. Keep that exit drawable while
@@ -114,13 +117,20 @@ public struct NativeOverviewWorkspaceView: View {
                     }
                 }
             }
-            .overlay(alignment: .bottomLeading) {
-                if !landing && chromeVisible && model.statusFilter != .all && !model.content.isEmpty {
-                    Text(model.statusFilter == .running ? locale.text("仅运行中", "Running only") : locale.text("仅已完成", "Completed only"))
-                        .font(NativeTypography.inter(size: 11, weight: 590))
-                        .foregroundStyle(NativePalette.overview.muted.swiftUI)
-                        .padding(.leading, 16).padding(.bottom, 8)
-                        .allowsHitTesting(false)
+            .overlay(alignment: .leading) {
+                if chromeVisible && !landing && hasTags, let directory {
+                    NativeOverviewTagRail(parent: directory, selectedTag: model.selectedTag, selectedKind: model.tagSelection?.kind,
+                        strings: chromeStrings, onTagChange: model.selectTag, interactions: model.chromeInteractions)
+                        .frame(width: min(172, geometry.size.width * 0.15))
+                        .padding(.leading, railEdgeInset)
+                }
+            }
+            .overlay(alignment: .trailing) {
+                if chromeVisible && !landing {
+                    NativeOverviewStatusRail(status: model.statusFilter, strings: chromeStrings,
+                        onStatusChange: model.selectStatusFilter, interactions: model.chromeInteractions)
+                        .frame(width: min(152, geometry.size.width * 0.175))
+                        .padding(.trailing, railEdgeInset)
                 }
             }
             .overlay {
@@ -146,6 +156,7 @@ public struct NativeOverviewWorkspaceView: View {
                         chrome.offset(y: chromeVisible ? 0 : -geometry.size.height)
                     }
                     .allowsHitTesting(chromeVisible).accessibilityHidden(!chromeVisible)
+                    .disabled(!chromeVisible)
                     .animation(NativeReadingPageTiming.openingAnimation, value: chromeVisible)
             }
             .onChange(of: geometry.size, initial: true) { _, size in model.setCollectionWindowSize(size) }
@@ -166,8 +177,8 @@ public struct NativeOverviewWorkspaceView: View {
 
     private var emptyDetail: String {
         switch model.statusFilter {
-        case .running: return locale.text("双指下滑查看全部会话。", "Swipe down with two fingers to show all conversations.")
-        case .completed: return locale.text("双指上滑查看全部会话。", "Swipe up with two fingers to show all conversations.")
+        case .running: return locale.text("在右半区下滑可查看全部状态。", "Scroll down on the right to show all statuses.")
+        case .completed: return locale.text("在右半区上滑可查看全部状态。", "Scroll up on the right to show all statuses.")
         case .all: break
         }
         return locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads.")
@@ -191,7 +202,11 @@ public struct NativeOverviewWorkspaceView: View {
         if locale == .english {
             strings.all = "All"
             strings.settings = "Settings"; strings.restart = "Restart development app"; strings.actions = "Overview actions"
-            strings.closeFilter = "Close child tag menu"
+            strings.anyTag = "Any tag"
+            strings.runningOnly = "Running only"
+            strings.allStatuses = "All statuses"
+            strings.completedOnly = "Completed only"
+            strings.statusFilter = "Filter by status"
             strings.filter = "Filter by tag"
             strings.containsActiveTasks = "Contains active tasks"
             strings.unread = "unread"

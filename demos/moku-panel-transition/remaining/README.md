@@ -50,4 +50,4 @@ experiments and their limitations. Their collectors and rejected candidates are
 available in Git object `9979d53b15b04243d87000e390d1d90d39d0ac6a` under
 `demos/moku-panel-transition/remaining/`.
 
-The `tag-unread` case mounts the production directory and child menu in a 1× offscreen panel with an isolated read history. It records counts and images before reading, after a receipt, after rereading the same version and after the final receipt.
+The `tag-unread` case mounts the production Overview in an offscreen panel with isolated read history. It selects Project from the header and Work from the left column. Project starts with two unread tasks, one tagged Work and one untagged. The replay checks both counts with Work selected and saves the window image before reading, after a receipt, after rereading the same version and after the final receipt.

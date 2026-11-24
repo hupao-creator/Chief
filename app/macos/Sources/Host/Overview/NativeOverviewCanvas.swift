@@ -80,13 +80,16 @@ public final class NativeOverviewCanvasState {
     public init(motionStages: NativeOverviewStageCoordinator = .init()) {
         self.motionStages = motionStages
     }
+    public var cardRegionInWindow: CGRect {
+        guard let viewport = camera.viewport else { return .zero }
+        return CGRect(x: 0, y: 0, width: viewport.width, height: viewport.height)
+    }
     public func displayedFrame(for id: String) -> CGRect? {
         guard !isLayingOut, let placement = placementsByID[id] else { return nil }
         return camera.transform.project(placement.cardFrame)
     }
     func visibleFrame(for id: String) -> CGRect? {
-        guard let frame = displayedFrame(for: id), let viewport = camera.viewport,
-              frame.intersects(CGRect(x: 0, y: 0, width: viewport.width, height: viewport.height)) else { return nil }
+        guard let frame = displayedFrame(for: id), frame.intersects(cardRegionInWindow) else { return nil }
         return frame
     }
     public func retryLayout() { retryHandler?() }

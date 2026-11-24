@@ -15,12 +15,12 @@ private struct ProductionTagMorphReplay: View {
     @State private var replayIndex = 0
 
     private let catalog: [NativeOverviewFilter] = [
-        .init(tag: "Chief", count: 12, isDirectory: true, selectionKey: "members:directory:1"),
-        .init(tag: "界面设计", count: 4, aliases: ["Design"], selectionKey: "members:design:1"),
-        .init(tag: "性能优化", count: 3, selectionKey: "members:performance:1"),
-        .init(tag: "代码调研", count: 6, selectionKey: "members:research:1"),
-        .init(tag: "语音交互", count: 2, selectionKey: "members:voice:1"),
-        .init(tag: "一个较长的工作目录名称", count: 24, isDirectory: true, selectionKey: "members:long:1")
+        .init(tag: "Chief", scope: "/demo/chief", count: 12, isDirectory: true, selectionKey: "members:directory:1"),
+        .init(tag: "界面设计", scope: "/demo/design", count: 4, aliases: ["Design"], isDirectory: true, selectionKey: "members:design:1"),
+        .init(tag: "性能优化", scope: "/demo/performance", count: 3, isDirectory: true, selectionKey: "members:performance:1"),
+        .init(tag: "代码调研", scope: "/demo/research", count: 6, isDirectory: true, selectionKey: "members:research:1"),
+        .init(tag: "语音交互", scope: "/demo/voice", count: 2, isDirectory: true, selectionKey: "members:voice:1"),
+        .init(tag: "一个较长的工作目录名称", scope: "/demo/long-path", count: 24, isDirectory: true, selectionKey: "members:long:1")
     ]
 
     var body: some View {
@@ -51,7 +51,7 @@ private struct ProductionTagMorphReplay: View {
             }.toggleStyle(.checkbox).font(.system(size: 12))
             HStack {
                 Button("新场景（空）") { filters = []; selected = nil; generation += 1 }
-                Button("选择别名 Design") { selected = .init(tag: "Design", count: 4) }
+                Button("选择别名 Design") { selected = .init(tag: "Design", scope: "/demo/design", count: 4, isDirectory: true) }
                 Button(playing ? "停止回放" : "自动增删回放") { playing.toggle() }
                 Spacer()
                 Text("\(filters.count) 项 · 选中：\(selected?.tag ?? "全部")").monospacedDigit()
@@ -92,7 +92,7 @@ private struct ProductionTagMorphReplay: View {
 
     private var chrome: some View {
         NativeOverviewChrome(filters: filters, selectedTag: selected?.tag ?? "",
-            selectedKind: selected.map { $0.isDirectory ? .directory : .semantic },
+            selectedScope: selected?.scope ?? "", selectedKind: selected.map { _ in .directory },
             onTagChange: { selected = $0 },
             onSettings: { dark.toggle() })
     }

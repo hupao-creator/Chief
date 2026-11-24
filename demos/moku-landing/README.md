@@ -33,7 +33,7 @@ also exercises blank-space drags and clicks, a mouse click on a newly reached
 card, reader return, insertion and deletion. The drags start in the blank area
 beyond the trailing and bottom card edges. The receipt `overview-scroll.json`
 records the input point and the card frames. A directory selection reduces a
-scrolled grid to four columns totaling 1328pt. At 1360pt the grid stays
+scrolled grid to four columns totaling 1328pt. At 1360pt window width the grid stays
 centered through wheel, trackpad and momentum input. At 1359pt the trailing
 edge is reachable. Widening to 1376pt clears the offset again. The replay
 writes the window widths and offsets to `overview-fit.json`. With eight fresh
@@ -55,8 +55,31 @@ This scenario keeps the workspace at 1× throughout, including its first frame.
 It checks the empty Overview with folded input as well as the populated canvas.
 The replay posts window-addressed, phased pixel scrolls over the background, a card, the overflowing tag bar and Chief Bar. It checks the Note threshold and hit region, direct and momentum tails, native tag and Note scrolling, camera travel, composer/Settings ownership and inverted device deltas. The reader and landing cases check Note ownership on their respective surfaces. See `overview-note-swipe.json` and `landing-note-swipe.json`.
 
-The mixed catalog scenario checks mounted cards in all three status filters, both endpoints, individual and collected Super Threads, semantic tag selection with zero matches, and incremental changes to the same execution while filtered. `overview-status.json` records the visible tag identities, selected tag, ordinary cards and report members at each step. Add `--capture` to save the corresponding window images. Physical trackpad delivery and system fullscreen require separate observation.
+Use `--status-only` in place of `--note-swipe` to run the mixed catalog scenario
+independently. It mounts the [production Overview](../../app/macos/Sources/Host/Overview/README.md)
+with ordinary tasks, running interactions, completed work and eight reports.
+`overview-status.json` records the selected scope, tag and status, card area,
+mounted Agent cards and individual or collected report members at each step.
 
-The [16-second walkthrough](evidence/overview-status/swipes.mp4) uses stills captured from the isolated production workspace. The [status receipt](evidence/overview-status/overview-status.json) records 12 steps, including selection of Shipping and its 0 → 1 → 0 running-card count. The Completed frame contains one Agent, two individual Reports and a six-member collection. The [gesture receipt](evidence/overview-status/overview-note-swipe.json) and [reminder receipt](evidence/overview-status/reminder-note-ownership.json) record the native scrolling checks. These artifacts come from the command above with `--capture` at application and replay revision `b9cc86a7cb7345470f65c1e147f0783639d7fe26`. The replay uses fixture catalog content and window-addressed AppKit events on Apple Silicon macOS 26.5.1.
+The right-half gesture traverses Running only, All statuses and Completed only.
+The left-half gesture traverses the directory and its semantic tags. Each side
+checks a contact that crosses the midpoint before recognition, the endpoints
+and momentum. Global All has no semantic selection. The replay activates the
+built-in Inbox, its tagged and untagged tasks, an identically named semantic
+tag and a separate directory named Inbox. Window-local mouse clicks select
+the middle status and a semantic tag. Changing child or status retains the
+full-window card area within the directory. A capsule over a card accepts the click, and a click in the gap between two capsules opens the underlying task. At the production minimum of
+860 × 600 pt, a five-tag directory exposes all six controls and selects a tag
+with a long label. The optional capture checks that all three English status
+names and the visible part of the long label can be read. `source.json`
+records the checkout revision, source changes, macOS version and architecture.
+
+With Shipping selected, a catalog update admits and removes a card in each
+status filter. Line-wheel events on the right return to All statuses from
+either empty filter. A left-side line-wheel event keeps the empty Running
+selection. With `--capture`,
+the replay reads English and Chinese guidance from the window images,
+including both empty states in Aqua and Dark Aqua. It does not exercise a hardware trackpad or system fullscreen.
+The fixture has no Runtime connection.
 
 A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas switches status, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.

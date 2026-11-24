@@ -10,6 +10,10 @@ public struct NativeInteractionError: Error, LocalizedError {
     public var json: JSONValue { .object(["code": .text(code), "message": .text(message)]) }
 }
 
+public enum NativeOverviewControlGroup: String, CaseIterable, Sendable {
+    case directory, semantic, status
+}
+
 /// Stable semantic intents, independent of transport and pointer coordinates.
 public enum NativeWorkspaceAction: Sendable {
     case openSettings, closeSettings, selectSettingsSection(String)
@@ -18,7 +22,7 @@ public enum NativeWorkspaceAction: Sendable {
     case showOverview, back, openThread(ApplicationThreadRef)
     case selectFilter(String?)
     case overviewScroll(Double), overviewRetry
-    case overviewDirectoryOpen(String), overviewDirectoryClose(String), overviewDirectorySelect(directory: String, filter: String)
+    case overviewActivateFilter(NativeOverviewControlGroup, String)
     case overviewScrollFilter(String)
     case toggleMokuInput, toggleMokuNote
 
@@ -35,9 +39,7 @@ public enum NativeWorkspaceAction: Sendable {
         case .selectFilter: "filter.select"
         case .overviewScroll: "overview.scroll"
         case .overviewRetry: "overview.retry"
-        case .overviewDirectoryOpen: "overview.directory.open"
-        case .overviewDirectoryClose: "overview.directory.close"
-        case .overviewDirectorySelect: "overview.directory.select"
+        case .overviewActivateFilter: "overview.filters.activate"
         case .overviewScrollFilter: "overview.filters.scroll"
         case .toggleMokuInput: "moku.input.toggle"
         case .toggleMokuNote: "moku.note.toggle"
@@ -98,11 +100,12 @@ public enum NativeWorkspaceAction: Sendable {
             try fields(["distance"])
             self = .overviewScroll(try number("distance"))
         case "overview.retry": try fields([]); self = .overviewRetry
-        case "overview.directory.open": try fields(["directoryId"]); self = .overviewDirectoryOpen(try string("directoryId"))
-        case "overview.directory.close": try fields(["directoryId"]); self = .overviewDirectoryClose(try string("directoryId"))
-        case "overview.directory.select":
-            try fields(["directoryId", "filterId"])
-            self = .overviewDirectorySelect(directory: try string("directoryId"), filter: try string("filterId"))
+        case "overview.filters.activate":
+            try fields(["group", "id"])
+            guard let group = NativeOverviewControlGroup(rawValue: try string("group")) else {
+                throw NativeInteractionError("invalid_request", "Unknown filter control group")
+            }
+            self = .overviewActivateFilter(group, try string("id"))
         case "overview.filters.scroll": try fields(["filterId"]); self = .overviewScrollFilter(try string("filterId"))
         case "moku.input.toggle": try fields([]); self = .toggleMokuInput
         case "moku.note.toggle": try fields([]); self = .toggleMokuNote

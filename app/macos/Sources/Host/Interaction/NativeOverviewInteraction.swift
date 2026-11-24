@@ -3,37 +3,40 @@ import ChiefCore
 import ChiefPluginAPI
 import SwiftUI
 
-/// Callbacks belong to the visible glass controls, not to an alternate menu model.
-/// Each registration owns its lifetime so a retiring view cannot remove its successor.
+/// Registrations are owned by mounted controls. A retiring control cannot remove
+/// a replacement that has already registered the same ID.
 @MainActor
 public final class NativeOverviewChromeInteractions {
-    private struct Entry {
+    private struct Button {
         let owner: UUID
-        let filter: NativeOverviewFilter
-        let enabled: Bool
-        let open: () -> Void
-        let close: () -> Void
-        let select: (String) -> Void
+        let activate: () -> Void
     }
-    private var entries: [UUID: [String: Entry]] = [:]
-    private var menus: [UUID: [String: UUID]] = [:]
+    private var buttons: [NativeOverviewControlGroup: [String: Button]] = [:]
     private var scrolls: [UUID: (owner: UUID, ids: [String], enabled: Bool, action: (String) -> Void)] = [:]
     private var chromeOwner: UUID?
-    public private(set) var openScope: String?
 
-    func install(id: String, owner: UUID, root: UUID, filter: NativeOverviewFilter, enabled: Bool,
-                 open: @escaping () -> Void, close: @escaping () -> Void, select: @escaping (String) -> Void) {
-        entries[root, default: [:]][id] = Entry(owner: owner, filter: filter, enabled: enabled, open: open, close: close, select: select)
+    func install(_ group: NativeOverviewControlGroup, id: String, owner: UUID, activate: @escaping () -> Void) {
+        buttons[group, default: [:]][id] = Button(owner: owner, activate: activate)
     }
-    func remove(id: String, owner: UUID, root: UUID) {
-        if entries[root]?[id]?.owner == owner { entries[root]?.removeValue(forKey: id) }
+    func remove(_ group: NativeOverviewControlGroup, id: String, owner: UUID) {
+        if buttons[group]?[id]?.owner == owner { buttons[group]?.removeValue(forKey: id) }
     }
-    func installChrome(owner: UUID, openScope: String?) { chromeOwner = owner; self.openScope = openScope }
+    public func mountedIDs(in group: NativeOverviewControlGroup) -> [String] {
+        buttons[group]?.keys.sorted() ?? []
+    }
+    public func activate(_ group: NativeOverviewControlGroup, id: String) throws {
+        guard let button = buttons[group]?[id] else {
+            throw NativeInteractionError("unavailable", "Filter control is not mounted and enabled")
+        }
+        button.activate()
+    }
+    var hasButtons: Bool { buttons.values.contains { !$0.isEmpty } }
+
+    func installChrome(owner: UUID) { chromeOwner = owner }
     func removeChrome(owner: UUID) {
-        entries.removeValue(forKey: owner); menus.removeValue(forKey: owner); scrolls.removeValue(forKey: owner)
-        if chromeOwner == owner { chromeOwner = nil; openScope = nil }
+        scrolls.removeValue(forKey: owner)
+        if chromeOwner == owner { chromeOwner = nil }
     }
-    func setOpenScope(_ value: String?, owner: UUID) { if chromeOwner == owner { openScope = value } }
     func installScroll(owner: UUID, root: UUID, ids: [String], enabled: Bool, action: @escaping (String) -> Void) {
         scrolls[root] = (owner, ids, enabled, action)
     }
@@ -44,45 +47,6 @@ public final class NativeOverviewChromeInteractions {
         guard scroll.ids.contains(id) else { throw NativeInteractionError("not_found", "Top-level filter is unavailable") }
         scroll.action(id)
     }
-    func mountMenu(id: String, owner: UUID, root: UUID) { menus[root, default: [:]][id] = owner }
-    func unmountMenu(id: String, owner: UUID, root: UUID) {
-        if menus[root]?[id] == owner { menus[root]?.removeValue(forKey: id) }
-    }
-
-    // Every intersecting directory chip registers geometry, including leaves
-    // without a submenu. Menu admission separately requires an enabled entry.
-    public var visibleDirectoryIDs: [String] {
-        guard let root = chromeOwner else { return [] }
-        return (entries[root] ?? [:]).keys.sorted()
-    }
-    public var mountedDirectoryIDs: [String] {
-        guard let root = chromeOwner else { return [] }
-        return (entries[root] ?? [:]).filter { $0.value.enabled }.keys.sorted()
-    }
-    public var mountedMenuIDs: [String] {
-        guard let root = chromeOwner else { return [] }
-        return Array((menus[root] ?? [:]).keys).sorted()
-    }
-    func perform(directory id: String, operation: String, child: String? = nil) throws {
-        guard let root = chromeOwner, let entry = entries[root]?[id], entry.enabled else {
-            throw NativeInteractionError("unavailable", "Directory control is not mounted and enabled")
-        }
-        switch operation {
-        case "open": entry.open()
-        case "close":
-            guard openScope == entry.filter.scope else { throw NativeInteractionError("unavailable", "Directory menu is closed") }
-            entry.close()
-        case "select":
-            guard openScope == entry.filter.scope, menus[root]?[id] != nil else {
-                throw NativeInteractionError("unavailable", "Directory menu has not mounted")
-            }
-            guard let child, entry.filter.children.contains(where: { $0.id == child && $0.count > 0 }) else {
-                throw NativeInteractionError("not_found", "Child filter is unavailable in this directory")
-            }
-            entry.select(child)
-        default: throw NativeInteractionError("invalid_request", "Unknown directory operation")
-        }
-    }
 }
 
 struct NativeOverviewFilterScrollRegistration: ViewModifier {
@@ -91,45 +55,48 @@ struct NativeOverviewFilterScrollRegistration: ViewModifier {
     let ids: [String]
     let enabled: Bool
     let scroll: (String) -> Void
+    @Environment(\.isEnabled) private var isEnabled
     @State private var owner = UUID()
     func body(content: Content) -> some View {
         content.onAppear(perform: install)
             .onChange(of: ids) { _, _ in install() }
-            .onChange(of: enabled) { _, _ in install() }
+            .onChange(of: enabled && isEnabled) { _, _ in install() }
             .onDisappear { registry?.removeScroll(owner: owner, root: root) }
     }
-    private func install() { registry?.installScroll(owner: owner, root: root, ids: ids, enabled: enabled, action: scroll) }
+    private func install() { registry?.installScroll(owner: owner, root: root, ids: ids, enabled: enabled && isEnabled, action: scroll) }
 }
 
-struct NativeOverviewDirectoryRegistration: ViewModifier {
+struct NativeOverviewButtonRegistration: ViewModifier {
     let registry: NativeOverviewChromeInteractions?
-    let root: UUID
-    let filter: NativeOverviewFilter
-    let enabled: Bool
-    let open: () -> Void
-    let close: () -> Void
-    let select: (String) -> Void
-    @State private var owner = UUID()
-    func body(content: Content) -> some View {
-        content.onAppear(perform: install)
-            .onChange(of: filter) { _, _ in install() }
-            .onChange(of: enabled) { _, _ in install() }
-            .onDisappear { registry?.remove(id: filter.id, owner: owner, root: root) }
-    }
-    private func install() {
-        registry?.install(id: filter.id, owner: owner, root: root, filter: filter, enabled: enabled,
-                          open: open, close: close, select: select)
-    }
-}
-
-struct NativeOverviewMenuRegistration: ViewModifier {
-    let registry: NativeOverviewChromeInteractions?
-    let root: UUID
+    let group: NativeOverviewControlGroup
     let id: String
-    @State private var owner = UUID()
+    let action: () -> Void
+    @Environment(\.isEnabled) private var enabled
+
     func body(content: Content) -> some View {
-        content.onAppear { registry?.mountMenu(id: id, owner: owner, root: root) }
-            .onDisappear { registry?.unmountMenu(id: id, owner: owner, root: root) }
+        content.background {
+            if let registry, enabled {
+                MountedButton(registry: registry, group: group, id: id, action: action)
+                    .id(id).id(group).id(ObjectIdentifier(registry))
+            }
+        }
+    }
+
+    // Keep the registration token inside the identified lifetime. Retiring and
+    // incoming controls can briefly occupy the same “Any tag” layout slot.
+    private struct MountedButton: View {
+        let registry: NativeOverviewChromeInteractions
+        let group: NativeOverviewControlGroup
+        let id: String
+        let action: () -> Void
+        @State private var owner = UUID()
+
+        var body: some View {
+            Color.clear.frame(width: 0, height: 0)
+                .allowsHitTesting(false).accessibilityHidden(true)
+                .onAppear { registry.install(group, id: id, owner: owner, activate: action) }
+                .onDisappear { registry.remove(group, id: id, owner: owner) }
+        }
     }
 }
 
@@ -140,9 +107,7 @@ extension NativeWorkspacePresentation {
         if interactionPage == "overview" {
             if !scene.interactionPaused, canvas.canScroll { result.append("overview.scroll") }
             if overview.error != nil || canvas.layoutError != nil { result.append("overview.retry") }
-            if !overview.chromeInteractions.mountedDirectoryIDs.isEmpty {
-                result += ["overview.directory.open", "overview.directory.close", "overview.directory.select"]
-            }
+            if overview.chromeInteractions.hasButtons { result.append("overview.filters.activate") }
             if overview.chromeInteractions.canScroll { result.append("overview.filters.scroll") }
             if canToggleMokuNote { result.append("moku.note.toggle") }
         }
@@ -210,12 +175,10 @@ extension NativeWorkspacePresentation {
             "filters": .array(overview.visibleFilters.map(filter)), "cards": .array(cards),
             "mountedCardIds": .array(canvas.mountedCardIDs.sorted().map(JSONValue.text)),
             "placements": .array(placements), "camera": cameraState,
-            "menu": .object([
-                "openScope": overview.chromeInteractions.openScope.map(JSONValue.text) ?? .null,
-                "visibleDirectoryIds": .array(overview.chromeInteractions.visibleDirectoryIDs.map(JSONValue.text)),
-                "mountedDirectoryIds": .array(overview.chromeInteractions.mountedDirectoryIDs.map(JSONValue.text)),
-                "mountedMenuIds": .array(overview.chromeInteractions.mountedMenuIDs.map(JSONValue.text))
-            ]),
+            "controls": .object(Dictionary(uniqueKeysWithValues: NativeOverviewControlGroup.allCases.map { group in
+                (JSONText(group.rawValue), .array(overview.chromeInteractions.mountedIDs(in: group).map(JSONValue.text)))
+            })),
+            "status": .text(overview.statusFilter.rawValue),
             "dock": .object(["inputOpen": .bool(scene.inputOpen), "inputLeaving": .bool(scene.inputLeaving),
                 "noteExecutionPhase": scene.noteReadingOrigin.map { .text($0.phase.rawValue) } ?? .null,
                 "noteOpen": .bool(scene.notePanelOpen), "covered": .bool(scene.dockCovered)])
@@ -226,9 +189,7 @@ extension NativeWorkspacePresentation {
         switch action {
         case .overviewScroll(let distance): canvas.camera.scroll(by: distance)
         case .overviewRetry: overview.refresh(); canvas.retryLayout()
-        case .overviewDirectoryOpen(let id): try overview.chromeInteractions.perform(directory: id, operation: "open")
-        case .overviewDirectoryClose(let id): try overview.chromeInteractions.perform(directory: id, operation: "close")
-        case .overviewDirectorySelect(let id, let filter): try overview.chromeInteractions.perform(directory: id, operation: "select", child: filter)
+        case .overviewActivateFilter(let group, let id): try overview.chromeInteractions.activate(group, id: id)
         case .overviewScrollFilter(let id): try overview.chromeInteractions.scrollTo(id)
         case .toggleMokuInput: scene.toggleInput(focusOnOpening: true)
         case .toggleMokuNote: toggleMokuNote()
