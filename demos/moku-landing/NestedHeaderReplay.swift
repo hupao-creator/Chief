@@ -768,8 +768,9 @@ private final class WheelSample: NSEvent {
                 : [workspace.locale.text("没有已完成的会话", "No completed conversations"),
                    workspace.locale.text("在右半区上滑可查看全部状态", "Scroll up on the right to show all statuses")]
         }
-        func checkStatusText(in url: URL, expected: [String]) throws -> [String] {
+        func checkStatusText(in url: URL, expected: [String], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [String] {
             let request = VNRecognizeTextRequest()
+            request.regionOfInterest = region
             request.recognitionLanguages = workspace.locale == .chinese ? ["zh-Hans", "en-US"] : ["en-US"]
             request.minimumTextHeight = 0.008
             try VNImageRequestHandler(url: url).perform([request])
@@ -1086,8 +1087,10 @@ private final class WheelSample: NSEvent {
         if CommandLine.arguments.contains("--capture") {
             let url = directory.appending(path: "minimum-window.png")
             try await capture(window, to: url)
-            compact["recognizedText"] = try checkStatusText(in: url, expected: ["Customer", "Any tag", "Design",
-                "Engineering", "Planning", "Support", "Running only", "All statuses", "Completed only"])
+            compact["semanticLabels"] = try checkStatusText(in: url, expected: ["Customer", "Any tag", "Design",
+                "Engineering", "Planning", "Support"], region: CGRect(x: 0, y: 0.20, width: 0.20, height: 0.60))
+            compact["statusLabels"] = try checkStatusText(in: url, expected: ["Running only", "All statuses",
+                "Completed only"], region: CGRect(x: 0.80, y: 0.35, width: 0.20, height: 0.30))
         }
         samples.append(compact)
         try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
