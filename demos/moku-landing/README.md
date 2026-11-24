@@ -82,7 +82,7 @@ with ordinary tasks, running interactions, completed work and eight reports.
 mounted Agent cards and individual or collected report members at each step.
 
 The right-half gesture traverses Running only, All statuses and Completed only.
-The left-half gesture traverses the directory and its semantic tags. Each side
+The left-half gesture enters the first semantic tag from the directory and then traverses the visible tags. Each side
 checks a contact that crosses the midpoint before recognition, the endpoints
 and momentum. The replay selects a top-level Inbox tag and checks its exact
 cards, restored All statuses and absence of a left column. It distinguishes a top-row
@@ -95,7 +95,7 @@ top directory and Inbox chips with the left tag and right status chips.
 Window-local mouse clicks select
 the middle status and a semantic tag. Changing child or status retains the
 full-window card area within the directory. A capsule over a card accepts the click, and a click in the gap between two capsules opens the underlying task. At the production minimum of
-860 × 600 pt, a five-tag directory exposes all six controls and selects a tag
+860 × 600 pt, a five-tag directory exposes five semantic controls and selects a tag
 with a long label. The replay reads the mounted accessible buttons to check
 their names and frames. The selected tag and status stay expanded beyond five seconds. The replay places the cursor 10 points beyond the compact left tag and right status button, then moves it away
 to check hover and exit, then restores the cursor. A click in the horizontal hover margin of the compact
@@ -138,10 +138,9 @@ catch a hard cut through the shadow. `header-glass.json` records those
 measurements, the title's luminance difference from the chip face and the
 spacing between adjacent controls. On fixed neutral backgrounds it clicks
 each top and side control and compares the same part of its glass face across
-selections, away from the glyph, badge and rim. The folder and Any tag
-must shift toward the copper-orange accent. Any tag’s sampled face must also reach
-4.5:1 against its full-coverage ink in each appearance. The selected top-level
-Inbox tag takes its blue tint from 🔵.
+selections, away from the glyph, badge and rim. The top folder shifts toward
+the copper-orange accent. The selected top-level Inbox tag takes its blue tint
+from 🔵. The left rail checks warm, blue and green semantic emoji tints.
 Blue and green semantic emoji
 have distinct tints, the hourglass and dividers have warm tints and the
 checkered flag has a neutral tint. The selected controls must retain the

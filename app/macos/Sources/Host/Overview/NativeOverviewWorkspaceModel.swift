@@ -274,7 +274,11 @@ public final class NativeOverviewWorkspaceModel {
     func stepSemanticFilter(up: Bool) {
         guard let directory = selectedDirectory, !directory.children.isEmpty,
               let selected = selectedFilter else { return }
-        let options = [directory] + directory.children
+        let options = directory.children
+        if selected.isDirectory {
+            if up { selectTag(options[0]) }
+            return
+        }
         guard let index = options.firstIndex(where: { $0.selectionKey == selected.selectionKey }) else { return }
         let next = index + (up ? 1 : -1)
         guard options.indices.contains(next) else { return }

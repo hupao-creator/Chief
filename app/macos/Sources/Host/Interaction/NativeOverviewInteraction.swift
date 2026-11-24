@@ -83,7 +83,7 @@ struct NativeOverviewButtonRegistration: ViewModifier {
     }
 
     // Keep the registration token inside the identified lifetime. Retiring and
-    // incoming controls can briefly occupy the same “Any tag” layout slot.
+    // incoming controls can briefly occupy the same layout slot.
     private struct MountedButton: View {
         let registry: NativeOverviewChromeInteractions
         let group: NativeOverviewControlGroup

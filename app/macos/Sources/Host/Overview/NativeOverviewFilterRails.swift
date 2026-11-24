@@ -10,35 +10,29 @@ struct NativeOverviewTagRail: View {
     var interactions: NativeOverviewChromeInteractions?
 
     var body: some View {
-        let hasTags = parent?.children.isEmpty == false
+        let tags = parent?.children ?? []
         VStack(alignment: .leading, spacing: OverviewTagMetrics.railSpacing) {
-            if let parent, hasTags {
-                tagButton(parent, isParent: true)
-                    .id(parent.id)
-                ForEach(parent.children) { child in
-                    tagButton(child, isParent: false)
-                }
-            }
+            ForEach(tags) { tag in tagButton(tag) }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(strings.filter)
-        .accessibilityHidden(!hasTags)
+        .accessibilityHidden(tags.isEmpty)
     }
 
-    private func tagButton(_ filter: NativeOverviewFilter, isParent: Bool) -> some View {
+    private func tagButton(_ filter: NativeOverviewFilter) -> some View {
         let select = { onTagChange(filter) }
         let activity = filter.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
         let selected = filter.id == selectedID
         return OverviewRailButton(selected: selected) { expansion in
-            OverviewRailCapsule(edge: .leading, title: isParent ? strings.anyTag : filter.tag,
-                emoji: isParent ? nil : filter.semanticEmoji,
-                hasActiveTasks: !isParent && filter.hasActiveTasks, selected: selected,
-                unreadCount: isParent ? 0 : filter.unreadCount, maximumWidth: maximumWidth,
+            OverviewRailCapsule(edge: .leading, title: filter.tag,
+                emoji: filter.semanticEmoji,
+                hasActiveTasks: filter.hasActiveTasks, selected: selected,
+                unreadCount: filter.unreadCount, maximumWidth: maximumWidth,
                 expansion: expansion, action: select)
         }
         .overviewTagAnchor(filter.id)
-        .accessibilityIdentifier(isParent ? "overview-semantic-any" : filter.id)
-        .accessibilityLabel(Text(isParent ? strings.anyTag : filter.displayTag))
+        .accessibilityIdentifier(filter.id)
+        .accessibilityLabel(Text(filter.displayTag))
         .accessibilityValue(Text("\(filter.count)\(activity)\(strings.unreadSuffix(filter.unreadCount))"))
         .modifier(NativeOverviewButtonRegistration(registry: interactions, group: .semantic, id: filter.id, action: select))
     }
@@ -65,7 +59,7 @@ private struct OverviewRailButton: View {
 private struct OverviewRailCapsule: View, @MainActor Animatable {
     let edge: HorizontalEdge
     let title: String
-    let emoji: String?
+    let emoji: String
     var hasActiveTasks = false
     let selected: Bool
     var unreadCount = 0
@@ -91,8 +85,7 @@ private struct OverviewRailCapsule: View, @MainActor Animatable {
                 }
                 .clipped()
             }
-            .buttonStyle(OverviewTagButtonStyle(glass: .clear, selected: selected, emoji: emoji,
-                                              solidAccentSelection: emoji == nil))
+            .buttonStyle(OverviewTagButtonStyle(glass: .clear, selected: selected, emoji: emoji))
             .accessibilityAddTraits(selected ? .isSelected : [])
         }
         // The unread count follows the presented width while the title expands.
@@ -102,14 +95,9 @@ private struct OverviewRailCapsule: View, @MainActor Animatable {
         .transaction { $0.animation = nil }
     }
 
-    @ViewBuilder private var glyph: some View {
-        if let emoji {
-            Text(verbatim: emoji).font(.system(size: 19 * OverviewTagMetrics.tagScale)).fixedSize()
-                .background { if hasActiveTasks { OverviewTagActivityIndicator(diameter: 36 * OverviewTagMetrics.tagScale) } }
-        } else {
-            OverviewAllTagGlyph(scale: OverviewTagMetrics.tagScale)
-                .modifier(OverviewCanvasLabelEdge())
-        }
+    private var glyph: some View {
+        Text(verbatim: emoji).font(.system(size: 19 * OverviewTagMetrics.tagScale)).fixedSize()
+            .background { if hasActiveTasks { OverviewTagActivityIndicator(diameter: 36 * OverviewTagMetrics.tagScale) } }
     }
 }
 

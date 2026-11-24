@@ -201,7 +201,6 @@ public struct NativeOverviewWorkspaceView: View {
         var strings = NativeOverviewChromeStrings()
         if locale == .english {
             strings.settings = "Settings"; strings.restart = "Restart development app"; strings.actions = "Overview actions"
-            strings.anyTag = "Any tag"
             strings.runningOnly = "Running only"
             strings.allStatuses = "All statuses"
             strings.completedOnly = "Completed only"

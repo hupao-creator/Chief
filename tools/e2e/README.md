@@ -549,7 +549,7 @@ unread version is acknowledged, the number disappears and the selected
 glass keeps its tint. With an active member in the same tag, check that its
 perforated activity indicator also remains visible after the unread count clears.
 Choose a directory at normal window scale. Select a tag with an unread count
-and move the pointer away. Capture the expanded selected tag. Choose Any tag, hover over the previous tag to reveal its title, then move away and capture it during contraction. Check the selected tint and confirm that
+and move the pointer away. Capture the expanded selected tag. Click the top folder button, hover over the previous tag to reveal its title, then move away and capture it during contraction. Check the selected tint and confirm that
 the complete red badge stays at its upper trailing corner. Try a short
 name and one long enough to truncate. Switch folders rapidly and change a tag's
 unread count while its title is visible, including to zero. Check the selected

@@ -221,12 +221,6 @@ private func tintResult(id: String, selected: [String: [Double]], idle: [String:
     return ["id": id, "hue": hue.rawValue, "selected": face, "unselected": reference, "passed": visible && pairedHue]
 }
 
-private func contrastAgainstBlack(face: [Double]) -> Double {
-    let linear = face.map { $0 <= 0.04045 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }
-    let luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
-    return (luminance + 0.05) / 0.05
-}
-
 @MainActor private func clickFilter(in window: NSWindow, at rect: CGRect) throws {
     let point = CGPoint(x: rect.minX + rect.height / 2, y: window.frame.height - rect.midY)
     for type: NSEvent.EventType in [.leftMouseDown, .leftMouseUp] {
@@ -284,13 +278,14 @@ private func preservedEmoji(selected: NSBitmapImageRep, idle: NSBitmapImageRep,
 @MainActor private func sideTints(in window: NSWindow, scheme: ColorScheme, name: String, evidence: URL) async throws -> [[String: Any]] {
     let blue = NativeOverviewFilter(tag: "Blue", emoji: "🔵", scope: "/Chief", count: 1)
     let apple = NativeOverviewFilter(tag: "Apple", emoji: "🍏", scope: "/Chief", count: 1)
-    let folder = NativeOverviewFilter(tag: "Chief", scope: "/Chief", count: 2, isDirectory: true, children: [blue, apple])
+    let orange = NativeOverviewFilter(tag: "Orange", emoji: "🟠", scope: "/Chief", count: 1)
+    let folder = NativeOverviewFilter(tag: "Chief", scope: "/Chief", count: 3, isDirectory: true, children: [orange, blue, apple])
     var frames = [String: CGRect]()
-    let host = NSHostingView(rootView: SideTintFixture(folder: folder, measured: { frames = $0 }, tag: folder.id)
+    let host = NSHostingView(rootView: SideTintFixture(folder: folder, measured: { frames = $0 }, tag: orange.id)
         .environment(\.colorScheme, scheme))
     host.sizingOptions = []
     window.contentView = host
-    let configurations = [[folder.id, "all"], [blue.id, "running"], [apple.id, "completed"]]
+    let configurations = [[orange.id, "all"], [blue.id, "running"], [apple.id, "completed"]]
     let ids = configurations.flatMap { $0 }
     var samples = [[String: [Double]]](), images = [NSBitmapImageRep]()
     var glyphSeats = [String: CGRect]()
@@ -308,23 +303,19 @@ private func preservedEmoji(selected: NSBitmapImageRep, idle: NSBitmapImageRep,
         if index == 0 {
             // Both rails keep their glyph seats fixed as the labels open inward.
             for (id, frame) in frames {
-                let edge: CGRectEdge = [folder.id, blue.id, apple.id].contains(id) ? .minXEdge : .maxXEdge
+                let edge: CGRectEdge = id.hasPrefix("semantic:") ? .minXEdge : .maxXEdge
                 glyphSeats[id] = frame.divided(atDistance: frame.height, from: edge).slice
             }
         }
         samples.append(readFaceColors(pixels, ids: ids, frames: glyphSeats))
         try pixels.representation(using: .png, properties: [:])?.write(to: evidence.appending(path: "side-tints-\(name)-\(index).png"))
     }
-    let hues: [TintHue] = [.copper, .warm, .blue, .warm, .green, .neutral]
+    let hues: [TintHue] = [.warm, .warm, .blue, .warm, .green, .neutral]
     return try ids.enumerated().map { offset, id in
         let index = offset / 2
         let next = index + 1
         var result = try tintResult(id: id, selected: samples[index], idle: samples[next], hue: hues[offset])
-        if id == folder.id, let face = samples[index][id] {
-            let ratio = contrastAgainstBlack(face: face)
-            result["contrastRatio"] = ratio
-            result["passed"] = result["passed"] as? Bool == true && ratio >= 4.5
-        } else if let frame = glyphSeats[id], let idle = samples[next][id] {
+        if let frame = glyphSeats[id], let idle = samples[next][id] {
             let (count, fraction) = preservedEmoji(selected: images[index], idle: images[next], frame: frame, idleFace: idle)
             result["emojiInkPixels"] = count
             result["emojiAgreement"] = fraction

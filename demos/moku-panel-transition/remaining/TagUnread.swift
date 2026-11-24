@@ -41,7 +41,6 @@ import SwiftUI
             .overlayPreferenceValue(OverviewTagBounds.self) { anchors in
                 GeometryReader { proxy in
                     Color.clear.onChange(of: anchors.mapValues { proxy[$0] }, initial: true) { _, frames in
-                        // A selected directory also supplies the left "Any tag" button's ID.
                         // Accept directory frames only inside the measured header scroll region.
                         guard let bar = frames["__scroll__"] else { return }
                         for (id, rect) in frames where !rect.isEmpty {

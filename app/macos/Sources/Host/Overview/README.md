@@ -239,7 +239,8 @@ The [vertical gesture router](NativeOverviewVerticalSwipe.swift) recognizes an
 unmodified, precise trackpad contact after at least 24 points of vertical travel
 and more than 1.5 times its horizontal travel. The initial pointer location in
 the Overview window chooses the column. On the left, a swipe steps among the
-current directory's visible tags, including its unrestricted first choice. On
+current directory's visible semantic tags. From the directory, swiping up enters
+the first tag. Swiping down at the first tag keeps it selected. On
 the right, it steps among Running, All (initial) and Completed. A physical up
 swipe advances to the next choice below. A down swipe selects the preceding
 choice above. From All, up selects Completed and down selects Running under
@@ -316,16 +317,16 @@ its tagged members. Its top button keeps its name and folder-wide unread count w
 a child is selected. A project directory named Inbox and a semantic tag named
 Inbox have distinct identities, icons and memberships.
 
-The left column starts with **Any tag** and then the selected scope's visible
-semantic tags, ordered by descending member count and localized name for ties.
-Any tag includes all eligible tagged directory members. The column appears only
+The left column contains the selected directory's visible semantic tags, ordered
+by descending member count and localized name for ties. Clicking the top folder
+restores the full tagged directory selection. The column appears only
 for project directories with visible children, including when a child is
 selected. The three status choices on the right are shared across all scopes. Changing the resolved filter identity (kind, scope and tag) restores All statuses before projecting cards. Re-selecting the same space and refreshing its membership preserve the status.
 
 Semantic tag identity is a plain name with separately validated emoji. Each
 scope exposes up to five semantic tags. Directory membership uses persistent
 scope identity and excludes managed temporary roots. A symlink alias or linked
-checkout with another label remains in its canonical directory’s Any tag view, and
+checkout with another label remains in its canonical directory, and
 same-named directories stay separate.
 
 The left column omits a directory's sole semantic child when its actual selected
@@ -347,7 +348,7 @@ return. A change in status-filtered results alone keeps the selection.
 
 The left and right Liquid Glass columns sit at the window's edges, each group
 vertically centered. Compact controls are 46.2pt circles. The left controls show
-the semantic emoji, 🏷️ for a tag without an emoji, or an asterisk for Any tag.
+the semantic emoji or 🏷️ for a tag without an emoji.
 The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
 (Completed only), with localized titles. Hover expands a button on either
 rail toward the center, keeping its glyph at the window edge. Its natural width
@@ -358,7 +359,7 @@ space from its inset to the window midpoint so status names fit at the minimum
 window size.
 A long title truncates at the trailing edge. The same title stays mounted as
 the capsule reveals or clips it, including when a hover reverses mid-animation.
-The pointer can enter either rail button up to 12pt beyond its current horizontal edges. Its hover region has the same height as the capsule, so the gap between rows remains available to the canvas. Clicking the visible glyph or revealed title selects that filter. Each selected rail button, including Any tag and All statuses, stays expanded from initial display through pointer exit.
+The pointer can enter either rail button up to 12pt beyond its current horizontal edges. Its hover region has the same height as the capsule, so the gap between rows remains available to the canvas. Clicking the visible glyph or revealed title selects that filter. Each selected rail button stays expanded from initial display through pointer exit.
 Unselected buttons expand on hover and collapse on exit. Both transitions use the Chief Bar’s 420ms smooth Overview capsule animation with zero extra bounce. Reduce Motion applies the width change immediately.
 
 Project directories and Inbox tags use native regular interactive Liquid Glass
@@ -372,21 +373,13 @@ emoji. The renderer samples the system glyph in sRGB and averages pixels in
 its most common hue cluster. When colored detail covers less than one sixth
 of the visible glyph, the tint uses its average luminance as a neutral gray,
 limited to the range 0.30–0.72.
-This keeps the 🏁 status tint neutral. The top folder buttons,
-the Any tag asterisk and glyphs that yield no visible sample use the Overview
-copper accent (#C87856 in light appearance and #E5A384 in dark appearance).
-The accent comes from the app palette for every profile. Tag emoji remain the saved input
-for tag colors, and the displayed emoji keeps its original colors.
+This keeps the 🏁 status tint neutral. Top folder buttons and glyphs that
+yield no visible sample use the Overview copper accent (#C87856 in light
+appearance and #E5A384 in dark appearance). Tag emoji supply the other
+tag colors and keep their original colors when displayed.
 [Emoji tint sampling](NativeOverviewTagTint.swift).
-
-Selected Any tag uses an opaque Overview accent face above its glass, with
-black ink for the asterisk and its title in both appearances. The face stays
-opaque with Increased Contrast or Reduce Transparency so the cards underneath
-cannot change the label's contrast.
 The [header glass replay](../../../../../demos/moku-landing/verify_header.py)
-checks the selected accent on a neutral backdrop in both appearances. For
-Any tag it compares sampled face luminance with full-coverage ink, targeting
-at least 4.5:1 in the composited window.
+checks the folder accent and emoji-derived tints in both appearances.
 
 Each tag's red unread count follows the upper trailing corner of the glass
 at its current animated width. Increased Contrast and Reduce Transparency
@@ -425,8 +418,8 @@ window, or detaching the view stops the sweep.
 The indicator follows the same archive, visibility and Report-coverage rules as
 the browsing membership. A Report itself contributes no active Agent Thread.
 A changed-ID cache refreshes activity when execution participation or membership
-changes. Streaming content updates can reuse the cache. Any tag
-exposes active presence in their localized accessibility value. The visible
+changes. Streaming content updates can reuse the cache. Directory and semantic controls
+expose active presence in their localized accessibility values. The visible
 indicators belong to directory and individual semantic chips.
 [Tag activity rendering](NativeOverviewTagActivity.swift) and
 [shared badge renderer](../../Shared/PluginUI/Cards/RunningThreadBadge.swift).

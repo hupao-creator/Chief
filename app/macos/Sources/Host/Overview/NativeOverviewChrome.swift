@@ -303,13 +303,6 @@ struct OverviewTagUnreadBadge: View {
     }
 }
 
-struct OverviewAllTagGlyph: View {
-    var scale: CGFloat = 1
-    var body: some View {
-        Image(systemName: "asterisk").font(.system(size: 17 * scale, weight: .semibold))
-    }
-}
-
 struct OverviewTagTitle: View {
     let title: String
     var body: some View {
@@ -341,7 +334,6 @@ public struct NativeOverviewChromeStrings: Sendable {
     public var restart = "重启开发应用"
     public var actions = "俯瞰视图操作"
     public var filter = "按标签筛选"
-    public var anyTag = "不限标签"
     public var runningOnly = "仅运行中"
     public var allStatuses = "全部状态"
     public var completedOnly = "仅已完成"
@@ -448,7 +440,6 @@ struct OverviewTagButtonStyle: ButtonStyle {
     let glass: Glass
     let selected: Bool
     var emoji: String?
-    var solidAccentSelection = false
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -456,16 +447,10 @@ struct OverviewTagButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let opacity = contrast == .increased || reduceTransparency ? 0.82 : 0.56
         let tint = selected ? OverviewTagTint.color(for: emoji).opacity(opacity) : nil
-        let hasSolidAccent = selected && solidAccentSelection
-        let foreground = hasSolidAccent ? AnyShapeStyle(Color.black)
-            : AnyShapeStyle(HierarchicalShapeStyle.primary)
         return configuration.label
-            .foregroundStyle(foreground)
+            .foregroundStyle(.primary)
             .background {
-                if hasSolidAccent {
-                    // Keep the glass behind the face so moving cards cannot change the ink contrast.
-                    Capsule().fill(NativePalette.overview.accent.swiftUI)
-                } else if reduceTransparency {
+                if reduceTransparency {
                     Capsule().fill(Color(white: scheme == .dark ? 0.16 : 0.94))
                 }
             }
