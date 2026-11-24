@@ -28,7 +28,7 @@ private struct HeaderGlassFixture: View {
                 }
             }
             NativeOverviewChrome(filters: filters, selectedTag: selected?.tag ?? "", selectedScope: selected?.scope ?? "",
-                selectedKind: selected == nil ? nil : .directory, onTagChange: { selected = $0 })
+                selectedKind: selected.map { $0.isDirectory ? .directory : .semantic }, onTagChange: { selected = $0 })
         }
         .overlayPreferenceValue(OverviewTagBounds.self) { anchors in
             GeometryReader { proxy in
@@ -61,7 +61,8 @@ private struct HeaderGlassFixture: View {
     }
     var chief = NativeOverviewFilter(tag: "Chief", scope: "/Chief", count: 8, isDirectory: true)
     chief.unreadCount = 8
-    let inbox = NativeOverviewFilter(tag: "Inbox", scope: "inbox", count: 4, isDirectory: true)
+    var blue = NativeOverviewFilter(tag: "Blue", emoji: "🔵", scope: "inbox", count: 4)
+    blue.unreadCount = 3
     var observations = [[String: Any]]()
     func save(_ status: String) throws {
         try JSONSerialization.data(withJSONObject: ["status": status, "frames": observations],
@@ -71,13 +72,13 @@ private struct HeaderGlassFixture: View {
         window.appearance = NSAppearance(named: scheme == .light ? .aqua : .darkAqua)
         for textured in [false, true] {
             var buttonFrames = [String: CGRect]()
-            let host = NSHostingView(rootView: HeaderGlassFixture(textured: textured, filters: [chief, inbox], selected: chief, measured: { buttonFrames = $0 })
+            let host = NSHostingView(rootView: HeaderGlassFixture(textured: textured, filters: [chief, blue], selected: chief, measured: { buttonFrames = $0 })
                 .environment(\.colorScheme, scheme))
             host.sizingOptions = []
             window.contentView = host
             try await Task.sleep(for: .milliseconds(680))
             let image = try await windowImage(window)
-            let bounds = try ["__all__", chief.id, inbox.id].map { id in
+            let bounds = try ["__all__", chief.id, blue.id].map { id in
                 guard let rect = buttonFrames[id] else { throw HeaderFailure("Missing production header anchor " + id) }
                 return rect
             }
@@ -117,46 +118,63 @@ private struct HeaderGlassFixture: View {
                 (0..<36).map { column in gray(color(selected.midX + CGFloat(column) / 2, selected.midY + CGFloat(row) / 2)) }
             }.sorted()
             let contrast = max(face - ink[ink.count / 20], ink[ink.count * 95 / 100] - face)
-            var red = 0
-            for y in Int((selected.minY - 5) * 2)..<Int((selected.minY + 12) * 2) {
-                for x in Int((selected.maxX - 25) * 2)..<Int(selected.maxX * 2) {
-                    let c = color(CGFloat(x) / 2, CGFloat(y) / 2)
-                    if c.redComponent > 0.7 && c.redComponent - max(c.blueComponent, c.greenComponent) > 0.35 { red += 1 }
+            func badgePixels(_ frame: CGRect) -> Int {
+                var red = 0
+                for y in Int((frame.minY - 5) * 2)..<Int((frame.minY + 12) * 2) {
+                    for x in Int((frame.maxX - 25) * 2)..<Int(frame.maxX * 2) {
+                        let c = color(CGFloat(x) / 2, CGFloat(y) / 2)
+                        if c.redComponent > 0.7 && c.redComponent - max(c.blueComponent, c.greenComponent) > 0.35 { red += 1 }
+                    }
                 }
+                return red
             }
+            let red = badgePixels(selected), semanticBadge = badgePixels(bounds[2])
             let request = VNRecognizeTextRequest()
             request.recognitionLanguages = ["zh-Hans", "en-US"]
             try VNImageRequestHandler(cgImage: header).perform([request])
             let labels = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
-            let receipt: [String: Any] = ["step": step, "text": labels, "redBadgePixels": red,
+            let receipt: [String: Any] = ["step": step, "text": labels, "redBadgePixels": red, "semanticBadgePixels": semanticBadge,
                 "faceRGB": filterFaceRGB(pixels, at: selected, scale: 2),
                 "gapsInPoints": gaps, "shadowBoundaryLumaSteps": clippingSteps, "faceLuma": face, "textLumaDifference": contrast,
                 "faceModulation": modulation(selected.minY + 6), "backdropModulation": modulation(selected.minY - 5)]
             observations.append(receipt)
             let text = labels.joined()
-            guard red > 80, contrast > 0.20,
-                  ["全部", "Chief", "Inbox", "8"].allSatisfy(text.contains),
+            guard red > 80, semanticBadge > 80, contrast > 0.20,
+                  ["全部", "Chief", "Blue", "8", "3"].allSatisfy(text.contains),
                   textured || clippingSteps.allSatisfy({ $0 < 0.018 }),
                   !textured || modulation(selected.minY + 6) < modulation(selected.minY - 5) else {
                 try save("failed")
                 throw HeaderFailure("Header badge or text missing: \(receipt)")
             }
             if !textured {
-                let ids = ["__all__", chief.id, inbox.id]
-                var views = [readFaceColors(pixels, ids: ids, frames: buttonFrames)]
+                let ids = ["__all__", chief.id, blue.id]
+                var images = [pixels]
                 for index in [0, 2, 1] {
                     try clickFilter(in: window, at: bounds[index])
                     try await Task.sleep(for: .milliseconds(550))
                     let changed = try await windowImage(window)
-                    views.append(readFaceColors(NSBitmapImageRep(cgImage: changed), ids: ids, frames: buttonFrames))
+                    images.append(NSBitmapImageRep(cgImage: changed))
+                    if index == 2, let cropped = changed.cropping(to: crop) {
+                        try NSBitmapImageRep(cgImage: cropped).representation(using: .png, properties: [:])?
+                            .write(to: evidence.appending(path: "inbox-tag-" + name + ".png"))
+                    }
                 }
+                let views = images.map { readFaceColors($0, ids: ids, frames: buttonFrames) }
                 let results = try [(1, 0, 1), (0, 1, 2), (2, 2, 3)].map { index, selected, idle in
-                    try tintResult(id: ids[index], selected: views[selected], idle: views[idle], hue: .accent)
+                    let id = ids[index]
+                    var result = try tintResult(id: id, selected: views[selected], idle: views[idle], hue: id == blue.id ? .blue : .accent)
+                    if id == blue.id, let face = views[idle][id] {
+                        let (count, fraction) = preservedEmoji(selected: images[selected], idle: images[idle], frame: bounds[index], idleFace: face)
+                        result["emojiInkPixels"] = count
+                        result["emojiAgreement"] = fraction
+                        result["passed"] = result["passed"] as? Bool == true && count >= 50 && fraction >= 0.75
+                    }
+                    return result
                 }
-                observations.append(["step": "directory-tints-" + name, "choices": results])
+                observations.append(["step": "header-tints-" + name, "choices": results])
                 if results.contains(where: { $0["passed"] as? Bool != true }) {
                     try save("failed")
-                    throw HeaderFailure("Directory tint mismatch: \(results)")
+                    throw HeaderFailure("Header tint mismatch: \(results)")
                 }
             }
         }

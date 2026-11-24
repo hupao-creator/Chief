@@ -147,14 +147,11 @@ final class NativeOverviewMembershipIndex {
         if filters.isEmpty { scopeFilters.removeValue(forKey: scope) }
         else { scopeFilters[scope] = filters }
         func select(_ filter: NativeOverviewFilter) -> NativeOverviewMembership {
-            let inbox = scope == NativeOverviewSelection.inboxScope
-            let labels = inbox && filter.isDirectory
-                ? filter.children.flatMap { [$0.tag] + $0.aliases }
-                : [filter.tag] + filter.aliases
+            let labels = [filter.tag] + filter.aliases
             var ids = ownIDs
             for key in Set(labels.map(normalized)) {
-                if inbox { ids.formUnion(semanticApplications[key] ?? []) }
-                else if filter.isDirectory { ids.formUnion(directoryApplications[key] ?? []) }
+                if filter.isDirectory { ids.formUnion(directoryApplications[key] ?? []) }
+                else if scope == NativeOverviewSelection.inboxScope { ids.formUnion(semanticApplications[key] ?? []) }
             }
             let applications = orderedApplications(ids)
             return NativeOverviewMembership(NativeOverviewSelection.select(threads: browsing.threads, applications: applications,
@@ -187,14 +184,11 @@ final class NativeOverviewMembershipIndex {
                     "scope": value.scope.isEmpty ? .null : .text(value.scope), "aliases": .array(value.aliases.map(JSONValue.text)),
                     "count": .integer(value.count), "threads": .array(refs)])
             }
-            // Scope-less documents participate by directory name, or by an Inbox
-            // child's semantic label. Track just those labels for invalidation.
-            let legacyFilters = scope == NativeOverviewSelection.inboxScope ? filter.children : [filter]
-            for value in legacyFilters {
-                for key in Set(([value.tag] + value.aliases).map(normalized)) {
-                    scopeDependencies[scope, default: []].insert(key)
-                    dependentScopes[key, default: []].insert(scope)
-                }
+            // Unscoped documents can join a visible directory by name or a top-level
+            // Inbox tag by its semantic label. Track those dependencies for live updates.
+            for key in Set(([filter.tag] + filter.aliases).map(normalized)) {
+                scopeDependencies[scope, default: []].insert(key)
+                dependentScopes[key, default: []].insert(scope)
             }
         }
     }

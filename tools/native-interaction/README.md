@@ -78,13 +78,14 @@ settings save has finished; those facts remain separate.
 ## Mounted Overview filters
 
 Read `overview.controls` to discover the buttons currently mounted in each group.
-Activate a top-level `directory` ID to show all tags in that directory. The
-directory group includes `all` for global All. When the left column is present,
-its `semantic` group includes the parent ID for unrestricted membership and
-a filter ID per selectable child. The `status` group uses `running`, `all` and
-`completed`. Each callback performs the same selection as clicking that button.
-Wait for `selectedFilterId`, `overview.status` and the resulting card projection.
-A horizontal scroll can bring another top-level button into view.
+The `directory` group contains global `all` and visible project folders.
+The `semantic` group contains the visible Inbox tags across the top. When a
+project’s left column is present, the group also includes the parent ID for
+unrestricted project membership and a filter ID for each selectable child.
+Use `overview.filters.scroll` to reveal an offscreen top-level folder or tag.
+The `status` group uses `running`, `all` and `completed`. Each callback performs
+the same selection as clicking that button. Wait for `selectedFilterId`,
+`overview.status` and the resulting card projection.
 
 ## Mounted Settings controls
 

@@ -14,8 +14,9 @@ card tagged 股票行情. The local Report query serves a distinct HTML/CSS char
 each report. The renderer uses real WebKit. The fixture does not start a Runtime
 or contact a provider.
 
-The probe locates the Chief and Inbox directory buttons through their production
-layout anchors and sends paired mouse events to its own panel. The probe checks that
+The probe locates the two Chief directory buttons and the top-level Inbox tag
+股票行情 through their production layout anchors and sends paired mouse events
+to its own panel. The probe checks that
 the floating filters leave the full 2048 points available to the cards and
 that all twelve recent covers appear individually in Chief.
 The monotonic samples start immediately before mouse-down. The probe records
@@ -38,6 +39,8 @@ the sample fail.
 ## Reproduce
 
 Build one artifact per production revision with identical collector source.
+Both revisions must expose the same project directories and top-level Inbox
+tag so the collector can target the same buttons.
 Run the baseline build from a separate checkout with the verification directory
 copied in. The [measured campaign](RESULTS.md) used a 2048 × 1225 panel and its own
 collector. The [sample manifests](samples.json.gz) identify the exact builds and

@@ -96,21 +96,22 @@ private func catalog(moved: Bool, created: Double) throws -> JSONValue {
         if let error = model.error { throw Failure(description: error) }
     }
     try install(moved: false)
-    func filter(_ scope: String) throws -> NativeOverviewFilter {
-        guard let value = model.filters.first(where: { $0.scope == scope }) else { throw Failure(description: "Missing scope " + scope) }
-        return value
+    let top = model.visibleFilters
+    guard let workFolder = top.first(where: { $0.isDirectory && $0.scope == chief }),
+          let personalFolder = top.first(where: { $0.isDirectory && $0.scope == other }),
+          let stockTag = top.first(where: { !$0.isDirectory && $0.scope == "inbox" && $0.tag == "股票行情" }) else {
+        throw Failure(description: "Missing top-level Chief folders or 股票行情 tag")
     }
     // Sample the standalone selector before mounting any Report browser.
     model.setCollectionWindowSize(size)
     var selectionMs = [Double](), geometryMs = [Double]()
-    let destination = try filter(chief), source = try filter("inbox")
     for _ in 0..<12 {
-        model.selectTag(source)
+        model.selectTag(stockTag)
         let start = ProcessInfo.processInfo.systemUptime
-        model.selectTag(destination)
+        model.selectTag(workFolder)
         selectionMs.append((ProcessInfo.processInfo.systemUptime - start) * 1000)
     }
-    model.selectTag(source)
+    model.selectTag(stockTag)
     let panel = NSPanel(contentRect: .init(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel],
                         backing: .buffered, defer: false)
     var buttons = [String: CGRect]()
@@ -135,8 +136,8 @@ private func catalog(moved: Bool, created: Double) throws -> JSONValue {
     }
     try await waitUntil("initial card") { settled(stock) }
     var rows = [[String: Any]]()
-    func press(_ scope: String) throws -> Double {
-        let id = try filter(scope).id
+    func press(_ filter: NativeOverviewFilter) throws -> Double {
+        let id = filter.id
         guard let rect = buttons[id], !rect.isEmpty else {
             throw Failure(description: "Missing chip geometry for " + id + " in " + String(describing: buttons.keys))
         }
@@ -156,25 +157,25 @@ private func catalog(moved: Bool, created: Double) throws -> JSONValue {
         return start
     }
     for cycle in 0..<4 {
-        for (scope, ids) in [(chief, crowded), ("inbox", stock)] {
+        for (target, ids) in [(workFolder, crowded), (stockTag, stock)] {
             let before = queries
-            let start = try press(scope)
+            let start = try press(target)
             func ms() -> Double { (ProcessInfo.processInfo.systemUptime - start) * 1000 }
             let dispatch = ms()
-            try await waitUntil("selection") { model.selectedScope == scope }
+            try await waitUntil("selection") { model.selectedFilter?.id == target.id }
             let selected = ms()
             try await waitUntil("placements") { Set(canvas.presentedPlacements.map(\.id)) == ids }
             let placed = ms()
             try await waitUntil("settle") { settled(ids) }
             let ready = ms()
-            if scope == chief {
+            if target.id == workFolder.id {
                 try await waitUntil("rendered report covers") { readyBrowsers(in: view).count == reportCount }
             }
             let covers = ms()
             guard let viewport = canvas.camera.viewport, viewport.width == size.width else {
                 throw Failure(description: "Filter controls changed the full-width card viewport")
             }
-            if scope == chief && cycle == 0 {
+            if target.id == workFolder.id && cycle == 0 {
                 let members = model.items.map(\.member)
                 let canvasSize = CGSize(width: viewport.width, height: viewport.height)
                 for _ in 0..<12 {
@@ -184,21 +185,21 @@ private func catalog(moved: Bool, created: Double) throws -> JSONValue {
                 }
             }
             try await Task.sleep(for: .milliseconds(300))
-            rows.append(["cycle": cycle, "scope": scope, "dispatchMs": dispatch, "selectedMs": selected,
+            rows.append(["cycle": cycle, "scope": target.scope, "filterID": target.id, "dispatchMs": dispatch, "selectedMs": selected,
                 "canvasWidth": viewport.width, "placedMs": placed, "settledMs": ready, "coversAndSettledMs": covers, "coverQueries": queries - before])
         }
     }
-    _ = try press(chief)
+    _ = try press(workFolder)
     try await waitUntil("interrupted layout") { canvas.isLayingOut && Set(canvas.presentedPlacements.map(\.id)) == crowded }
-    _ = try press("inbox")
-    try await waitUntil("rapid return accepted") { model.selectedScope == "inbox" }
+    _ = try press(stockTag)
+    try await waitUntil("rapid return accepted") { model.selectedFilter?.id == stockTag.id }
     try await Task.sleep(for: .milliseconds(40))
-    _ = try press(other)
-    try await waitUntil("same-name selection accepted") { model.selectedScope == other }
+    _ = try press(personalFolder)
+    try await waitUntil("same-name selection accepted") { model.selectedFilter?.id == personalFolder.id }
     try await waitUntil("rapid final membership") { settled(["personal"]) }
     try install(moved: true)
     try await waitUntil("updated selection") { settled(["agent-0", "personal"]) }
-    _ = try press(chief)
+    _ = try press(workFolder)
     try await waitUntil("revisited scope") { settled(crowded.subtracting(["agent-0"])) }
     try await waitUntil("revisited covers") { readyBrowsers(in: view).count == reportCount }
     var headings = Set<String>()

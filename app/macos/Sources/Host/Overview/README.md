@@ -244,8 +244,9 @@ the right, it steps among Running, All (initial) and Completed. A physical up
 swipe advances to the next choice below. A down swipe selects the preceding
 choice above. From All, up selects Completed and down selects Running under
 either Natural Scrolling setting. The gesture stops at either end. Crossing the
-middle or receiving momentum cannot advance the other column. On the left with no
-visible tags, a vertical swipe leaves both selections alone.
+middle or receiving momentum cannot advance the other column. When the left
+column is hidden, including in global All and on an Inbox tag, a left-half
+vertical swipe keeps both selections.
 
 The background, cards, carousel cover and filter controls accept these gestures.
 Horizontal starts retain their original owner through reversals. The
@@ -283,16 +284,22 @@ turns so metadata and cached posters can enter with the card transition.
 [Report cover contract](../../../../../internal/plugins/applications/report/README.md#cover-cards)
 and [mounted switch benchmark](../../../../../tools/verification/tag-space/README.md).
 
-The top bar offers global All and directory scopes. Inbox groups work without a
-persistent directory, including eligible untagged tasks. Choosing a directory
-selects its full membership. The active directory keeps its name and unread
-count in the top bar as tag selection changes.
+Global All is pinned beside the top row of project directories and Inbox semantic
+tags. Inbox is the scope for work without a persistent directory, including
+managed temporary roots. Each of its exposed tags has its own top button with
+an emoji and title, even when Inbox has only one tag. Inbox tags with equal
+member counts sort by localized tag name, independently of their emoji. Global All includes
+eligible untagged Inbox tasks. A workspace containing only those tasks shows
+All by itself at the top. The empty landing hides the bar. Choosing a project
+directory selects its full membership. Its top button keeps its name and folder-wide unread count when
+a child is selected. A project directory named Inbox and a semantic tag named
+Inbox have distinct identities, icons and memberships.
 
 The left column starts with **Any tag** and then the selected scope's visible
 semantic tags, ordered by descending member count and localized name for ties.
-Any tag includes eligible untagged members. The column is hidden in global All
-and when the selected scope has no visible child choices. The three status
-choices on the right are shared across all scopes. Selecting a directory or tag
+Any tag includes eligible untagged directory members. The column appears only
+for project directories with visible children, including when a child is
+selected. The three status choices on the right are shared across all scopes. Selecting a directory or tag
 keeps the current status, including when the resulting card set is empty.
 
 Semantic tag identity is a plain name with separately validated emoji. Each
@@ -307,14 +314,16 @@ directory's sets. This uses eligible catalog membership after the ordinary
 visibility/archive and report-coverage rules; equal member counts
 alone are insufficient. Untagged members or directory-only documents that change
 those sets keep the child visible. Multiple semantic names (including a name
-equal to the directory label) prevent this omission. Inbox follows the same rule.
+equal to the directory label) prevent this omission.
 Catalog membership changes recompute the decision. Canonical filters, navigation,
 published context and stored tags remain intact. An already selected semantic
 child stays visible and selected even if it becomes redundant, preserving its
 filtering meaning when later threads arrive. Selecting its directory then omits
-the redundant child. If a child leaves the catalog, its directory becomes the
-selection while that directory exists. Removing the selected scope returns to
-global All. A change in status-filtered results alone keeps both selections.
+the redundant child. If a directory child leaves the catalog, its directory
+becomes the selection while that directory exists. Removing a selected Inbox
+tag or project directory returns to global All. If a reader covers Overview,
+the published filter selection updates immediately and the canvas refreshes on
+return. A change in status-filtered results alone keeps the selection.
 
 The left and right Liquid Glass columns sit at the window's edges, each group
 vertically centered. Compact controls are 42pt circles. The left controls show
@@ -332,10 +341,10 @@ with zero extra bounce. Reduce Motion applies the width change immediately
 and preserves the display interval.
 
 The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
-(Completed only). Hover help gives the localized status name. Global All and
-the directory buttons use native regular interactive Liquid Glass and system
-primary foreground. The left tag and right status buttons use native clear
-interactive Liquid Glass. Each selected button tints its glass. The unselected
+(Completed only). Hover help gives the localized status name. Global All,
+project directories and Inbox tags use native regular interactive Liquid Glass
+and system primary foreground in the top row. The left tag and right status
+buttons use native clear interactive Liquid Glass. Each selected button tints its glass. The unselected
 buttons keep the base material.
 
 Semantic tags and status choices take their tint from the dominant color of
@@ -357,8 +366,8 @@ the visible title is hidden or truncated. Member counts are available in tag
 accessibility values.
 
 [NativeOverviewChrome](NativeOverviewChrome.swift) keeps All pinned beside
-a horizontally scrollable directory row. The centered bar leaves space for the
-window controls and actions. At viewport widths of 620pt or less, the filters
+a horizontally scrollable row of project directories and Inbox tags. The
+centered bar leaves space for the window controls and actions. At viewport widths of 620pt or less, the filters
 occupy a second row. The 42pt capsules share their height with the traffic-light
 capsule and circular actions. The single-row bar sits 16pt from the top. In the
 two-row layout the actions sit 10pt from the top and the bar sits 76pt from the
@@ -375,8 +384,8 @@ dots when their browsing membership contains a Thread whose public
 alone does not qualify. The selection tint and red unread count remain visible
 independently of activity.
 
-A transparent 26pt disk sits behind the folder icon in the top bar. A 36pt
-disk sits behind the individual semantic tag’s emoji on the left. Core
+A transparent 26pt disk sits behind the folder icon or Inbox tag emoji in
+the top bar. A 36pt disk sits behind the semantic tag’s emoji on the left. Core
 Animation sweeps the Overview accent across fixed perforations in the same
 pattern as the running Agent badge. The icon and emoji stay still, including
 while a tag title is expanded. Reduce Motion holds a single lit diagonal.
@@ -497,10 +506,10 @@ Ordinary browsing ignores retired agent-authored visibility markers. Archive, ex
 Folder and semantic chips show a system-red unread count at the upper trailing
 edge for their exact browsing membership. Each eligible Thread contributes once
 per space, after visibility, archive and execution coverage filtering and before
-collection grouping. A directory chip always uses the whole directory’s count. Each
-semantic tag shows its own count in the left column. Its badge follows the upper
-trailing corner of the capsule as the title appears and disappears. All and
-zero-count chips have no badge. The count is included
+collection grouping. A directory chip always uses the whole directory’s count.
+Inbox tags show their own counts in the top row. A project tag’s badge follows
+the upper trailing corner of the left capsule as its title appears and
+disappears. All and zero-count chips have no badge. The count is included
 in the accessibility value independently of member count and activity. It
 does not change chip width, selection, ordering or the Runtime filter context.
 Receipt and catalog version changes update counts even for unselected spaces.
@@ -800,10 +809,12 @@ experience measurements to benchmarks. See [PBT commands/evidence](../../../../.
 isolated Runtime. With completed fixture tasks it checks an empty Running view
 through directory selection, exact scoped Agent IDs after selecting Completed,
 and the return to global All with the selected status retained. The supported
-suite uses Inbox, and the Collection suite uses explicit directory scopes.
-`overview-filters.json` records the public scope oracle and the mounted
-snapshots after each action. Native pointer events are exercised by the
-[window replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size).
+suite includes a real project directory and untagged Inbox tasks. The
+Collection suite uses two project directories. `overview-filters.json` records
+the public scope oracle and the mounted snapshots after each action. The
+[window replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
+exercises native pointer input, distinguishes similarly named tags and folders,
+and checks the selected tint.
 
 ## Camera interaction e2e
 

@@ -188,7 +188,7 @@ def run(args):
                 session.peer.prepare_collection()
                 collection.enable_reports(session, True)
             elif "E2E-OVERVIEW-002" in requested:
-                session.peer.count = 12
+                session.peer.prepare_overview()
             report["validity"] = "valid"
             event("prepare-thread")
             receipt = session.runtime.invoke("moku:submit", [{"input": {"parts": [{"kind": "text", "text":

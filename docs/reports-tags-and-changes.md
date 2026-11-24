@@ -2,7 +2,7 @@
 
 ## Group tasks with tags
 
-**Tag Agent** uses conversation titles to group unarchived tasks within each project folder. Each folder can have up to five tags, and Inbox has its own set. Select a folder or tag in [Overview](overview.md#find-a-task-by-folder-or-tag). Existing tags stay available while Tag Agent is off, and sorting resumes when you turn it back on. [Set up Tag Agent](settings.md#set-up-tag-agent-and-super-thread-agent)
+**Tag Agent** uses conversation titles to group unarchived tasks within each project folder. Each folder can have up to five tags. Tasks without a project folder share a separate set of up to five Inbox tags. In Overview, choose a folder to see its tags on the left, or choose an Inbox tag directly at the top. Existing tags stay available while Tag Agent is off, and sorting resumes when you turn it back on. [Find a task by folder or tag](overview.md#find-a-task-by-folder-or-tag) · [Set up Tag Agent](settings.md#set-up-tag-agent-and-super-thread-agent)
 
 ## See the work behind a Super Thread
 
