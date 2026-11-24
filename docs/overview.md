@@ -16,6 +16,8 @@ Resize the window to adjust how many cards you can see. Overview arranges the ca
 
 Overview starts with all statuses visible. Swipe up with two fingers over the cards, the background, or the tag bar to see **Running only**. Swipe down to return to all statuses. From there, swipe down again for **Completed only**. Each swipe moves one step. Your selected tag and the other tag choices stay in place, even when no cards match.
 
+If you see three sleeping agents in Chief’s skillet, no conversations are running in your current view. Swipe down with two fingers over the skillet to see all statuses again.
+
 Running includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. Completed includes tasks whose latest run finished successfully and have no pending input or background work. Super Threads and their collections also appear here. Idle tasks and visible interrupted tasks with no ongoing work appear in the full view.
 
 With the input box closed, swipe up over the eyes on Chief Bar to open **Chief Note**. Scroll inside an open note or a long Chief Bar message to read more.

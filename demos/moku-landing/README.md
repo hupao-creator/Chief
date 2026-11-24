@@ -57,6 +57,20 @@ The replay posts window-addressed, phased pixel scrolls over the background, a c
 
 The mixed catalog scenario checks mounted cards in all three status filters, both endpoints, individual and collected Super Threads, semantic tag selection with zero matches, and incremental changes to the same execution while filtered. `overview-status.json` records the visible tag identities, selected tag, ordinary cards and report members at each step. Add `--capture` to save the corresponding window images. Physical trackpad delivery and system fullscreen require separate observation.
 
+Use `--status-only` in place of `--note-swipe` to run just the mixed catalog scenario.
+With Shipping selected, the replay reads the idle illustration’s Chinese accessibility
+label and swipe hint, admits a running card, then reads the English label and hint
+after completion. A downward scroll over the illustration restores the tagged card.
+With `--capture`, `idle-light.png` and `idle-dark.png` show the same empty state
+over native window backgrounds in Aqua and Dark Aqua. `status-empty-tag.png`
+captures the ordinary window material.
+
+The [window capture](evidence/overview-idle/status-empty-tag.png),
+[Aqua](evidence/overview-idle/idle-light.png), [Dark Aqua](evidence/overview-idle/idle-dark.png)
+and [status receipt](evidence/overview-idle/overview-status.json) were captured
+on Apple Silicon macOS 26.5.1 at 1024 × 704 pt using `--status-only --capture`.
+The fixture runs without a Runtime connection, so its window shows the sync notice.
+
 The [16-second walkthrough](evidence/overview-status/swipes.mp4) uses stills captured from the isolated production workspace. The [status receipt](evidence/overview-status/overview-status.json) records 12 steps, including selection of Shipping and its 0 → 1 → 0 running-card count. The Completed frame contains one Agent, two individual Reports and a six-member collection. The [gesture receipt](evidence/overview-status/overview-note-swipe.json) and [reminder receipt](evidence/overview-status/reminder-note-ownership.json) record the native scrolling checks. These artifacts come from the command above with `--capture` at application and replay revision `b9cc86a7cb7345470f65c1e147f0783639d7fe26`. The replay uses fixture catalog content and window-addressed AppKit events on Apple Silicon macOS 26.5.1.
 
 A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas switches status, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.

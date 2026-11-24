@@ -56,6 +56,7 @@ private final class WheelSample: NSEvent {
 
 @main @MainActor private struct NestedHeaderReplay: App {
     @State private var collectionViewport: CGSize?
+    @State private var captureScheme: ColorScheme?
     private let workspace: NativeWorkspaceModel
     private let presentation: NativeWorkspacePresentation
 
@@ -81,6 +82,11 @@ private final class WheelSample: NSEvent {
                     .frame(width: collectionViewport?.width ?? geometry.size.width,
                            height: collectionViewport?.height ?? geometry.size.height)
             }
+            .background {
+                // A single-window capture omits the desktop behind the material.
+                if captureScheme != nil { Color(nsColor: .windowBackgroundColor) }
+            }
+            .preferredColorScheme(captureScheme)
             .modifier(NativeWorkspaceWindowSurface())
             .task {
                 do { try await replay(); exit(0) }
@@ -123,6 +129,12 @@ private final class WheelSample: NSEvent {
 
         let directory = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        if CommandLine.arguments.contains("--status-only") {
+            window.center()
+            try await focusReplayWindow(window)
+            try await statusFilters(window, directory: directory, authority: authority)
+            return
+        }
         if noteSwipeReplay {
             window.setContentSize(CGSize(width: 900, height: 680))
             window.center()
@@ -234,9 +246,11 @@ private final class WheelSample: NSEvent {
         try png.write(to: url)
     }
 
-    private func descendant<T: NSView>(_ type: T.Type, in view: NSView) -> T? {
-        if let match = view as? T { return match }
-        for child in view.subviews { if let match = descendant(type, in: child) { return match } }
+    private func descendant<T: NSView>(_ type: T.Type, in view: NSView, matching: (T) -> Bool = { _ in true }) -> T? {
+        if let match = view as? T, matching(match) { return match }
+        for child in view.subviews {
+            if let match = descendant(type, in: child, matching: matching) { return match }
+        }
         return nil
     }
 
@@ -709,6 +723,10 @@ private final class WheelSample: NSEvent {
         let tags = model.visibleFilters
         let tagIDs = tags.flatMap { [$0.id] + $0.children.map(\.id) }
         var samples = [[String: Any]]()
+        func idleImage() -> NSImageView? {
+            guard let content = window.contentView else { return nil }
+            return descendant(NSImageView.self, in: content) { $0.accessibilityIdentifier() == "overview.idle" }
+        }
         func check(_ name: String, _ mode: NativeOverviewStatusFilter, _ expected: [String],
                    selected: String = "", needsBothReportCards: Bool = false) async throws {
             let deadline = ContinuousClock.now + .seconds(5)
@@ -732,15 +750,34 @@ private final class WheelSample: NSEvent {
                   !presentation.scene.notePanelOpen else {
                 throw ReplayError("Unexpected \(name): mode=\(model.statusFilter), agents=\(agents), reports=\(documents), grouped=\(collected), tags=\(visibleTags), selected=\(model.selectedTag)")
             }
+            let expectsIdle = mode == .running && expected.isEmpty
+            var idle = idleImage()
+            while (idle != nil) != expectsIdle, ContinuousClock.now < deadline {
+                try await Task.sleep(for: .milliseconds(30))
+                idle = idleImage()
+            }
+            let label = idle?.accessibilityLabel() ?? ""
+            let hint = idle?.accessibilityHelp() ?? ""
+            guard (idle != nil) == expectsIdle,
+                  !expectsIdle || (idle?.isAccessibilityElement() == true && idle?.accessibilityRole() == .image && idle?.image != nil
+                    && idle?.bounds.size == CGSize(width: 312, height: 136)
+                    && label == workspace.locale.text("没有运行中的会话", "No running conversations")
+                    && hint == workspace.locale.text("双指下滑查看全部会话。", "Swipe down with two fingers to show all conversations.")) else {
+                if CommandLine.arguments.contains("--capture") {
+                    try await capture(window, to: directory.appending(path: "failed-" + name + ".png"))
+                }
+                throw ReplayError("Unexpected idle accessibility at \(name): \(label) / \(hint)")
+            }
             samples.append(["step": name, "status": mode.rawValue, "selectedTag": selected, "visibleTags": visibleTags,
+                "idleLabel": label, "idleHint": hint,
                 "agents": agents, "individualReports": documents, "collectionMembers": collected,
                 "mountedCardCount": canvas.mountedCardIDs.count, "noteOpen": presentation.scene.notePanelOpen])
             if CommandLine.arguments.contains("--capture") {
                 try await capture(window, to: directory.appending(path: "status-" + name + ".png"))
             }
         }
-        func swipe(_ y: Int32) async throws {
-            let point = monitor.windowPoint(CGPoint(x: 12, y: 220))
+        func swipe(_ y: Int32, over location: CGPoint = CGPoint(x: 12, y: 220)) async throws {
+            let point = monitor.windowPoint(location)
             try await postScroll(window, point, y: y, phase: .began)
             try await postScroll(window, point, y: y * 2, phase: .changed)
             try await postScroll(window, point, y: 0, phase: .ended)
@@ -773,13 +810,25 @@ private final class WheelSample: NSEvent {
         try await Task.sleep(for: .milliseconds(400))
         try presentation.performOverviewInteraction(.overviewDirectorySelect(directory: parent.id, filter: child.id))
         try await check("tag", .all, ["Delivered"], selected: "Shipping")
+        let originalLocale = workspace.locale
+        defer { workspace.updateSystemLocale(originalLocale) }
+        workspace.updateSystemLocale(.chinese)
         try await swipe(40)
         try await check("empty-tag", .running, [], selected: "Shipping")
+        if CommandLine.arguments.contains("--capture") {
+            defer { captureScheme = nil }
+            for (scheme, filename) in [(ColorScheme.light, "idle-light"), (.dark, "idle-dark")] {
+                captureScheme = scheme
+                try await Task.sleep(for: .milliseconds(450))
+                try await capture(window, to: directory.appending(path: filename + ".png"))
+            }
+        }
         try await updateDelivered(.running, revision: 9)
         try await check("live-admit", .running, ["Delivered"], selected: "Shipping")
+        workspace.updateSystemLocale(.english)
         try await updateDelivered(.completed, revision: 10)
         try await check("live-remove", .running, [], selected: "Shipping")
-        try await swipe(-40)
+        try await swipe(-40, over: CGPoint(x: monitor.configuration.size.width / 2, y: monitor.configuration.size.height / 2))
         try await check("tag-restored", .all, ["Delivered"], selected: "Shipping")
         try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "overview-status.json"))
