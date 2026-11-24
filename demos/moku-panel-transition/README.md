@@ -320,6 +320,27 @@ draft through AppKit marked text. The fixture returns to Overview and rejects
 the earlier send. It checks the exact restored Agent draft and that Overview
 keeps its own draft and focus.
 
+### Report identity flip
+
+Build the private runtime and native modules with `tools/e2e/build.py --go ./scripts/go.sh --with-app`.
+Run the Report workspace with its deterministic peer and the current-process window recorder.
+The replay selects the related execution, presses the mounted Report close button and reopens
+the same Report during its return. A separate process sets Reduce Motion in the workspace
+environment. Both windows keep the system setting and the user's Chief profile untouched.
+
+```sh
+python3 demos/moku-panel-transition/workspace/report_followup.py --identity /private/tmp/report-identity
+python3 demos/moku-panel-transition/workspace/check_report_identity.py /private/tmp/report-identity/identity
+python3 demos/moku-panel-transition/workspace/check_report_identity.py /private/tmp/report-identity/identity-reduced --reduced
+```
+
+The checker measures every encoded frame against the movie PTS. For each half turn it uses the
+nearby full height of that face and measures the interval between thin and full projection.
+Each face must show thin and intermediate projections and at least four distinct tilted heights
+across 90ms. Corresponding legs must agree within 85ms. The return must cross the edge during
+contraction, and reopening must show the partially revealed eyes narrowing back toward the logo.
+The reduced-motion visit checks endpoint widths and a full logo in either direction.
+
 ### Right-column identity return
 
 This offscreen replay mounts the production workspace with a completed Codex

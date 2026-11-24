@@ -25,6 +25,16 @@ public enum MokuRunningStory {
     private static let palette: [[Double]] = [[231,128,134],[217,170,90],[128,184,139],
                                               [105,185,191],[127,159,225],[184,138,206]]
 
+    static func recoverySquint(at beat: Double) -> Double {
+        let recovery = smooth((beat - (1.22 + orbitBeats + 0.23)) / 0.22)
+        return 0.78 * pow(sin(.pi * recovery), 8)
+    }
+
+    static func orbitEyes(direction: CGPoint, progress: Double) -> MokuRunningFrame.Eyes {
+        .init(x: 34 * direction.x, y: 16 + 38 * direction.y,
+              scaleY: 1 + 0.055 * sin(.pi * progress))
+    }
+
     /// Optional orbit targets use the same authored coordinates as the returned frame.
     public static func sample(time: Double,
                               restingY: Double? = nil, restingSpacing: Double? = nil,
@@ -41,10 +51,11 @@ public enum MokuRunningStory {
         var eyes = MokuRunningFrame.Eyes()
         let lead = angle + 0.17
         let anticipate = 26 * smooth((t - 0.8) / 0.2)
-        eyes.x = 34 * cos(lead) * orbitWeight
-        eyes.y = mix(anticipate, 16 + 38 * sin(lead), departure) * (1 - arrival) + 26 * arrival * (1 - recover)
-        eyes.scaleY = 1 + 0.055 * sin(.pi * orbit) * orbitWeight
-            - (t > recoverAt ? 0.78 * pow(sin(.pi * recover), 8) : 0)
+        let tracking = orbitEyes(direction: CGPoint(x: cos(lead), y: sin(lead)), progress: orbit)
+        eyes.x = tracking.x * orbitWeight
+        eyes.y = mix(anticipate, tracking.y, departure) * (1 - arrival) + 26 * arrival * (1 - recover)
+        eyes.scaleY = 1 + (tracking.scaleY - 1) * orbitWeight
+            - recoverySquint(at: t)
         let dots = (0..<3).map { index -> MokuRunningFrame.Dot in
             let baseX = 320 + Double(index - 1) * (restingSpacing ?? (13 * unit))
             let beat = t * 3 - Double(index)

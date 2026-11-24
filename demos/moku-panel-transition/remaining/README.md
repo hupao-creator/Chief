@@ -37,6 +37,11 @@ collector and executable fingerprints.
   and paint three 5-point dots at the current fade opacity. The evidence includes
   intermediate Dock images, 1-pixel-per-point decoration rasters and
   `orbit-frames.json`. This fixture checks drawing and state, not display pacing.
+- `orbit-gaze` records a 2× nonactivating window through tool replacement, a
+  750ms visibility pause, interrupted retirement and rapid editor reopening.
+  The catalog fixture supplies execution changes. The native visibility gate
+  pauses the display clock while the window remains recordable. The movie
+  and event times are in `orbit-gaze/window.mp4` and `orbit-gaze/events.json`.
 - `tool-feedback` mounts the production Dock and delivers Codex catalog fixtures
   to its workspace presentation. The check observes painted dots, the mounted
   character and its animation input across consecutive named calls and reasoning.

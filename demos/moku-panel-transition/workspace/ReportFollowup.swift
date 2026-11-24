@@ -6,7 +6,7 @@ import SwiftUI
 @testable import ChiefUI
 
 /// The real workspace and native Return event run entirely in the replay's profile.
-@main @MainActor private enum ReportFollowup {
+@main @MainActor enum ReportFollowup {
     static func main() {
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
@@ -37,7 +37,7 @@ import SwiftUI
     static func capture() async throws {
         try prepareIsolatedNativeReplay()
         let args = CommandLine.arguments
-        guard args.count == 5, let screen = NSScreen.screens.max(by: { $0.frame.maxX < $1.frame.maxX }) else {
+        guard args.count == 6, let screen = NSScreen.screens.max(by: { $0.frame.maxX < $1.frame.maxX }) else {
             throw PluginContractError("Expected an isolated profile, Report, Thread and completed execution")
         }
         let profile = URL(fileURLWithPath: args[1])
@@ -59,6 +59,7 @@ import SwiftUI
         panel.setFrameOrigin(CGPoint(x: screen.frame.maxX - 2, y: screen.visibleFrame.minY))
         panel.appearance = NSAppearance(named: .darkAqua)
         let view = NSHostingView(rootView: NativeWorkspaceView(model: model, presentation: host)
+            .transformEnvironment(\._accessibilityReduceMotion) { if args[5] == "identity-reduced" { $0 = true } }
             .environment(\.scenePhase, .active).environment(\.colorScheme, .dark))
         panel.contentView = view
         panel.orderFrontRegardless()
@@ -66,6 +67,13 @@ import SwiftUI
         try await wait("Initial catalog did not mount") { model.hasInitialContent && host.scene.overviewVisible }
         let report = ApplicationThreadRef(threadID: JSONText(args[2]), typeID: "report.document")
         let source = ApplicationExecutionRef(thread: .init(threadID: JSONText(args[3]), typeID: "agent"), executionID: JSONText(args[4]))
+        if args[5].hasPrefix("identity") {
+            try await recordIdentity(window: panel, host: host, report: report, source: source, scenario: args[5])
+            guard foreground == NSWorkspace.shared.frontmostApplication?.processIdentifier else {
+                throw PluginContractError("Foreground application changed")
+            }
+            return
+        }
         host.open(report)
         let cards = host.reportSidecards
         try await wait("Report sidecard was not admitted") { cards.active == .relatedExecutions }

@@ -982,11 +982,10 @@ public struct NativeMokuDock: View {
             // eyes a layout pass after the glass has already changed size.
             let generation = state.composerGeneration
             let returning = state.readingPanelReturning
-            let flip = returning ? surfaceAnimation : NativeReadingPageTiming.openingAnimation
             NativeMokuDockIdentity(harness: threadHarness,
                 showsHarness: threadID != nil && !state.settingsOpen && !returning,
                 entranceReady: state.inputAdmissionReady, generation: generation,
-                animation: state.windowVisible && !(returning && reduceMotion) ? flip : nil,
+                animation: state.windowVisible && !reduceMotion ? .linear(duration: NativeReadingPageTiming.duration) : nil,
                 onSettled: { state.completeInputIdentity(generation: generation) }) {
                 face(characterInput)
             }
