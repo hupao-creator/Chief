@@ -20,7 +20,7 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 ## Filter by status
 
-The three emoji on the right filter the cards in your current folder or tag. From top to bottom, click ⏳ for **Running only**, 🗂️ for **All statuses**, or 🏁 for **Completed only**. Hover over an emoji to see its name. The selected button takes its tint from the emoji, so 🏁 has a neutral gray tint. Overview starts with 🗂️ selected.
+The three emoji on the right filter the cards in your current folder or tag. From top to bottom, click ⏳ for **Running only**, 🗂️ for **All statuses**, or 🏁 for **Completed only**. Hover over an emoji to expand its button to the left and see the status name. Click the emoji or its name to filter the cards. When you switch status, the new name stays visible for five seconds, or longer if you keep the pointer over it. The selected button takes its tint from the emoji, so 🏁 has a neutral gray tint. Overview starts with 🗂️ selected.
 
 You can also swipe up or down with two fingers over the cards or background. Start on the **left half of the window** to change tags, or the **right half** to change status. Slide your fingers up to select the choice below, or down to select the choice above. From **All statuses**, swiping up takes you to **Completed only**. One swipe moves one choice, even if the pointer crosses the middle. At either end, the selection stays put. When the left column is hidden, as it is for **All** and Inbox tags, a left-half swipe keeps your selection.
 

@@ -62,6 +62,8 @@ public struct NativeOverviewWorkspaceView: View {
             let filters = landing ? [] : model.visibleFilters
             let directory = model.selectedDirectory
             let railEdgeInset = min(12, geometry.size.width * 0.015)
+            // Let localized status names use the available right half, even at the minimum window width.
+            let statusRailWidth = min(172, geometry.size.width / 2 - railEdgeInset)
             let headerBottom = OverviewTagMetrics.headerBottom(in: geometry.size, hasFilters: !landing && hasFilters)
             // The last card can make the Dock switch to landing before the
             // canvas admits its empty layout. Keep that exit drawable while
@@ -131,7 +133,7 @@ public struct NativeOverviewWorkspaceView: View {
             }
             .overlay(alignment: .trailing) {
                 if chromeVisible && !landing {
-                    NativeOverviewStatusRail(status: model.statusFilter, strings: chromeStrings,
+                    NativeOverviewStatusRail(status: model.statusFilter, maximumWidth: statusRailWidth, strings: chromeStrings,
                         onStatusChange: model.selectStatusFilter, interactions: model.chromeInteractions)
                         .padding(.trailing, railEdgeInset)
                 }
