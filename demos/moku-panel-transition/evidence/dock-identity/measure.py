@@ -41,31 +41,34 @@ def glass_bounds(frame):
     return x + left, y + top, x + left + width - 1, rim + top
 
 
-def eye_pairs(bright):
+def eye_pairs(bright, scale=1):
+    # A nearly edge-on face can be only two raster lines high at either
+    # resolution. Size, spacing and isolation otherwise stay in points.
     parts = [(x, y, w, h, area) for x, y, w, h, area in components(bright)
-             if 2 <= w <= 17 and 2 <= h <= 27 and 6 <= area <= 300 and area > .47 * w * h]
+             if 2 <= w / scale <= 17 and 2 <= h <= 27 * scale
+             and 6 <= area / scale**2 <= 300 and area > .47 * w * h]
     for i, (x, y, w, h, area) in enumerate(parts):
         for xx, yy, ww, hh, other_area in parts[i + 1:]:
             separation = abs(xx + ww / 2 - x - w / 2)
-            if not (9 <= separation <= 23 and abs(yy + hh / 2 - y - h / 2) <= 3
+            if not (9 <= separation / scale <= 23 and abs(yy + hh / 2 - y - h / 2) <= 3 * scale
                     and .66 < hh / h < 1.5 and .48 < other_area / area < 2.1):
                 continue
             x0, x1 = min(x, xx), max(x + w, xx + ww)
             y0, y1 = min(y, yy), max(y + h, yy + hh)
             # The two eyes are isolated. Most title and transcript glyphs have
             # neighboring text in this ring. Review remaining candidates on film.
-            region = bright[max(0, y0 - 6):y1 + 6, max(0, x0 - 11):x1 + 11]
-            if region.sum() - area - other_area <= 4 and (h >= w * .9 or h <= 5):
+            region = bright[max(0, y0 - 6 * scale):y1 + 6 * scale, max(0, x0 - 11 * scale):x1 + 11 * scale]
+            if region.sum() - area - other_area <= 4 * scale**2 and (h >= w * .9 or h <= 5 * scale):
                 yield "eyes", (x0, y0, x1 - 1, y1 - 1)
 
 
-def marks(frame):
+def marks(frame, scale=1):
     blue, green, red = cv2.split(frame)
     neutral = (red > 155) & (green > 155) & (blue > 155) & (cv2.absdiff(red, blue) < 30)
-    yield from eye_pairs(neutral)
+    yield from eye_pairs(neutral, scale)
     purple = (blue > 110) & (cv2.subtract(blue, red) > 48) & (cv2.subtract(blue, green) > 50)
     for x, y, width, height, area in components(purple):
-        if 16 <= width <= 28 and 2 <= height <= 29 and area > .51 * width * height:
+        if 16 <= width / scale <= 28 and 2 <= height <= 29 * scale and area > .51 * width * height:
             yield "logo", (x, y, x + width - 1, y + height - 1)
 
 

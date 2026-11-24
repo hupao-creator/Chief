@@ -334,10 +334,14 @@ python3 demos/moku-panel-transition/workspace/check_report_identity.py /private/
 python3 demos/moku-panel-transition/workspace/check_report_identity.py /private/tmp/report-identity/identity-reduced --reduced
 ```
 
-The checker measures every encoded frame against the movie PTS. For each half turn it uses the
-nearby full height of that face and measures the interval between thin and full projection.
-Each face must show thin and intermediate projections and at least four distinct tilted heights
-across 90ms. The fully expanded bar must hold the logo at full height.
+The checker measures the ink at native 2× resolution against each encoded frame's
+timestamp. For each half turn it uses the nearby full height of that face and
+requires thin and intermediate projections.
+At 45° and 135° the visible face projects to about 71%
+of its upright height. The checker brackets each crossing with samples at most two
+60 Hz frames apart. The [420ms reading curve](../../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer)
+spends 64ms between these angles. The movie allows one frame per crossing for
+sampling and rasterization. The fully expanded bar must hold the logo at full height.
 Corresponding legs must agree within 85ms. The return must cross the edge during
 contraction, and reopening must show the partially revealed eyes narrowing back toward the logo.
 The reduced-motion visit checks endpoint widths and a full logo in either direction.
