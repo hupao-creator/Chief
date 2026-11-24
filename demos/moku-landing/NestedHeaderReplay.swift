@@ -239,6 +239,36 @@ private final class WheelSample: NSEvent {
         }
     }
 
+    private func recordSwitches(_ window: NSWindow, to url: URL, actions: () async throws -> Void) async throws {
+        let windows = try await SCShareableContent.currentProcess
+        guard let target = windows.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
+            throw ReplayError("Cannot record replay window")
+        }
+        let config = SCStreamConfiguration()
+        config.width = Int(window.frame.width)
+        config.height = Int(window.frame.height)
+        config.minimumFrameInterval = CMTime(value: 1, timescale: 60)
+        config.showsCursor = false
+        config.ignoreShadowsSingleWindow = true
+        config.ignoreGlobalClipSingleWindow = true
+        let stream = SCStream(filter: SCContentFilter(desktopIndependentWindow: target), configuration: config, delegate: nil)
+        let settings = SCRecordingOutputConfiguration()
+        settings.outputURL = url
+        let (finished, completion) = AsyncThrowingStream<Void, Error>.makeStream()
+        let observer = RecordingObserver(completion)
+        let output = SCRecordingOutput(configuration: settings, delegate: observer)
+        try stream.addRecordingOutput(output)
+        try await stream.startCapture()
+        do {
+            try await actions()
+        } catch {
+            try? await stream.stopCapture()
+            throw error
+        }
+        try await stream.stopCapture()
+        for try await _ in finished {}
+    }
+
     private func capture(_ window: NSWindow, to url: URL) async throws {
         let ownWindows = try await SCShareableContent.currentProcess
         guard let target = ownWindows.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) }) else {
@@ -504,6 +534,7 @@ private final class WheelSample: NSEvent {
         var visits = [[String: Any]]()
         func visit(from start: NativeOverviewFilter, to end: NativeOverviewFilter, reader: ApplicationThreadRef) async throws {
             model.selectTag(start)
+            model.selectStatusFilter(.completed)
             await presentation.canvas.prepareForPresentation()
             scene.openNotePanelFromUser()
             func linkFrame() -> CGRect? {
@@ -537,7 +568,8 @@ private final class WheelSample: NSEvent {
                     !scene.notePanelOpen && presentation.selected == nil
             }
             try await wait("Destination reader did not mount") { presentation.mountedReadingThread == reader }
-            guard model.selectedFilter?.id == end.id, presentation.selected == reader,
+            guard model.statusFilter == (start.id == end.id ? .completed : .all),
+                  model.selectedFilter?.id == end.id, presentation.selected == reader,
                   presentation.readingPanelSource != nil, scene.noteReadingOrigin?.id == origin.id,
                   scene.noteReadingOrigin?.phase == .reading else { throw ReplayError("Incorrect reader entrance or space") }
             let position: HarnessReadingTarget.Position?
@@ -1210,7 +1242,7 @@ private final class WheelSample: NSEvent {
             try presentation.performOverviewInteraction(.overviewActivateFilter(group, id))
         }
         func clickMiddle(right: Bool) async throws {
-            let insetToCenter = 12 + OverviewTagMetrics.chipHeight / 2
+            let insetToCenter = 12 + OverviewTagMetrics.railDiameter / 2
             let x = right ? content.bounds.width - insetToCenter : insetToCenter
             try click(window, at: content.convert(CGPoint(x: x, y: content.bounds.midY), to: nil))
             try await Task.sleep(for: .milliseconds(150))
@@ -1268,9 +1300,7 @@ private final class WheelSample: NSEvent {
         }
         let shippingCenter = window.convertPoint(fromScreen: CGPoint(x: shippingButton.frame.midX, y: shippingButton.frame.midY))
         try click(window, at: shippingCenter)
-        try await check("inbox-top-keeps-status", .completed, [], selected: inboxShipping.tag)
-        try await clickMiddle(right: true)
-        try await check("inbox-tag", .all, ["Inbox tagged"], selected: inboxShipping.tag)
+        try await check("inbox-top-resets-status", .all, ["Inbox tagged"], selected: inboxShipping.tag)
         try await swipe(up: true, right: false)
         try await check("inbox-left-no-children", .all, ["Inbox tagged"], selected: inboxShipping.tag)
         guard (try? filterButton("overview-semantic-any", in: window)) == nil, model.selectedFilter?.id == inboxShipping.id else {
@@ -1290,6 +1320,7 @@ private final class WheelSample: NSEvent {
         try await clickMiddle(right: false)
         try await check("mouse-development", .all, ordinary.filter { $0 != "Delivered" }, selected: "Development")
         try await activate(.semantic, parent.id)
+        try await activate(.status, "running")
         try await swipe(up: true, right: false, crossCenter: true)
         try await check("left-cross-to-development", .all, ordinary.filter { $0 != "Delivered" }, selected: "Development")
         try await waitForFilterInput()
@@ -1373,7 +1404,7 @@ private final class WheelSample: NSEvent {
         let longName = "Customer experience and international release coordination"
         let labels = [longName, "Design", "Engineering", "Planning", "Support"]
         let compactTasks = try labels.enumerated().map { index, label in
-            try thread("Compact-\(index)", nil, semanticTag: JSONText(label))
+            try thread("Compact-\(index)", index == 2 ? .running : nil, semanticTag: JSONText(label))
         }
         try await installTasks(0, revision: 13, authority: authority, extraThreads: compactTasks)
         guard let compactFolder = model.visibleFilters.first(where: { $0.scope == "/fixture" }),
@@ -1389,10 +1420,23 @@ private final class WheelSample: NSEvent {
             }
             try await Task.sleep(for: .milliseconds(30))
         }
+        if captureFilters {
+            try await recordSwitches(window, to: directory.appending(path: "filter-switches.mp4")) {
+                try await Task.sleep(for: .milliseconds(400))
+                try await swipe(up: false)
+                try await Task.sleep(for: .milliseconds(600))
+                try await swipe(up: true)
+                try await Task.sleep(for: .milliseconds(600))
+                try await swipe(up: true, right: false)
+                try await Task.sleep(for: .milliseconds(600))
+                try await swipe(up: false, right: false)
+                try await Task.sleep(for: .milliseconds(600))
+            }
+        }
         let fullViewport = CGRect(origin: .zero, size: content.bounds.size)
         guard canvas.cardRegionInWindow == fullViewport else { throw ReplayError("Filters consumed card layout space") }
-        let pitch = OverviewTagMetrics.chipHeight + OverviewTagMetrics.railSpacing
-        let center = CGPoint(x: fullViewport.maxX - 12 - OverviewTagMetrics.chipHeight / 2, y: fullViewport.midY)
+        let pitch = OverviewTagMetrics.railDiameter + OverviewTagMetrics.railSpacing
+        let center = CGPoint(x: fullViewport.maxX - 12 - OverviewTagMetrics.railDiameter / 2, y: fullViewport.midY)
         // A partially occupied last column may place its card on either row.
         let overlap = canvas.presentedPlacements.lazy.compactMap { placement -> (String, CGPoint, CGPoint, NativeOverviewStatusFilter)? in
             guard let frame = canvas.visibleFrame(for: placement.id) else { return nil }
@@ -1431,13 +1475,13 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Missing short label for the second selection")
         }
         let ids = ["overview-semantic-any"] + compactFolder.children.map(\.id)
-        let leftColumn = CGRect(x: 0, y: 0.20, width: 0.20, height: 0.60)
+        let leftColumn = CGRect(x: 0, y: 0.16, width: 0.20, height: 0.68)
         let rightColumn = CGRect(x: 0.80, y: 0.35, width: 0.20, height: 0.30)
         let titles = ["Any tag", "Customer", "Design", "Engineering", "Planning", "Support"]
         let statusLabels = [("running", "Running only"), ("all", "All statuses"), ("completed", "Completed only")]
-        let side = OverviewTagMetrics.chipHeight
+        let side: CGFloat = 46.2
         var phases = [[String: Any]]()
-        func observe(_ name: String, expanded: [String: String], expandedStatus: String? = nil) async throws {
+        func observe(_ name: String, expanded: [String: String], expandedStatuses: Set<String> = ["all"]) async throws {
             var widths = [String: CGFloat]()
             for id in ids {
                 let button = try filterButton(id, in: window)
@@ -1446,7 +1490,9 @@ private final class WheelSample: NSEvent {
                     throw ReplayError("Truncating the long tag changed its accessible name")
                 }
                 widths[id] = frame.width
-                guard abs(frame.height - side) <= 1,
+                let local = window.convertFromScreen(frame)
+                guard abs(local.minX - 12) <= 1, frame.width <= 142.9,
+                      local.minY >= 0, local.maxY <= fullViewport.height, abs(frame.height - side) <= 1,
                       expanded[id] == nil ? abs(frame.width - side) <= 1 : frame.width > side + 1 else {
                     throw ReplayError("Unexpected \(name) button frame for \(id): \(frame), expanded=\(expanded)")
                 }
@@ -1457,8 +1503,8 @@ private final class WheelSample: NSEvent {
                 let local = window.convertFromScreen(frame)
                 widths[id] = frame.width
                 guard abs(local.maxX - (fullViewport.maxX - 12)) <= 1, abs(frame.height - side) <= 1,
-                      id == expandedStatus ? frame.width > side + 1 : abs(frame.width - side) <= 1,
-                      frame.width <= 173, local.minX >= fullViewport.midX,
+                      expandedStatuses.contains(id) ? frame.width > side + 1 : abs(frame.width - side) <= 1,
+                      frame.width <= 190.2, local.minX >= fullViewport.midX,
                       button.label == title || button.title == title else {
                     throw ReplayError("Unexpected \(name) status button for \(title): \(frame)")
                 }
@@ -1470,13 +1516,13 @@ private final class WheelSample: NSEvent {
                 sample["faceRGB"] = try readFaces(Dictionary(uniqueKeysWithValues: ids.map {
                     ($0, $0 == model.selectedFilter?.id)
                 }), in: url)
-                try checkGlyphInk("overview-semantic-any", in: url, window: window)
+                try checkGlyphInk("overview-semantic-any", centerInset: side / 2, in: url, window: window)
                 let visible = Array(expanded.values)
                 sample["visibleTitles"] = try checkStatusText(in: url, expected: visible,
                     absent: titles.filter { !visible.contains($0) }, region: leftColumn)
                 sample["statusInk"] = try checkStatusText(in: url,
-                    expected: statusLabels.filter { $0.0 == expandedStatus }.map(\.1),
-                    absent: statusLabels.filter { $0.0 != expandedStatus }.map(\.1), region: rightColumn)
+                    expected: statusLabels.filter { expandedStatuses.contains($0.0) }.map(\.1),
+                    absent: statusLabels.filter { !expandedStatuses.contains($0.0) }.map(\.1), region: rightColumn)
             }
             phases.append(sample)
         }
@@ -1489,13 +1535,13 @@ private final class WheelSample: NSEvent {
             }
             try await movePointer(window, to: point)
         }
-        // Exclude incidental hover from the timer checks, preserving an
-        // operator's cursor outside the rails until the actual hover step.
+        // Sample selection independently of incidental hover.
         let away = monitor.windowPoint(CGPoint(x: fullViewport.midX, y: fullViewport.midY))
         let railIDs = ids + statusLabels.map { "overview-status-" + $0.0 }
         if try railIDs.contains(where: { try filterButton($0, in: window).frame.contains(NSEvent.mouseLocation) }) {
             try await pointAt(away)
         }
+        try await observe("any-tag", expanded: ["overview-semantic-any": "Any tag"])
         let first = ContinuousClock.now
         try await activate(.semantic, longChild.id)
         let settlingDeadline = first + .seconds(3)
@@ -1512,35 +1558,12 @@ private final class WheelSample: NSEvent {
               model.items.count == 1, canvas.cardRegionInWindow == fullViewport else {
             throw ReplayError("Minimum window did not settle: controls=\(registered), selected=\(model.selectedFilter?.id ?? "-"), size=\(content.bounds.size), items=\(model.items.map(\.id)), mounted=\(canvas.mountedCardIDs), region=\(canvas.cardRegionInWindow)")
         }
-        try await Task.sleep(until: first + .seconds(2))
-        let second = ContinuousClock.now
         try await activate(.semantic, shortChild.id)
-        // Encoding and reading a screenshot can occupy the main actor. Finish
-        // the image check well before the deadline, then sample only AX geometry.
-        try await Task.sleep(until: second + .seconds(1))
-        try await observe("second-selection", expanded: [shortChild.id: "Design"])
-        let expandedWidth = try filterButton(shortChild.id, in: window).frame.width
-        try await Task.sleep(until: second + .milliseconds(4550))
-        let nearDeadline = try filterButton(shortChild.id, in: window).frame.width
-        guard abs(nearDeadline - expandedWidth) <= 0.5 else {
-            throw ReplayError("Second title shortened before its own five-second deadline")
-        }
-        var timing = [[String: Double]](), firstShrink: Double?, settled: Double?
-        var compactSamples = 0
-        while ContinuousClock.now < second + .milliseconds(6200) {
-            let width = try filterButton(shortChild.id, in: window).frame.width
-            let elapsed = second.duration(to: .now).components
-            let ms = Double(elapsed.seconds) * 1_000 + Double(elapsed.attoseconds) / 1e15
-            timing.append(["milliseconds": ms, "width": width])
-            if firstShrink == nil, expandedWidth - width > 0.5 { firstShrink = ms }
-            compactSamples = abs(width - side) < 0.01 ? compactSamples + 1 : 0
-            if compactSamples == 2 { settled = ms; break }
-            try await Task.sleep(for: .milliseconds(25))
-        }
-        guard let firstShrink, (4950...5350).contains(firstShrink), let settled else {
-            throw ReplayError("Title missed the five-second collapse or did not settle at 42pt: \(timing)")
-        }
-        try await observe("compact-filters", expanded: [:])
+        let design = [shortChild.id: "Design"]
+        try await Task.sleep(for: .milliseconds(550))
+        try await observe("second-selection", expanded: design)
+        try await Task.sleep(for: .seconds(5))
+        try await observe("selection-held", expanded: design)
         func waitForHoverMotion(_ id: String, expanded: Bool) async throws {
             var previous: CGFloat?
             var stable = 0
@@ -1549,7 +1572,7 @@ private final class WheelSample: NSEvent {
             while ContinuousClock.now < deadline {
                 let width = try filterButton(id, in: window).frame.width
                 trace.append(width)
-                let reached = expanded ? width > side + 1 : abs(width - side) < 0.01
+                let reached = expanded ? width > side + 1 : abs(width - side) <= 1
                 stable = reached && previous == width ? stable + 1 : 0
                 if stable >= 2 { return }
                 previous = width
@@ -1561,27 +1584,27 @@ private final class WheelSample: NSEvent {
         let hover = window.convertPoint(fromScreen: CGPoint(x: hoverFrame.midX, y: hoverFrame.midY))
         try await pointAt(hover)
         try await waitForHoverMotion(longChild.id, expanded: true)
-        try await observe("hovered-tag", expanded: [longChild.id: "Customer"])
+        try await observe("hovered-tag", expanded: [longChild.id: "Customer", shortChild.id: "Design"])
         let expandedTitle = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
         if captureFilters {
             captureScheme = .dark
             try await Task.sleep(for: .milliseconds(450))
-            try await observe("hovered-tag-dark", expanded: [longChild.id: "Customer"])
+            try await observe("hovered-tag-dark", expanded: [longChild.id: "Customer", shortChild.id: "Design"])
             brightCaptureBackdrop = true
             try await Task.sleep(for: .milliseconds(450))
-            try await observe("hovered-tag-dark-on-light", expanded: [longChild.id: "Customer"])
+            try await observe("hovered-tag-dark-on-light", expanded: [longChild.id: "Customer", shortChild.id: "Design"])
             brightCaptureBackdrop = false
         }
         try await pointAt(away)
         try await waitForHoverMotion(longChild.id, expanded: false)
-        try await observe("pointer-left", expanded: [:])
+        try await observe("pointer-left", expanded: design)
 
         let runningID = "overview-status-running"
         let runningFrame = window.convertFromScreen(try filterButton(runningID, in: window).frame)
         let hourglass = CGPoint(x: runningFrame.midX, y: runningFrame.midY)
         try await pointAt(hourglass)
         try await waitForHoverMotion(runningID, expanded: true)
-        try await observe("hovered-status", expanded: [:], expandedStatus: "running")
+        try await observe("hovered-status", expanded: design, expandedStatuses: ["running", "all"])
         guard model.statusFilter == .all else { throw ReplayError("Hovering the hourglass selected it") }
         workspace.updateSystemLocale(.chinese)
         try await Task.sleep(for: .milliseconds(450))
@@ -1593,7 +1616,7 @@ private final class WheelSample: NSEvent {
             let url = directory.appending(path: "hovered-status-zh.png")
             try await capture(window, to: url)
             phases.append(["phase": "hovered-status-zh", "statusInk": try checkStatusText(in: url,
-                expected: ["仅运行中"], absent: ["全部状态", "仅已完成"], region: rightColumn)])
+                expected: ["仅运行中", "全部状态"], absent: ["仅已完成"], region: rightColumn)])
         }
         workspace.updateSystemLocale(.english)
         try await Task.sleep(for: .milliseconds(450))
@@ -1606,19 +1629,26 @@ private final class WheelSample: NSEvent {
         guard model.statusFilter == .running, presentation.selected == nil else {
             throw ReplayError("Clicking the expanded status title did not select Running only")
         }
-        try await observe("selected-status-after-exit", expanded: [:], expandedStatus: "running")
+        try await observe("selected-status-after-exit", expanded: design, expandedStatuses: ["running"])
         try await swipe(up: true)
-        let statusSwitched = ContinuousClock.now
         try await Task.sleep(for: .milliseconds(500))
         guard model.statusFilter == .all else { throw ReplayError("Swipe did not restore All statuses") }
-        try await observe("swiped-status", expanded: [:], expandedStatus: "all")
+        try await observe("swiped-status", expanded: design)
 
+        try await activate(.status, "completed")
+        try await activate(.semantic, shortChild.id)
+        try await Task.sleep(for: .milliseconds(600))
+        guard model.statusFilter == .completed, model.items.isEmpty else {
+            throw ReplayError("Reselecting Design cleared its Completed only filter")
+        }
+        try await observe("same-tag-keeps-completed", expanded: design, expandedStatuses: ["completed"])
         try await activate(.semantic, compactFolder.id)
         try await Task.sleep(for: .milliseconds(700))
+        try await observe("folder-restores-all", expanded: ["overview-semantic-any": "Any tag"])
         let longBounds = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
         let titlePoint = CGPoint(x: (longBounds.maxX + expandedTitle.maxX) / 2, y: longBounds.midY)
         let canvasPoint = monitor.canvasPoint(titlePoint)
-        guard longBounds.width == side, let underLabel = canvas.presentedPlacements.first(where: {
+        guard abs(longBounds.width - side) <= 1, let underLabel = canvas.presentedPlacements.first(where: {
             canvas.visibleFrame(for: $0.id)?.contains(canvasPoint) == true
         }) else { throw ReplayError("Compact tag fixture needs a card under the collapsed title") }
         try click(window, at: titlePoint)
@@ -1628,7 +1658,9 @@ private final class WheelSample: NSEvent {
         }
         presentation.showOverview()
         try await Task.sleep(for: .milliseconds(700))
-        try await pointAt(hover)
+        try await pointAt(away)
+        let returnedFrame = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
+        try await pointAt(CGPoint(x: returnedFrame.minX + side / 2, y: returnedFrame.midY))
         try await waitForHoverMotion(longChild.id, expanded: true)
         let expandedBounds = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
         guard expandedBounds.contains(titlePoint) else { throw ReplayError("Hovered title did not reach the click") }
@@ -1637,13 +1669,15 @@ private final class WheelSample: NSEvent {
         guard model.selectedFilter?.id == longChild.id, presentation.selected == nil else {
             throw ReplayError("The expanded title area did not select its tag over the card")
         }
+        try await pointAt(away)
+        try await Task.sleep(for: .milliseconds(500))
+        try await observe("selected-tag-after-exit", expanded: [longChild.id: "Customer"])
         let compact: [String: Any] = ["step": "minimum-window", "visibleSemanticControls": registered,
             "window": [content.bounds.width, content.bounds.height], "selectedTag": model.selectedTag,
             "underlyingCard": underlyingID, "gapPoint": [gap.x, gap.y], "capsulePoint": [chip.x, chip.y],
             "cardViewport": [canvas.cardRegionInWindow.minX, canvas.cardRegionInWindow.width],
             "tagTitlePoint": [titlePoint.x, titlePoint.y], "cardBeneathTitle": underLabel.id,
-            "statusAccessibilityLabels": statusLabels.map(\.1), "labelPhases": phases,
-            "secondSelectionWidths": timing, "firstShrinkMilliseconds": firstShrink, "settledMilliseconds": settled]
+            "statusAccessibilityLabels": statusLabels.map(\.1), "labelPhases": phases]
         samples.append(compact)
         if captureFilters {
             let switched = ["overview-directory-all", compactFolder.id, longChild.id, shortChild.id]
@@ -1666,11 +1700,6 @@ private final class WheelSample: NSEvent {
             _ = try checkStatusText(in: url, expected: ["Fixture"],
                 region: CGRect(x: 0.20, y: 0.76, width: 0.60, height: 0.15))
             window.setContentSize(CGSize(width: 860, height: 600))
-        }
-        try await Task.sleep(until: statusSwitched + .milliseconds(5600))
-        let allWidth = try filterButton("overview-status-all", in: window).frame.width
-        guard abs(allWidth - side) <= 1, model.statusFilter == .all else {
-            throw ReplayError("All statuses did not stay selected and collapse after five seconds")
         }
         try await installTasks(0, revision: 14, authority: authority, extraThreads: [thread("Inbox tagged", nil)])
         try await activate(.semantic, inboxShipping.id)
@@ -1888,5 +1917,15 @@ private final class WheelSample: NSEvent {
                 "systemMomentum": inertia, "mouseWheelEdges": leading && trailing && reversed,
                 "passed": buttons.count == 3 && hits && positioned && filterPositioned && filterInside && filterExcluded
                     && strip >= 8 && pointInside && rejectsHeader && scrolled]
+    }
+}
+
+private final class RecordingObserver: NSObject, SCRecordingOutputDelegate, Sendable {
+    let completion: AsyncThrowingStream<Void, Error>.Continuation
+    init(_ completion: AsyncThrowingStream<Void, Error>.Continuation) { self.completion = completion }
+
+    func recordingOutputDidFinishRecording(_ recordingOutput: SCRecordingOutput) { completion.finish() }
+    func recordingOutput(_ recordingOutput: SCRecordingOutput, didFailWithError error: Error) {
+        completion.finish(throwing: error)
     }
 }

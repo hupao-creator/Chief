@@ -133,8 +133,6 @@ import SwiftUI
             buttonFrames(child, into: &result)
         }
     }
-    // The five-second selected title must finish collapsing before the pixel samples.
-    try await pause(5300)
     let buttons = currentButtons()
     var panelAX = [String: CGRect](), hostAX = [String: CGRect]()
     buttonFrames(panel, into: &panelAX)
@@ -145,7 +143,7 @@ import SwiftUI
              "tag-activity-geometry.json")
     var samples = [[String: Any]]()
     var regions = [String: CGRect]()
-    for (id, diameter) in [(directoryID, CGFloat(26)), (childID, CGFloat(36))] {
+    for (id, diameter) in [(directoryID, CGFloat(26)), (childID, CGFloat(39.6))] {
         guard let button = buttons[id] else { throw ReplayFailure("Missing measured button " + id) }
         guard let view = surfaces().first(where: {
             let frame = $0.convert($0.bounds, to: nil)

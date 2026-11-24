@@ -11,12 +11,12 @@ struct NativeOverviewTagRail: View {
 
     var body: some View {
         let hasTags = parent?.children.isEmpty == false
-        OverviewFilterRail(edge: .leading, selectedID: selectedID, hasChoices: hasTags) { recentID in
+        VStack(alignment: .leading, spacing: OverviewTagMetrics.railSpacing) {
             if let parent, hasTags {
-                tagButton(parent, isParent: true, recentID: recentID)
+                tagButton(parent, isParent: true)
                     .id(parent.id)
                 ForEach(parent.children) { child in
-                    tagButton(child, isParent: false, recentID: recentID)
+                    tagButton(child, isParent: false)
                 }
             }
         }
@@ -25,13 +25,14 @@ struct NativeOverviewTagRail: View {
         .accessibilityHidden(!hasTags)
     }
 
-    private func tagButton(_ filter: NativeOverviewFilter, isParent: Bool, recentID: String?) -> some View {
+    private func tagButton(_ filter: NativeOverviewFilter, isParent: Bool) -> some View {
         let select = { onTagChange(filter) }
         let activity = filter.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
-        return OverviewRailButton(recentlySelected: recentID == filter.id) { expansion in
+        let selected = filter.id == selectedID
+        return OverviewRailButton(selected: selected) { expansion in
             OverviewRailCapsule(edge: .leading, title: isParent ? strings.anyTag : filter.tag,
                 emoji: isParent ? nil : filter.semanticEmoji,
-                hasActiveTasks: !isParent && filter.hasActiveTasks, selected: filter.id == selectedID,
+                hasActiveTasks: !isParent && filter.hasActiveTasks, selected: selected,
                 unreadCount: isParent ? 0 : filter.unreadCount, maximumWidth: maximumWidth,
                 expansion: expansion, action: select)
         }
@@ -43,35 +44,14 @@ struct NativeOverviewTagRail: View {
     }
 }
 
-private struct OverviewFilterRail<Content: View>: View {
-    let edge: HorizontalEdge
-    let selectedID: String?
-    var hasChoices = true
-    @ViewBuilder var buttons: (String?) -> Content
-    @State private var recentID: String?
-
-    var body: some View {
-        VStack(alignment: edge == .leading ? .leading : .trailing, spacing: OverviewTagMetrics.railSpacing) {
-            buttons(recentID)
-        }
-        // Clicks and swipes share the selection timer. Initial selection stays compact.
-        .onChange(of: selectedID) { _, id in recentID = hasChoices ? id : nil }
-        .task(id: recentID) {
-            guard let id = recentID else { return }
-            do { try await Task.sleep(for: .seconds(5)) } catch { return }
-            if recentID == id { recentID = nil }
-        }
-    }
-}
-
 private struct OverviewRailButton: View {
-    let recentlySelected: Bool
+    let selected: Bool
     let capsule: (CGFloat) -> OverviewRailCapsule
     @State private var hovered = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let expanded = hovered || recentlySelected
+        let expanded = selected || hovered
         capsule(expanded ? 1 : 0)
             .onHover { hovered = $0 }
             .onDisappear { hovered = false }
@@ -88,6 +68,7 @@ private struct OverviewRailCapsule: View, @MainActor Animatable {
     var unreadCount = 0
     let maximumWidth: CGFloat
     var expansion: CGFloat
+    @Environment(\.pixelLength) var pixelLength
     let action: () -> Void
 
     var animatableData: CGFloat {
@@ -99,9 +80,9 @@ private struct OverviewRailCapsule: View, @MainActor Animatable {
         let progress = min(1, max(0, expansion))
         GlassEffectContainer {
             Button(action: action) {
-                OverviewRailLabelLayout(edge: edge, maximumWidth: maximumWidth, expansion: progress) {
+                OverviewRailLabelLayout(edge: edge, maximumWidth: maximumWidth, expansion: progress, pixelLength: pixelLength) {
                     glyph.accessibilityHidden(true)
-                    OverviewTagTitle(title: title)
+                    OverviewTagTitle(title: title, scale: OverviewTagMetrics.railScale)
                         .modifier(OverviewCanvasLabelEdge())
                         .opacity(progress)
                 }
@@ -113,17 +94,17 @@ private struct OverviewRailCapsule: View, @MainActor Animatable {
         }
         // The unread count follows the presented width while the title expands.
         .overlay(alignment: .topTrailing) {
-            if unreadCount > 0 { OverviewTagUnreadBadge(count: unreadCount) }
+            if unreadCount > 0 { OverviewTagUnreadBadge(count: unreadCount, scale: OverviewTagMetrics.railScale) }
         }
         .transaction { $0.animation = nil }
     }
 
     @ViewBuilder private var glyph: some View {
         if let emoji {
-            Text(verbatim: emoji).font(.system(size: 19)).fixedSize()
-                .background { if hasActiveTasks { OverviewTagActivityIndicator(diameter: 36) } }
+            Text(verbatim: emoji).font(.system(size: 19 * OverviewTagMetrics.railScale)).fixedSize()
+                .background { if hasActiveTasks { OverviewTagActivityIndicator(diameter: 36 * OverviewTagMetrics.railScale) } }
         } else {
-            OverviewAllTagGlyph()
+            OverviewAllTagGlyph(scale: OverviewTagMetrics.railScale)
                 .modifier(OverviewCanvasLabelEdge())
         }
     }
@@ -149,12 +130,15 @@ private struct OverviewRailLabelLayout: Layout {
     let edge: HorizontalEdge
     let maximumWidth: CGFloat
     let expansion: CGFloat
-    private let diameter = OverviewTagMetrics.chipHeight
+    let pixelLength: CGFloat
+    private let diameter = OverviewTagMetrics.railDiameter
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let title = subviews[1].sizeThatFits(.unspecified)
-        let extra = min(max(0, maximumWidth - diameter), title.width + OverviewTagMetrics.labelInset)
-        return CGSize(width: diameter + expansion * extra, height: diameter)
+        let extra = min(max(0, maximumWidth - diameter), title.width + OverviewTagMetrics.labelInset * OverviewTagMetrics.railScale)
+        // Snap the moving edge so rounding cannot shift the stationary glyph by a backing pixel.
+        let width = ((diameter + expansion * extra) / pixelLength).rounded() * pixelLength
+        return CGSize(width: width, height: diameter)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
@@ -162,7 +146,7 @@ private struct OverviewRailLabelLayout: Layout {
         let glyphX = leading ? bounds.minX + diameter / 2 : bounds.maxX - diameter / 2
         subviews[0].place(at: CGPoint(x: glyphX, y: bounds.midY),
                           anchor: .center, proposal: .unspecified)
-        let titleWidth = max(0, maximumWidth - diameter - OverviewTagMetrics.labelInset)
+        let titleWidth = max(0, maximumWidth - diameter - OverviewTagMetrics.labelInset * OverviewTagMetrics.railScale)
         let titleX = leading ? bounds.minX + diameter : bounds.maxX - diameter
         subviews[1].place(at: CGPoint(x: titleX, y: bounds.midY),
                           anchor: leading ? .leading : .trailing, proposal: .init(width: titleWidth, height: diameter))
@@ -177,19 +161,20 @@ struct NativeOverviewStatusRail: View {
     var interactions: NativeOverviewChromeInteractions?
 
     var body: some View {
-        OverviewFilterRail(edge: .trailing, selectedID: status.rawValue) { recentID in
-            statusButton(.running, emoji: "⏳", title: strings.runningOnly, recentID: recentID)
-            statusButton(.all, emoji: "🗂️", title: strings.allStatuses, recentID: recentID)
-            statusButton(.completed, emoji: "🏁", title: strings.completedOnly, recentID: recentID)
+        VStack(alignment: .trailing, spacing: OverviewTagMetrics.railSpacing) {
+            statusButton(.running, emoji: "⏳", title: strings.runningOnly)
+            statusButton(.all, emoji: "🗂️", title: strings.allStatuses)
+            statusButton(.completed, emoji: "🏁", title: strings.completedOnly)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(strings.statusFilter)
     }
 
-    private func statusButton(_ value: NativeOverviewStatusFilter, emoji: String, title: String, recentID: String?) -> some View {
+    private func statusButton(_ value: NativeOverviewStatusFilter, emoji: String, title: String) -> some View {
         let choose = { onStatusChange(value) }
-        return OverviewRailButton(recentlySelected: value.rawValue == recentID) { expansion in
-            OverviewRailCapsule(edge: .trailing, title: title, emoji: emoji, selected: status == value,
+        let selected = status == value
+        return OverviewRailButton(selected: selected) { expansion in
+            OverviewRailCapsule(edge: .trailing, title: title, emoji: emoji, selected: selected,
                 maximumWidth: maximumWidth, expansion: expansion, action: choose)
         }
         .overviewTagAnchor(value.rawValue)

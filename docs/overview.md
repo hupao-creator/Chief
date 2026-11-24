@@ -6,11 +6,11 @@ Press **⌘K** to open **Overview**. Click a folder icon at the top to see that 
 
 Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. Click the asterisk-only **All** button in the top row to see work across projects and Inbox, including Inbox tasks that have no tag.
 
-When a folder has tags to choose from, look for their emoji along the left edge. Hover over an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. When you switch tags, the new tag shows its name for five seconds.
+When a folder has tags to choose from, look for their emoji along the left edge. Hover over an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. The selected tag, including **Any tag**, keeps its name visible when you move the pointer away.
 
 A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Folders and **All** use the Overview accent color. When **Any tag** is selected, its solid teal background keeps the asterisk and name readable over the cards.
 
-Click the asterisk (`*`) for **Any tag** to see the whole folder, including tasks without a tag. Choosing another folder also starts you at **Any tag** and keeps your current status filter. If a folder and its only tag show the same cards, choosing the folder is enough.
+Click the asterisk (`*`) for **Any tag** to see the whole folder, including tasks without a tag. Choosing another folder starts you at **Any tag**. Switching to a different folder, tag, or **All** shows all statuses in that space. Selecting the same space again keeps your status filter. If a folder and its only tag show the same cards, choosing the folder is enough.
 
 Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find a task that’s running or waiting for your response. Choose that folder or tag, then click ⏳ on the right to see its running tasks. With **Reduce Motion** turned on in macOS, the dots stay still.
 
@@ -20,7 +20,7 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 ## Filter by status
 
-The three emoji on the right filter the cards in your current folder or tag. From top to bottom, click ⏳ for **Running only**, 🗂️ for **All statuses**, or 🏁 for **Completed only**. Hover over an emoji to expand its button to the left and see the status name. Click the emoji or its name to filter the cards. When you switch status, the new name stays visible for five seconds, or longer if you keep the pointer over it. The selected button takes its tint from the emoji, so 🏁 has a neutral gray tint. Overview starts with 🗂️ selected.
+The three emoji on the right filter the cards in your current folder or tag. From top to bottom, click ⏳ for **Running only**, 🗂️ for **All statuses**, or 🏁 for **Completed only**. Hover over an emoji to expand its button to the left and see the status name. Click the emoji or its name to filter the cards. The selected status keeps its name visible. Other status names appear while you hover. The selected button takes its tint from the emoji, so 🏁 has a neutral gray tint. Overview starts with 🗂️ selected.
 
 You can also swipe up or down with two fingers over the cards or background. Start on the **left half of the window** to change tags, or the **right half** to change status. Slide your fingers up to select the choice below, or down to select the choice above. From **All statuses**, swiping up takes you to **Completed only**. One swipe moves one choice, even if the pointer crosses the middle. At either end, the selection stays put. When the left column is hidden, as it is for **All** and Inbox tags, a left-half swipe keeps your selection.
 

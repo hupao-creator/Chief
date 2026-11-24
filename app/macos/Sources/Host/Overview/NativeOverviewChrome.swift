@@ -313,30 +313,33 @@ public struct NativeOverviewChrome: View {
 
 struct OverviewTagUnreadBadge: View {
     let count: Int
+    var scale: CGFloat = 1
 
     var body: some View {
         Text(verbatim: String(count))
-            .font(.system(size: 10, weight: .bold, design: .rounded)).monospacedDigit()
+            .font(.system(size: 10 * scale, weight: .bold, design: .rounded)).monospacedDigit()
             .foregroundStyle(.white)
-            .padding(.horizontal, 4).frame(minWidth: 16, minHeight: 15)
+            .padding(.horizontal, 4 * scale).frame(minWidth: 16 * scale, minHeight: 15 * scale)
             .background(Color(nsColor: .systemRed), in: Capsule())
             .fixedSize()
-            .padding(.trailing, 5).offset(y: -3.5)
+            .padding(.trailing, 5 * scale).offset(y: -3.5 * scale)
             .allowsHitTesting(false).accessibilityHidden(true)
     }
 }
 
 struct OverviewAllTagGlyph: View {
+    var scale: CGFloat = 1
     var body: some View {
-        Image(systemName: "asterisk").font(.system(size: 17, weight: .semibold))
+        Image(systemName: "asterisk").font(.system(size: 17 * scale, weight: .semibold))
     }
 }
 
 struct OverviewTagTitle: View {
     let title: String
+    var scale: CGFloat = 1
     var body: some View {
         Text(title)
-            .font(NativeTypography.inter(size: OverviewTagMetrics.chipFont, weight: 620))
+            .font(NativeTypography.inter(size: OverviewTagMetrics.chipFont * scale, weight: 620))
             .lineLimit(1)
             .truncationMode(.tail)
     }
@@ -429,7 +432,10 @@ enum OverviewTagMetrics {
     static let spacing: CGFloat = 4
     // Keep regular glass shadows and surfaces apart when the directory chips are at rest.
     static let directorySpacing: CGFloat = 8
-    static let railSpacing: CGFloat = 10
+    static let railScale: CGFloat = 1.1
+    static let railDiameter = chipHeight * railScale
+    static let railMaximumWidth = 172 * railScale
+    static let railSpacing = 10 * railScale
     /// Enlarge tag ink while keeping all top-level chrome at the same height.
     static let enlargement: CGFloat = 1.1
     static let chipScale: CGFloat = 1.125 * enlargement

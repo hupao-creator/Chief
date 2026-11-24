@@ -577,7 +577,9 @@ public final class NativeOverviewWorkspaceModel {
             let chosenTag = tagSelection?.tag ?? ""
             selectedTag = filters.isEmpty ? "" : chosenTag
             selectedScope = tagSelection?.scope ?? ""
-            selectedFilter = matchingFilter(tag: selectedTag, scope: selectedScope, kind: tagSelection?.kind)
+            let nextFilter = matchingFilter(tag: selectedTag, scope: selectedScope, kind: tagSelection?.kind)
+            if selectedFilter?.id != nextFilter?.id { statusFilter = .all }
+            selectedFilter = nextFilter
             guard presentationActive else {
                 presentationDirty = true
                 publishContext()

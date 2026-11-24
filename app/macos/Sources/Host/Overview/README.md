@@ -197,6 +197,8 @@ the sampled poses and release outgoing cards when their exit completes.
 Presentation pauses gate pointer and accessibility input while preserving the
 ordinary appearance of embedded controls.
 
+After a layout recenters the camera, exits and surviving cards start at their sampled screen positions, including when a status change reduces a grid to one card.
+
 Tag scene changes retain their filter choreography: outgoing cards shrink
 and fade over 140ms, survivors move over 320ms after a 70ms delay, and new cards
 enter over 230ms after a 150ms delay. The new collection first lays out at frozen
@@ -313,8 +315,7 @@ The left column starts with **Any tag** and then the selected scope's visible
 semantic tags, ordered by descending member count and localized name for ties.
 Any tag includes eligible untagged directory members. The column appears only
 for project directories with visible children, including when a child is
-selected. The three status choices on the right are shared across all scopes. Selecting a directory or tag
-keeps the current status, including when the resulting card set is empty.
+selected. The three status choices on the right are shared across all scopes. Changing the resolved filter identity (kind, scope and tag, or global All) restores All statuses before projecting cards. Re-selecting the same space and refreshing its membership preserve the status.
 
 Semantic tag identity is a plain name with separately validated emoji. Each
 scope exposes up to five semantic tags. Directory membership uses persistent
@@ -340,26 +341,20 @@ the published filter selection updates immediately and the canvas refreshes on
 return. A change in status-filtered results alone keeps the selection.
 
 The left and right Liquid Glass columns sit at the window's edges, each group
-vertically centered. Compact controls are 42pt circles. The left controls show
+vertically centered. Compact controls are 46.2pt circles. The left controls show
 the semantic emoji, 🏷️ for a tag without an emoji, or an asterisk for Any tag.
 The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
 (Completed only), with localized titles. Hover expands a button on either
 rail toward the center, keeping its glyph at the window edge. Its natural width
-is the 42pt glyph seat plus the measured single-line title and 12pt of padding
-at the inward end. Both rails cap the expanded button at 172pt. The left rail
-also caps tag names at 15% of the window width. The right rail can use the
+is the 46.2pt glyph seat plus the measured single-line title and 13.2pt of padding
+at the inward end. Both rails cap the expanded button at 189.2pt. The left rail
+also caps the button at 16.5% of the window width. The right rail can use the
 space from its inset to the window midpoint so status names fit at the minimum
 window size.
 A long title truncates at the trailing edge. The same title stays mounted as
 the capsule reveals or clips it, including when a hover reverses mid-animation.
-Clicking the glyph or the revealed title selects that filter. Switching tags or
-statuses, including by swipe, shows the new selection’s title for five seconds.
-A subsequent selection starts a fresh five-second interval for the latest
-choice on that rail. A hovered button keeps its title
-until pointer exit, including after the selection interval expires. Expansion
-and contraction use the Chief Bar’s 420ms smooth Overview capsule animation
-with zero extra bounce. Reduce Motion applies the width change immediately
-and preserves the display interval.
+Clicking the glyph or the revealed title selects that filter. Each selected rail button, including Any tag and All statuses, stays expanded from initial display through pointer exit.
+Unselected buttons expand on hover and collapse on exit. Both transitions use the Chief Bar’s 420ms smooth Overview capsule animation with zero extra bounce. Reduce Motion applies the width change immediately.
 
 Global All, project directories and Inbox tags use native regular interactive Liquid Glass
 and system primary foreground in the top row. The left tag and right status
@@ -414,7 +409,7 @@ alone does not qualify. The selection tint and red unread count remain visible
 independently of activity.
 
 A transparent 26pt disk sits behind the folder icon or Inbox tag emoji in
-the top bar. A 36pt disk sits behind the semantic tag’s emoji on the left. Core
+the top bar. A 39.6pt disk sits behind the semantic tag’s emoji on the left. Core
 Animation sweeps the Overview accent across fixed perforations in the same
 pattern as the running Agent badge. The icon and emoji stay still, including
 while a tag title is expanded. Reduce Motion holds a single lit diagonal.
@@ -834,10 +829,10 @@ experience measurements to benchmarks. See [PBT commands/evidence](../../../../.
 
 ## Mounted filter e2e
 
-`E2E-OVERVIEW-003` activates the mounted status and directory buttons against an
+`E2E-OVERVIEW-004` activates the mounted status and directory buttons against an
 isolated Runtime. With completed fixture tasks it checks an empty Running view
-through directory selection, exact scoped Agent IDs after selecting Completed,
-and the return to global All with the selected status retained. The supported
+followed by all scoped Agent IDs on directory selection, Completed in that directory,
+and the return to global All with all statuses visible. The supported
 suite includes a real project directory and untagged Inbox tasks. The
 Collection suite uses two project directories. `overview-filters.json` records
 the public scope oracle and the mounted snapshots after each action. The

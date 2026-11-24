@@ -560,22 +560,22 @@ public struct NativeOverviewCanvas<Content: View>: View {
             return
         }
 
+        // Layout can recenter the camera even within a tag (for example, All to Running).
+        // Start every motion at its sampled window position in the new camera plane.
+        let camera = state.camera.transform
+        let startPoses = oldPoses.mapValues { $0.reproject(from: sampledCamera, to: camera) }
         if replaceScene {
-            // Preserve screen-space origins across a camera cut, including
-            // sampled outgoing cards when a rapid selection reverses an exit.
-            let camera = state.camera.transform
             let preparation = UUID()
             presentationToken = preparation
             for placement in outgoingPlacements {
-                guard let old = oldPoses[placement.id] else { continue }
-                let from = old.reproject(from: sampledCamera, to: camera)
+                guard let from = startPoses[placement.id] else { continue }
                 setMotion(placement.id, from: from, to: from.transformed(scale: 0.88, opacity: 0),
                           duration: 0.14, curve: .filter, layoutSize: placement.cardFrame.size, start: .infinity)
             }
             for placement in geometry.placements {
                 let target = OverviewCardPose(frame: placement.cardFrame)
-                if let old = oldPoses[placement.id] {
-                    setMotion(placement.id, from: old.reproject(from: sampledCamera, to: camera), to: target,
+                if let from = startPoses[placement.id] {
+                    setMotion(placement.id, from: from, to: target,
                               duration: 0.32, delay: 0.07, curve: .filter,
                               layoutSize: target.frame.size, start: .infinity)
                 } else {
@@ -596,7 +596,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         } else {
             var longest = 0.0
             for placement in outgoingPlacements {
-                guard let from = oldPoses[placement.id] else { continue }
+                guard let from = startPoses[placement.id] else { continue }
                 setMotion(placement.id, from: from,
                           to: from.transformed(scale: OverviewCardTransition.exitScale,
                                                dy: OverviewCardTransition.exitRise, opacity: 0),
@@ -607,7 +607,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
             }
             for placement in geometry.placements {
                 let target = OverviewCardPose(frame: boxes[placement.id] ?? placement.cardFrame)
-                if let from = oldPoses[placement.id] {
+                if let from = startPoses[placement.id] {
                     if from == target {
                         cardPoses[placement.id] = target
                     } else {

@@ -150,17 +150,14 @@ class Desktop:
         running = settled("running", None, set())
         assert not running["overview"]["cards"]
         activate("directory", directory)
-        empty = settled("running", directory, set())
-        assert not empty["overview"]["cards"]
+        folder = settled("all", directory, scoped)
         activate("status", "completed")
         completed = settled("completed", directory, scoped)
         activate("directory", "all")
-        global_completed = settled("completed", None, created)
-        activate("status", "all")
         restored = settled("all", None, created)
         save(self.session.output / "overview-filters.json", {
-            "taskScopes": scopes, "reportSources": sources, "initial": initial, "running": running, "emptyDirectory": empty,
-            "completedDirectory": completed, "globalCompleted": global_completed, "restored": restored})
+            "taskScopes": scopes, "reportSources": sources, "initial": initial, "running": running, "directory": folder,
+            "completedDirectory": completed, "restored": restored})
 
     def read(self, thread, initial, followup):
         overview = self.stable(lambda s: s["page"] == "overview" and s["runtimeAvailable"])

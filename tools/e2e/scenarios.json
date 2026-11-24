@@ -22,9 +22,9 @@
       ]
     },
     {
-      "id": "E2E-OVERVIEW-003",
+      "id": "E2E-OVERVIEW-004",
       "implementation": "implemented",
-      "title": "Select a project folder, retain its status filter and return to all completed tasks",
+      "title": "Restore all statuses when entering a folder or returning to global All",
       "doc": "app/macos/Sources/Host/Overview/README.md#mounted-filter-e2e",
       "evidence": ["overview-filters.json"]
     },

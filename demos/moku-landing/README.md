@@ -85,7 +85,7 @@ The right-half gesture traverses Running only, All statuses and Completed only.
 The left-half gesture traverses the directory and its semantic tags. Each side
 checks a contact that crosses the midpoint before recognition, the endpoints
 and momentum. The replay selects a top-level Inbox tag and checks its exact
-cards, retained status and absence of a left column. It distinguishes a top-row
+cards, restored All statuses and absence of a left column. It distinguishes a top-row
 tag named Inbox from a real directory named Inbox. It opens the sole tagged
 card and removes its tag through a catalog delta while the reader is open.
 The selection returns to All while the covered canvas retains its old scene.
@@ -95,18 +95,13 @@ the middle status and a semantic tag. Changing child or status retains the
 full-window card area within the directory. A capsule over a card accepts the click, and a click in the gap between two capsules opens the underlying task. At the production minimum of
 860 × 600 pt, a five-tag directory exposes all six controls and selects a tag
 with a long label. The replay reads the mounted accessible buttons to check
-their names and compact frames. It selects another tag before the first
-five-second deadline. A screenshot checks the second title early. After 4.55
-seconds a width trace checks that the button stays expanded through the end
-of the first timer, starts to collapse at the second deadline and settles
-at its 42-point width. The replay places the cursor over a different tag and moves it away
+their names and frames. The selected tag and status stay expanded beyond five seconds. The replay places the cursor over a different tag and moves it away
 to check hover and exit, then restores the cursor. A click beside the compact
 tag opens the card underneath. The same click on its expanded title selects
 the tag. With `--capture`, the cropped columns are checked for the expected
 visible tag and status titles. At the right edge the replay checks that the
 hourglass expands left on hover, a click on its title selects Running only,
-the title stays open on pointer exit and a swipe shows All statuses for five
-seconds. Captures read the hourglass title in English and Chinese. The hovered
+the title stays open on pointer exit and a swipe selects and expands All statuses. With capture enabled, `filter-switches.mp4` records the window through status and tag swipes between a grid and a single card. Captures read the hourglass title in English and Chinese. The hovered
 tag title is read in Aqua and Dark Aqua and with a bright backdrop behind dark-appearance glass.
 Samples from inside each capsule show its glass tint changing with the
 selection on both rails and the top row. `source.json` records the checkout revision,
@@ -152,7 +147,7 @@ same emoji ink as their unselected counterparts.
 `--rail-hover` mounts three Chinese semantic tags on a neutral gray
 background in an active, isolated window. The replay requests 60 Hz and
 retains every complete WindowServer frame delivered through hover,
-transfer and reversal. It tracks the red badge and selected glass tint as the capsule moves, checks the two four-character titles against native
+transfer and reversal. It tracks the red badge and glass edge as the capsule moves, checks the two four-character titles against native
 CJK text width and checks truncation of a longer title. The captured
 intervals bound the observed transition without measuring hardware
 refresh rate. This option can run alongside `--header-glass` in one command.
