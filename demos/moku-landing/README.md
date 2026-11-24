@@ -110,7 +110,7 @@ source changes, macOS version and architecture.
 With Shipping selected, a catalog update admits and removes a card in each
 status filter. Line-wheel events on the right return to All statuses from
 either empty filter. A left-side line-wheel event keeps the empty Running
-selection. The Running illustration measures 156 × 68 pt and the Completed illustration measures 195 × 85 pt. With `--capture`,
+selection. The Running illustration measures 156 × 68 pt and the Completed illustration measures 195 × 85 pt. The replay checks that each full image fits inside the content area and its bowl center is within 1 pt of the content centerline. With `--capture`,
 the replay reads the localized empty titles, checks that only Running shows its scroll hint,
 and reads the completed task's timestamp. It captures both empty states in Aqua and
 Dark Aqua. It does not exercise a hardware trackpad or system fullscreen.

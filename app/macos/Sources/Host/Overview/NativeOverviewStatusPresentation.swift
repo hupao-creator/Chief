@@ -13,8 +13,7 @@ struct NativeOverviewStatusEmptyState: View {
                     .accessibilityIdentifier("overview.running.empty")
             } else {
                 VStack(spacing: 8) {
-                    NativeOverviewIdleMark(identifier: "overview.completed.logo", scale: 1.25)
-                        .accessibilityHidden(true)
+                    skillet(identifier: "overview.completed.logo", scale: 1.25)
                     heading.modifier(OverviewCanvasLabelEdge())
                 }
                 .accessibilityElement(children: .combine)
@@ -26,6 +25,18 @@ struct NativeOverviewStatusEmptyState: View {
         .allowsHitTesting(false)
     }
 
+    private func skillet(identifier: String, scale: CGFloat = 1) -> some View {
+        // The bowl is centered at x ≈ 232 in the 624 × 272 artwork. Reserve
+        // 160 transparent pixels on the left so its axis bisects the layout.
+        Color.clear
+            .aspectRatio(784.0 / 272.0, contentMode: .fit)
+            .overlay(alignment: .trailing) {
+                NativeOverviewIdleMark(identifier: identifier, scale: scale)
+            }
+            .frame(maxWidth: 196 * scale, maxHeight: 68 * scale)
+            .accessibilityHidden(true)
+    }
+
     private var heading: some View {
         Text(title)
             .font(NativeTypography.inter(size: 15, weight: 650))
@@ -35,8 +46,7 @@ struct NativeOverviewStatusEmptyState: View {
     private func runningPanel(scrollHint: String) -> some View {
         let shape = RoundedRectangle(cornerRadius: NativeGeometry.overviewCardRadius)
         return VStack(spacing: 8) {
-            NativeOverviewIdleMark(identifier: "overview.idle")
-                .accessibilityHidden(true)
+            skillet(identifier: "overview.idle")
             VStack(spacing: 3) {
                 heading
                 HStack(spacing: 5) {

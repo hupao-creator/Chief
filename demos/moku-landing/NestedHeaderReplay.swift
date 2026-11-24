@@ -1168,6 +1168,14 @@ private final class WheelSample: NSEvent {
                 "mountedCardCount": canvas.mountedCardIDs.count, "noteOpen": presentation.scene.notePanelOpen,
                 "cardViewport": [canvas.cardRegionInWindow.minX, canvas.cardRegionInWindow.width]]
             if let logo = idle ?? completedLogo {
+                let frame = logo.convert(logo.bounds, to: content)
+                // At y=200 in the 624 px source, the bowl spans x=60…404.
+                let bowlCenter = frame.minX + frame.width * 232 / 624
+                let centerError = bowlCenter - content.bounds.midX
+                guard abs(centerError) <= 1, content.bounds.contains(frame) else {
+                    throw ReplayError("Skillet at \(name) is clipped or off center by \(centerError) pt")
+                }
+                sample["bowlCenterErrorPt"] = centerError
                 sample["logoSize"] = [logo.bounds.width, logo.bounds.height]
             }
             if CommandLine.arguments.contains("--capture") {
