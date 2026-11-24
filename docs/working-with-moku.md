@@ -48,7 +48,7 @@ After a successful removal, the checkout folder is gone. The task conversation s
 
 In Overview, swipe up with two fingers over Chief’s eyes to read your conversation. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see the time beside each message, swipe left in the conversation and hold. Release to tuck the times away.
 
-The panel opens at the latest messages. A larger gap marks a change of speaker. In a smaller window, the input stays at the bottom while you scroll through the messages above it. Scroll up to read earlier ones. At the top of a page, **Earlier messages** takes you further back. **Newer messages** at the bottom takes you forward.
+The panel opens at the latest messages. A larger gap marks a change of speaker. A short exchange fits in a compact panel. Longer conversations can fill most of a small window, with the input at the bottom. Scroll up above the input to read earlier messages. At the top of a page, **Earlier messages** takes you further back. **Newer messages** at the bottom takes you forward.
 
 Use the input at the bottom to reply. A draft you started in the compact bar is already there. Press **Return** or click **Send**. Your message appears on the right as soon as you send it, and the panel stays open for Chief’s reply. You can also send from the compact bar and swipe up over the eyes to see your message while Chief is working. Press **Esc** or click outside the bar to close it and keep your draft.
 

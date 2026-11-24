@@ -255,16 +255,22 @@ private final class WheelSample: NSEvent {
         let stage = restart ? "restart" : "send"
         let evidence = URL(filePath: FileManager.default.currentDirectoryPath).appending(path: "evidence")
         try FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
-        func wait(_ description: String, timeout: Duration = .seconds(35), _ check: () -> Bool) async throws {
+        func wait(_ description: @autoclosure () -> String, timeout: Duration = .seconds(35), _ check: () -> Bool) async throws {
             let deadline = ContinuousClock.now + timeout
             while !check() {
-                guard ContinuousClock.now < deadline else { throw ReplayError(description) }
+                guard ContinuousClock.now < deadline else { throw ReplayError(description()) }
                 try await Task.sleep(for: .milliseconds(50))
             }
         }
         guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "header-replay" }),
               let content = window.contentView else { throw ReplayError("Missing live replay window") }
-        window.setContentSize(.init(width: 1100, height: 800))
+        let regularSize = CGSize(width: 1100, height: 800)
+        func resize(to size: CGSize) async throws {
+            window.setContentSize(size)
+            try await wait("Workspace did not resize to \(size)") { content.bounds.size == size }
+            try await Task.sleep(for: .milliseconds(450))
+        }
+        window.setContentSize(regularSize)
         window.center()
         captureScheme = restart ? .light : .dark
         try await focusReplayWindow(window)
@@ -301,7 +307,7 @@ private final class WheelSample: NSEvent {
         }
         try await swipe()
         let initial = restart ? expected : Array(expected.prefix(2))
-        try await wait("Mounted history did not match expected rows") { labels() == initial }
+        try await wait("Expected \(initial.count) messages on opening, found \(labels())") { labels() == initial }
         guard let field = descendant(NSTextView.self, in: content, matching: { $0.isEditable && !$0.isHiddenOrHasHiddenAncestor })
             else { throw ReplayError("Missing native composer") }
         try await wait("Swipe did not focus the native editor") { window.firstResponder === field }
@@ -358,10 +364,29 @@ private final class WheelSample: NSEvent {
             try FileManager.default.moveItem(at: held, to: bytes)
             try await pressKey("\u{1b}", code: 53, in: window)
             try await wait("Panel did not dismiss") { !scene.conversationOpen && !scene.inputOpen }
-            try await wait("Folded Bar did not expose Compose") { (try? filterButton("moku-open-input", in: window)) != nil }
-            let eyes = window.convertFromScreen(try filterButton("moku-open-input", in: window).frame)
+            guard let dock = descendant(MokuHorizontalTravelView.self, in: content) else { throw ReplayError("Missing Dock host") }
+            var eyes = CGRect.null
+            // Escape can expose the accessibility button while the Dock is still folding.
+            // Send one click once its frame is stable and native hits reach the hosted control.
+            try await wait("Folded Bar did not present its Compose target, last frame \(eyes)") {
+                guard !scene.inputLeaving, let button = try? filterButton("moku-open-input", in: window),
+                      !button.frame.isEmpty else { return false }
+                let rect = window.convertFromScreen(button.frame)
+                defer { eyes = rect }
+                guard rect == eyes else { return false }
+                let point = CGPoint(x: rect.midX, y: rect.midY)
+                guard let hit = content.hitTest(content.superview?.convert(point, from: nil) ?? point) else { return false }
+                return hit !== dock && hit.isDescendant(of: dock)
+            }
             try await postClick(window, at: CGPoint(x: eyes.midX, y: eyes.midY))
-            try await wait("Compact input did not gain focus") { scene.inputOpen && (window.firstResponder as? NSTextView)?.isEditable == true }
+            do {
+                try await wait("Compact input did not gain focus at \(eyes), open \(scene.inputOpen), key \(window.isKeyWindow)") {
+                    scene.inputOpen && (window.firstResponder as? NSTextView)?.isEditable == true
+                }
+            } catch {
+                try? await capture(window, to: evidence.appending(path: "compact-click-failure.png"))
+                throw error
+            }
             guard let compact = window.firstResponder as? NSTextView else { throw ReplayError("Missing compact editor") }
             guard compact.string == fixture.messages[2], draft.canSubmit else { throw ReplayError("Retry draft missing") }
             guard kill(pid, SIGSTOP) == 0 else { throw ReplayError("Could not hold compact send") }
@@ -395,7 +420,25 @@ private final class WheelSample: NSEvent {
                 .write(to: evidence.appending(path: "conversation-refresh.json"))
             return
         }
+        func measureShort() async throws -> [String: CGFloat] {
+            let nodes = conversationElements(in: window)
+            guard let shell = nodes.first(where: { $0.id == "moku-capsule" })?.frame,
+                  let heading = nodes.first(where: { $0.id == "moku-conversation-period" })?.frame,
+                  let last = nodes.last(where: { $0.id == "moku-conversation-message" })?.frame
+            else { throw ReplayError("Missing short conversation geometry") }
+            let point = window.convertPoint(fromScreen: CGPoint(x: last.midX, y: last.midY))
+            let timeline = try await conversationScroller(in: content, at: point)
+            let list = window.convertToScreen(timeline.convert(timeline.bounds, to: nil))
+            return ["panelHeight": shell.height, "listHeight": list.height, "documentHeight": timeline.documentView?.bounds.height ?? 0,
+                    "topGap": list.maxY - heading.maxY, "bottomGap": last.minY - list.minY]
+        }
+        var short: [String: [String: CGFloat]]?
         if !restart {
+            try await Task.sleep(for: .milliseconds(500))
+            let regular = try await measureShort()
+            try await resize(to: NativeGeometry.minimumWindow)
+            short = ["regular": regular, "small": try await measureShort()]
+            try await resize(to: regularSize)
             field.insertText(fixture.messages[2], replacementRange: field.selectedRange())
             try await wait("Chief draft did not receive native text") { presentation.dockDraft.text == fixture.messages[2] }
             let selectedFile = profile.deletingLastPathComponent().appending(path: fixture.attachment)
@@ -404,7 +447,9 @@ private final class WheelSample: NSEvent {
                 throw ReplayError("The native composer could not stage its attachment: \(presentation.dockDraft.error ?? "missing attachment")")
             }
             try await pressKey("\r", code: 36, in: window)
-            try await wait("No admitted message and Talk after Return") { labels() == expected && field.string.isEmpty && scene.conversationOpen }
+            try await wait("Expected the admitted message and Talk after Return, found \(labels())") {
+                labels() == expected && field.string.isEmpty && scene.conversationOpen
+            }
             field.insertText(fixture.draft, replacementRange: field.selectedRange())
             try await wait("Next draft missing") { presentation.dockDraft.text == fixture.draft }
             try await postClick(window, at: monitor.windowPoint(CGPoint(x: 45, y: 85)))
@@ -439,6 +484,7 @@ private final class WheelSample: NSEvent {
         var observed: [String: Any] = ["rows": labels(), "draft": presentation.dockDraft.text,
             "conversationOpen": scene.conversationOpen, "noteOpen": scene.notePanelOpen,
             "period": periods[0].value, "timestampsHeldPoints": held, "timestampsReleasedPoints": timeline.contentView.bounds.minX]
+        observed["short"] = short
         func measure() throws -> [String: CGFloat] {
             let nodes = conversationElements(in: window)
             let rows = nodes.filter { $0.id == "moku-conversation-message" }.map(\.frame)
@@ -456,14 +502,14 @@ private final class WheelSample: NSEvent {
                 throw ReplayError("Bubble or composer outside its available space, end distance \(distanceFromEnd): \(bounds), \(shell), \(list), \(editorFrame), \(rows)")
             }
             return ["windowWidth": bounds.width, "windowHeight": bounds.height, "panelHeight": shell.height,
+                    "topMargin": bounds.maxY - shell.maxY, "bottomMargin": shell.minY - bounds.minY,
+                    "documentHeight": timeline.documentView?.bounds.height ?? 0,
                     "listHeight": list.height, "editorHeight": editorFrame.height, "attachmentBubbleHeight": rows[2].height,
                     "speakerChangeGap": rows[2].minY - rows[3].maxY, "sameSpeakerGap": rows[3].minY - rows[4].maxY,
                     "distanceFromEnd": max(0, distanceFromEnd)]
         }
         observed["regular"] = try measure()
-        window.setContentSize(NativeGeometry.minimumWindow)
-        try await wait("Workspace did not resize to its minimum window") { content.bounds.size == NativeGeometry.minimumWindow }
-        try await Task.sleep(for: .milliseconds(450))
+        try await resize(to: NativeGeometry.minimumWindow)
         observed["small"] = try measure()
         try await capture(window, to: evidence.appending(path: "conversation-small-" + stage + ".png"))
 
@@ -481,6 +527,9 @@ private final class WheelSample: NSEvent {
         guard visibleText.contains("两处都已核对"), visibleText.contains("最后核对输入框") else {
             throw ReplayError("Last reply or last draft line missing from the compact window capture: \(visibleText)")
         }
+        try await resize(to: regularSize)
+        observed["regularMultiline"] = try measure()
+        try await resize(to: NativeGeometry.minimumWindow)
         let scrollPoint = timeline.convert(CGPoint(x: timeline.bounds.midX, y: timeline.bounds.midY), to: nil)
         let y = timeline.contentView.bounds.minY
         try await postScroll(window, scrollPoint, y: y > 5 ? 80 : -80, phase: .began)
@@ -512,12 +561,12 @@ private final class WheelSample: NSEvent {
     }
 
     private func revealTimes(_ window: NSWindow, at point: CGPoint, timeline: NSScrollView, captureTo url: URL? = nil) async throws -> CGFloat {
-        let before = timeline.contentView.bounds.origin
+        let before = timeline.contentView.bounds
         try await postScroll(window, point, y: 0, phase: .began, x: -32)
         try await postScroll(window, point, y: 0, phase: .changed, x: -46)
         let held = timeline.contentView.bounds.origin
-        guard before.x < 1, held.x > 50, abs(before.y - held.y) < 1 else {
-            throw ReplayError("Holding a left swipe did not reveal times in place: \(before) → \(held)")
+        guard before.minX < 1, held.x > 50, abs(before.minY - held.y) < 1 else {
+            throw ReplayError("Holding a left swipe did not reveal times in place: \(before) → \(timeline.contentView.bounds)")
         }
         if let url {
             try await Task.sleep(for: .milliseconds(350))
@@ -529,7 +578,7 @@ private final class WheelSample: NSEvent {
             guard ContinuousClock.now < deadline else { throw ReplayError("Lifting did not hide timestamps") }
             try await Task.sleep(for: .milliseconds(30))
         }
-        guard abs(before.y - timeline.contentView.bounds.minY) < 1 else {
+        guard abs(before.minY - timeline.contentView.bounds.minY) < 1 else {
             throw ReplayError("Releasing timestamps moved the transcript vertically: \(before) → \(held) → \(timeline.contentView.bounds.origin)")
         }
         return held.x

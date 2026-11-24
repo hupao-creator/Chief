@@ -101,6 +101,7 @@ public struct NativeMokuDock: View {
     @State private var focusRequest = 0
     @State private var directoryMentions = NativeMokuDirectoryMentions()
     @State private var editorBottomInset: CGFloat = 29
+    @State private var conversationContentHeight: CGFloat = 0
     // Keep the note's real scroll view at its reading dimensions while the
     // same Dock lends its visible shell to the linked Thread's composer.
     @State private var linkedNoteLayout: (width: CGFloat, height: CGFloat, available: CGFloat)?
@@ -420,7 +421,7 @@ public struct NativeMokuDock: View {
             let rowHeight = rowExpanded && !state.settingsExpanded && !noteExpanded
                 ? surfaceHeight(width: width) : NativeMokuCapsuleLayout.idleSize.height
             let noteAvailableHeight = max(0, frame.height - rowHeight)
-            let conversationPanelHeight = min(540, dockViewport.height * 0.8, frame.height)
+            let conversationPanelHeight = min(rowHeight + conversationContentHeight, 648, dockViewport.height * 0.96, frame.height)
             let conversationHeight = conversationVisible ? max(0, conversationPanelHeight - rowHeight) : 0
             let noteHeight = noteExpanded
                 ? NativeMokuNoteLayout.fittedHeight(content: noteContentHeight, available: noteAvailableHeight) : 0
@@ -494,6 +495,14 @@ public struct NativeMokuDock: View {
                     .geometryGroup()
                     .offset(y: destination.verticalOffset)
                     .animation(nil, value: destination.verticalOffset)
+                    // A page can already receive scroll gestures as soon as its rows mount.
+                    // Fit the viewport in that layout pass so its bounds stay still under the reader.
+                    .transaction(value: conversationContentHeight) { transaction in
+                        if conversationVisible {
+                            transaction.animation = nil
+                            transaction.disablesAnimations = true
+                        }
+                    }
                     // The panel owns this handoff. Keep the outgoing composer's
                     // width animation from carrying into the restored Note.
                     .transaction(value: state.noteReadingOrigin?.phase == .reading) { transaction in
@@ -543,6 +552,7 @@ public struct NativeMokuDock: View {
             .onPreferenceChange(NativeSettingsPreferredHeightKey.self) { height in
                 settingsPreferredHeight = max(900, ceil(height))
             }
+            .onPreferenceChange(NativeMokuConversationHeightKey.self) { conversationContentHeight = $0 }
             .onPreferenceChange(NativeSettingsHeaderScrollKey.self) { offset in
                 settingsHeaderScroll = offset
             }

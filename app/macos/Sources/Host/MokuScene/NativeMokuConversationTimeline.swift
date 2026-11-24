@@ -26,8 +26,8 @@ struct NativeMokuConversationTimeline: View {
             let width = bounds.size.width
             ScrollViewReader { proxy in
                 ScrollView([.horizontal, .vertical]) {
-                    // A bounded page needs exact bubble heights when a send changes the scroll offset.
-                    // Lazy height estimates can repeatedly reposition a page with a tall offscreen bubble.
+                    // Fit the Dock to this bounded page at its rendered width. Exact bubble heights
+                    // also keep a tall offscreen message from moving the reader when a send arrives.
                     VStack(alignment: .leading, spacing: 0) {
                         if let cursor = page.before {
                             pageButton(chinese ? "较早消息" : "Earlier messages", width: width) { showEarlier(cursor) }
@@ -71,9 +71,11 @@ struct NativeMokuConversationTimeline: View {
                     }
                     .frame(width: width + timeColumn, alignment: .leading)
                     .padding(.vertical, 12)
+                    .reportMokuConversationHeight()
                 }
                 .scrollIndicators(.hidden, axes: .horizontal)
                 .defaultScrollAnchor(.bottomLeading, for: .initialOffset)
+                .defaultScrollAnchor(atBottom ? .bottomLeading : nil, for: .sizeChanges)
                 .defaultScrollAnchor(.topLeading, for: .alignment)
                 .scrollPosition($position)
                 .onScrollGeometryChange(for: CGFloat.self) { min(timeColumn, max(0, $0.visibleRect.minX)) } action: { _, x in
