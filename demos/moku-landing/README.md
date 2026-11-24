@@ -67,8 +67,11 @@ The left-half gesture traverses the directory and its semantic tags. Each side
 checks a contact that crosses the midpoint before recognition, the endpoints
 and momentum. The replay selects a top-level Inbox tag and checks its exact
 cards, retained status and absence of a left column. It distinguishes a top-row
-tag named Inbox from a real directory named Inbox. Untagged Inbox tasks appear
-in global All. Window-local mouse clicks select
+tag named Inbox from a real directory named Inbox. It opens the sole tagged
+card and removes its tag through a catalog delta while the reader is open.
+The selection returns to All while the covered canvas retains its old scene.
+Returning to Overview shows the untagged tasks and the centered All control.
+Window-local mouse clicks select
 the middle status and a semantic tag. Changing child or status retains the
 full-window card area within the directory. A capsule over a card accepts the click, and a click in the gap between two capsules opens the underlying task. At the production minimum of
 860 × 600 pt, a five-tag directory exposes all six controls and selects a tag

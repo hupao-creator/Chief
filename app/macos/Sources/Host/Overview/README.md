@@ -287,7 +287,8 @@ and [mounted switch benchmark](../../../../../tools/verification/tag-space/READM
 Global All is pinned beside the top row of project directories and Inbox semantic
 tags. Inbox is the scope for work without a persistent directory, including
 managed temporary roots. Each of its exposed tags has its own top button with
-an emoji and title, even when Inbox has only one tag. Global All includes
+an emoji and title, even when Inbox has only one tag. Inbox tags with equal
+member counts sort by localized tag name, independently of their emoji. Global All includes
 eligible untagged Inbox tasks. A workspace containing only those tasks shows
 All by itself at the top. The empty landing hides the bar. Choosing a project
 directory selects its full membership. Its top button keeps its name and folder-wide unread count when
@@ -320,8 +321,9 @@ child stays visible and selected even if it becomes redundant, preserving its
 filtering meaning when later threads arrive. Selecting its directory then omits
 the redundant child. If a directory child leaves the catalog, its directory
 becomes the selection while that directory exists. Removing a selected Inbox
-tag or project directory returns to global All. A change in status-filtered
-results alone keeps the selection.
+tag or project directory returns to global All. If a reader covers Overview,
+the published filter selection updates immediately and the canvas refreshes on
+return. A change in status-filtered results alone keeps the selection.
 
 The left and right Liquid Glass columns sit at the window's edges, each group
 vertically centered. Compact controls are 42pt circles. The left controls show
