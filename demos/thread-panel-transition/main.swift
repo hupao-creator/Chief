@@ -200,8 +200,11 @@ private struct PanelDemo: View {
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("panel-stage")) } action: { state.frames[thread.id] = $0 }
         }
         .overlay(alignment: .top) {
-            NativeOverviewChrome(filters: [.init(tag: "Chief", count: 3, isDirectory: true), .init(tag: "设计", count: 2)],
-                selectedTag: state.filter, onTagChange: { state.filter = $0?.tag ?? "" }, onSettings: { state.dark.toggle() })
+            NativeOverviewChrome(filters: [
+                .init(tag: "Chief", scope: "Chief", count: 3, isDirectory: true),
+                .init(tag: "设计", scope: "设计", count: 2, isDirectory: true)
+            ], selectedTag: state.filter, selectedScope: state.filter, selectedKind: .directory,
+                onTagChange: { state.filter = $0?.tag ?? "" }, onSettings: { state.dark.toggle() })
                 .scaleEffect(x: 1, y: state.expanded ? 0.1 : 1, anchor: .top)
                 .opacity(state.expanded ? 0 : 1)
         }

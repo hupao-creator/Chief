@@ -7,19 +7,19 @@ struct TagCloudDemo: View {
     @State private var selected: NativeOverviewFilter?
 
     private let filters: [NativeOverviewFilter] = [
-        .init(tag: "Chief", count: 12, isDirectory: true),
-        .init(tag: "界面设计", count: 4),
-        .init(tag: "性能优化", count: 3),
-        .init(tag: "代码调研", count: 6),
-        .init(tag: "语音交互", count: 2),
-        .init(tag: "一个较长的工作目录名称", count: 24, isDirectory: true)
+        .init(tag: "Chief", scope: "/demo/chief", count: 12, isDirectory: true),
+        .init(tag: "界面设计", scope: "/demo/design", count: 4, isDirectory: true),
+        .init(tag: "性能优化", scope: "/demo/performance", count: 3, isDirectory: true),
+        .init(tag: "代码调研", scope: "/demo/research", count: 6, isDirectory: true),
+        .init(tag: "语音交互", scope: "/demo/voice", count: 2, isDirectory: true),
+        .init(tag: "一个较长的工作目录名称", scope: "/demo/long-path", count: 24, isDirectory: true)
     ]
 
     private func chrome(_ items: [NativeOverviewFilter]) -> some View {
         var strings = NativeOverviewChromeStrings()
         strings.settings = "切换深浅外观"
         return NativeOverviewChrome(filters: items, selectedTag: selected?.tag ?? "",
-            selectedKind: selected.map { $0.isDirectory ? .directory : .semantic },
+            selectedScope: selected?.scope ?? "", selectedKind: selected.map { _ in .directory },
             strings: strings,
             onTagChange: { selected = $0 }, onSettings: { dark.toggle() })
     }

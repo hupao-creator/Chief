@@ -144,7 +144,8 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                   event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,
                   NSEvent.pressedMouseButtons == 0 else { return nil }
             let point = event.locationInWindow
-            guard content.bounds.contains(content.convert(point, from: nil)),
+            let contentPoint = content.convert(point, from: nil)
+            guard content.bounds.contains(contentPoint),
                   !actions.regions.controls.contains(point, in: window),
                   reminderScrollRegions?.contains(point, in: window) != true else { return nil }
             // A long Talk or another vertically overflowing native viewport
@@ -159,7 +160,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             }
             if actions.regions.note.contains(point, in: window) { return .note }
             if actions.regions.bar.contains(point, in: window) || !actions.canFilter() { return nil }
-            return .filter
+            return contentPoint.x < content.bounds.midX ? .semanticFilter : .statusFilter
         }
 
         /// Called by the local monitor; exposed internally for window-level replays.
@@ -174,7 +175,8 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                 perform: { target, up in
                     switch target {
                     case .note: swipeActions.openNote()
-                    case .filter: swipeActions.stepFilter(up)
+                    case .semanticFilter: swipeActions.stepSemanticFilter(up)
+                    case .statusFilter: swipeActions.stepStatusFilter(up)
                     }
                 }) {
                 sequence.reset()

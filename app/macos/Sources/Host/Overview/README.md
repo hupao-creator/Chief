@@ -62,7 +62,7 @@ Agent emoji backdrops with regular glass; ordinary launch defaults and all other
 card materials remain unchanged. See the [external comparison](../../../../../tools/benchmarks/README.md#agent-emoji-badge-material-comparison).
 Only Super Thread collections opt into the new card material; individual Report
 and ordinary Thread surfaces stay flat.
-There is no `glass world` preference. Chrome, directory menus, Moku,
+There is no `glass world` preference. The filter capsules, Moku,
 Settings and shared controls outside a card keep their own materials.
 
 Overview cannot originate steer/send input for a specified Thread. Emoji badges
@@ -178,8 +178,11 @@ height, in which case the projection scales all cards uniformly to fit that
 height. Packing and camera framing leave 30pt above and below the grid area.
 Preferred side margins are 64pt, or 32pt at window widths up to 620pt. A dimension that
 cannot fit both preferred margins with room for cards uses its full extent, including for the fit check.
-The tag filters and Chief Bar overlay the cards.
-Changing either bar's height alone preserves placements, scale and scroll range.
+The top filter bar, side filter columns and Chief Bar overlay the cards. Packing,
+centering, collection budgeting and horizontal travel use the full window.
+Control heights and the visibility or width of a side column leave the framing
+geometry unchanged. A click on a visible filter activates its button. Gaps
+between buttons pass the click through to the underlying canvas or card.
 
 The workspace retains one horizontal offset in memory while a reader or Settings
 covers the canvas. A resize, filter change or membership update clamps that
@@ -232,7 +235,22 @@ live.
 ### Overview scroll input
 
 [NativeOverviewScrollInput](NativeOverviewScrollInput.swift) routes window-local AppKit wheel events.
-On a fresh, precise, unmodified contact, the [vertical gesture router](NativeOverviewVerticalSwipe.swift) takes a physical swipe with at least 24 points of vertical travel and more than 1.5 times its horizontal travel. It accounts for either Natural Scrolling setting and consumes the remaining contact and its momentum. Horizontal starts retain their original owner through reversals. The background, cards, carousel cover and tag bar step between Running, All (initial) and Completed. Up moves toward Running, down toward Completed, stopping at either end. The [Chief Bar](../MokuScene/README.md) reserves its own Note target. Vertically overflowing native viewports keep scrolling at either limit. Open Note, editing, interventions, onboarding, Settings, readers and collection panels keep their input.
+The [vertical gesture router](NativeOverviewVerticalSwipe.swift) recognizes an
+unmodified, precise trackpad contact after at least 24 points of vertical travel
+and more than 1.5 times its horizontal travel. The initial pointer location in
+the Overview window chooses the column. On the left, a swipe steps among the
+current directory's visible tags, including its unrestricted first choice. On
+the right, it steps among Running, All (initial) and Completed. A physical up
+swipe selects the preceding choice and down selects the next, under either
+Natural Scrolling setting. The gesture stops at either end. Crossing the middle
+or receiving momentum cannot advance the other column. On the left with no
+visible tags, a vertical swipe leaves both selections alone.
+
+The background, cards, carousel cover and filter controls accept these gestures.
+Horizontal starts retain their original owner through reversals. The
+[Chief Bar](../MokuScene/README.md) reserves its Note target. Vertically
+overflowing native viewports keep scrolling at either limit. Open Note, editing,
+interventions, onboarding, Settings, readers and collection panels keep their input.
 
 Status filters apply to the selected tag's eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and visible interruptions with no ongoing work appear only in All. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
 
@@ -242,15 +260,14 @@ at up to 156 × 68 pt inside one regular Liquid Glass panel with the localized
 title and scroll hint. The text provides the group's accessibility label.
 An adaptive tint strengthens contrast behind the text, and Reduce Transparency
 uses an opaque panel. The panel passes input through to Overview. On the
-Overview filter surface, a vertical line-wheel event can exit an empty status
+right half of the Overview filter surface, a vertical line-wheel event can exit an empty status
 filter in its return direction. Scroll down from Running or up from Completed
 to return to All while keeping the selected tag. An empty All status shows a
 localized title and tag-switch hint on an opaque surface.
 The [status replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size)
 exercises empty and populated states and both input types.
 
-With matches, a **Completed only** capsule
-identifies the filter. The existing plugin cards keep their layout and
+The selected right-hand capsule identifies the status, including when the view is empty. The existing plugin cards keep their layout and
 activation. Hover outlines emphasize cards and keyboard focus outlines Agent
 cards. Agent cards show the localized time of the latest successful execution
 from its public `finishedAt` in addition to its duration. Super Threads retain
@@ -260,7 +277,7 @@ A trackpad contributes its horizontal delta, including native momentum. For
 canvas travel, a line wheel uses its horizontal delta when available and
 otherwise its vertical delta, at 40 window points per line. Pointer presses interrupt inertia. Dragging the
 window header moves the window. Empty canvas presses leave the offset alone.
-Native editors, filter menus, the Dock and carousel cover retain their own input.
+Native editors, the horizontally scrolling top filter bar, the Dock and carousel cover retain their own input.
 Settings, readers and active text entry gate canvas scrolling. Card focus keeps
 horizontal arrow navigation and Return available. Opening the Chief input
 explicitly hands focus to its editor.
@@ -277,56 +294,63 @@ turns so metadata and cached posters can enter with the card transition.
 [Report cover contract](../../../../../internal/plugins/applications/report/README.md#cover-cards)
 and [mounted switch benchmark](../../../../../tools/verification/tag-space/README.md).
 
-[NativeOverviewChrome](NativeOverviewChrome.swift) owns the tag and action controls. Semantic tag identity remains a plain name with separately validated emoji. Each scope exposes up to five semantic tags, including singly assigned tags and separate names with equal membership. Directory filters use persistent scope identity for membership and exclude managed temporary roots. Labels are presentation only: a symlink alias or linked checkout with another label remains in its canonical directory’s All view, and same-named directories stay separate.
+The top bar offers global All and directory scopes. Inbox groups work without a
+persistent directory, including eligible untagged tasks. Choosing a directory
+selects its full membership. The active directory keeps its name and unread
+count in the top bar as tag selection changes.
 
-The tag bar omits a directory's sole semantic child when its actual selected
+The left column starts with **Any tag** and then the selected scope's visible
+semantic tags, ordered by descending member count and localized name for ties.
+Any tag includes eligible untagged members. The column is hidden in global All
+and when the selected scope has no visible child choices. The three status
+choices on the right are shared across all scopes. Selecting a directory or tag
+keeps the current status, including when the resulting card set is empty.
+
+Semantic tag identity is a plain name with separately validated emoji. Each
+scope exposes up to five semantic tags. Directory membership uses persistent
+scope identity and excludes managed temporary roots. A symlink alias or linked
+checkout with another label remains in its canonical directory’s All view, and
+same-named directories stay separate.
+
+The left column omits a directory's sole semantic child when its actual selected
 Agent Thread ID set and application thread reference set both equal the
 directory's sets. This uses eligible catalog membership after the ordinary
 visibility/archive and report-coverage rules; equal member counts
 alone are insufficient. Untagged members or directory-only documents that change
 those sets keep the child visible. Multiple semantic names (including a name
-equal to the directory label) prevent this omission. Inbox tags are unaffected.
+equal to the directory label) prevent this omission. Inbox follows the same rule.
 Catalog membership changes recompute the decision. Canonical filters, navigation,
 published context and stored tags remain intact. An already selected semantic
 child stays visible and selected even if it becomes redundant, preserving its
-filtering meaning when later threads arrive; selecting its directory then omits
-the redundant child.
+filtering meaning when later threads arrive. Selecting its directory then omits
+the redundant child. If a child leaves the catalog, its directory becomes the
+selection while that directory exists. Removing the selected scope returns to
+global All. A change in status-filtered results alone keeps both selections.
 
-Filter capsules omit visible member counts, including in directory menus; counts remain available as accessibility values. Filter tags do not show hover tips; their accessibility labels, values and actions remain available. Selected tags use background-adaptive capsule fill and contrasting text. Directory menus use native glass composition and independent hover/hit regions. Selecting a child closes the menu; the directory chip keeps its current title until the glass exit transaction is removed, then shows the directory and child name separated by a short vertical divider. The selected child’s emoji replaces the folder prefix, without repeating it in the child name; a child without an emoji keeps the folder. The divider is absent without a selected child. Reopening invalidates an older close completion; the latest selection supplies the eventual title. There is no separate hierarchy caption above the bar. Archived records are excluded from Overview. Settings has no archive-restoration section; archive data and Runtime commands remain independent of that page. For tag-bar transitions, see the [shared UI motion boundaries](../../Shared/PluginUI/README.md#motion-and-materials).
+The left and right Liquid Glass columns sit at the window's edges, each group
+vertically centered. The selected option in each column shows a checkmark
+and accent tint. Each capsule exposes its selected state to accessibility. Full tag names remain available to accessibility when the visible label
+truncates. Member counts, activity and unread counts have distinct meanings.
+Member counts are available in tag accessibility values. Unread counts appear
+on their own folder or semantic tag.
 
-Menu opening uses a 220ms smooth spring with zero extra bounce, both after initial measurement and when retargeting a mounted menu. Closing retains its existing timing. Menu closure morphs each mounted child capsule back into the measured parent capsule over 320ms. Position and size interpolate continuously; labels retire earlier than the glass, and the surface only disappears as it overlaps the parent. Reopening retargets the same mounted identities from their current presentation. Removed children remain in their old row slots during the return, then surviving children reflow smoothly. A removed directory fades its whole menu envelope because its return destination no longer exists. Retiring controls cannot receive clicks or accessibility actions. After menu exit, title, divider and prefix changes use a 280ms smooth, non-bouncing transition. Reopening still invalidates the earlier close completion. The measured scroll width carries its resize transaction across the layout boundary so the centered bar follows the chips. Initial measurements are immediate.
-
-The child menu's clip contains both its viewport and the visible parent in viewport coordinates. A single short child can therefore expand from, and return to, a wider selected-directory capsule without cutting off its rounded ends. Scroll offset affects the morph's content-space target but not that clip. Overflowing rows retain horizontal clipping because their viewport already contains the parent.
-
-Child-menu motion samples one retained progress for label scale/opacity and the
-surface's actual frame/offset. Natural child widths still own row measurement.
-Only the label scales; the material fill and clear glass receive the same
-interpolated frame without another geometry animation. Applying a GeometryEffect
-to captured glass lets its compositor geometry drift from the view-layer material,
-creating offset capsule rims during opening and closing. Stable child glass IDs,
-selection tint, viewport clipping and interrupted-return ownership are retained.
-
-The directory's own glass capsule uses its current animated frame plus only the leading/trailing overflow outside the scroll viewport. Using an absolute measured source width here can slice off its right rounded end while switching from a selected child to another top-level tag.
-
-Its source-surface leaf samples size and offscreen overflow together before
-passing the actual frame to material and clear glass. The glass compositor must
-not interpolate that geometry again: a retained old width can overlap the next
-chip after its material and the row have already shrunk. Only this source leaf
-clears the geometry animation; the directory group's position, child-menu target
-and independent opening/closing progress keep their existing ownership.
-
-Tag widths have no fixed point cap. Each top-level chip may use the scroll viewport left after All and bar insets; sibling chips remain horizontally scrollable. The centered bar leaves room on both sides for the window controls and actions, plus 16pt clearance. At viewport widths of 620 logical points or less, filters occupy a second row. Child chips may use the full available bar width, and overflowing child rows scroll within that width. Their glass container stays inside the scroll viewport so captured labels cannot bypass clipping. Chips use shadowless `.clear` glass over a view-layer material fill rather than `.regular` glass: the regular variant's system-drawn shadow is composited outside the SwiftUI layer, so neither a per-chip `clipShape` nor the bar's capsule clip can trim it, and the 4pt gaps let neighboring shadows overlap into a visible band. The material fill supplies the frosted face and follows the pill shape, while selection tint and interactive feedback remain on the glass. Selected All, directory and semantic chips use the overview accent with 22% tint alpha, or 34% with Increased Contrast; unselected chips have no tint. Selected directory chips replace their folder or child emoji prefix with a check icon. Selected semantic chips replace their emoji prefix with the same check, including in child menus; All remains prefix-free. Accessibility labels retain the original tag names and emoji. Label font weights remain unchanged; the shared selected check uses a 2-unit Lucide stroke instead of the default 1.5-unit stroke. Names only truncate when their individual viewport cannot hold them. Presentation does not change tag identity or membership.
-
-All, directory and semantic capsules (including child menus) retain the 1.1× enlarged label and prefix metrics. Their height shares `NativeWindowNavigationGeometry.height` (42pt) with the traffic-light capsule and right-side circular actions. In the single-row layout, the centered filters and right-side actions sit 16 logical points from the top. In the two-row layout, the right-side actions sit 10pt from the top. In the two-row layout it sits 76pt from the top when space permits. The filter bar moves up in short viewports to leave at least 8 logical points for starting canvas scrolling at supported window sizes. The traffic lights have their own fixed window-relative position. Header dragging and scroll exclusion end at 60 logical points in the single-row layout and 2pt below the filter bar in the two-row layout. Semantic labels always lay out the emoji separately from the plain title, in both selection states. The shared prefix retains both its unselected glyph and centered check as opacity-switched layout participants, reserving the same natural width and height across selection changes. This stability applies to a fixed title/child; choosing a different directory child can still change the title width. The shared prefix keeps its native ideal size: an emoji's advance and line bounds can exceed its point size, so an icon-sized square can cut its glyph even inside a roomy chip. The Lucide folder and selected check use the same icon size; emoji do not use per-glyph offsets.
+[NativeOverviewChrome](NativeOverviewChrome.swift) keeps All pinned beside
+a horizontally scrollable directory row. The centered bar leaves space for the
+window controls and actions. At viewport widths of 620pt or less, the filters
+occupy a second row. The 42pt capsules share their height with the traffic-light
+capsule and circular actions. The single-row bar sits 16pt from the top. In the
+two-row layout the actions sit 10pt from the top and the bar sits 76pt from the
+top when space permits. A short viewport moves the row up to leave room for
+canvas input. Header dragging and scroll exclusion end at 60pt in the single-row
+layout or 2pt below the bar in the two-row layout. See the
+[shared UI motion boundaries](../../Shared/PluginUI/README.md#motion-and-materials).
 
 ## Tag activity
 
 Directory and semantic tag chips append an 11pt native status ring only when
 their existing browsing membership contains a Thread whose public
 `isExecutionActive` is true (running or waiting for user). Inactive tags omit both
-the ring and its adjacent HStack spacing. Active tags retain the ring's measured
-width while menu transitions temporarily hide it, keeping their source
-geometry consistent. Background work alone does not redefine active. Selection tint, task counts,
+the ring and its adjacent HStack spacing. Background work alone does not redefine active. Selection tint, task counts,
 membership, ordering and Runtime filter context remain independent.
 Archive/visibility and Report-coverage exclusions come from the
 same membership used to browse each tag; a Report does not itself become an active
@@ -334,7 +358,7 @@ Agent Thread. A changed-ID activity cache refreshes these booleans when active
 participation changes, without rebuilding membership or reacting to every streamed
 payload. Membership changes also refresh the markers, including the existing lazy
 All membership for its accessibility value. The All chip has no visible activity
-ring. Submenus share the other tags' indicator. Native window
+ring. Semantic tags use the same indicator as directory tags. Native window
 visibility remains owned by the production spinner. Tooltips and
 accessibility values announce active presence in the selected UI language. The
 shared slot is implemented in [NativeOverviewTagActivity](NativeOverviewTagActivity.swift).
@@ -348,7 +372,11 @@ reading transitions, physical gestures or captured appearance.
 
 ## Production interaction controls
 
-[NativeOverviewInteraction](../Interaction/NativeOverviewInteraction.swift) exposes the camera's production methods and registers callbacks owned by the mounted directory controls. Opening a menu calls the same `revealChildren` path as hover/accessibility; selecting a child requires its real glass menu to be mounted, then follows the production selection/exit transaction before the chip title changes. Explicit close uses the accessibility close callback; pointer exit retains its delayed dismissal. Filter-bar scrolling uses the mounted SwiftUI scroll view. A retiring registration cannot remove another view's callbacks.
+[NativeOverviewInteraction](../Interaction/NativeOverviewInteraction.swift)
+exposes camera operations and actions registered by the mounted filter controls.
+Directory and semantic-tag selection use the same callbacks as the visible
+buttons. Filter-bar scrolling uses the mounted top row. A retiring registration
+cannot remove another view's callbacks.
 
 Runtime `state:load` supplies scope/membership facts independently of mounted card
 identities, placement cells and camera bounds. Overview exposes no tag CRUD or
@@ -440,16 +468,11 @@ Ordinary browsing ignores retired agent-authored visibility markers. Archive, ex
 Folder and semantic chips show a system-red unread count at the upper trailing
 edge for their exact browsing membership. Each eligible Thread contributes once
 per space, after visibility, archive and execution coverage filtering and before
-collection grouping. A directory chip displaying a selected child uses that
-child’s count. All and zero-count chips have no badge. The count is included
+collection grouping. A directory chip always uses the whole directory’s count. Each
+semantic tag shows its own count in the left column. All and zero-count chips have no badge. The count is included
 in the accessibility value independently of member count and activity. It
 does not change chip width, selection, ordering or the Runtime filter context.
 Receipt and catalog version changes update counts even for unselected spaces.
-A new badge fades and scales into place. On a child chip, this begins once its
-glass reaches the expanded position. Changes between positive counts update the
-digits in place. Closing or switching folders immediately hides the departing
-row’s badges. With Reduce Motion enabled, the measured chips and their badges
-appear directly.
 
 The emoji badge shows a system-red bookmark for each unseen Report content revision
 and for an ordinary Agent Thread whose latest execution completed and has no read
@@ -739,6 +762,17 @@ not a user-experience latency threshold. Failures retain original/reduced JSON f
 replay. These are scoped mathematical
 and state-convergence properties; interaction coverage belongs to e2e and
 experience measurements to benchmarks. See [PBT commands/evidence](../../../../../tools/verification/pbt/README.md).
+
+## Mounted filter e2e
+
+`E2E-OVERVIEW-003` activates the mounted status and directory buttons against an
+isolated Runtime. With completed fixture tasks it checks an empty Running view
+through directory selection, exact scoped Agent IDs after selecting Completed,
+and the return to global All with the selected status retained. The supported
+suite uses Inbox, and the Collection suite uses explicit directory scopes.
+`overview-filters.json` records the public scope oracle and the mounted
+snapshots after each action. Native pointer events are exercised by the
+[window replay](../../../../../demos/moku-landing/README.md#overview-note-swipe-at-actual-size).
 
 ## Camera interaction e2e
 

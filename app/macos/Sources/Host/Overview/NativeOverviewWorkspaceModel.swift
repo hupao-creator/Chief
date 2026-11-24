@@ -74,16 +74,21 @@ public final class NativeOverviewWorkspaceModel {
     public private(set) var filters: [NativeOverviewFilter] = []
     public private(set) var allHasActiveTasks = false
     public var visibleFilters: [NativeOverviewFilter] {
-        filters.filter { $0.count > 0 }.map { filter in
-            var visible = filter
-            visible.children.removeAll { child in
-                // Retain an active semantic selection: promoting it to the
-                // directory would silently broaden future catalog updates.
-                redundantSemanticFilterKeys.contains(child.selectionKey)
-                    && tagSelection.map { child.matches($0.tag, kind: $0.kind, scope: $0.scope) } != true
-            }
-            return visible
+        filters.filter { $0.count > 0 }.map(visibleDirectory)
+    }
+    var selectedDirectory: NativeOverviewFilter? {
+        guard !selectedScope.isEmpty else { return nil }
+        return filters.first { $0.scope == selectedScope && $0.isDirectory && $0.count > 0 }.map(visibleDirectory)
+    }
+    private func visibleDirectory(_ filter: NativeOverviewFilter) -> NativeOverviewFilter {
+        var visible = filter
+        visible.children.removeAll { child in
+            // Retain an active semantic selection when it becomes redundant:
+            // promoting it would silently broaden future catalog updates.
+            child.count == 0 || (redundantSemanticFilterKeys.contains(child.selectionKey)
+                && tagSelection.map { child.matches($0.tag, kind: $0.kind, scope: $0.scope) } != true)
         }
+        return visible
     }
     public private(set) var sceneKey = "\u{0}default"
     public var items: [NativeOverviewItem] { content.items }
@@ -262,8 +267,22 @@ public final class NativeOverviewWorkspaceModel {
         case (_, true): .running
         case (_, false): .completed
         }
-        guard next != statusFilter else { return }
-        statusFilter = next
+        selectStatusFilter(next)
+    }
+
+    func stepSemanticFilter(up: Bool) {
+        guard let directory = selectedDirectory, !directory.children.isEmpty,
+              let selected = selectedFilter else { return }
+        let options = [directory] + directory.children
+        guard let index = options.firstIndex(where: { $0.selectionKey == selected.selectionKey }) else { return }
+        let next = index + (up ? -1 : 1)
+        guard options.indices.contains(next) else { return }
+        selectTag(options[next])
+    }
+
+    func selectStatusFilter(_ status: NativeOverviewStatusFilter) {
+        guard status != statusFilter else { return }
+        statusFilter = status
         reconcile(captureMutation: false, refreshSelection: false)
     }
 
@@ -516,15 +535,18 @@ public final class NativeOverviewWorkspaceModel {
             }
             // Redirects depend on selection too; selecting another tag must not
             // wait for the next catalog transaction.
-            if refreshSelection, let selection = tagSelection {
-                tagSelection = NativeOverviewSelection.resolve(selection, redirects: workspace.catalog.tagRedirects,
-                    directoryTags: catalogThreads.map { directoryTags.values[$0.cwd] ?? "" } +
-                        catalogApplications.flatMap { $0.entry.tags.directoryTags.map(\.string) })
-            }
-            // A hidden selection must not leave the user scoped to an empty tag.
-            if let selection = tagSelection,
-               !allFilters.contains(where: { $0.count > 0 && $0.matches(selection.tag, kind: selection.kind, scope: selection.scope) }) {
-                tagSelection = nil
+            if let selection = tagSelection {
+                let candidate = refreshSelection
+                    ? NativeOverviewSelection.resolve(selection, redirects: workspace.catalog.tagRedirects,
+                        directoryTags: filters.filter { $0.isDirectory && $0.scope == selection.scope }.map(\.tag))
+                    : selection
+                if let candidate, matchingFilter(tag: candidate.tag, scope: candidate.scope, kind: candidate.kind)?.count ?? 0 > 0 {
+                    tagSelection = candidate
+                } else {
+                    // If a child disappears, keep browsing the same directory while it exists.
+                    tagSelection = filters.first { $0.isDirectory && $0.count > 0 && $0.scope == selection.scope }
+                        .map { .init(tag: $0.tag, kind: .directory, scope: $0.scope) }
+                }
             }
             let chosenTag = tagSelection?.tag ?? ""
             selectedTag = filters.isEmpty ? "" : chosenTag

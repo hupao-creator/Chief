@@ -161,8 +161,7 @@ public extension NativeWorkspacePresentation {
             guard id == nil || filter != nil else { throw NativeInteractionError("not_found", "Filter is unavailable") }
             overview.selectTag(filter)
         case .overviewScroll, .overviewRetry,
-             .overviewDirectoryOpen, .overviewDirectoryClose, .overviewDirectorySelect,
-             .overviewScrollFilter,
+             .overviewActivateFilter, .overviewScrollFilter,
              .toggleMokuInput, .toggleMokuNote:
             try performOverviewInteraction(action)
         }

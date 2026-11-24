@@ -2,6 +2,8 @@
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 import argparse
+import json
+import platform
 import subprocess
 import sys
 from uuid import uuid4
@@ -40,6 +42,11 @@ if args.status_only and args.keyboard:
     parser.error("--keyboard requires the card interaction scenario")
 with native_lease():
     args.output.mkdir(parents=True, exist_ok=False)
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+    changed = subprocess.check_output(["git", "status", "--porcelain", "--", "app/macos", "demos/moku-landing"],
+                                      cwd=repo, text=True).splitlines()
+    (args.output / "source.json").write_text(json.dumps({"revision": revision, "sourceChanges": changed,
+        "macOS": platform.mac_ver()[0], "architecture": platform.machine()}, indent=2) + "\n")
     # Keep AppKit's saved window state separate across consecutive replay runs.
     replay = NativeReplay(repo, "NestedHeaderReplay", f"com.chief.nested-header-replay.{uuid4().hex}")
     try:

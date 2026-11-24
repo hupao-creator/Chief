@@ -25,8 +25,9 @@ struct ThreadCloudDemo: View {
     @State private var endedAt: Double?
 
     private let filters: [NativeOverviewFilter] = [
-        .init(tag: "Chief", count: 4, isDirectory: true),
-        .init(tag: "界面设计", count: 2), .init(tag: "性能优化", count: 2)
+        .init(tag: "Chief", scope: "/demo/chief", count: 4, isDirectory: true),
+        .init(tag: "界面设计", scope: "/demo/design", count: 2, isDirectory: true),
+        .init(tag: "性能优化", scope: "/demo/performance", count: 2, isDirectory: true)
     ]
 
     var body: some View {
@@ -39,7 +40,7 @@ struct ThreadCloudDemo: View {
             .font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
             .padding(.horizontal, 30).padding(.top, 14)
             NativeOverviewChrome(filters: filters, selectedTag: selectedTag?.tag ?? "",
-                selectedKind: selectedTag.map { $0.isDirectory ? .directory : .semantic },
+                selectedScope: selectedTag?.scope ?? "", selectedKind: selectedTag.map { _ in .directory },
                 strings: chromeStrings,
                 onTagChange: { selectedTag = $0 }, onSettings: { dark.toggle() })
                 .frame(height: 84).padding(.horizontal, 14)

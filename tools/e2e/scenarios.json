@@ -22,6 +22,13 @@
       ]
     },
     {
+      "id": "E2E-OVERVIEW-003",
+      "implementation": "implemented",
+      "title": "Keep the status selection through directory changes and restore the completed tasks in that scope",
+      "doc": "app/macos/Sources/Host/Overview/README.md#mounted-filter-e2e",
+      "evidence": ["overview-filters.json"]
+    },
+    {
       "id": "E2E-CHIEF-001",
       "implementation": "implemented",
       "title": "Open Chief Note and Compose while coordinator conversations stay outside reading navigation",

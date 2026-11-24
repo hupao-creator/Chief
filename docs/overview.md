@@ -2,27 +2,27 @@
 
 ## Find a task by folder or tag
 
-Press **⌘K** to open **Overview**. In the filter bar at the top center, select **All** to see tasks across folders, or click a project folder to see its tasks. If the bar wraps to a second row, look below the window controls. Move the pointer over a folder with tags to pick one of its tags. Tasks with no project folder go into Inbox. Their tags appear directly in the filter bar.
+Press **⌘K** to open **Overview**. Choose a project folder at the top, or choose **Inbox** for tasks without a project folder. Folders with the same name appear separately. Choose **All** at the top to see work across folders.
 
-A red number on a folder or tag shows how many conversations in that space have an unread completed result or Super Thread document. When you hover over a folder, its tags settle into place and their unread counts fade in. With Reduce Motion on, the counts appear immediately. Select a tag and open a card with a red bookmark. Once the result or document appears in the foreground, the count drops by one in each space that includes it. The number disappears when you’ve read them all. Selecting a tag alone keeps its count.
+When a folder has tags to choose from, they appear in a column on the left. Click a tag to narrow the cards to that topic. A checkmark shows your choice. Click **Any tag** to see the whole folder, including tasks without a tag. Clicking another folder starts with all its tags and keeps your current status filter. If a folder and its only tag show the same cards, selecting the folder is enough.
 
-Folders with the same name appear separately. If a folder and its only tag show the same cards, select the folder. If your filter seems too narrow, choose **All**.
+A red number on a folder counts conversations with an unread completed result or Super Thread document across the whole folder. Each tag on the left shows its own unread count. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
 If a Super Thread in the same view cites a task's latest run, its card can stand in for the task card. Open **Related executions** in the Super Thread to reach the task. A newer run can make the task card appear again. [See the work behind a Super Thread](reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
 
+## Filter by status
+
+Choose **Running only**, **All statuses**, or **Completed only** on the right. Overview starts with **All statuses**. A checkmark shows which status applies to the folder or tag you are viewing.
+
+You can also swipe up or down with two fingers over the cards or background. Start on the **left half of the window** to change tags, or the **right half** to change status. Swipe up for the choice above and down for the choice below. One swipe moves one choice, even if the pointer crosses the middle. At either end, the selection stays put. When the left column is hidden, swiping there keeps your selection.
+
+**Running only** includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. **Completed only** includes tasks whose latest run finished successfully and have no pending input or background work. It also includes Super Threads and their collections. Completed task cards show when the latest run finished. Super Thread cards show when the document was last updated. Idle tasks and visible interrupted tasks with no ongoing work appear under **All statuses**.
+
+If no cards match, you can still change either filter. For example, if **No running conversations** appears, choose another tag on the left or click **All statuses** on the right. With a mouse wheel, scroll down on the right half to leave an empty **Running only** view, or up there to leave an empty **Completed only** view.
+
 ## Move around the canvas
 
-Resize the window to adjust how many cards you can see. Overview arranges the cards automatically and centers them vertically. A wide task card can appear between two taller cards when there’s room for it there. In windows taller than 60 points, the cards have at least 30 points of space above and below them. The filter bar and Chief Bar float above the cards. Opening the Chief input box keeps the cards in place.
-
-Overview starts with all statuses visible. Swipe up with two fingers over the cards, the background, or the tag bar to see **Running only**. Swipe down to return to all statuses. From there, swipe down again for **Completed only**. Each swipe moves one step. Your selected tag and the other tag choices stay in place, even when no cards match.
-
-If you see **No running conversations** below Chief’s skillet, scroll down over the glass panel with a trackpad or mouse wheel to see all statuses for the same tag.
-
-If there are no conversations in the **All** status, choose another folder or tag in the filter bar to look for conversations there.
-
-Running includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. Completed includes tasks whose latest run finished successfully and have no pending input or background work. Super Threads and their collections also appear here. Idle tasks and visible interrupted tasks with no ongoing work appear in the full view.
-
-In **Completed only**, look for the checkmark label at the bottom left. Each completed task card shows when its latest run finished. Super Thread cards show when the document was last updated. Move the pointer over a card to highlight it, or use Tab to focus a task card and Return to open it. If you see **No completed conversations** below Chief’s skillet, scroll up over the glass panel with a trackpad or mouse wheel to see all statuses for the same tag.
+Resize the window to adjust how many cards you can see. Overview arranges cards across the window and centers them vertically. The filter columns float over the cards. Click a filter to select it, or click the visible part of a card between filters to open it. A wide task card can appear between two taller cards when there’s room for it there. Opening the Chief input box keeps the cards in place.
 
 With the input box closed, swipe up over the eyes on Chief Bar to open **Chief Note**. Scroll inside an open note or a long Chief Bar message to read more.
 

@@ -56,7 +56,9 @@ Unknown/missing fields and invalid argument types are rejected.
 | `overview.show` | none | Another page open; closes Settings through its gate |
 | `navigation.back` | none | Current page's back action; respects nested reading |
 | `thread.open` | `threadId`, `typeId` | Target in the current Overview snapshot |
-| `filter.select` | `filterId` | Overview; null selects All |
+| `filter.select` | `filterId` | Overview. Null selects global All |
+| `overview.filters.scroll` | `filterId` | Scroll the mounted top bar to a top-level filter |
+| `overview.filters.activate` | `group`, `id` | Activate an enabled Overview button listed in the mounted group |
 
 Navigation text arguments are bounded to 4096 UTF-16 units. Settings text controls
 accept at most 20000 UTF-16 units, so the real 12000-unit field validation can be
@@ -72,6 +74,17 @@ An immediate reply describes accepted intent, not a completed frame. Poll the
 desired postcondition over repeated observations with `mounted: true` and
 `transitioning: false`. This does not promise that every decorative animation,
 settings save has finished; those facts remain separate.
+
+## Mounted Overview filters
+
+Read `overview.controls` to discover the buttons currently mounted in each group.
+Activate a top-level `directory` ID to show all tags in that directory. The
+directory group includes `all` for global All. When the left column is present,
+its `semantic` group includes the parent ID for unrestricted membership and
+a filter ID per selectable child. The `status` group uses `running`, `all` and
+`completed`. Each callback performs the same selection as clicking that button.
+Wait for `selectedFilterId`, `overview.status` and the resulting card projection.
+A horizontal scroll can bring another top-level button into view.
 
 ## Mounted Settings controls
 
@@ -178,7 +191,7 @@ window geometry as a startup variable; the OS bounds remain externally verified.
 ## Interaction verification
 
 The [e2e runner](../e2e/README.md) records `overview.scroll` with a signed horizontal `distance` in points
-and the settled `scrollOffset` and `maximumOffset` for `E2E-OVERVIEW-002`. The viewport exposes the window width, height, toolbar
+and the settled `scrollOffset` and `maximumOffset` for `E2E-OVERVIEW-002`. The viewport exposes the full window content width and height, toolbar
 bottom and bottom reserved height in points. It records mounted-control requests
 and postconditions for `E2E-READ-001` and `E2E-SETTINGS-001`, with separate public
 Runtime outcome evidence. Scenario definitions do not imply a passing run.

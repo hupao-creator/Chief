@@ -46,23 +46,3 @@ struct NativeOverviewStatusEmptyState: View {
         .allowsHitTesting(false)
     }
 }
-
-struct NativeOverviewCompletedFilterBadge: View {
-    let title: String
-    private let palette = NativePalette.overview
-
-    var body: some View {
-        HStack(spacing: 5) {
-            NativeIcon(name: "Check", size: 12)
-            Text(title).font(NativeTypography.inter(size: 11, weight: 620))
-        }
-        .foregroundStyle(palette.ink.swiftUI)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 4)
-        .background(palette.accentSoft.swiftUI, in: Capsule())
-        .overlay { Capsule().strokeBorder(palette.line.swiftUI, lineWidth: 1) }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("overview.completed.filter")
-        .allowsHitTesting(false)
-    }
-}
