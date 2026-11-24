@@ -182,6 +182,29 @@ and readiness at each action. Record any injected reply delay or simulated
 activation notification. A simulated notification exercises the mounted handler;
 system focus, rendered frames and native CLI launches require their own observations.
 
+### Onboarding Chief reasoning effort
+
+Use a fresh profile with Codex and a second ready Agent. Record the build,
+the mounted confirmation's enabled state, `onboarding.editorReady`, the draft
+and catalog revisions, and Runtime starts for `harness:settings-presentation`.
+Use the [interaction socket](../native-interaction/README.md) for choices and
+a separate Runtime client for persisted readback.
+
+1. On Chief, switch to Codex and select a different supported reasoning effort.
+   Exercise the ordering where the settings event arrives before the save
+   response. Once the receipt arrives, expect the new effort in the saved
+   revision, an enabled **Continue**, and zero new Codex/Chief presentation
+   reads. Confirm and check that Tag Agent opens.
+2. On another visit to Chief, change the saved Codex profile from the second
+   client. Hold the new Codex presentation response. Check that **Continue**
+   rejects activation on Codex, becomes available on the other ready Agent,
+   and waits again on returning to Codex. Release the response. Expect a single
+   Codex/Chief read, the externally saved value and an enabled confirmation.
+
+Record any synthetic delays separately from time observed in a screen recording.
+The [first-run contract](../../app/macos/Sources/Host/Onboarding/README.md)
+defines the resource and save gates.
+
 ### Onboarding Agent configuration loading layout
 
 On both Tag Agent and Super Thread Agent in a disposable first-run profile,

@@ -20,6 +20,9 @@ public final class NativeSettingsDraft {
     public private(set) var error: String?
     public private(set) var conflicted = false
     public let editorDrafts = NativeSettingsEditorDrafts()
+    /// The settings event can precede its save receipt. Publish the baseline
+    /// the editors actually bind to, including when a deferred revision wins.
+    @ObservationIgnored var onSavedSettingsChange: ((_ submitted: JSONValue?) -> Void)?
     @ObservationIgnored var reconcileFirstRunDiscovery = false
     /// Only a Settings visit defers role settings. Onboarding and other editors
     /// retain their existing autosave/explicit-flush behavior.
@@ -185,7 +188,7 @@ public final class NativeSettingsDraft {
         }
         value = keepDraft ? Self.rebase(base: saved, draft: value, latest: authoritative.0) : authoritative.0
         ready = keepDraft ? Self.rebase(base: saved, draft: ready, latest: authoritative.0) : authoritative.0
-        saved = authoritative.0; revision = authoritative.1
+        setSaved(authoritative.0, revision: authoritative.1)
         conflict = nil; conflicted = false; failed = false; error = nil
         if keepDraft { submit() } else { editorDrafts.reset(); status = .saved; dismissReport() }
     }
@@ -260,7 +263,7 @@ public final class NativeSettingsDraft {
                         if let base = self.deferredBase {
                             self.deferredBase = Self.rebase(base: snapshot, draft: base, latest: settings)
                         }
-                        self.saved = settings; self.revision = revision
+                        self.setSaved(settings, revision: revision, submitted: snapshot)
                     }
                 } catch {
                     guard !self.retired else { return false }
@@ -288,7 +291,7 @@ public final class NativeSettingsDraft {
         guard persisted == Self.rebase(base: saved, draft: authority.settings, latest: ready),
               editable == Self.rebase(base: saved, draft: authority.settings, latest: value) else { return false }
         ready = persisted; value = editable
-        saved = authority.settings; revision = authority.revision
+        setSaved(authority.settings, revision: authority.revision)
         return true
     }
 
@@ -318,9 +321,16 @@ public final class NativeSettingsDraft {
             && settings["moku"]?["routingGuidance"] == saved["moku"]?["routingGuidance"]
         value = settings
         if keepEditableText { value = settingsReplacing(value, path: ["moku", "routingGuidance"], value: routing) }
-        saved = settings; ready = settings; self.revision = revision
+        ready = settings
+        setSaved(settings, revision: revision)
         if deferredBase != nil { deferredBase = settings }
     }
+    private func setSaved(_ settings: JSONValue, revision: Int, submitted: JSONValue? = nil) {
+        let changed = self.revision != revision
+        saved = settings; self.revision = revision
+        if changed { onSavedSettingsChange?(submitted) }
+    }
+
     private static func comparableValue(_ value: JSONValue) -> JSONValue {
         let routing = normalizedText(value["moku"]?["routingGuidance"])
         guard routing != .null else { return value }

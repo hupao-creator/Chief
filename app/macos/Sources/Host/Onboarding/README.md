@@ -48,8 +48,12 @@ page changes do not reload successful resources or reseed selected defaults.
 If discovery publishes other settings while a first-run draft saves, the draft
 and the new revision can reconcile automatically when they agree on every
 changed field. Overlapping edits still surface the conflict and preserve the draft.
-Disabled roles need no execution resources until enabled; changing a saved source,
-role mode or connection authority retains the ordinary targeted reload boundary.
+The workspace admits the saved source when the draft adopts it, including when
+the Runtime event arrives before the local save reply. A local Chief/Codex
+profile confirmed exactly as submitted can reuse its fresh catalog. The
+fields display the current draft and the catalog keeps its original expiry. Switching to a loading Agent or receiving a different saved source from
+another client gates Continue on that source's own readiness. Disabled roles
+need execution resources only when enabled.
 Plugin-owned installation guides remain available for missing Harnesses. Moku reuses the
 Settings coordination map and native Harness execution fields. Tag and Super Thread
 reuse application-owned background configuration, including inheritance and

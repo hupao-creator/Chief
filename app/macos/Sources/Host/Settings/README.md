@@ -224,7 +224,10 @@ and explicitly opened editors can still demand their resources immediately.
 Slow native discovery does not occupy every Runtime command
 slot or prevent unrelated Harnesses from loading. Page/Harness selection shares
 an in-flight read and reuses successful resources across mounts; thread editors retain their own lifetime.
-Saved source changes reload only the affected resource. Removed scopes/cwds,
+The draft publishes an adopted saved revision directly to prefetch. When a
+local Chief/Codex save returns the submitted profile, its fresh catalog serves
+the new binding. Other saved source changes reload the affected resource.
+Removed scopes/cwds,
 installation changes, disconnect, authority replacement and full reload retire
 the corresponding cache. Draft edits and unrelated streamed revisions do not.
 Background failures, including plugin-reported presentation failures, retry after

@@ -105,6 +105,7 @@ public final class NativeHarnessSettingsSurface {
     public private(set) var threadSettingsFailure: String?
     public private(set) var threadSettingsEditorID = UUID()
     private var baselineThreadSettings: ThreadSettingsSnapshot?
+    private let catalogIndependentOfProfile: Bool
     @ObservationIgnored private let host: NativeHarnessHost
     @ObservationIgnored private var session: HarnessSettingsSession!
     @ObservationIgnored private var sequence = 0
@@ -138,6 +139,7 @@ public final class NativeHarnessSettingsSurface {
     }
 
     init(host: NativeHarnessHost, plugin: AnyHarnessPlugin, configuration: NativeHarnessSettingsConfiguration) {
+        catalogIndependentOfProfile = plugin.executionCatalogIndependentOfProfile
         self.host = host; self.configuration = configuration
         baselineThreadSettings = ThreadSettingsSnapshot(configuration)
         session = plugin.makeSettingsSession(load: { [weak self] refresh in
@@ -181,10 +183,16 @@ public final class NativeHarnessSettingsSurface {
         if case .thread = configuration.scope { release() }
     }
 
-    func updateSource(_ next: NativeHarnessSettingsConfiguration) throws {
+    func updateSource(_ next: NativeHarnessSettingsConfiguration, localChiefEdit: Bool = false) throws {
         try checkAuthority()
         guard next.editorIdentity == configuration.editorIdentity else { throw CancellationError() }
         guard next != configuration else { return }
+        // Only an exact local save may carry its already usable catalog across
+        // the edit. Preserve the original freshness deadline.
+        if localChiefEdit, catalogIndependentOfProfile, hasFreshPresentation {
+            configuration = next
+            return
+        }
         configuration = next; sequence += 1; lastLoad = nil
         prefetchID = nil; loadingSequence = nil; executionSnapshotError = nil
         session.sourceChanged()

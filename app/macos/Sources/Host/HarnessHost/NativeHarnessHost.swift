@@ -267,14 +267,19 @@ public final class NativeHarnessHost {
 
     /// Evict removed workspaces/scopes, without retaining every previous cwd.
     public func retainGlobalSettings(configurations: [NativeHarnessSettingsConfiguration],
-                                     availablePreviews: [NativeHarnessSettingsConfiguration] = []) {
+                                     availablePreviews: [NativeHarnessSettingsConfiguration] = [],
+                                     submittedChiefProfiles: [JSONText: JSONValue] = [:]) {
         let allowed = configurations + availablePreviews
         let sources = Dictionary(uniqueKeysWithValues: allowed.map { ($0.editorIdentity, $0) })
         settingsLifetime.configurations = configurations
         allowedGlobalSettings = sources
         for (identity, surface) in globalSettingsSurfaces {
             // Fence an outstanding preview even when its editor is unmounted.
-            if let source = sources[identity] { try? surface.updateSource(source) }
+            if let source = sources[identity] {
+                let localChiefEdit = source.scope == .global(executionOwner: .moku)
+                    && submittedChiefProfiles[source.harnessID] == source.source
+                try? surface.updateSource(source, localChiefEdit: localChiefEdit)
+            }
             else { surface.release() }
         }
     }

@@ -127,6 +127,10 @@ public final class NativeWorkspaceModel {
         model.receive(snapshot: state, runtimeAvailable: runtimeAvailable)
         model.activeHostHarnessID = catalog.moku?.harnessID.string
         model.mokuRunning = catalog.executions.contains { $0["threadId"] == catalog.moku.map { .string($0.id) } }
+        model.draft.onSavedSettingsChange = { [weak self] submitted in
+            guard let self else { return }
+            self.settingsPrefetch.update(workspace: self, submittedChiefProfiles: submitted?["moku"]?["executionHarnesses"]?.objectValue ?? [:])
+        }
         return model
     }
 

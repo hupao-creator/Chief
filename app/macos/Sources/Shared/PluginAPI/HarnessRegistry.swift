@@ -96,6 +96,7 @@ private final class HarnessProjectionCache<Plugin: HarnessPlugin> {
 public final class AnyHarnessPlugin {
     public let descriptor: HarnessPluginDescriptor
     public private(set) lazy var logoSource = loadLogoSource()
+    public let executionCatalogIndependentOfProfile: Bool
     public let themeColor: Color?
     public private(set) lazy var translations = loadTranslations()
     private let loadLogoSource: () -> String
@@ -112,6 +113,7 @@ public final class AnyHarnessPlugin {
 
     public init<P: HarnessPlugin>(_ plugin: P) {
         readingPrefetchScopes = { plugin.readingPrefetchScopes(input: $0) }
+        executionCatalogIndependentOfProfile = plugin.executionCatalogIndependentOfProfile
         descriptor = plugin.descriptor
         loadLogoSource = { plugin.logoSource }
         loadTranslations = { plugin.translations }

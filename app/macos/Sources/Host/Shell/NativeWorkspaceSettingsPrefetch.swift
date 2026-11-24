@@ -15,7 +15,7 @@ final class NativeWorkspaceSettingsPrefetch {
 
     init(host: NativeHarnessHost) { self.host = host }
 
-    func update(workspace: NativeWorkspaceModel) {
+    func update(workspace: NativeWorkspaceModel, submittedChiefProfiles: [JSONText: JSONValue] = [:]) {
         guard workspace.runtimeAvailable else { stop(); return }
         host.setSettingsAvailable(true)
         let model = workspace.settingsModel
@@ -69,7 +69,7 @@ final class NativeWorkspaceSettingsPrefetch {
             host.releaseGlobalSettings(harnessID: JSONText(id))
         }
         configurations = next; availablePreviews = previews; refreshSequences = sequences; authority = workspace.snapshotAuthority
-        host.retainGlobalSettings(configurations: next, availablePreviews: previews)
+        host.retainGlobalSettings(configurations: next, availablePreviews: previews, submittedChiefProfiles: submittedChiefProfiles)
         for configuration in next where tasks[configuration] == nil {
             tasks[configuration] = Task { [host] in
                 while !Task.isCancelled {
