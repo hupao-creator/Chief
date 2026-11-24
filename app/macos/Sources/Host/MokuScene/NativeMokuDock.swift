@@ -340,8 +340,8 @@ public struct NativeMokuDock: View {
             && !state.inputOpen && interaction == nil && !state.dockCovered
     }
     private var inputSuppressesRunningFeedback: Bool {
-        // Agent detail owns its persistent editor during travel and the Harness
-        // flip, before inputOpen can become true. That wait is not a closed input.
+        // Agent detail owns its persistent editor during travel and logo placement,
+        // before inputOpen can become true.
         state.inputOpen || state.inputPinnedOpen
     }
     private var runningFeedback: Bool {
@@ -982,10 +982,12 @@ public struct NativeMokuDock: View {
             // eyes a layout pass after the glass has already changed size.
             let generation = state.composerGeneration
             let returning = state.readingPanelReturning
+            let showsHarness = threadID != nil && !state.settingsOpen && !returning
             NativeMokuDockIdentity(harness: threadHarness,
-                showsHarness: threadID != nil && !state.settingsOpen && !returning,
+                showsHarness: showsHarness,
                 entranceReady: state.inputAdmissionReady, generation: generation,
-                animation: state.windowVisible && !reduceMotion ? .linear(duration: NativeReadingPageTiming.duration) : nil,
+                animation: state.windowVisible && !reduceMotion
+                    ? .linear(duration: showsHarness ? NativeReadingPageTiming.duration : 0.32) : nil,
                 onSettled: { state.completeInputIdentity(generation: generation) }) {
                 face(characterInput)
             }

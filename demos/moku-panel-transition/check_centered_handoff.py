@@ -47,7 +47,7 @@ def check(positions):
             unresolvedFrames=[int(r["frame"]) for r in leg if r["candidate"] == "unresolved"],
             minimumClearancePt=min((float(r["clearance"]) for r in visible), default=None),
             intermediateWidths=intermediate,
-            passed=sequence == roles and bool(tilted) and not escaped and intermediate >= 3,
+            passed=sequence == roles and bool(tilted) == (direction == "return") and not escaped and intermediate >= 3,
         )
     compact = all(150 <= width <= 168 for width in (widths[0], widths[-1]))
     expanded = 540 <= widths[peak] <= 560

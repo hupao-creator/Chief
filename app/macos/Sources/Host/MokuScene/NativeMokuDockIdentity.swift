@@ -89,7 +89,9 @@ struct NativeMokuDockIdentity<Face: View>: View {
         pendingCompletion = showsHarness && request.entranceReady ? onSettled : nil
         nextMark = nil
         let target = showsHarness && !request.entranceReady ? destination ?? .eyes : initialMark
-        if destination == nil || request.immediate {
+        // On entry (including a reopened fold), seat the logo face-on before expanding the editor.
+        let enteringHarness = showsHarness && request.entranceReady && destination?.identity == .moku
+        if destination == nil || request.immediate || enteringHarness {
             transitionGeneration &+= 1
             var transaction = Transaction(animation: nil)
             transaction.disablesAnimations = true

@@ -160,7 +160,7 @@ replay_app="$(cat .build/moku-panel-evidence/app-path.txt)"
 
 A nonactivating panel starts with the Report list's input gate closed. Selecting
 a fixture execution publishes the right column through the production native
-marker and waits for Dock travel and the Codex identity flip before expanding
+marker and waits for Dock travel and placement of the upright Codex logo before expanding
 the composer. The replay checks that the list and moving Dock have no editor,
 that the selected column admits one editor, and that returning to the list
 and reselecting releases and restores input. Pass `--narrow` to exercise the
@@ -334,11 +334,10 @@ python3 demos/moku-panel-transition/workspace/check_report_identity.py /private/
 python3 demos/moku-panel-transition/workspace/check_report_identity.py /private/tmp/report-identity/identity-reduced --reduced
 ```
 
-The checker measures every encoded frame against the movie PTS. For each half turn it uses the
-nearby full height of that face and measures the interval between thin and full projection.
-Each face must show thin and intermediate projections and at least four distinct tilted heights
-across 90ms. Corresponding legs must agree within 85ms. The return must cross the edge during
-contraction, and reopening must show the partially revealed eyes narrowing back toward the logo.
+The checker measures every encoded frame against the movie PTS. The logo must appear
+at full height on entry and on reopening an interrupted fold. During a completed fold,
+each face must show thin and intermediate projections and at least four distinct tilted
+heights across 90ms. The mark must cross the edge while the shell is contracting.
 The reduced-motion visit checks endpoint widths and a full logo in either direction.
 
 The [window recordings and frame evidence](evidence/bar-motion/README.md) include the baseline and the two measured directions.
@@ -395,7 +394,7 @@ python3 demos/moku-panel-transition/check_centered_handoff.py window.mp4 positio
 
 The checker measures both directions independently on either side of the widest
 reader frame. It requires intermediate glass widths, the eyes and logo in
-sequence, and a visibly tilted logo on each leg. It reports any localized ink
+sequence, an upright logo on entry and a visibly tilted logo during the fold. It reports any localized ink
 more than 2pt outside the capsule and saves all frame positions. Inspect the
 listed unresolved frames for an edge-on flip, blink or occlusion.
 
