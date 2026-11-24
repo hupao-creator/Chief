@@ -172,7 +172,7 @@ private struct HeaderGlassFixture: View {
                 let views = images.map { readFaceColors($0, ids: ids, frames: buttonFrames) }
                 let results = try [(0, 0, 1), (1, 1, 2)].map { index, selected, idle in
                     let id = ids[index]
-                    var result = try tintResult(id: id, selected: views[selected], idle: views[idle], hue: id == blue.id ? .blue : .copper)
+                    var result = try tintResult(id: id, selected: views[selected], idle: views[idle], hue: id == blue.id ? .blue : .gold)
                     if id == blue.id, let face = views[idle][id] {
                         let (count, fraction) = preservedEmoji(selected: images[selected], idle: images[idle], frame: bounds[index], idleFace: face)
                         result["emojiInkPixels"] = count
@@ -198,7 +198,7 @@ private struct HeaderGlassFixture: View {
     try save("passed")
 }
 
-private enum TintHue: String { case copper, blue, green, warm, neutral }
+private enum TintHue: String { case gold, blue, green, warm, neutral }
 
 private func readFaceColors(_ pixels: NSBitmapImageRep, ids: [String], frames: [String: CGRect]) -> [String: [Double]] {
     Dictionary(uniqueKeysWithValues: ids.compactMap { id in
@@ -212,7 +212,7 @@ private func tintResult(id: String, selected: [String: [Double]], idle: [String:
     let r = delta[0], g = delta[1], b = delta[2]
     let visible = delta.contains { abs($0) > 0.035 }
     let pairedHue: Bool = switch hue {
-    case .copper: r - g > 0.035 && g - b > 0.025
+    case .gold: r - g > 0.015 && g - b > 0.035
     case .blue: b - r > 0.04 && b - g > 0.02 && g > r
     case .green: g - r > 0.025 && g - b > 0.04
     case .warm: r - b > 0.03 && g - b > 0

@@ -139,7 +139,7 @@ measurements, the title's luminance difference from the chip face and the
 spacing between adjacent controls. On fixed neutral backgrounds it clicks
 each top and side control and compares the same part of its glass face across
 selections, away from the glyph, badge and rim. The top folder shifts toward
-the copper-orange accent. The selected top-level Inbox tag takes its blue tint
+the muted gold accent. The selected top-level Inbox tag takes its blue tint
 from 🔵. The left rail checks warm, blue and green semantic emoji tints.
 Blue and green semantic emoji
 have distinct tints, the hourglass and dividers have warm tints and the

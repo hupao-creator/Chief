@@ -374,8 +374,8 @@ its most common hue cluster. When colored detail covers less than one sixth
 of the visible glyph, the tint uses its average luminance as a neutral gray,
 limited to the range 0.30–0.72.
 This keeps the 🏁 status tint neutral. Top folder buttons and glyphs that
-yield no visible sample use the Overview copper accent (#C87856 in light
-appearance and #E5A384 in dark appearance). Tag emoji supply the other
+yield no visible sample use the Overview muted gold accent (#BEA679 in light
+appearance and #D8BF8E in dark appearance). Tag emoji supply the other
 tag colors and keep their original colors when displayed.
 [Emoji tint sampling](NativeOverviewTagTint.swift).
 The [header glass replay](../../../../../demos/moku-landing/verify_header.py)
