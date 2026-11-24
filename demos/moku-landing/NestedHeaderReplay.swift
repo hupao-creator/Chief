@@ -539,6 +539,24 @@ private final class WheelSample: NSEvent {
             try await Task.sleep(for: .seconds(2))
             _ = try await captureViewport("from-compose")
             try await dismiss()
+
+            // Interrupt before the transcript settles. A fresh swipe is admitted
+            // as soon as Overview releases the retiring editor.
+            let pointToReopen = barPoint()
+            try await postScroll(window, pointToReopen, y: 42, phase: .began)
+            try await postScroll(window, pointToReopen, y: 0, phase: .ended)
+            guard scene.conversationOpen else { throw ReplayError("Interrupted visit did not open") }
+            try await postClick(window, at: outside)
+            guard !scene.conversationOpen else { throw ReplayError("Interrupted visit did not close") }
+            let deadline = ContinuousClock.now + .seconds(2)
+            while scene.inputLeaving {
+                guard ContinuousClock.now < deadline else { throw ReplayError("Editor did not finish folding") }
+                try await Task.sleep(for: .milliseconds(16))
+            }
+            try await open()
+            try await Task.sleep(for: .milliseconds(550))
+            _ = try await captureViewport("interrupted-reopen")
+            try await dismiss()
         }
         // Vision can occupy the main thread for an entire fold. Analyze the
         // captured windows once recording and input delivery have finished.

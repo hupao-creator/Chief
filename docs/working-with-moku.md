@@ -46,7 +46,7 @@ After a successful removal, the checkout folder is gone. The task conversation s
 
 ## Find Chief's replies and notes
 
-In Overview, swipe up with two fingers over Chief’s eyes to read your conversation. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see the time beside each message, swipe left in the conversation and hold. Release to tuck the times away.
+In Overview, swipe up with two fingers over Chief’s eyes to read your conversation. The eyes move beside the input, and the conversation opens above it. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see the time beside each message, swipe left in the conversation and hold. Release to tuck the times away.
 
 Each time you open the panel, you can see the end of the latest message once the messages load. Scroll up to read earlier messages. Your place stays put as new replies arrive while you’re reading further up. At the top of a page, **Earlier messages** takes you further back. **Newer messages** at the bottom takes you forward. A larger gap marks a change of speaker.
 

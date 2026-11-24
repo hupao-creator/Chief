@@ -157,8 +157,9 @@ content revision and window shrink must preserve the native vertical offset.
 `conversation-opening.mp4` records the opening and outside-click dismissal.
 The compact-editor visit includes a two-second reading pause before dismissal.
 Inspect consecutive frames for both eyes staying inside the bottom row as they
-blink and travel between the center and editor seats. All three folds should
-show intermediate positions with the transcript clear of the composer.
+blink and travel between the center and editor seats. The replay also interrupts an opening with an outside click and swipes again
+as soon as the editor finishes folding. Check intermediate eye positions and a clear composer on
+each visit. The reopened viewport must show the final line.
 `source.json` binds the run to the source and `conversation-opening.json`
 records the scroll measurements. The fixture uses cached pages and delivers
 deterministic revisions through the client event stream. The event and

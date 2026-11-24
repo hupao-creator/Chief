@@ -3,6 +3,8 @@ import ChiefPluginAPI
 import ChiefPluginUI
 import SwiftUI
 
+private let composerRevealStart: CGFloat = 0.9
+
 /// The editor uses its final layout throughout the morph. Reveal it in the
 /// last part of the shell's own travel, once the identity has cleared the row.
 private struct ComposerInk: ViewModifier, @preconcurrency Animatable {
@@ -15,10 +17,42 @@ private struct ComposerInk: ViewModifier, @preconcurrency Animatable {
         set { expansion = newValue }
     }
     func body(content: Content) -> some View {
-        let opacity = min(1, max(0, (expansion - 0.9) / 0.1))
+        let opacity = min(1, max(0, (expansion - composerRevealStart) / (1 - composerRevealStart)))
         content.opacity(opacity)
             .onChange(of: opacity >= 0.1 ? autofocusGeneration : nil, initial: true) { _, generation in
                 if let generation { requestFocus(generation) }
+            }
+    }
+}
+
+/// The first lazy transcript layout can occupy the fast part of the shell
+/// animation. Admit it with editor ink, once the leading eye seat is clear.
+/// Keep that admission for the visit so resizing preserves the reader.
+private struct ConversationViewport: View {
+    let client: RuntimeClient
+    let owner: JSONText
+    let size: CGSize
+    let rowHeight: CGFloat
+    @State private var admitted = false
+
+    var body: some View {
+        Color.clear
+            .allowsHitTesting(false)
+            .onGeometryChange(for: Bool.self) { shell in
+                let idleWidth = min(size.width, NativeMokuCapsuleLayout.idleSize.width)
+                return shell.size.width >= idleWidth + (size.width - idleWidth) * composerRevealStart
+            } action: { ready in
+                if ready { admitted = true }
+            }
+            .overlay(alignment: .bottom) {
+                if admitted {
+                    NativeMokuConversation(client: client, owner: owner)
+                        .frame(width: size.width, height: size.height)
+                        .transaction(value: size) { $0.animation = nil }
+                        .geometryGroup()
+                        .offset(y: -rowHeight)
+                        .transition(.identity)
+                }
             }
     }
 }
@@ -895,14 +929,8 @@ public struct NativeMokuDock: View {
             ZStack {
                 if conversationVisible, let workspace = presentation?.workspace, let owner = workspace.catalog.moku?.id {
                     let viewport = CGSize(width: width, height: max(0, surface.height - rowHeight))
-                    NativeMokuConversation(client: workspace.client, owner: owner)
+                    ConversationViewport(client: workspace.client, owner: owner, size: viewport, rowHeight: rowHeight)
                         .id(owner)
-                        // Lay out the transcript at its reading size and reveal it
-                        // from the composer edge as the shell grows around it.
-                        .frame(width: viewport.width, height: viewport.height)
-                        .transaction(value: viewport) { $0.animation = nil }
-                        .geometryGroup()
-                        .offset(y: -rowHeight)
                         .transition(.identity)
                 }
             }
