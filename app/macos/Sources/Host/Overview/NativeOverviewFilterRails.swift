@@ -83,6 +83,7 @@ private struct OverviewSemanticRailButton: View, @MainActor Animatable {
                 OverviewSemanticLabelLayout(maximumWidth: maximumWidth, expansion: progress) {
                     glyph.accessibilityHidden(true)
                     OverviewTagTitle(title: title)
+                        .modifier(OverviewRailLabelEdge())
                         .opacity(progress)
                 }
                 .clipped()
@@ -103,6 +104,21 @@ private struct OverviewSemanticRailButton: View, @MainActor Animatable {
                 .background { if hasActiveTasks { OverviewTagActivityIndicator(diameter: 36) } }
         } else {
             Image(systemName: "asterisk").font(.system(size: 17, weight: .semibold))
+                .modifier(OverviewRailLabelEdge())
+        }
+    }
+}
+
+// A clear chip can lie over white even in Dark Mode. Keep the edge centered
+// on monochrome ink so there is no displaced copy of the glyph.
+private struct OverviewRailLabelEdge: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if scheme == .dark {
+            content.shadow(color: .black.opacity(0.9), radius: 0.75)
+        } else {
+            content
         }
     }
 }

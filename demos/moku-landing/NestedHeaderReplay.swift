@@ -303,51 +303,6 @@ private final class WheelSample: NSEvent {
         return button
     }
 
-    // Sample four independent edges of the rendered capsule, outside its glyph.
-    // Overview's selection accent is green in both system appearances.
-    private func checkOutlines(_ expected: [String: Bool], in image: URL, window: NSWindow) throws -> [String: Int] {
-        guard let pixels = NSBitmapImageRep(data: try Data(contentsOf: image)) else {
-            throw ReplayError("Cannot read outline screenshot")
-        }
-        let scale = CGFloat(pixels.pixelsWide) / window.frame.width
-        var matches = [String: Int]()
-        for (id, selected) in expected {
-            let bounds = window.convertFromScreen(try filterButton(id, in: window).frame)
-            let edges = (1...3).map { index in
-                let inset = CGFloat(index) / scale
-                // In the isolated Runtime fixture its connection notice covers the
-                // upper half of the directory row. Sample its exposed lower curve.
-                if id.hasPrefix("directory:") || id == "overview-directory-all" {
-                    let radius = bounds.height / 2
-                    let diagonal = (radius - inset) / sqrt(2)
-                    return [CGPoint(x: bounds.minX + radius - diagonal, y: bounds.midY - diagonal),
-                            CGPoint(x: bounds.maxX - radius + diagonal, y: bounds.midY - diagonal),
-                            CGPoint(x: bounds.minX + radius, y: bounds.minY + inset),
-                            CGPoint(x: bounds.maxX - radius, y: bounds.minY + inset)]
-                }
-                return [CGPoint(x: bounds.minX + inset, y: bounds.midY),
-                        CGPoint(x: bounds.maxX - inset, y: bounds.midY),
-                        CGPoint(x: bounds.midX, y: bounds.minY + inset),
-                        CGPoint(x: bounds.midX, y: bounds.maxY - inset)]
-            }
-            let greenEdges = (0..<4).filter { edge in
-                edges.contains { row in
-                    let point = row[edge]
-                    guard let color = pixels.colorAt(x: Int(point.x * scale),
-                        y: Int((window.frame.height - point.y) * scale))?.usingColorSpace(.sRGB) else { return false }
-                    return color.greenComponent - color.redComponent > 0.16
-                        && color.blueComponent - color.redComponent > 0.09
-                        && color.greenComponent - color.blueComponent > 0.025
-                }
-            }.count
-            guard selected ? greenEdges >= 3 : greenEdges <= 1 else {
-                throw ReplayError("Selection outline mismatch in \(image.lastPathComponent) for \(id): frame=\(bounds), selected=\(selected), accentEdges=\(greenEdges)")
-            }
-            matches[id] = greenEdges
-        }
-        return matches
-    }
-
     private func checkGlyphInk(_ id: String, centerInset: CGFloat? = nil, in image: URL, window: NSWindow) throws {
         guard let pixels = NSBitmapImageRep(data: try Data(contentsOf: image)) else {
             throw ReplayError("Cannot read glyph screenshot")
@@ -897,6 +852,21 @@ private final class WheelSample: NSEvent {
         func logoImage(_ identifier: String) -> NSImageView? {
             descendant(NSImageView.self, in: content) { $0.accessibilityIdentifier() == identifier }
         }
+        var selectedFaces = [String: [Double]](), idleFaces = [String: [Double]]()
+        func readFaces(_ expected: [String: Bool], in image: URL) throws -> [String: [Double]] {
+            guard let pixels = NSBitmapImageRep(data: try Data(contentsOf: image)) else {
+                throw ReplayError("Cannot read mounted filter faces")
+            }
+            var faces = [String: [Double]]()
+            for (id, selected) in expected {
+                let frame = window.convertFromScreen(try filterButton(id, in: window).frame)
+                let top = CGRect(x: frame.minX, y: window.frame.height - frame.maxY, width: frame.width, height: frame.height)
+                let rgb = filterFaceRGB(pixels, at: top, scale: CGFloat(pixels.pixelsWide) / window.frame.width)
+                faces[id] = rgb
+                if selected { selectedFaces[id] = rgb } else { idleFaces[id] = rgb }
+            }
+            return faces
+        }
         func emptyCopy(_ mode: NativeOverviewStatusFilter) -> [String] {
             mode == .running
                 ? [workspace.locale.text("没有运行中的会话", "No running conversations"),
@@ -977,14 +947,14 @@ private final class WheelSample: NSEvent {
                 if expectsIdle || expectsCompletedLogo || checkCompletedCopy { try await Task.sleep(for: .milliseconds(450)) }
                 try await capture(window, to: url)
                 if ["all", "down", "up", "directory-any"].contains(name) {
-                    var expectedRings = Dictionary(uniqueKeysWithValues: [NativeOverviewStatusFilter.running, .all, .completed].map {
+                    var expectedFaces = Dictionary(uniqueKeysWithValues: [NativeOverviewStatusFilter.running, .all, .completed].map {
                         ("overview-status-" + $0.rawValue, $0 == mode)
                     })
-                    expectedRings["overview-directory-all"] = selected.isEmpty
+                    expectedFaces["overview-directory-all"] = selected.isEmpty
                     if let folder = tags.first(where: { $0.scope == "/fixture" }) {
-                        expectedRings[folder.id] = selected == folder.tag
+                        expectedFaces[folder.id] = selected == folder.tag
                     }
-                    sample["accentEdges"] = try checkOutlines(expectedRings, in: url, window: window)
+                    sample["faceRGB"] = try readFaces(expectedFaces, in: url)
                 }
                 if expectsIdle || expectsCompletedLogo {
                     sample["emptyText"] = try checkStatusText(in: url, expected: emptyCopy(mode))
@@ -1270,9 +1240,9 @@ private final class WheelSample: NSEvent {
             if CommandLine.arguments.contains("--capture") {
                 let url = directory.appending(path: name + ".png")
                 try await capture(window, to: url)
-                sample["accentEdges"] = try checkOutlines(Dictionary(uniqueKeysWithValues: ids.map {
+                sample["faceRGB"] = try readFaces(Dictionary(uniqueKeysWithValues: ids.map {
                     ($0, $0 == model.selectedFilter?.id)
-                }), in: url, window: window)
+                }), in: url)
                 try checkGlyphInk("overview-semantic-any", in: url, window: window)
                 let visible = Array(expanded.values)
                 sample["visibleTitles"] = try checkStatusText(in: url, expected: visible,
@@ -1316,13 +1286,50 @@ private final class WheelSample: NSEvent {
         try await Task.sleep(until: first + .seconds(2))
         let second = ContinuousClock.now
         try await activate(.semantic, shortChild.id)
-        try await Task.sleep(until: second + .milliseconds(4550))
+        // Encoding and reading a screenshot can occupy the main actor. Finish
+        // the image check well before the deadline, then sample only AX geometry.
+        try await Task.sleep(until: second + .seconds(1))
         try await observe("second-selection", expanded: [shortChild.id: "Design"])
-        try await Task.sleep(until: second + .milliseconds(5500))
+        let expandedWidth = try filterButton(shortChild.id, in: window).frame.width
+        try await Task.sleep(until: second + .milliseconds(4550))
+        let nearDeadline = try filterButton(shortChild.id, in: window).frame.width
+        guard abs(nearDeadline - expandedWidth) <= 0.5 else {
+            throw ReplayError("Second title shortened before its own five-second deadline")
+        }
+        var timing = [[String: Double]](), firstShrink: Double?, settled: Double?
+        var compactSamples = 0
+        while ContinuousClock.now < second + .milliseconds(6200) {
+            let width = try filterButton(shortChild.id, in: window).frame.width
+            let elapsed = second.duration(to: .now).components
+            let ms = Double(elapsed.seconds) * 1_000 + Double(elapsed.attoseconds) / 1e15
+            timing.append(["milliseconds": ms, "width": width])
+            if firstShrink == nil, expandedWidth - width > 0.5 { firstShrink = ms }
+            compactSamples = abs(width - side) < 0.01 ? compactSamples + 1 : 0
+            if compactSamples == 2 { settled = ms; break }
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        guard let firstShrink, (4950...5350).contains(firstShrink), let settled else {
+            throw ReplayError("Title missed the five-second collapse or did not settle at 42pt: \(timing)")
+        }
         try await observe("compact-filters", expanded: [:])
+        func waitForHoverMotion(expanded: Bool) async throws {
+            var previous: CGFloat?
+            var stable = 0
+            let deadline = ContinuousClock.now + .seconds(1)
+            while ContinuousClock.now < deadline {
+                let width = try filterButton(longChild.id, in: window).frame.width
+                let reached = expanded ? width > side + 1 : abs(width - side) < 0.01
+                stable = reached && previous == width ? stable + 1 : 0
+                if stable >= 2 { return }
+                previous = width
+                try await Task.sleep(for: .milliseconds(40))
+            }
+            throw ReplayError("Hover title did not settle after pointer motion")
+        }
         let hoverFrame = try filterButton(longChild.id, in: window).frame
         let hover = window.convertPoint(fromScreen: CGPoint(x: hoverFrame.midX, y: hoverFrame.midY))
         try await pointAt(hover)
+        try await waitForHoverMotion(expanded: true)
         try await observe("hovered-tag", expanded: [longChild.id: "Customer"])
         let expandedTitle = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
         if captureFilters {
@@ -1335,6 +1342,7 @@ private final class WheelSample: NSEvent {
             brightCaptureBackdrop = false
         }
         try await pointAt(away)
+        try await waitForHoverMotion(expanded: false)
         try await observe("pointer-left", expanded: [:])
 
         try await activate(.semantic, compactFolder.id)
@@ -1353,6 +1361,7 @@ private final class WheelSample: NSEvent {
         presentation.showOverview()
         try await Task.sleep(for: .milliseconds(700))
         try await pointAt(hover)
+        try await waitForHoverMotion(expanded: true)
         let expandedBounds = window.convertFromScreen(try filterButton(longChild.id, in: window).frame)
         guard expandedBounds.contains(titlePoint) else { throw ReplayError("Hovered title did not reach the click") }
         try click(window, at: titlePoint)
@@ -1365,9 +1374,18 @@ private final class WheelSample: NSEvent {
             "underlyingCard": underlyingID, "gapPoint": [gap.x, gap.y], "capsulePoint": [chip.x, chip.y],
             "cardViewport": [canvas.cardRegionInWindow.minX, canvas.cardRegionInWindow.width],
             "tagTitlePoint": [titlePoint.x, titlePoint.y], "cardBeneathTitle": underLabel.id,
-            "statusAccessibilityLabels": statusLabels.map(\.1), "labelPhases": phases]
+            "statusAccessibilityLabels": statusLabels.map(\.1), "labelPhases": phases,
+            "secondSelectionWidths": timing, "firstShrinkMilliseconds": firstShrink, "settledMilliseconds": settled]
         samples.append(compact)
         if captureFilters {
+            let switched = ["overview-directory-all", compactFolder.id, longChild.id, shortChild.id]
+                + statusLabels.map { "overview-status-" + $0.0 }
+            for id in switched {
+                guard let tint = selectedFaces[id], let idle = idleFaces[id],
+                      zip(tint, idle).contains(where: { abs($0 - $1) > 0.025 }) else {
+                    throw ReplayError("Switching the filter left its glass face unchanged: " + id)
+                }
+            }
             // The stacked header places the directory glyph below the connection
             // notice so the same bright-surface sample includes its visible title.
             window.setContentSize(CGSize(width: 600, height: 600))
