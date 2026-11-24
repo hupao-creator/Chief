@@ -103,7 +103,7 @@ private struct OverviewSemanticRailButton: View, @MainActor Animatable {
             Text(verbatim: emoji).font(.system(size: 19)).fixedSize()
                 .background { if hasActiveTasks { OverviewTagActivityIndicator(diameter: 36) } }
         } else {
-            Image(systemName: "asterisk").font(.system(size: 17, weight: .semibold))
+            OverviewAllTagGlyph()
                 .modifier(OverviewRailLabelEdge())
         }
     }

@@ -212,6 +212,7 @@ public struct NativeOverviewChrome: View {
                 onTagChange(nil)
             } label: {
                 HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
+                    OverviewAllTagGlyph().accessibilityHidden(true)
                     OverviewTagTitle(title: strings.all)
                 }
                 .padding(.horizontal, OverviewTagMetrics.chipLabelInset)
@@ -328,6 +329,12 @@ struct OverviewTagUnreadBadge: View {
             .fixedSize()
             .padding(.trailing, 5).offset(y: -3.5)
             .allowsHitTesting(false).accessibilityHidden(true)
+    }
+}
+
+struct OverviewAllTagGlyph: View {
+    var body: some View {
+        Image(systemName: "asterisk").font(.system(size: 17, weight: .semibold))
     }
 }
 
