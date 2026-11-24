@@ -77,15 +77,27 @@ struct NativeMokuConversationSend {
 struct NativeMokuConversation: View {
     let presentation: NativeMokuWorkspacePresentation
     let owner: JSONText
+    let readingSize: CGSize
+    @State private var showsRows = false
     @State private var cursors: [JSONText] = []
     @Environment(\.locale) private var locale
 
     var body: some View {
-        VStack(spacing: 0) {
-            ConversationMessages(presentation: presentation, owner: owner, before: cursors.last, chinese: chinese,
-                                 showEarlier: { cursors.append($0) }, showNewer: { _ = cursors.popLast() })
-                .id(cursors.last)
-            Divider().reportMokuConversationHeight()
+        Color.clear.overlay(alignment: .bottom) {
+            VStack(spacing: 0) {
+                ConversationMessages(presentation: presentation, owner: owner, before: cursors.last, chinese: chinese,
+                                     showsRows: showsRows, showEarlier: { cursors.append($0) }, showNewer: { _ = cursors.popLast() })
+                    .id(cursors.last)
+                Divider().reportMokuConversationHeight()
+            }
+            .frame(width: readingSize.width, height: readingSize.height)
+        }
+        // Start the subscription on entry. Give the glass its first visible movement
+        // before laying out selectable text. An already expanded editor is ready at once.
+        .onGeometryChange(for: Bool.self) { shell in
+            shell.size.width >= min(readingSize.width, NativeMokuCapsuleLayout.idleSize.width + 24)
+        } action: { widening in
+            if widening { showsRows = true }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(chinese ? "与 Chief 的对话" : "Conversation with Chief")
@@ -101,6 +113,7 @@ private struct ConversationMessages: View {
     let owner: JSONText
     let before: JSONText?
     let chinese: Bool
+    let showsRows: Bool
     let showEarlier: (JSONText) -> Void
     let showNewer: () -> Void
     @State private var page: NativeMokuConversationPage?
@@ -112,7 +125,7 @@ private struct ConversationMessages: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if failure == nil, let page = displayedPage, !page.messages.isEmpty {
+            if showsRows, failure == nil, let page = displayedPage, !page.messages.isEmpty {
                 NativeMokuConversationTimeline(page: page, showEarlier: showEarlier, showNewer: before == nil ? nil : showNewer)
             } else {
                 VStack(spacing: 0) {
@@ -154,10 +167,10 @@ private struct ConversationMessages: View {
                 Text(chinese ? "无法读取消息" : "Couldn’t load messages").help(failure)
                 Button(chinese ? "重试" : "Try again") { retry += 1 }
             }
-        } else if page != nil {
+        } else if page?.messages.isEmpty == true {
             Text(chinese ? "还没有消息" : "No messages yet")
                 .font(.callout).foregroundStyle(.secondary)
-        } else if disconnected {
+        } else if disconnected, page == nil {
             Text(chinese ? "重新连接以读取消息" : "Reconnect to load messages")
                 .font(.callout).foregroundStyle(.secondary)
         } else {

@@ -166,6 +166,8 @@ clip against the document bottom and saves its window-relative bounds with
 each capture. Vision checks the final line against those bounds after recording,
 outside the input and animation sequence. A new contact scrolls back, then a
 content revision and window shrink must preserve the native vertical offset.
+Scrolling to the beginning must reveal the first message. The earlier and newer
+page controls must reach the preceding page and return to the newest reply.
 
 `conversation-opening.mp4` records the opening and outside-click dismissal.
 The compact-editor visit includes a two-second reading pause before dismissal.
@@ -177,6 +179,24 @@ each visit. The reopened viewport must show the final line.
 records the scroll measurements. The fixture uses cached pages and delivers
 deterministic revisions through the client event stream. The event and
 recording checks cover the mounted workspace on macOS.
+
+For the opening measurements, use a fresh output directory for each run.
+The runner builds the current Release modules with testable imports under the
+shared performance and desktop leases before linking the collector.
+
+```sh
+python3 demos/moku-landing/verify_header.py --conversation-performance --output .build/bar-timings
+python3 demos/moku-landing/verify_header.py --conversation-performance --profile-opening --output .build/bar-profile
+```
+
+Each run opens a full cached page five times from the collapsed Bar in one
+isolated workspace. ScreenCaptureKit timestamps the displayed window frames.
+The clock starts before the first upward scroll event. The collector compares
+each frame with the resting Bar and the final line of the settled reply, which
+Vision locates after capture. It records the longest visible pause in the
+sampled area and intervals between main run-loop ticks. The separate profile
+samples the first visit at 1 ms intervals. The [same-machine comparison](evidence/conversation-opening/measurements.md)
+includes the workload, per-visit results and retained samples.
 
 The header replay mounts the 46.2-point production filters at the top of a
 real window in Aqua and Dark Aqua. The initial selection is the Chief folder

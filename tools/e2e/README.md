@@ -477,8 +477,10 @@ and window frame recordings supply separate evidence.
 ### Chief Bar opening
 
 The [mounted opening replay](../../demos/moku-landing/README.md#chief-bar-opening)
-checks the latest message’s visible end and retained reading position through
-the production scroll route. Its window movie supports frame-by-frame review of
+checks the latest message’s visible end, scrolls to the first message, visits
+the earlier page and returns through the production scroll route. It checks
+the reading position across a content revision and window resize.
+Its window movie supports frame-by-frame review of
 the eyes, composer and transcript during expansion and dismissal.
 
 ### Chief navigation

@@ -67,7 +67,7 @@ def run(binary, output, send_refresh):
         messages[0] += "\n" + "\n".join(f"核对项目 {n}" for n in range(1, 19))
     attachment = "界面标注.png"
     try:
-        replay.compile([HERE / "NestedHeaderReplay.swift", HERE / "FilterFacePixels.swift"])
+        replay.compile([HERE / "NestedHeaderReplay.swift", HERE / "FilterFacePixels.swift", HERE / "ConversationOpeningMeasurement.swift"])
         save(output / "source.json", {"commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=ROOT).strip(),
              "changes": subprocess.check_output(["git", "status", "--porcelain"], text=True, cwd=ROOT).splitlines(),
              "appSHA256": sha256(replay.executable)})
