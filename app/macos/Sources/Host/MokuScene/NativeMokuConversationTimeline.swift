@@ -26,7 +26,8 @@ struct NativeMokuConversationTimeline: View {
             let width = bounds.size.width
             ScrollViewReader { proxy in
                 ScrollView([.horizontal, .vertical]) {
-                    LazyVStack(alignment: .leading, spacing: 0) {
+                    // Measure the bounded conversation page at its rendered width before sizing the Dock.
+                    VStack(alignment: .leading, spacing: 0) {
                         if let cursor = page.before {
                             pageButton(chinese ? "较早消息" : "Earlier messages", width: width) { showEarlier(cursor) }
                                 .accessibilityIdentifier("moku-conversation-earlier")
@@ -69,9 +70,11 @@ struct NativeMokuConversationTimeline: View {
                     }
                     .frame(width: width + timeColumn, alignment: .leading)
                     .padding(.vertical, 12)
+                    .reportMokuConversationHeight()
                 }
                 .scrollIndicators(.hidden, axes: .horizontal)
                 .defaultScrollAnchor(.bottomLeading, for: .initialOffset)
+                .defaultScrollAnchor(atBottom ? .bottomLeading : nil, for: .sizeChanges)
                 .defaultScrollAnchor(.topLeading, for: .alignment)
                 .scrollPosition($position)
                 .onScrollGeometryChange(for: CGFloat.self) { min(timeColumn, max(0, $0.visibleRect.minX)) } action: { _, x in

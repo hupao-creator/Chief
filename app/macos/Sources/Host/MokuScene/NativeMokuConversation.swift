@@ -2,6 +2,22 @@ import ChiefCore
 import Foundation
 import SwiftUI
 
+/// The Dock fits the scroll document and divider before clipping the list above the editor.
+struct NativeMokuConversationHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value += nextValue() }
+}
+
+extension View {
+    func reportMokuConversationHeight() -> some View {
+        background {
+            GeometryReader { bounds in
+                Color.clear.preference(key: NativeMokuConversationHeightKey.self, value: bounds.size.height)
+            }
+        }
+    }
+}
+
 struct NativeMokuConversationPage {
     struct Message: Identifiable {
         let id: JSONText
@@ -44,7 +60,7 @@ struct NativeMokuConversation: View {
             ConversationMessages(client: client, owner: owner, before: cursors.last, chinese: chinese,
                                  showEarlier: { cursors.append($0) }, showNewer: { _ = cursors.popLast() })
                 .id(cursors.last)
-            Divider()
+            Divider().reportMokuConversationHeight()
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(chinese ? "与 Chief 的对话" : "Conversation with Chief")
@@ -68,29 +84,35 @@ private struct ConversationMessages: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            content.frame(maxWidth: .infinity, maxHeight: .infinity)
-            if before != nil, page?.messages.isEmpty != false || failure != nil {
-                // An earlier page can fail independently. Keep the return path available.
-                Button(chinese ? "较新消息" : "Newer messages", action: showNewer)
-                    .buttonStyle(.plain).font(.caption).padding(8)
+            if failure == nil, let page, !page.messages.isEmpty {
+                NativeMokuConversationTimeline(page: page, showEarlier: showEarlier, showNewer: before == nil ? nil : showNewer)
+            } else {
+                VStack(spacing: 0) {
+                    status
+                    if before != nil {
+                        // An earlier page can fail independently. Keep the return path available.
+                        Button(chinese ? "较新消息" : "Newer messages", action: showNewer)
+                            .buttonStyle(.plain).font(.caption).padding(8)
+                    }
+                }
+                .padding(.vertical, 12)
+                .fixedSize(horizontal: false, vertical: true)
+                .reportMokuConversationHeight()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .task(id: retry) { await read() }
     }
 
-    @ViewBuilder private var content: some View {
+    @ViewBuilder private var status: some View {
         if let failure {
             VStack(spacing: 8) {
                 Text(chinese ? "无法读取消息" : "Couldn’t load messages").help(failure)
                 Button(chinese ? "重试" : "Try again") { retry += 1 }
             }
-        } else if let page {
-            if page.messages.isEmpty {
-                Text(chinese ? "还没有消息" : "No messages yet")
-                    .font(.callout).foregroundStyle(.secondary)
-            } else {
-                NativeMokuConversationTimeline(page: page, showEarlier: showEarlier, showNewer: before == nil ? nil : showNewer)
-            }
+        } else if page != nil {
+            Text(chinese ? "还没有消息" : "No messages yet")
+                .font(.callout).foregroundStyle(.secondary)
         } else if disconnected {
             Text(chinese ? "重新连接以读取消息" : "Reconnect to load messages")
                 .font(.callout).foregroundStyle(.secondary)
