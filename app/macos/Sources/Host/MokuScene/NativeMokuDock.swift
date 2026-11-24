@@ -176,6 +176,8 @@ public struct NativeMokuDock: View {
         return NativeMokuTalkMessage(id: JSONText(talk), text: talk)
     }
     private var visibleTalk: NativeMokuTalkMessage? {
+        // A Report may release its Thread before its outgoing mark finishes.
+        if state.readingPanelReturning, state.harnessSeat != nil { return nil }
         guard threadID == nil, !state.inputOpen, interaction == nil, !state.dockCovered, state.dockRouteVisible,
               state.windowVisible, !disabled, !draft.submitting else { return nil }
         return state.talkPresentation.message

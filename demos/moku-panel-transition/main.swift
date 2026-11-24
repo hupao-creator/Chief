@@ -76,7 +76,8 @@ private struct Surface: View {
             if model.agentEntranceCapture {
                 NativeReadingPageStack(open: model.thread, identity: JSONText(model.readingRoute.uuidString),
                     motion: model.readingMotion, stationaryParent: true, panel: true,
-                    threadPanelMotion: true, onClose: model.finishReturn) {
+                    threadPanelMotion: true, prepareParent: { await model.scene.waitForReturningEyes() },
+                    onClose: model.finishReturn) {
                     Color(white: 0.91)
                 } front: {
                     ColumnMarker(model: model)

@@ -127,6 +127,20 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
         try require(scene.inputOpen, "Column travel or Harness admission did not finish")
     }
 
+    func travelView(_ view: NSView) -> MokuHorizontalTravelView? {
+        if let travel = view as? MokuHorizontalTravelView { return travel }
+        return view.subviews.lazy.compactMap(travelView).first
+    }
+    guard let travel = travelView(content) else { throw CollapseCaptureError(description: "Missing Dock carrier") }
+    func waitForReturn() async throws {
+        let deadline = ContinuousClock.now + .seconds(4)
+        while !scene.overviewVisible, .now < deadline { try await pause(10) }
+        // Allow AppKit to commit the new destination before sampling its layer.
+        try await pause(60)
+        while travel.presentationCorrection != .zero, .now < deadline { try await pause(10) }
+        try require(scene.overviewVisible && travel.presentationCorrection == .zero, "Dock did not reach Overview")
+    }
+
     func captureAgentVisits(_ clock: CaptureOpeningClock) async throws {
         let phase = clock.rawValue
         for (index, title) in ["短标题", "修复发送后的输入竞态与草稿丢失，检查很长的目标执行标题"].enumerated() {
@@ -146,7 +160,7 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
             event("\(phase)-close-\(index)", beginsPhase: true)
             // Capture both the retained reading panel's return and the Dock's
             // subsequent trip to idle before driving another visit.
-            try await pause(1570)
+            try await waitForReturn()
             try require(scene.overviewVisible && !scene.inputOpen && !scene.inputLeaving, "Agent return did not settle")
             try require(scene.capsuleFrame.size == NativeMokuCapsuleLayout.idleSize, "Incorrect idle shell size")
             event(clock == .heldFrames ? "overview-closed-\(index)" : "realtime-idle-\(index)")
@@ -278,16 +292,14 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
             if i == 1 {
                 try await pause(125)
                 holdMainThread("center-busy-folding")
+                await scene.waitForReturningEyes()
+                try await pause(100)
+                holdMainThread("center-busy-panel-return")
             }
-            try await pause(1100)
+            try await waitForReturn()
             try require(scene.overviewVisible && !scene.inputOpen && !scene.inputLeaving, "Centered return did not settle")
         }
         setCentered(false)
-        func travelView(_ view: NSView) -> MokuHorizontalTravelView? {
-            if let travel = view as? MokuHorizontalTravelView { return travel }
-            return view.subviews.lazy.compactMap(travelView).first
-        }
-        guard let travel = travelView(content) else { throw CollapseCaptureError(description: "Missing Dock carrier") }
         for axis in ["horizontal", "vertical"] {
             event("interrupt-\(axis)-visit", beginsPhase: true)
             enterAgent("重新展开", agentDraft, .realtime)
@@ -295,7 +307,7 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
             try await pause(550)
             closeAgent()
             event("interrupt-\(axis)-close", beginsPhase: true)
-            let deadline = ContinuousClock.now + .seconds(2)
+            let deadline = ContinuousClock.now + .seconds(4)
             func midReturn() -> Bool {
                 let point = travel.presentationCorrection
                 return scene.overviewVisible && (axis == "horizontal"
@@ -312,7 +324,7 @@ private struct CollapseCaptureError: Error, CustomStringConvertible {
                         && mounted[0].convert(mounted[0].bounds, to: content).midX > content.bounds.midX
                         && travel.presentationCorrection == .zero, "Interrupted return displaced the reopened input")
             closeAgent()
-            try await pause(1570)
+            try await waitForReturn()
         }
         // A pinned Compose command is an explicit request even during entrance.
         event("explicit-enter", beginsPhase: true)

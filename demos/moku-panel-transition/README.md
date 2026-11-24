@@ -265,7 +265,7 @@ real-time visits for focus timing at normal speed.
 
 On all four returns the checker measures from the Close marker to the first
 frame showing 10% of the width change from expanded to idle. That frame must
-fall within the first half of the 420ms panel return. Until the shell reaches
+fall within the first half of the 420ms shell fold. Until the shell reaches
 idle width, its center must stay at the source column within two points. The compact shell must then
 reach the workspace center at the reading height, then show intermediate
 heights at that fixed center. It finishes at the initial height and width.
@@ -280,9 +280,8 @@ Overview endpoint after the mark retires. On the second visit the fixture occupi
 120ms during expansion and again during folding. The marker changes before and
 after each hold. During each marked hold the checker measures shell and mark progress separately.
 The SwiftUI shell can hold its last layout while the main thread is occupied.
-The mark must stay inside the shell through the hold and subsequent fold. During the
-fold it also requires at least three positions of the reading panel’s visible
-left edge. The result includes per-frame width, mark and panel position, and
+The mark must stay inside the shell through the hold and subsequent fold. The reading panel must stay still during the fold. A separate 120ms hold
+during panel return requires at least three positions of the panel’s visible left edge. The result includes per-frame width, mark and panel position, and
 the largest interval between recorded frames. This controlled workload measures
 already-submitted motion. Attributing a stall to a particular reader operation
 requires a trace of that session.
