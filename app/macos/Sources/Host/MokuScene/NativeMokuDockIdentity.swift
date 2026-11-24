@@ -43,6 +43,10 @@ struct NativeMokuDockIdentity<Face: View>: View {
     var body: some View {
         NativeMokuIdentityFlip(progress: showingBack ? 1 : 0,
             front: artwork(front ?? (back == nil ? initialMark : nil)), back: artwork(back))
+            // The shell can resize and release its reading column in this same
+            // transaction. Its geometry curve must not accelerate the turn
+            // through the edge or change the timing of the incoming face.
+            .transaction(value: showingBack) { $0.animation = animation }
             .id(snapGeneration)
             .frame(width: NativeMokuFaceLayout.seat.width, height: NativeMokuFaceLayout.seat.height)
             .onChange(of: Request(identity: identity, entranceReady: entranceReady, generation: generation,

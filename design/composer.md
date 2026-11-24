@@ -60,7 +60,9 @@ scrollable and the shell stays within the viewport. Closing the bottom Overview
 input fades the draft as the capsule starts to fold. The native editor stays
 mounted for the 420ms return and keeps its selection for reopening.
 Returning to Overview hides the Agent composer as soon as the reading panel
-blocks input. The Harness logo flips back to Chief’s eyes as the shell contracts
+blocks input. The Harness logo turns edge-on and the eyes turn into view on the same
+420ms angular clock as entry. Reduce Motion settles either direction immediately.
+The turn starts as the shell contracts
 around the bottom center of its reading column. Once compact, it glides horizontally at the reading height until
 centered in the workspace, then rises vertically to its Overview seat.
 A centered reader only needs the lift. Closing a Super Thread with an

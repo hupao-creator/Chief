@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "tools/verification"))
 from native_replay import NativeReplay
 
 
-def capture(runtime, output):
+def capture(runtime, output, identity=False):
     output.mkdir(parents=True, exist_ok=False)
 
     def log(event, **details):
@@ -28,7 +28,7 @@ def capture(runtime, output):
     reference = {}
     finished_source = threading.Event()
     try:
-        replay.compile([Path(__file__).with_name("ReportFollowup.swift"), DEMO / "CollapseCapture.swift"])
+        replay.compile([Path(__file__).with_name("ReadingPanelClose.swift"), Path(__file__).with_name("ReportFollowup.swift"), DEMO / "CollapseCapture.swift", Path(__file__).with_name("ReportIdentity.swift")])
         save(output / "build.json", {"captureHostSHA256": sha256(replay.executable), "runtimeSHA256": sha256(runtime),
             "revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
             "productionDiff": subprocess.check_output(["git", "diff", "HEAD", "--", "app/macos/Sources"], cwd=ROOT, text=True)})
@@ -81,10 +81,12 @@ def capture(runtime, output):
         reports = wait_for(lambda: [item for item in session.runtime.state()["applicationThreads"]
             if item["ref"]["typeId"] == "report.document"], bool, 90)
         enable_reports(session, False)
-        process = session.spawn([replay.executable, session.profile, reports[0]["ref"]["threadId"], thread, execution], "report")
-        if process.wait(timeout=95):
-            raise RuntimeError((session.root / "report.txt").read_text()[-3000:])
-        shutil.copytree(replay.application.parent / "report-send", output / "report-send")
+        for scenario in (["identity", "identity-reduced"] if identity else ["report-send"]):
+            process = session.spawn([replay.executable, session.profile, reports[0]["ref"]["threadId"],
+                                     thread, execution, scenario], "report")
+            if process.wait(timeout=95):
+                raise RuntimeError((session.root / "report.txt").read_text()[-3000:])
+            shutil.copytree(replay.application.parent / scenario, output / scenario)
     finally:
         finished_source.set()
         cleanup = session.close()
@@ -98,6 +100,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path, help="a new directory for the movie and observations")
     parser.add_argument("--runtime", type=Path, default=ROOT / ".build/e2e/chief-runtime")
+    parser.add_argument("--identity", action="store_true", help="record Report entry, Close and interrupted Close")
     args = parser.parse_args()
     with lease(), native_lease():
-        capture(args.runtime.resolve(), args.output.resolve())
+        capture(args.runtime.resolve(), args.output.resolve(), args.identity)

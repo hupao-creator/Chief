@@ -1,0 +1,61 @@
+{
+  "productRevision": "a4c478899b6e3da8b46aac051ec7b125e4bc2a4b",
+  "nativeSourcesTree": "41037dff497409b6472923855f274cf0d6244b81",
+  "reportBaseline": {
+    "captureHostSHA256": "39375a432f6986ea19a6869f4deca4c363289254b0691ec29d43440c833dcbc0",
+    "runtimeSHA256": "4e6fc650975417e8623fa4ce851349876a46095d8e35c10c63f514bc1ffc244f",
+    "revision": "7657594009f4acbecb2cad24872124bee4adb33c",
+    "productionDiff": "",
+    "windowSHA256": "db85c9782f2b78139619f8f9c4c3fea866d758382da431ac4c38ad5b633a93bc"
+  },
+  "report": {
+    "captureHostSHA256": "ead281b1e989d7d0f4041398f731d42beca0999a816ed8cf74a8e843dc3337c4",
+    "runtimeSHA256": "791c4657aeeccb05db18c6be7465510431692b36bc7471d0f1b28765797b6830",
+    "revision": "a4c478899b6e3da8b46aac051ec7b125e4bc2a4b",
+    "productionDiff": ""
+  },
+  "orbit": {
+    "revision": "a4c478899b6e3da8b46aac051ec7b125e4bc2a4b",
+    "baseline": "9b61af09226e12e0c414273cf077154815e01e0a",
+    "os": "26.5.1",
+    "osBuild": "25F80",
+    "architecture": "arm64",
+    "sdk": "26.5",
+    "sourceDiffSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "executableSHA256": "167f41ce5cb12bf7ee3fafd659d34dfdb09532f7b1250b88675f67ca46919f91",
+    "collector": {
+      "Eyes.swift": "2e94057fdb5cc0b4ea16541b68b3b6ae637a737fbd2d519e9c9567fe199a013c",
+      "OrbitFade.swift": "8984c9b350eb1153a970fa3ca0e3a4c5d319290b00d3077f486873fd4c547554",
+      "Replay.swift": "5afa849b4aadd72525a68da07b541379efe420d1d5f3b86c9b2b97c70ebde444",
+      "Routes.swift": "ac48e482380b9dea3390bed2d358d5c77b878eba23d245c6bb8878b2dfe9dd7c",
+      "TagUnread.swift": "110b4b7151e2167f4aa7164fb9008a79c912364d03e903dace8e7c39c45d4263",
+      "ToolFeedback.swift": "be783788f2f74dd506a8da2e13fb8b59483f3376918fd4e019d213ede57984cc",
+      "ReplayButtons.swift": "6392c91559205d98b0e69149f3750c85c75aa58aa0daae89a444dc81a25ce737",
+      "CollapseCapture.swift": "2496544f9e41abb26bf700d117cb6db3211c1f16809c7bd7450623fdacd5416c",
+      "ReferenceNativeMokuCapsuleBlink.swift": "de5a119c95c3cf7e671f3b8089f2b9171415c69c1639b872540d7aeba4f6ee65",
+      "ReferenceNativeMokuRunningGeometry.swift": "3981ead17868505ca041a7edd04da5e7ce7c378630db9d2379760bc11f5acfb2",
+      "ReferenceNativeMokuCharacterMotion.swift": "046728bf637bf6c2577c9763e63850645f59fafa8d94871a52081d1e34466d7b",
+      "run.py": "8b65908141560ab0a26842a3ff2031b3736e480e7cdf2bd098e53acdcdc62a41"
+    }
+  },
+  "capturedMoviesSHA256": {
+    "identity/window.mp4": "c1019eaceeed7ae42e5fd4a01bd2c59feab9ab0d1c2ec68be714abf59c8729a9",
+    "orbit-gaze/window.mp4": "fb240d9096f7b2546358b8cc6e66224b5454c8737167d51ea6ee9728b1ce28ab",
+    "identity-reduced/window.mp4": "bdcda88e5319afb89c98c3778b887476d14821a1862ce8cd5af3c6af9697d0be"
+  },
+  "reportCleanupOK": true,
+  "orbitForeground": {
+    "backingScale": 2,
+    "foregroundAfter": 86235,
+    "foregroundBefore": 86235,
+    "pid": 36350
+  },
+  "agentRetry": {
+    "captureHostSHA256": "ed85bef4d2c7cecadd78b278d39e4b2c4b31760ca5ba3f3079942e9b431aaae6",
+    "cleanupOK": true,
+    "foregroundUnchanged": {
+      "close": true,
+      "reverse": true
+    }
+  }
+}

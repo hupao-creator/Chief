@@ -31,14 +31,6 @@ import SwiftUI
         }
     }
 
-    static func readingPanel(in view: NSView) -> NSView? {
-        if view.identifier?.rawValue == "agent-reading-panel-frame" { return view }
-        for child in view.subviews {
-            if let anchor = readingPanel(in: child) { return anchor }
-        }
-        return nil
-    }
-
     static func capture() async throws {
         try prepareIsolatedNativeReplay()
         let args = CommandLine.arguments
@@ -89,24 +81,6 @@ import SwiftUI
             }
             try await Task.sleep(for: .milliseconds(560))
         }
-        func pressClose() throws {
-            guard let anchor = readingPanel(in: view) else { throw PluginContractError("Missing mounted Agent panel") }
-            let frame = anchor.convert(anchor.bounds, to: nil)
-            let inset = NativeReadingPanelCloseButton.edgeInset + NativeReadingPanelCloseButton.diameter / 2
-            let point = NSPoint(x: frame.minX + inset, y: frame.maxY - inset)
-            func mouse(_ type: NSEvent.EventType) -> NSEvent {
-                NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: panel.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
-            }
-            let up = mouse(.leftMouseUp)
-            NSApp.postEvent(up, atStart: true)
-            panel.sendEvent(mouse(.leftMouseDown))
-            if NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: false) === up {
-                _ = NSApp.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true)
-                panel.sendEvent(up)
-            }
-        }
-
         for reverse in [false, true] {
             host.open(agent)
             try await waitForEditor()
@@ -138,7 +112,7 @@ import SwiftUI
             do {
                 try await Task.sleep(for: .milliseconds(450))
                 record("press Close thread")
-                try pressClose()
+                try pressReadingPanelClose(in: panel, identifier: "agent-reading-panel-frame")
                 try await wait("Close did not withdraw input") { host.messageMotion.active && !scene.inputInteractionReady }
                 if reverse {
                     try await Task.sleep(for: .milliseconds(240))
@@ -153,7 +127,7 @@ import SwiftUI
                     record("reopened editor")
                     try await Task.sleep(for: .milliseconds(260))
                     record("press Close thread again")
-                    try pressClose()
+                    try pressReadingPanelClose(in: panel, identifier: "agent-reading-panel-frame")
                 }
                 try await wait("Overview did not regain the bar") { host.selected == nil && scene.overviewVisible && !scene.inputOpen }
                 try await Task.sleep(for: .milliseconds(1150))
@@ -168,7 +142,11 @@ import SwiftUI
             let sameForeground = foreground == NSWorkspace.shared.frontmostApplication?.processIdentifier
             guard sameForeground, resting.width == 168, abs(resting.midX - view.bounds.midX) < 1,
                   host.dockDraft !== draft, host.dockDraft.text.isEmpty else {
-                throw PluginContractError("Overview handoff or window ownership changed")
+                let failure = "Overview handoff: foreground unchanged=\(sameForeground), frame=\(resting), "
+                    + "released draft=\(host.dockDraft !== draft), empty draft=\(host.dockDraft.text.isEmpty)"
+                record("failed handoff")
+                try saveObservations(failure: failure)
+                throw PluginContractError(failure)
             }
             try saveObservations()
         }
