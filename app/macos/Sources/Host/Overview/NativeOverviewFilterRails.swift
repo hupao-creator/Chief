@@ -13,12 +13,11 @@ struct NativeOverviewTagRail: View {
     var body: some View {
         ZStack(alignment: .leading) {
             if let parent, !parent.children.isEmpty {
-                OverviewFilterRail {
+                OverviewFilterRail(selectedID: selectedID) {
                     tagButton(parent, isParent: true)
                         .id(parent.id)
                     ForEach(parent.children) { child in
                         tagButton(child, isParent: false)
-                            .overviewTagAnchor(child.id)
                     }
                 }
                 // Unread ink belongs above the composed glass and follows the chip as it expands.
@@ -58,6 +57,7 @@ struct NativeOverviewTagRail: View {
             emoji: isParent ? nil : (filter.emoji.flatMap { $0.isEmpty ? nil : $0 } ?? "🏷️"),
             hasActiveTasks: !isParent && filter.hasActiveTasks, selected: filter.id == selectedID,
             recent: filter.id == recentID, expandedWidth: expandedWidth, action: select)
+            .overviewTagAnchor(filter.id)
             .accessibilityIdentifier(isParent ? "overview-semantic-any" : filter.id)
             .accessibilityLabel(Text(isParent ? strings.anyTag : filter.displayTag))
             .accessibilityValue(Text("\(filter.count)\(activity)\(strings.unreadSuffix(filter.unreadCount))"))
@@ -98,7 +98,7 @@ struct NativeOverviewStatusRail: View {
     var interactions: NativeOverviewChromeInteractions?
 
     var body: some View {
-        OverviewFilterRail {
+        OverviewFilterRail(selectedID: status.rawValue) {
             statusButton(.running, emoji: "⏳", title: strings.runningOnly)
             statusButton(.all, emoji: "🗂️", title: strings.allStatuses)
             statusButton(.completed, emoji: "🏁", title: strings.completedOnly)
@@ -111,6 +111,7 @@ struct NativeOverviewStatusRail: View {
         return OverviewRailButton(title: title, selected: status == value, action: choose) {
             Text(verbatim: emoji).font(.system(size: 19)).fixedSize()
         }
+        .overviewTagAnchor(value.rawValue)
         .accessibilityLabel(Text(title))
         .help(title)
         .accessibilityIdentifier("overview-status-" + value.rawValue)
@@ -119,11 +120,20 @@ struct NativeOverviewStatusRail: View {
 }
 
 private struct OverviewFilterRail<Content: View>: View {
+    let selectedID: String?
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         GlassEffectContainer(spacing: OverviewTagMetrics.railSpacing) {
             VStack(alignment: .leading, spacing: OverviewTagMetrics.railSpacing, content: content)
+        }
+        .overlayPreferenceValue(OverviewTagBounds.self) { anchors in
+            GeometryReader { reader in
+                if let selectedID, let anchor = anchors[selectedID] {
+                    OverviewSelectionOutline(bounds: reader[anchor])
+                }
+            }
+            .allowsHitTesting(false).accessibilityHidden(true)
         }
         .accessibilityElement(children: .contain)
     }
@@ -158,7 +168,7 @@ private struct OverviewRailButton<Glyph: View>: View {
             }
             .frame(width: titleWidth ?? diameter, height: diameter, alignment: .leading)
         }
-        .buttonStyle(OverviewTagButtonStyle(active: selected))
+        .buttonStyle(OverviewTagButtonStyle())
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

@@ -337,10 +337,13 @@ choice. A hovered tag keeps its title until pointer exit, including after the
 selection interval expires.
 
 The right controls show ⏳ (Running only), 🗂️ (All statuses) and 🏁
-(Completed only). Hover help gives the localized status name. The top filter
-bar and both side columns mark the selected control with a 2pt inset accent
-border (3pt with Increased Contrast). Folder icons and emoji stay visible. Accessibility exposes the
-full name and selected state even when the visible title is hidden or
+(Completed only). Hover help gives the localized status name. All, directory,
+tag and status controls apply native `.clear.interactive()` Liquid Glass
+directly to their capsule. The backdrop is unfilled and the glass is untinted.
+Reduce Transparency uses an opaque fill. The selected control draws a 2pt
+inset accent border above its surface (3pt with Increased Contrast). Folder
+icons and emoji stay visible. Accessibility exposes the full name and selected
+state even when the visible title is hidden or
 truncated. Member counts are available in tag accessibility values. Unread
 counts appear on their own folder or semantic tag.
 
