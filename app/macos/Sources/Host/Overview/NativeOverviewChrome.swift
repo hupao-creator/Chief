@@ -244,9 +244,9 @@ public struct NativeOverviewChrome: View {
                 } label: {
                     HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
                         if filter.isDirectory {
-                            OverviewTagPrefix(emoji: nil, selected: active)
+                            OverviewTagPrefix(emoji: nil)
                         } else if let emoji = filter.emoji {
-                            OverviewTagPrefix(emoji: emoji, selected: active)
+                            OverviewTagPrefix(emoji: emoji)
                         }
                         OverviewTagTitle(title: !filter.isDirectory && filter.emoji != nil ? filter.tag : filter.displayTag)
                         if filter.hasActiveTasks {
@@ -338,23 +338,13 @@ struct OverviewTagTitle: View {
 
 struct OverviewTagPrefix: View {
     var emoji: String?
-    var selected = false
     var body: some View {
-        ZStack {
-            // Both layers participate in layout even when invisible. Keep the
-            // complete emoji's native bounds so selection cannot resize the chip
-            // or clip wide/combined glyphs to the check's icon-sized square.
-            Group {
-                if let emoji, !emoji.isEmpty {
-                    Text(emoji).font(.system(size: OverviewTagMetrics.folderIcon))
-                        .id(emoji).transition(.opacity)
-                } else {
-                    NativeIcon(name: "Folder", size: OverviewTagMetrics.folderIcon).opacity(0.72)
-                }
+        Group {
+            if let emoji, !emoji.isEmpty {
+                Text(emoji).font(.system(size: OverviewTagMetrics.folderIcon))
+            } else {
+                NativeIcon(name: "Folder", size: OverviewTagMetrics.folderIcon).opacity(0.72)
             }
-            .opacity(selected ? 0 : 1)
-            NativeIcon(name: "Check", size: OverviewTagMetrics.folderIcon, strokeWidth: 2)
-                .opacity(selected ? 1 : 0)
         }
         .fixedSize()
         .frame(minWidth: OverviewTagMetrics.folderIcon)
@@ -469,8 +459,16 @@ enum OverviewTagMetrics {
 
 struct OverviewTagButtonStyle: ButtonStyle {
     let active: Bool
+    @Environment(\.colorSchemeContrast) private var contrast
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.modifier(OverviewTagGlassSurface(active: active, shape: Capsule()))
+            .overlay {
+                if active {
+                    Capsule().strokeBorder(NativePalette.overview.accent.swiftUI, lineWidth: contrast == .increased ? 3 : 2)
+                        .allowsHitTesting(false).accessibilityHidden(true)
+                }
+            }
     }
 }
 
@@ -524,7 +522,7 @@ private struct OverviewChromeIconBody: View {
     var settingsAnchor: OverviewSettingsAnchor?
     var onSettingsFrameChange: ((CGRect?) -> Void)?
     var body: some View {
-        OverviewTagButtonStyle(active: active).makeBody(configuration: configuration)
+        configuration.label.modifier(OverviewTagGlassSurface(active: active, shape: Capsule()))
             .background {
                 if let settingsAnchor {
                     OverviewSettingsFrameReader(anchor: settingsAnchor, onChange: onSettingsFrameChange)
