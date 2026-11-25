@@ -202,7 +202,6 @@ unchanged. Super Thread is the only current opt-in.
 provide its complete card backdrop; the Host then omits its opaque decorative
 shell while retaining geometry, clipping, input, and visibility ownership.
 This is a native presentation fact, not persisted data or a thread-kind check.
-Super Thread opts in to draw one regular-glass plate behind its cover and body.
 If collection rendering fails, the Host's error view supplies its own opaque
 surface so this opt-in cannot leave error ink without a readable backdrop.
 

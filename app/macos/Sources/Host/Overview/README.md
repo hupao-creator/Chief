@@ -40,17 +40,10 @@ normalizes its distinct labels once. The
 [CPU benchmark and scenario matrix](../../../../../tools/verification/overview-performance/README.md)
 distinguishes model work from GUI and GPU work.
 
-Ordinary Overview cards, including Agent Threads and individual Reports, use
-opaque palette surfaces and a soft border, including completed cards.
-Super Thread collections provide one continuous regular Liquid Glass plate
-behind their cover, metadata and intervening layout space. Their policy's
-`providesCardSurface` omits the Canvas's opaque shell; glass remains in the
-semantic camera plane so scrolling updates its backdrop geometry. Collection
-emoji badges opt into regular glass with a light mint tint at the unchanged
-44pt diameter / top 12pt / trailing 17pt metadata seat. Reduce Transparency
-uses opaque palette fills; the material helper falls back to system Material
-when Liquid Glass is unavailable. Other card content keeps the shared flat
-policy for provider badges, terminal marks and plan highlights.
+Overview cards, including Agent Threads, individual Reports and Super Thread
+collections, use the Canvas's opaque palette surface and soft border. Reports
+share their metadata and flat 44pt emoji badge across individual cards,
+carousel pages and member cards. Carousel navigation retains native Liquid Glass.
 Running Agent Threads show a diagonal sweep of harness-colored perforations
 behind the stationary emoji. Reduce Motion holds the pattern still. Idle badges
 have a neutral fill and completed badges have a green completion fill and
@@ -58,8 +51,6 @@ terminal symbol. Their accessible labels follow the projected execution status.
 The isolated `--benchmark-agent-emoji-badge liquid-glass` scenario can compare only
 Agent emoji backdrops with regular glass; ordinary launch defaults and all other
 card materials remain unchanged. See the [external comparison](../../../../../tools/benchmarks/README.md#agent-emoji-badge-material-comparison).
-Only Super Thread collections opt into the new card material; individual Report
-and ordinary Thread surfaces stay flat.
 There is no `glass world` preference. The filter capsules, Moku,
 Settings and shared controls outside a card keep their own materials.
 
@@ -656,13 +647,10 @@ paging mirrors only the mask so the reveal follows cover travel. Outgoing ink
 stays above incoming ink. At the current 320×408pt grid footprint, the cover is
 273.8pt high and metadata is 130.2pt high. WebKit and its poster share a centered, uniformly scaled
 360×308 CSS-pixel viewport, including for existing fixed-width HTML.
-The 4pt layout spacing and card shell stay fixed;
-the spacing is filled by the same glass plate as the body, without an exposed
-background seam or a separate body glass edge. It reuses `NativeReportCover` and `NativeReportCard`
-with `showsCover: false`, rather than duplicating metadata. Coverless reports use
-their emoji on the ordinary surface. Arrow/dot/menu controls use native Liquid
-Glass; the collection owns its regular-glass outer plate while the Canvas
-retains geometry, clipping and hit testing. During page travel,
+The 4pt layout spacing and metadata sit over the fixed, opaque Canvas card
+shell. The carousel reuses `NativeReportCover` and `NativeReportCard` with
+`showsCover: false` for the metadata. Coverless reports use their emoji on the
+ordinary surface. Arrow/dot/menu controls use native Liquid Glass. During page travel,
 metadata gates pointer/accessibility/actions without disabling its visual label.
 Open and archive callbacks recheck the current collection pose, including an
 already-open context menu; accepted archive work may finish across page changes.
@@ -702,9 +690,9 @@ The count expands from the collection card into the workspace's centered reading
 panel, using `NativeCollectionPanelPresentation`, the same `NativeReadingPageStack`
 compositor, window-relative margins and emphasized 420ms opening as Agent/Report
 readers. Overview and Dock fade out and reject input/accessibility while the panel
-is open; this is not a screen-sized popover or a zoomed canvas child. The
-member grid shares the workspace window's ultra-thin material. Close floats in
-the upper-left corner and stays fixed as rows scroll.
+is open. The panel uses rounded regular Liquid Glass throughout opening,
+scrolling and return. Reduce Transparency uses an opaque reading fill. Close
+floats in the upper-left corner and stays fixed as rows scroll.
 Resizing reflows the open grid even if its source card temporarily leaves the
 Overview viewport.
 The grid uses the panel width and member count to fit 280–360pt cards with

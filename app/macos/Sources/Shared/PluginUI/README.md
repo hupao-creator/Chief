@@ -27,10 +27,8 @@ execution's author. See the [reading contract](../../../../../design/reading.md)
 
 `nativeRegularCardGlass` supplies native regular glass with a system Material
 fallback and an opaque palette fill under Reduce Transparency. Super Thread
-collections opt into it for their full backdrop and emoji badge; the badge keeps
-the shared 44pt diameter and top 12 / trailing 17 seat. Other card badges retain
-their flat-material policy. Apply the backdrop separately from ink masks so a
-page reveal does not cut the collection's continuous material surface.
+cards share the flat badge policy, including carousel pages and grid members.
+The badge uses the shared 44pt diameter and top 12pt / trailing 17pt seat.
 
 `nativeCollectionPanelHost` gives a canvas collection a workspace-sized reading
 surface without creating a route or a native child window. Its environment
@@ -45,8 +43,9 @@ their own selection, playback and
 data lifetimes.
 The collection parent remains mounted for those updates while drawing, input and
 accessibility are suppressed. The shared compositor's auxiliary lane stays
-outside the collection's panel. The grid shares the workspace backdrop and
-uses an opaque fill with Reduce Transparency. Close floats over the panel and
+outside the collection's regular Liquid Glass panel. The compositor carries
+the glass through opening and return and uses an opaque reading fill with
+Reduce Transparency. Close floats over the panel and
 stays fixed while the member grid scrolls. The collection and a report opened
 from it host SwiftUI content in window points.
 Blank-margin dismissal ignores nonfocusable system child accessories such as the

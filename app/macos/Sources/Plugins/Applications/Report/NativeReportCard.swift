@@ -13,7 +13,6 @@ import SwiftUI
     var coverReplayID = 0
     var coverInitiallyFinished = false
     var onCoverPlaybackCompleted: (ApplicationThreadRef, JSONText, Int) -> Void = { _, _, _ in }
-    var usesGlassBadge = false
     var showsArchiveAction = false
     var allowsActions: () -> Bool = { true }
     var memberSource: NativeCollectionPanelSource?
@@ -118,7 +117,7 @@ import SwiftUI
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .threadCardBadge {
                 ThreadCardProviderStatus(label: props.entry.title.string, brandKey: "", emoji: props.entry.view.emoji.string,
-                                         completedBackground: true, usesRegularGlass: usesGlassBadge)
+                                         completedBackground: true)
                     .environment(\.threadCardUnread, isUnread?(props.entry.ref, props.entry.view.contentRevision) == true)
             }.contentShape(Rectangle())
     }

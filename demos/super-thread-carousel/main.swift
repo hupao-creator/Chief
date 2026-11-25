@@ -5,15 +5,12 @@ import ChiefPluginUI
 @testable import ChiefApplications
 
 private struct CardShell<Content: View>: View {
-    var providesCardSurface = false
     @ViewBuilder let content: Content
     var body: some View {
         content.frame(width: NativeGeometry.overviewCard.width, height: NativeGeometry.overviewCard.height * 2 + NativeGeometry.overviewCardGap)
-            .background(providesCardSurface ? Color.clear : NativePalette.overview.surface.swiftUI)
+            .background(NativePalette.overview.surface.swiftUI)
             .clipShape(RoundedRectangle(cornerRadius: 22))
-            .overlay {
-                if !providesCardSurface { RoundedRectangle(cornerRadius: 22).stroke(NativePalette.overview.lineSoft.swiftUI) }
-            }
+            .overlay { RoundedRectangle(cornerRadius: 22).stroke(NativePalette.overview.lineSoft.swiftUI) }
     }
 }
 
@@ -55,7 +52,7 @@ private struct DemoView: View {
                 LazyVGrid(columns: [.init(.adaptive(minimum: NativeGeometry.overviewCard.width, maximum: NativeGeometry.overviewCard.width), spacing: 16)], alignment: .center, spacing: 22) {
                     if !model.projection.members.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
-                            CardShell(providesCardSurface: true) {
+                            CardShell {
                                 NativeReportCollection(props: model.projection.members.map { fixtures[$0.id]!.props },
                                     active: (active || keepActive) && model.reading == nil, slow: slow, onSelection: { _ in },
                                     openThread: { reference in
