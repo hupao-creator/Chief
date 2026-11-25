@@ -78,7 +78,6 @@ struct NativeMokuConversation: View {
     let presentation: NativeMokuWorkspacePresentation
     let owner: JSONText
     let readingSize: CGSize
-    @State private var showsRows = false
     @State private var cursors: [JSONText] = []
     @Environment(\.locale) private var locale
 
@@ -86,18 +85,11 @@ struct NativeMokuConversation: View {
         Color.clear.overlay(alignment: .bottom) {
             VStack(spacing: 0) {
                 ConversationMessages(presentation: presentation, owner: owner, before: cursors.last, chinese: chinese,
-                                     showsRows: showsRows, showEarlier: { cursors.append($0) }, showNewer: { _ = cursors.popLast() })
+                                     showEarlier: { cursors.append($0) }, showNewer: { _ = cursors.popLast() })
                     .id(cursors.last)
                 Divider().reportMokuConversationHeight()
             }
             .frame(width: readingSize.width, height: readingSize.height)
-        }
-        // Start the subscription on entry. Give the glass its first visible movement
-        // before laying out selectable text. An already expanded editor is ready at once.
-        .onGeometryChange(for: Bool.self) { shell in
-            shell.size.width >= min(readingSize.width, NativeMokuCapsuleLayout.idleSize.width + 24)
-        } action: { widening in
-            if widening { showsRows = true }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(chinese ? "与 Chief 的对话" : "Conversation with Chief")
@@ -113,7 +105,6 @@ private struct ConversationMessages: View {
     let owner: JSONText
     let before: JSONText?
     let chinese: Bool
-    let showsRows: Bool
     let showEarlier: (JSONText) -> Void
     let showNewer: () -> Void
     @State private var page: NativeMokuConversationPage?
@@ -125,13 +116,7 @@ private struct ConversationMessages: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !showsRows {
-                // The glass can start fitting a long cached page before text layout. The
-                // bubble insets alone provide a lower bound, which the Dock caps at its
-                // viewport. Mount the loading indicator only if the visible list needs it.
-                Color.clear.preference(key: NativeMokuConversationHeightKey.self,
-                    value: CGFloat(displayedPage?.messages.count ?? 0) * 2 * NativeMokuConversationTimeline.bubbleVerticalInset)
-            } else if failure == nil, let page = displayedPage, !page.messages.isEmpty {
+            if failure == nil, let page = displayedPage, !page.messages.isEmpty {
                 NativeMokuConversationTimeline(page: page, workspace: presentation.workspace, showEarlier: showEarlier, showNewer: before == nil ? nil : showNewer)
             } else {
                 VStack(spacing: 0) {

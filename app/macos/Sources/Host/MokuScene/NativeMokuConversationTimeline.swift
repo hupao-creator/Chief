@@ -2,7 +2,6 @@ import ChiefCore
 import SwiftUI
 
 struct NativeMokuConversationTimeline: View {
-    static let bubbleVerticalInset: CGFloat = 7
     let page: NativeMokuConversationPage
     var workspace: NativeWorkspaceModel?
     let showEarlier: (JSONText) -> Void
@@ -35,18 +34,7 @@ struct NativeMokuConversationTimeline: View {
                             pageButton(chinese ? "较早消息" : "Earlier messages", width: width) { showEarlier(cursor) }
                                 .accessibilityIdentifier("moku-conversation-earlier")
                         }
-                        // The trailing rows and the end target share one exact layout. A tall last
-                        // reply must not resolve to a lazy height estimate on entry or on send.
-                        let rows = page.messages.enumerated()
-                        let tailCount = 6
-                        if rows.count > tailCount {
-                            LazyVStack(alignment: .leading, spacing: 0) {
-                                ForEach(rows.dropLast(tailCount), id: \.element.id) { index, message in
-                                    row(message, at: index, width: width, height: bounds.size.height)
-                                }
-                            }
-                        }
-                        ForEach(rows.suffix(tailCount), id: \.element.id) { index, message in
+                        ForEach(page.messages.enumerated(), id: \.element.id) { index, message in
                             row(message, at: index, width: width, height: bounds.size.height)
                         }
                         if let showNewer {
@@ -170,7 +158,7 @@ private struct ConversationBubble: View {
         }
         .font(.system(size: 15))
         .foregroundStyle(Color.white)
-        .padding(.horizontal, 13).padding(.vertical, NativeMokuConversationTimeline.bubbleVerticalInset)
+        .padding(.horizontal, 13).padding(.vertical, 7)
         .padding(.bottom, tail ? ConversationBalloon.tailHeight : 0)
         .background {
             if user {
