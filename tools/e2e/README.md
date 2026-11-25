@@ -566,8 +566,9 @@ can exercise this visually with synthetic data and a window recording.
 The [native Unread preset replay](../../demos/moku-landing/README.md#unread-preset)
 checks the mounted left-rail entry, untagged completed-result admission, removal
 after marking the tag as read, localized zero results and
-reappearance after a new execution arrives. It also checks switching between
-the workspace-wide preset and scoped filters.
+reappearance after a new execution arrives. Switching top-row folders and tags in Unread
+must show the bookmarked members counted by each badge, including a task shared
+by two tags.
 
 The [native tag press replay](../../demos/moku-landing/README.md#mark-a-tag-as-read)
 checks bulk acknowledgment from the left rail, pointer cancellation, shared

@@ -88,8 +88,12 @@ read. It checks the persisted receipt, the empty canvas with Unread still
 selected, and the accessible button name and visible empty message in English
 and Chinese. A catalog patch publishes a new completed execution of the same Thread.
 The replay also switches between folder Running, a custom tag named Unread and
-the workspace-wide preset with both Agent and Super Thread cards. The output
-contains `unread-filter.json`, the empty-state captures and `source.json`.
+folder Unread with both Agent and Super Thread cards. A second catalog has one
+unread task in Chief and one in the top-level stock research tag. Both badges
+start at one. The replay switches between them in Unread, clears the folder’s
+tag, adds a second tag to the research task and checks both tags after its
+version is acknowledged. It also checks a Report covering the Chief task and a
+catalog with no top-row space. The output contains `unread-filter.json`, the empty-state captures and `source.json`.
 This uses the production native workspace and fixture snapshots and mutations.
 
 ### Talk execution links
