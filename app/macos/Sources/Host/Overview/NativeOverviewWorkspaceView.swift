@@ -146,7 +146,6 @@ public struct NativeOverviewWorkspaceView: View {
                     selectedScope: model.selectedScope, selectedKind: model.tagSelection?.kind,
                     strings: chromeStrings,
                     onTagChange: model.selectTopFilter,
-                    onUntaggedRunning: untaggedRunningAction,
                     onSettings: callbacks.onSettings,
                     onRestart: callbacks.onRestart,
                     onSettingsWithOrigin: callbacks.onSettingsWithOrigin,
@@ -163,11 +162,6 @@ public struct NativeOverviewWorkspaceView: View {
         .environment(\.locale, Locale(identifier: locale.rawValue))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(locale.text("会话俯瞰", "Conversation overview"))
-    }
-
-    private var untaggedRunningAction: (() -> Void)? {
-        guard !landing, !model.filters.isEmpty, model.hasUntaggedRunning else { return nil }
-        return { model.showUntaggedRunning() }
     }
 
     private func chromePresentation(edge: Edge) -> some ViewModifier {
@@ -199,7 +193,6 @@ public struct NativeOverviewWorkspaceView: View {
             strings.settings = "Settings"; strings.restart = "Restart development app"; strings.actions = "Overview actions"
             strings.runningOnly = "Running"
             strings.unreadOnly = "Unread"
-            strings.untaggedRunning = "Running without a tag"
             strings.allStatuses = "All statuses"
             strings.completedOnly = "Completed"
             strings.statusFilter = "Filter by status"

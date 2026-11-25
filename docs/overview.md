@@ -4,7 +4,7 @@
 
 Press **⌘K** to open **Overview**. Chief highlights your last folder or tag and shows its cards, even after you quit and reopen the app. On your first visit, or if that choice is unavailable when you reopen Chief, Overview selects the first available folder or Inbox tag in the top row. When a new task has a project folder, its folder appears in the top row as soon as its card appears. Click the folder to see its tasks, including those still waiting for a tag. Folders with the same name appear separately.
 
-Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. If you have only Inbox conversations and none have tags yet, Overview shows **No running conversations** until a task starts. Its card appears as soon as it’s running. If you already have folders or tags in Overview, click the hourglass next to Settings (**Running without a tag**) to find running tasks that are still waiting for a tag.
+Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. If you have only Inbox conversations and none have tags yet, Overview shows **No running conversations** until a task starts. Its card appears as soon as it’s running.
 
 When a task gets its first tag, Overview selects that tag and shows its cards. This also happens when you branch a conversation that already has a tag. If you’re reading a conversation or using Settings, you can keep working there. You’ll see the selected tag when you return to Overview. If a Super Thread collection is open, the switch waits until you close it.
 

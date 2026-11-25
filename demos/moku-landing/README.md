@@ -20,7 +20,7 @@ Build the current Debug package, then run the mounted production workspace with 
 python3 demos/moku-landing/verify_header.py --tag-states --output .build/tag-states
 ```
 
-The replay reads the empty Inbox message from a window capture, adds an untagged project run and checks that the first card and its folder arrive together. It then assigns the folder’s name as a semantic tag. It clicks the folder and its sole child, opens running untagged work alongside existing tags, and selects six tags with equal and nested member sets. The evidence directory contains the three state screenshots and `tag-states.json`.
+The replay reads the empty Inbox message from a window capture, adds an untagged project run and checks that the first card and its folder arrive together. It then assigns the folder’s name as a semantic tag. It clicks the folder and its sole child, then selects six tags with equal and nested member sets. The evidence directory contains the three state screenshots and `tag-states.json`.
 
 ## Nested workspace header replay
 
