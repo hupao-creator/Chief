@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="#get-started">Get started</a> · <a href="docs/README.md">Product guide</a> · <a href="LICENSE">Apache 2.0</a>
+  <a href="#get-started">Get started</a> · <a href="LICENSE">Apache 2.0</a>
 </p>
 
 <p align="center">
@@ -69,32 +69,7 @@ The interface uses SwiftUI and AppKit, backed by a Go service.
 
 ## Get started
 
-Chief is available as an **invited alpha** for Macs with Apple silicon and
-macOS 26 or later. Open [Chief Releases](https://github.com/hupao-creator/Chief/releases)
-and choose the alpha version from your invitation. Under **Assets**, download the
-arm64 disk image, `SHA256SUMS`, and `READ-ME-FIRST.txt`.
-
-1. Drag **Chief Alpha.app** from the disk image into **Applications**, then open it. The alpha is not notarized; a trusted download may need the per-app **Open Anyway** exception in **System Settings → Privacy & Security**.
-2. Install and configure at least one supported agent on your Mac: Codex, Claude, Pi Agent, or OpenCode. Chief checks which are ready during setup. Each service determines model access and costs.
-3. Choose the agent that will serve as Chief and the agents it can assign work to. Finish setting up Tag Agent and Super Thread Agent, then click **Start using Chief**.
-4. Describe your task in **Type a message…**. If the task uses a project folder, include its full path. Send the request and open its task card when Chief creates one.
-
-No Go, Xcode, or Apple developer membership is needed to use the alpha.
-Updates are manual, and alpha app data may be incompatible between versions.
-Follow the accompanying installation guide when updating. Chief follows your
-Mac's appearance and opens in Simplified Chinese when Chinese is the primary
-system language. For all other primary languages, Chief uses English.
-
-[Full installation and first-request guide →](docs/getting-started.md)
-
-## Product guide
-
-[Working with Chief](docs/working-with-moku.md) ·
-[Overview](docs/overview.md) ·
-[Agent conversations](docs/task-conversations.md) ·
-[Tags, Super Threads, and file changes](docs/reports-tags-and-changes.md) ·
-[Sidecards](docs/sidecards.md) ·
-[Settings](docs/settings.md)
+[Install Chief Alpha, connect an agent, and send your first request.](docs/getting-started.md)
 
 ## License
 
