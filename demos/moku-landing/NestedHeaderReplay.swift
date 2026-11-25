@@ -521,16 +521,11 @@ private final class WheelSample: NSEvent {
         let bar = scene.capsuleFrame
         let point = monitor.windowPoint(CGPoint(x: bar.midX, y: bar.minY + bar.height * 0.4))
         let timeline = try await conversationScroller(in: content, at: point)
-        var held: CGFloat = 0
-        try await recordWindow(window, to: evidence.appending(path: "conversation-times-" + stage + ".mp4")) {
-            try await Task.sleep(for: .milliseconds(300))
-            held = try await revealTimes(window, at: point, timeline: timeline,
-                                         captureTo: evidence.appending(path: "conversation-times-" + stage + ".png"))
-            try await Task.sleep(for: .milliseconds(400))
-        }
+        try await checkHorizontalSwipe(window, at: point, timeline: timeline,
+                                       captureTo: evidence.appending(path: "conversation-swipe-" + stage + ".png"))
         var observed: [String: Any] = ["rows": labels(), "draft": presentation.dockDraft.text,
             "conversationOpen": scene.conversationOpen,
-            "period": periods[0].value, "timestampsHeldPoints": held, "timestampsReleasedPoints": timeline.contentView.bounds.minX]
+            "period": periods[0].value]
         observed["short"] = short
         func measure() throws -> [String: CGFloat] {
             let nodes = conversationElements(in: window)
@@ -811,40 +806,37 @@ private final class WheelSample: NSEvent {
     private func conversationScroller(in content: NSView, at point: CGPoint) async throws -> NSScrollView {
         let deadline = ContinuousClock.now + .seconds(3)
         while true {
-            var candidates = [String]()
-            if let timeline = descendant(NSScrollView.self, in: content, matching: { view in
-                let rect = view.convert(view.bounds, to: nil)
-                let width = view.documentView?.bounds.width ?? 0
-                candidates.append("\(rect)/\(width)/\(view.contentView.bounds)")
-                return rect.contains(point) && width > view.contentView.bounds.width + 40
-            }) { return timeline }
-            guard ContinuousClock.now < deadline else { throw ReplayError("Missing conversation scroller at \(point) in \(candidates)") }
+            let hit = content.hitTest(content.superview?.convert(point, from: nil) ?? point)
+            if let timeline = hit as? NSScrollView ?? hit?.enclosingScrollView { return timeline }
+            guard ContinuousClock.now < deadline else { throw ReplayError("Missing conversation scroller at \(point), hit=\(String(describing: hit))") }
             try await Task.sleep(for: .milliseconds(40))
         }
     }
 
-    private func revealTimes(_ window: NSWindow, at point: CGPoint, timeline: NSScrollView, captureTo url: URL? = nil) async throws -> CGFloat {
+    private func checkHorizontalSwipe(_ window: NSWindow, at point: CGPoint, timeline: NSScrollView, captureTo url: URL) async throws {
         let before = timeline.contentView.bounds
+        func checkPosition() throws {
+            let current = timeline.contentView.bounds
+            guard abs(current.minX) < 1, abs(current.minY - before.minY) < 1 else {
+                throw ReplayError("Horizontal swipe moved the transcript: \(before) → \(current)")
+            }
+        }
         try await postScroll(window, point, y: 0, phase: .began, x: -32)
         try await postScroll(window, point, y: 0, phase: .changed, x: -46)
-        let held = timeline.contentView.bounds.origin
-        guard before.minX < 1, held.x > 50, abs(before.minY - held.y) < 1 else {
-            throw ReplayError("Holding a left swipe did not reveal times in place: \(before) → \(timeline.contentView.bounds)")
-        }
-        if let url {
-            try await Task.sleep(for: .milliseconds(350))
-            try await capture(window, to: url)
-        }
+        try checkPosition()
+        try await capture(window, to: url)
         try await postScroll(window, point, y: 0, phase: .ended)
-        let deadline = ContinuousClock.now + .seconds(3)
-        while abs(timeline.contentView.bounds.minX) >= 1 {
-            guard ContinuousClock.now < deadline else { throw ReplayError("Lifting did not hide timestamps") }
-            try await Task.sleep(for: .milliseconds(30))
+        try checkPosition()
+
+        // Inspect the trailing edge where per-message times would appear, excluding the date heading.
+        let rect = timeline.convert(timeline.bounds, to: nil)
+        let size = window.frame.size
+        let region = CGRect(x: (rect.maxX - 78) / size.width, y: rect.minY / size.height,
+                            width: 78 / size.width, height: rect.height / size.height)
+        let ink = try recognizedLines(in: url, languages: ["en-US", "zh-Hans"], region: region)
+        guard !ink.contains(where: { $0.text.range(of: #"[0-9]{1,2}[:：][0-9]{2}"#, options: .regularExpression) != nil }) else {
+            throw ReplayError("Horizontal swipe exposed a message time: \(ink)")
         }
-        guard abs(before.minY - timeline.contentView.bounds.minY) < 1 else {
-            throw ReplayError("Releasing timestamps moved the transcript vertically: \(before) → \(held) → \(timeline.contentView.bounds.origin)")
-        }
-        return held.x
     }
 
     private func conversationElements(in window: NSWindow) -> [(id: String, role: String, label: String, value: String, frame: CGRect)] {
@@ -1515,7 +1507,8 @@ private final class WheelSample: NSEvent {
                 guard timeline.contentView.bounds.minY > 20, timeline.contentView.bounds.minY < bottom - 20 else {
                     throw ReplayError("Could not scroll up from the latest cached message: \(bottom) → \(timeline.contentView.bounds.minY)")
                 }
-                _ = try await revealTimes(window, at: point, timeline: timeline)
+                try await checkHorizontalSwipe(window, at: point, timeline: timeline,
+                                               captureTo: directory.appending(path: "conversation-horizontal-swipe.png"))
                 let reading = timeline.contentView.bounds
                 let size = content.bounds.size
                 window.setContentSize(.init(width: size.width, height: NativeGeometry.minimumWindow.height))
