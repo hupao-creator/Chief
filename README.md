@@ -1,6 +1,6 @@
 <h1 align="center"><img src="design/chief-logo.webp" width="115" height="115" align="absmiddle" hspace="6" alt="">Chief</h1>
 
-<p align="center">A native Mac workspace for coordinating AI agents.</p>
+<p align="center">Chief brings your AI agents together and gets them cooking.</p>
 
 <p align="center">
   <strong><a href="https://github.com/hupao-creator/Chief/releases/tag/v0.1.0-alpha.3">Download Alpha 3</a></strong> · <a href="docs/getting-started.md">Get started</a> · <a href="LICENSE">Apache 2.0</a>
