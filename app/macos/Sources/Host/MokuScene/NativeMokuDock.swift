@@ -157,7 +157,12 @@ public struct NativeMokuDock: View {
             && (state.inputOpen || state.inputLeaving) && interaction == nil
     }
     private var composerMounted: Bool {
-        state.dockRouteVisible && (state.inputOpen || state.inputLeaving) && interaction == nil
+        guard state.dockRouteVisible, interaction == nil else { return false }
+        if state.inputOpen || state.inputLeaving { return true }
+        // Prepare the Overview editor at its reading width while the Bar is idle. Rich
+        // drafts stay demand-loaded so a folded Bar never loads attachment previews.
+        return ordinaryOverviewDock && state.windowVisible && scenePhase == .active
+            && draft.inputAttachments.isEmpty && draft.inputDirectories.isEmpty
     }
     private var incomingTalk: NativeMokuTalkMessage? {
         if let presentation { return presentation.talkMessage }
@@ -752,7 +757,7 @@ public struct NativeMokuDock: View {
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { capsuleHeight = max(58, $0) }
                         .animation(nil) { $0.opacity(composerVisible || retiringOverviewInk ? 1 : 0) }
                         .allowsHitTesting(composerVisible)
-                        .disabled(state.settingsOpen || !state.inputInteractionReady)
+                        .disabled(!state.inputOpen || state.settingsOpen || !state.inputInteractionReady)
                         .accessibilityHidden(!composerVisible)
                         // A route can replace the draft or unmount the entire row
                         // before it receives the hidden state. An implicit removal

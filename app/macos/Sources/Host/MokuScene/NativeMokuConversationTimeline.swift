@@ -37,17 +37,18 @@ struct NativeMokuConversationTimeline: View {
                             pageButton(chinese ? "较早消息" : "Earlier messages", width: width) { showEarlier(cursor) }
                                 .accessibilityIdentifier("moku-conversation-earlier")
                         }
-                        // Only the last bubble must share an exact layout with the end target.
-                        // It can fill the entire viewport on its own.
+                        // The trailing rows and the end target share one exact layout. A tall last
+                        // reply must not resolve to a lazy height estimate on entry or on send.
                         let rows = page.messages.enumerated()
-                        if rows.count > 1 {
+                        let tailCount = 6
+                        if rows.count > tailCount {
                             LazyVStack(alignment: .leading, spacing: 0) {
-                                ForEach(rows.dropLast(), id: \.element.id) { index, message in
+                                ForEach(rows.dropLast(tailCount), id: \.element.id) { index, message in
                                     row(message, at: index, width: width, height: bounds.size.height)
                                 }
                             }
                         }
-                        ForEach(rows.suffix(1), id: \.element.id) { index, message in
+                        ForEach(rows.suffix(tailCount), id: \.element.id) { index, message in
                             row(message, at: index, width: width, height: bounds.size.height)
                         }
                         if let showNewer {
