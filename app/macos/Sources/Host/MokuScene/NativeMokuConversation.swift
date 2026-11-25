@@ -115,9 +115,11 @@ private struct ConversationMessages: View {
     @State private var retry = 0
 
     var body: some View {
+        let showsTyping = before == nil && presentation.workspace.runtimeAvailable && presentation.executionRunning
         VStack(spacing: 0) {
-            if failure == nil, let page = displayedPage, !page.messages.isEmpty {
-                NativeMokuConversationTimeline(page: page, workspace: presentation.workspace, showEarlier: showEarlier, showNewer: before == nil ? nil : showNewer)
+            if failure == nil, let page = displayedPage, !page.messages.isEmpty || showsTyping {
+                NativeMokuConversationTimeline(page: page, showsTyping: showsTyping, workspace: presentation.workspace,
+                                               showEarlier: showEarlier, showNewer: before == nil ? nil : showNewer)
             } else {
                 VStack(spacing: 0) {
                     status

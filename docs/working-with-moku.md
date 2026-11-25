@@ -48,6 +48,8 @@ After a successful removal, the checkout folder is gone. The task conversation s
 
 In Overview, right-click Chief Bar to open your conversation above the input. The panel stays dark even when your Mac uses Light. You can also Control-click or use your trackpad’s secondary click. If you already have a draft open, right-click the bar beside the text to see the conversation and keep typing. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see when an individual message was sent, hold the pointer over its bubble.
 
+While Chief is working, a small gray bubble with three dots appears on the left below the latest message. The dots rise in turn, or stay still if Reduce Motion is on. The bubble disappears when Chief finishes, stops, or encounters an error.
+
 Each time you open the panel, you can see the end of the latest message once the messages load. A larger gap marks a change of speaker. A short exchange fits in a compact panel. Longer conversations can fill most of a small window, with the input at the bottom. Scroll up above the input to read earlier messages. Your place stays put as new replies arrive while you’re reading further up. At the top of a page, **Earlier messages** takes you further back. **Newer messages** at the bottom takes you forward.
 
 Use the input at the bottom to reply. A draft you started in the compact bar is already there. Press **Return** or click **Send**. Your message appears on the right as soon as you send it, and the panel stays open for Chief’s reply. You can also send from the compact bar and right-click it to see your message while Chief is working. Press **Esc** or click outside the bar to close it and keep your draft.

@@ -319,7 +319,10 @@ private final class WheelSample: NSEvent {
             try await Task.sleep(for: .milliseconds(450))
         }
         window.setContentSize(regularSize)
+        window.collectionBehavior = [.auxiliary, .canJoinAllSpaces]
         window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
         captureScheme = restart ? .light : .dark
         try await focusReplayWindow(window)
         workspace.start()
@@ -371,7 +374,13 @@ private final class WheelSample: NSEvent {
             func endDistance(_ scroll: NSScrollView) -> CGFloat {
                 (scroll.documentView?.bounds.maxY ?? 0) - scroll.documentVisibleRect.maxY
             }
+            func typingFrame() -> CGRect? {
+                conversationElements(in: window).first { $0.id == "moku-conversation-typing" }?.frame
+            }
             let panelScroll = try await scroller()
+            try await wait("Initial Chief run did not settle") {
+                workspace.catalog.moku?.observation.latestExecution?.status == .completed && typingFrame() == nil
+            }
             let originalEnd = panelScroll.documentVisibleRect.maxY
             field.insertText(fixture.messages[2], replacementRange: field.selectedRange())
             // Suspend only the child owned by this replay, after the history is mounted.
@@ -384,7 +393,7 @@ private final class WheelSample: NSEvent {
             let captured = labels()
             let panelObservedMS = (ProcessInfo.processInfo.systemUptime - panelReturnTime) * 1000
             try JSONEncoder().encode(captured).write(to: evidence.appending(path: "panel-before-admission.json"))
-            guard scene.conversationOpen, field.string.isEmpty, captured == first else {
+            guard scene.conversationOpen, field.string.isEmpty, captured == first, typingFrame() == nil else {
                 throw ReplayError("Open panel after Return with admission held: \(captured)")
             }
             try await wait("Reader at the end did not follow the captured message", timeout: .seconds(2)) {
@@ -393,6 +402,19 @@ private final class WheelSample: NSEvent {
             let followed = endDistance(panelScroll)
             kill(pid, SIGCONT)
             try await wait("First send did not settle before Talk") { !presentation.dockDraft.submitting && labels() == first }
+            try await wait("Typing bubble did not follow the running Chief turn at the end") {
+                guard workspace.catalog.moku?.observation.latestExecution?.status == .running,
+                      let bubble = typingFrame() else { return false }
+                let list = window.convertToScreen(panelScroll.convert(panelScroll.bounds, to: nil))
+                return bubble.width > 0 && list.contains(bubble) && abs(bubble.minX - list.minX - 14) <= 1
+                    && abs(endDistance(panelScroll)) <= 1
+            }
+            let typingEndDistance = endDistance(panelScroll)
+            try await focusReplayWindow(window)
+            try await recordWindow(window, to: evidence.appending(path: "conversation-typing.mp4")) {
+                try await capture(window, to: evidence.appending(path: "conversation-typing.png"))
+                try await Task.sleep(for: .seconds(3))
+            }
             let draft = presentation.dockDraft
             field.insertText(fixture.messages[2], replacementRange: field.selectedRange())
             await draft.importFiles([NativeComposerFile(url: profile.deletingLastPathComponent().appending(path: fixture.attachment))])
@@ -412,6 +434,7 @@ private final class WheelSample: NSEvent {
             try await pressKey("\u{1b}", code: 53, in: window)
             try await wait("Panel did not dismiss") { !scene.conversationOpen && !scene.inputOpen }
             guard let dock = descendant(MokuHorizontalTravelView.self, in: content) else { throw ReplayError("Missing Dock host") }
+            try await focusReplayWindow(window)
             var eyes = CGRect.null
             // Escape can expose the accessibility button while the Dock is still folding.
             // Send one click once its frame is stable and native hits reach the hosted control.
@@ -457,12 +480,22 @@ private final class WheelSample: NSEvent {
             try Data().write(to: profile.deletingLastPathComponent().appending(path: "allow-reply"))
             let finished = second + Array(expected.suffix(2))
             try await wait("Talk changed the outgoing rows") { labels() == finished }
+            try await wait("Typing bubble remained after Chief finished") {
+                workspace.catalog.moku?.observation.latestExecution?.status == .completed && typingFrame() == nil
+            }
             let afterTalkY = compactScroll.documentVisibleRect.minY
             guard abs(afterTalkY - readingY) < 1 else { throw ReplayError("Talk moved the earlier reading position") }
+            try await postScroll(window, point, y: -2000, phase: .began)
+            try await postScroll(window, point, y: 0, phase: .ended)
+            try await wait("Completed conversation did not return to its final reply") {
+                abs(endDistance(compactScroll)) <= 1 && typingFrame() == nil && labels() == finished
+            }
+            try await capture(window, to: evidence.appending(path: "conversation-typing-finished.png"))
             let observations: [String: Any] = ["beforeAdmission": captured, "rejection": rejection,
                 "compactBeforeAdmission": compactCapture, "beforeTalk": beforeTalk, "afterTalk": labels(),
                 "panelReturnToObservationMS": panelObservedMS, "compactReturnToObservationMS": compactObservedMS,
-                "distanceFromEndAfterSend": followed, "readingY": readingY, "readingYAfterTalk": afterTalkY]
+                "distanceFromEndAfterSend": followed, "distanceFromEndWhileTyping": typingEndDistance,
+                "readingY": readingY, "readingYAfterTalk": afterTalkY]
             try JSONSerialization.data(withJSONObject: observations, options: [.prettyPrinted, .sortedKeys])
                 .write(to: evidence.appending(path: "conversation-refresh.json"))
             return
