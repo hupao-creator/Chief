@@ -102,8 +102,15 @@ Chief-0.1.0-alpha.1-arm64/
 are rejected. Each release is prepared privately and published with an exclusive
 atomic rename. An existing release directory is never replaced, including by a
 concurrent builder. Failed packaging leaves prior releases intact.
-The DMG contains `Chief Alpha.app`, an Applications shortcut and the
-[bilingual installation guide](alpha-installation.txt).
+Finder opens the `Install Chief Alpha` volume in a 600 × 344 point icon view.
+Drag the app on the left along the arrow to the Applications shortcut on the
+right (a symlink to `/Applications`). The [bilingual installation guide](alpha-installation.txt)
+is the separate `READ-ME-FIRST.txt` in the release directory.
+
+Packaging copies the prebuilt Finder metadata and Retina background from this
+directory. To edit the layout, run `python generate-dmg-layout.py` here on a Mac
+with Pillow, ds-store and mac-alias installed. The volume name in the generator
+and packager must agree so Finder can resolve the background on the image.
 The public [Releases page](https://github.com/hupao-creator/Chief/releases)
 lists the prerelease DMG, checksum and guide by version.
 The receipt records the source commit, dirty-worktree status, versions, signing

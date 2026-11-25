@@ -125,7 +125,10 @@ certified by these scenarios.
 Use the [packaging contract](../../app/macos/build/README.md#invited-alpha-dmgs)
 and [installation guide](../../docs/getting-started.md#install-chief-alpha).
 Verify the DMG against the checksum from the same release. Mount it read-only,
-check the Applications shortcut and compare the enclosed guide with the download.
+open the volume in Finder and check that both filenames are fully visible, with
+the app on the left and the Applications shortcut on the right of the arrow.
+Confirm the shortcut resolves to `/Applications` and the separate release guide
+matches `app/macos/build/alpha-installation.txt`.
 Copy the app to a temporary install directory, eject the image, then run alpha
 smoke on the copy. Record the DMG hash, source commit and build number.
 
