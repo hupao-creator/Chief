@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="design/chief-logo.webp" width="96" height="96" alt="Chief logo: a skillet tossing three coding agents">
+  <img src="design/chief-logo.webp" width="115" height="115" alt="Chief logo: a skillet tossing three coding agents">
 </p>
 
 <h1 align="center">Chief</h1>
