@@ -164,9 +164,13 @@ public struct NativeMokuDock: View {
         guard let talk, !talk.isEmpty else { return nil }
         return NativeMokuTalkMessage(id: JSONText(talk), text: talk)
     }
+    // The Agent panel can reach Overview while its Dock mark is still turning.
+    private var returningHarness: Bool {
+        state.harnessSeat != nil && (state.readingPanelReturning
+            || (state.overviewVisible && !state.dockCovered && !state.inputOpen && !landing))
+    }
     private var visibleTalk: NativeMokuTalkMessage? {
-        // A Report may release its Thread before its outgoing mark finishes.
-        if state.readingPanelReturning, state.harnessSeat != nil { return nil }
+        if returningHarness { return nil }
         guard threadID == nil, !state.inputOpen, interaction == nil, !state.dockCovered, state.dockRouteVisible,
               state.windowVisible, !disabled, !draft.submitting else { return nil }
         return state.talkPresentation.message
@@ -390,7 +394,7 @@ public struct NativeMokuDock: View {
                 && executionPlacement?.threadID == threadID
                 ? executionPlacement?.frame : nil
             let immediate = scenePhase != .active || reduceMotion
-            let returningHarness = state.readingPanelReturning && state.harnessSeat != nil
+            let readingSeat = state.readingPanelVisible || returningHarness
             let holdingColumn = !expanded && (!shellIsCompact || returningHarness) && !immediate
                 && inputColumn?.viewport == geometry.size && executionPlacement?.dragging != true
             let openColumn = expanded && (state.inputOpen || continuationPresenting)
@@ -404,7 +408,7 @@ public struct NativeMokuDock: View {
             }
             let dockViewport = column.flatMap { $0.isNull || $0.isEmpty ? nil : $0 } ?? viewport
             let baseFrame = NativeMokuCapsuleLayout.frame(in: dockViewport, landing: landing,
-                reading: state.readingPanelVisible && !state.settingsOpen)
+                reading: readingSeat && !state.settingsOpen)
             let restingFrame = NativeMokuCapsuleLayout.frame(in: dockViewport, landing: landing)
             let readingOffset = baseFrame.maxY - restingFrame.maxY
             let messageWidth = displayedMessage?.dispatch != nil ? min(400, baseFrame.width) : baseFrame.width
@@ -440,12 +444,12 @@ public struct NativeMokuDock: View {
                 verticalOffset: readingOffset,
                 frame: executionFrame, revision: executionPlacement?.travelRevision ?? 0, viewport: geometry.size,
                 dragging: executionPlacement?.dragging == true, inactive: immediate,
-                composer: state.composerGeneration, reading: state.readingPanelVisible)
+                composer: state.composerGeneration, reading: readingSeat)
             ZStack(alignment: .topLeading) {
                 capsule(width: width, room: max(58, frame.height - 18),
                     surface: surface, sizesRow: sizesRow, messageWidth: messageWidth, rowHeight: rowHeight,
                     decorationPadding: placement.decorationPadding, settingsSize: settingsSize,
-                    holdsMark: state.readingPanelReturning && !immediate
+                    holdsMark: returningHarness && !immediate
                         && (!shellIsCompact || (travelHost != nil && settledDestination != destination)))
                     .modifier(CapsuleSurfaceFrame(size: surface.size, sizesRow: sizesRow) { shellIsCompact = $0 })
                     .nativeCanvasNavigationRegion()

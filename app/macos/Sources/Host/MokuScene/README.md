@@ -193,8 +193,10 @@ its selection. Returning from an Agent conversation to Overview closes the readi
 panel's input gate while the workspace still owns the outgoing draft. The
 composer and its directory suggestions hide at that point. The accepted close starts a 420ms ease-out fold in the reading column.
 The Harness mark stays upright until the presented glass is compact and column travel
-has settled. The stationary bar then flips to the eyes over 420ms. The mounted
-mark releases the reader return on animation completion or when its seat disappears. Route release removes the row without a SwiftUI exit fade. Reopening
+has settled. The stationary bar then flips to the eyes over 420ms. Agent panel
+travel overlaps the fold. The Dock keeps its reading position through the
+turn even if the Agent route has already closed. A Report waits for its mounted
+mark to finish or disappear before starting panel travel. Route release removes the row without a SwiftUI exit fade. Reopening
 restores the active draft and its selection. Talk has independent presentation
 and can become readable when input closes. The shell and the single identity
 seat move in the same transaction. The editor overlay reserves its final width

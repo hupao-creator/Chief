@@ -91,7 +91,9 @@ Closing retains the native return: reader ink fades over the first 80%, shell
 travel reaches the refreshed source at 86%, and the final 14% crossfades to card
 content. Closing before primary admission uses the opening-reversal path.
 A mounted direct-input Dock closes its input gate, folds in the reading column,
-and turns its Harness mark back to the eyes. Panel travel waits for that turn to finish.
+and turns its Harness mark back to the eyes. Agent panel return prepares the
+canvas immediately and travels while the Dock folds. A Report with a mounted
+Harness mark waits for the turn before preparing its return.
 A deleted/archived source supplies no stale return target. Route/generation
 identity fences all preparation and completion callbacks.
 

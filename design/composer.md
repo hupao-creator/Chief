@@ -69,11 +69,11 @@ blocks input. The eyes flip to the Harness logo on entry and the logo flips
 back to the eyes on return. Both turns use the 420ms reading opening curve.
 Reduce Motion settles either direction immediately.
 The shell contracts around the bottom center of its reading column with the Harness logo upright.
-The turn runs in the stationary compact shell. Once the eyes settle, the reader can close
-and the bar can glide horizontally at the reading height until
+Agent panel travel overlaps the fold. The turn runs in the stationary compact
+shell. Once the eyes settle, the bar glides horizontally at the reading height until
 centered in the workspace, then rises vertically to its Overview seat.
-A centered reader only needs the lift. Closing a Super Thread with an
-execution selected uses the same sequence.
+A centered reader only needs the lift. A Super Thread with an execution
+selected waits for the eyes to settle before starting panel travel.
 The editor reveals its input ink at its settled position during expansion.
 See the [Dock contract](../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer).
 
