@@ -367,8 +367,9 @@ Opening Chief input marks the Dock’s reply as read.
 [NativeMokuTalk](NativeMokuTalk.swift) shows the latest valid `talk` or `create_thread` operation. Talk is selectable text. Each message opens at the top and grows to a 149-point text viewport (about eight lines). Scroll down to read overflow, including execution links. Its trailing control seat stays reserved for the whole message so retiring Stop does not shift centered text or change its wrapping. It does not edit the draft or grab focus. Clicking outside the capsule dismisses the presented notification without consuming the click, including clicks in another window or app; clicks and scrolling inside retain it. Only windows accepting mouse input observe outside-window presses. The cross-app mouse observer is removed when the notification is hidden or the Dock unmounts. Dismissed/presented operation identity survives refresh and remount within its scene; a notification covered before presentation waits until it can actually be shown.
 
 Talk uses symmetric 64-point insets around its centered selectable text viewport,
-reserving the persistent eye/control seats without shifting prose. No Talk clipping/transcript
-correctness suite is configured in this source tree.
+reserving the persistent eye/control seats without shifting prose. The
+[mounted link replay](../../../../../demos/moku-landing/README.md#talk-execution-links)
+checks that the full text of a multiline Chinese notice and its final link fit.
 
 The
 capsule height uses the same width; changing the scrollbar preference updates
@@ -379,7 +380,10 @@ is a maximum inside a flexible, leading-aligned document, so persistent scroller
 cannot expand it past the control row.
 
 
-Text shorter than the Talk viewport is vertically centered in its row.
+The compact Talk shell adds 9 points above and below its measured content.
+Inline links include their own clearance within the text line. Short messages
+are vertically centered at the row's minimum height (58 points in Overview,
+76 on Landing).
 The Dock's Stop
 square is revealed by pointer hover, keyboard focus or VoiceOver focus. A scoped 120ms SwiftUI ease-in/out animation fades the square.
 The surrounding Button owns cancellation and stays in the accessibility tree, while pointer
