@@ -12,7 +12,6 @@ import ChiefPluginUI
     public let settingsCharacter = MokuCharacterController()
     /// Controls outside the Dock that an outside click must treat as inside,
     /// such as the Overview's Return to Automatic View button.
-    let outsideClickExclusions = NativeClickExclusions()
     /// One registry spans the canvas and its overlaid Moku surfaces. A drag
     /// over the capsule must retain control ownership on touch and pointer.
     let canvasInputRegions = NativeCanvasInputRegions()

@@ -44,7 +44,8 @@ The build used `xcrun swift build --package-path app/macos --product Chief --onl
 The preview ran `--capture-overview --english --control-ink` with and without
 `--reduced-motion`, `--capture-overview`, `--replay-chief-input --verify-actions`,
 `--replay-send`, `--capture-agent-entrance` and `--capture-collapse` at ordinary
-and narrow widths. The remaining mounted visits used the following command.
+and narrow widths. The remaining mounted visits used the following command on
+the recorded revision above.
 [Capture instructions](../../README.md#control-ink-recording)
 
 ```sh

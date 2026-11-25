@@ -13,7 +13,6 @@ public final class NativeWorkspaceModel {
         NSApp?.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .dark : .light
     }
     public let plugins: NativePluginComposition
-    public let timer: NativeMokuTimerController
     public let catalog = NativeWorkspaceCatalog()
     public var hasInitialContent: Bool { hasSnapshot && catalog.hasMoku }
     var waitingForInitialCatalog: Bool {
@@ -92,11 +91,10 @@ public final class NativeWorkspaceModel {
     )
 
     public init(client: RuntimeClient, preferences: DesktopPreferences, plugins: NativePluginComposition,
-                timer: NativeMokuTimerController? = nil, locale: DesktopLocale = .system) {
+                locale: DesktopLocale = .system) {
         self.client = client
         self.preferences = preferences
         self.plugins = plugins
-        self.timer = timer ?? NativeMokuTimerController()
         self.locale = locale
     }
 
@@ -212,7 +210,6 @@ public final class NativeWorkspaceModel {
                 recoveryRevision += 1
             }
             state = snapshot
-            timer.receive(catalog.moku)
             catalogError = nil
             if connection == .connected { connectionError = nil }
             settingsModel.receive(snapshot: snapshot, runtimeAvailable: runtimeAvailable)
@@ -347,7 +344,6 @@ public final class NativeWorkspaceModel {
     public func stop() async throws {
         guard !stopping else { return }
         stopping = true
-        timer.stop()
         // Pause pending settings timers before awaiting service teardown.
         refreshAvailability()
         var failure: Error?

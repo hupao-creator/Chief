@@ -155,7 +155,7 @@ struct NativeMokuCharacterPose {
                 : (previous?.running != next.running || wasThinking != isThinking ? 550 : 420)
         }
         framePose = sample(at: clock)
-        // Compact reminders and interventions change only the two resident
+        // Unread replies and interventions change only the two resident
         // eyes. A moving shell, orbit or retiring decoration keeps the shared
         // display clock, including when it interrupts one of these expressions.
         if eyesAlone, orbitVisibility == 0, next.changesOnlyCompactExpression(from: previous), !retirementPending, replacementGlyphs.isEmpty,

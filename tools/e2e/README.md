@@ -333,7 +333,7 @@ fixture's main thread during a second blink and read complete window frames
 on an independent capture queue.
 
 The [mounted Dock replay](../../demos/moku-panel-transition/remaining/README.md) exercises reply read state,
-permission and questionnaire controls, Timer acknowledgment and editor reversal
+permission and questionnaire controls and editor reversal
 with ordinary and reduced motion.
 
 ### OpenCode cold discovery

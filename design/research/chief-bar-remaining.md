@@ -18,7 +18,7 @@ Git object `44fec23d4c59200821ae5be23fb395f8294c13cd`, under
 material and editor, retained route host, document carriers and projected
 identity planes. The separate Stop integration owns Stop. [Replay instructions](../../demos/moku-panel-transition/remaining/README.md)
 
-## Reminders, permissions and input
+## Recorded control and input visits
 
 | Entry | Native observation and decision |
 | --- | --- |
@@ -30,7 +30,7 @@ identity planes. The separate Stop integration owns Stop. [Replay instructions](
 These visits start at a projected reply or interaction, or at completed Timer
 rows. Harness permission transport, audible speaker output, global shortcuts,
 an operating-system IME candidate window and VoiceOver navigation have
-separate test boundaries. [Interaction and Timer ownership](../../app/macos/Sources/Host/MokuScene/README.md)
+separate test boundaries. [Current interaction ownership](../../app/macos/Sources/Host/MokuScene/README.md)
 
 ## Onboarding and whole-Bar visibility
 

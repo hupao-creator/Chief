@@ -56,7 +56,6 @@ struct NativeOverviewScrollSequence {
 /// Transparent geometry/lifecycle anchor, never a hit target or first responder.
 /// A local monitor also sees events above SwiftUI's semantic card subviews.
 struct NativeOverviewScrollInput: NSViewRepresentable {
-    @Environment(\.reminderScrollRegions) private var reminderScrollRegions
     @Environment(\.overviewSwipeActions) private var swipeActions
     var regions: NativeCanvasInputRegions
     var size: CGSize
@@ -72,7 +71,6 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
         let geometry = Configuration(size: size, toolbarBottom: toolbarBottom, identity: identity)
         if view.configuration != geometry { view.cancelSequence(); view.configuration = geometry }
         view.swipeActions = swipeActions
-        view.reminderScrollRegions = reminderScrollRegions
         view.regions = regions
         view.enabled = enabled; view.scroll = scroll
         if !enabled() { view.cancelSequence() }
@@ -87,7 +85,6 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
 
     @MainActor final class MonitorView: NSView {
         var configuration = Configuration(size: .zero, toolbarBottom: 0, identity: "")
-        weak var reminderScrollRegions: NativeCanvasInputRegions?
         weak var regions: NativeCanvasInputRegions?
         var enabled: () -> Bool = { false }
         var scroll: (Double) -> Void = { _ in }
@@ -126,7 +123,6 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                   NSEvent.pressedMouseButtons == 0 else { return false }
             let location = windowPoint(point)
             guard bounds.intersection(visibleRect).contains(convert(location, from: nil)),
-                  reminderScrollRegions?.contains(location, in: window) != true,
                   regions?.contains(location, in: window) != true else { return false }
             // Public AppKit fallback for native editors/embedded scrolling views.
             guard let content = window.contentView else { return false }
@@ -146,8 +142,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             let point = event.locationInWindow
             let contentPoint = content.convert(point, from: nil)
             guard content.bounds.contains(contentPoint),
-                  !actions.regions.controls.contains(point, in: window),
-                  reminderScrollRegions?.contains(point, in: window) != true else { return nil }
+                  !actions.regions.controls.contains(point, in: window) else { return nil }
             // A long Talk or another vertically overflowing native viewport
             // keeps the whole contact, even when already at either end.
             let hit = content.superview?.convert(point, from: nil) ?? point

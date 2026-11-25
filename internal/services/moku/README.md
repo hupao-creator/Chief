@@ -42,7 +42,7 @@ contract even when native tool-schema conversion drops composition details.
 Moku retains the same named-target schema and authoritative validation; Pi,
 OpenCode and Claude continue receiving their existing definitions.
 
-[tools.go](tools.go) implements `list_threads`, `create_thread`, `remove_worktree`, `describe_native_harness`, `get_thread_status`, `send_to_thread`, `interrupt_thread`, `ask_thread`, `talk`, `timer` and `update_note`. Tool calls and results are audited under the owning Moku execution; cancellation follows the captured owner. Creation success means the target input was admitted, not that its work has completed. Listing and queries retain bounded, explicit public access. `ask_thread` makes a model request against an ordinary Agent Thread history fork or captured snapshot; it does not return raw history, send a message to the source, or change source state. The snapshot can be stale and is not a live status query. Terminal events arrive automatically; do not poll for progress or readiness.
+[tools.go](tools.go) implements `list_threads`, `create_thread`, `remove_worktree`, `describe_native_harness`, `get_thread_status`, `send_to_thread`, `interrupt_thread`, `ask_thread`, `talk` and `update_note`. Tool calls and results are audited under the owning Moku execution; cancellation follows the captured owner. Creation success means the target input was admitted, not that its work has completed. Listing and queries retain bounded, explicit public access. `ask_thread` makes a model request against an ordinary Agent Thread history fork or captured snapshot; it does not return raw history, send a message to the source, or change source state. The snapshot can be stale and is not a live status query. Terminal events arrive automatically; do not poll for progress or readiness.
 
 Tool scopes follow the current Moku Thread's monotonic record revision, not the
 arrival order of commit callbacks. A delayed note or metadata notification cannot
@@ -215,7 +215,7 @@ The provider also receives configuration, context and tool definitions.
   limits; it neither replaces the base nor overrides explicit
   user routing choices.
 - Existing tool descriptions and schemas retain their full contracts: exact
-  native options and catalog status, routing, worktree naming, Talk/Timer
+  native options and catalog status, routing, worktree naming, Talk
   limits, note evidence and compare-and-swap rules, and bounded Thread queries.
 - `ContextEntries` contain session-start workspace context and before-send note,
   directory, telemetry, evaluation and notification context, including runtime
@@ -229,14 +229,14 @@ The provider also receives configuration, context and tool definitions.
 - Native engines/providers may supply their own system instructions, workspace
   instructions or session history alongside the coordinator instructions.
 
-Talk/Timer limits, Note evidence, native options and worktree naming live in
+Talk limits, Note evidence, native options and worktree naming live in
 their tool contracts. Native session preparation injects current guidance; stored native
 history retains its original messages.
 
 ## Talk and notes
 
 The built-in prompt states that Moku's own assistant replies are invisible.
-Visible surfaces remain Talk, Timer, the persistent note and ordinary Agent
+Visible surfaces remain Talk, the persistent note and ordinary Agent
 Threads, including Moku's delegated instructions; their detailed usage lives in tool contracts. Anything the user needs to know or respond
 to must reach a visible surface: Talk for short
 immediate answers, questions, confirmations and updates; the note for persistent
@@ -244,25 +244,6 @@ milestone recaps; and the relevant Agent Thread for detailed task discussion and
 deliverables.
 
 `talk` accepts only nonblank `text`, without NUL, up to **160 Unicode code points**, including whitespace/newlines. Rejection does not truncate or overwrite a successful message. The UI derives display identity from the audited operation, not from arbitrary model prose. Code-point budgets are independent from the UI's four-line reading viewport. The compact notification hides after 60 seconds. Successful Talk calls remain readable in the [Chief Bar conversation](../../core/runtime/README.md#chief-conversation). [prompt.go](prompt.go)'s shared `TalkTextPolicy` supplies this visibility guidance to the registered tool and parameter descriptions. Use `update_note` for the persistent milestone recap; Talk messages are not copied into the note.
-
-`timer(text)` is an immediate, one-time communication tool alongside `talk`.
-It uses the same closed text-only envelope, **160 Unicode code-point** budget,
-nonblank/NUL validation, exact-text preservation, and audited completion path.
-The tool returns `{ok:true}` after its completion audit commits, without waiting
-for a user receipt. Success means the operation was accepted, not proof that a
-client displayed it, audio was audible, or the user acknowledged it. Only the UI
-can acknowledge; there is no confirmation tool, scheduler, date/duration input,
-reminder CRUD or reminder table. The tool describes its audible nature;
-ordinary Talk remains silent and expires automatically as before.
-
-The native workspace queues successful Timer operations by owner, Harness,
-execution and audit operation identity. Talk cannot replace queued Timers.
-The catalog retains a catch-up tail of the latest 256 completed successful Timer
-operations across executions, in addition to the usual current-execution preview.
-This prevents a rapid successor/coalesced publication from hiding a completed
-Timer; it is a bounded projection of existing audit rows, not a durable delivery
-queue. See the [native Timer contract](../../../app/macos/Sources/Host/MokuScene/README.md#immediate-timer)
-for startup, disconnection and audio limitations.
 
 Talk and note text guidance encourages emoji when they naturally add expression
 and suit the context; emoji remain optional and count toward the existing

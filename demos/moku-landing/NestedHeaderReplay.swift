@@ -68,15 +68,6 @@ private final class WheelSample: NSEvent {
     override var timestamp: TimeInterval { ProcessInfo.processInfo.systemUptime }
 }
 
-@MainActor private final class ReminderReplayPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-}
-
-@MainActor private final class SilentReminderBell: NativeMokuTimerPlaying {
-    func startLoop() throws {}
-    func stop() {}
-}
-
 @main @MainActor private struct NestedHeaderReplay: App {
     @State private var collectionViewport: CGSize?
     @State private var captureScheme: ColorScheme?
@@ -84,24 +75,22 @@ private final class WheelSample: NSEvent {
     private let workspace: NativeWorkspaceModel
     private let presentation: NativeWorkspacePresentation
 
-    init() { self.init(profile: nil) }
-
-    private init(profile: URL?) {
+    init() {
         do {
-            if profile == nil { try prepareIsolatedNativeReplay() }
+            try prepareIsolatedNativeReplay()
             let liveProfile = CommandLine.arguments.firstIndex(of: "--live-conversation").map {
                 URL(filePath: CommandLine.arguments[$0 + 1])
             }
             if let liveProfile, liveProfile.lastPathComponent != "profile" || !liveProfile.deletingLastPathComponent().lastPathComponent.hasPrefix("me2e-") {
                 throw ReplayError("Expected a private e2e profile")
             }
-            let directory = profile ?? liveProfile ?? URL(filePath: FileManager.default.currentDirectoryPath)
+            let directory = liveProfile ?? URL(filePath: FileManager.default.currentDirectoryPath)
             let preferences = DesktopPreferences(directory: directory)
             try preferences.setOnboardingCompleted(true)
             let liveLocale: DesktopLocale = CommandLine.arguments.contains("--restart") ? .english : .chinese
             workspace = NativeWorkspaceModel(client: RuntimeClient(profile: try RuntimeProfile(dataDirectory: directory)),
                 preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())], sidecards: [], applications: NativeApplicationModules.make()),
-                timer: NativeMokuTimerController(player: SilentReminderBell()), locale: liveProfile == nil ? .system : liveLocale)
+                locale: liveProfile == nil ? .system : liveLocale)
             presentation = NativeWorkspacePresentation(workspace: workspace)
         } catch { fatalError(String(describing: error)) }
     }
@@ -134,7 +123,7 @@ private final class WheelSample: NSEvent {
 
     private func installTasks(_ count: Int, revision: Int, authority: UUID, firstDirectoryCount: Int? = nil,
                               manyDirectories: Bool = false, firstTagCount: Int? = nil, reports: [JSONValue] = [], extraThreads: [JSONValue] = [],
-                              noteText: String? = nil) async throws {
+                              noteText: String? = nil, mokuTranscript: [JSONValue] = []) async throws {
         let extra = manyDirectories ? (0..<12).map { "project-task-\($0)" } : []
         let ids = (0..<count).map { "task-\($0)" } + extra + ["moku"]
         let note = try ThreadNote(id: "fixture-note", text: JSONText(noteText ?? String(repeating: "A note paragraph.\n\n", count: 55)),
@@ -144,9 +133,9 @@ private final class WheelSample: NSEvent {
             let directory: JSONText = index >= count && manyDirectories ? JSONText("Project \(index)") : (other ? "Other" : "Fixture")
             let scope: JSONText = index >= count && manyDirectories ? JSONText("/fixture/\(index)") : (other ? "/other" : "/fixture")
             let tag: JSONText = firstTagCount.map { index >= $0 } == true ? "Review" : "Work"
-            return try HarnessThread(id: JSONText(id), harnessID: "codex", revision: 0, sessionState: .null,
+            return try HarnessThread(id: JSONText(id), harnessID: "codex", revision: id == "moku" && !mokuTranscript.isEmpty ? revision : 0, sessionState: .null,
                 observation: .init(), cwd: scope, settings: .object([:]), createdAt: 1, updatedAt: 2,
-                title: JSONText(id), tags: [tag], moku: id == "moku" ? true : nil, note: (manyDirectories || noteText != nil) && id == "moku" ? note : nil, transcript: id == "moku" ? .array([]) : nil,
+                title: JSONText(id), tags: [tag], moku: id == "moku" ? true : nil, note: (manyDirectories || noteText != nil) && id == "moku" ? note : nil, transcript: id == "moku" ? .array(mokuTranscript) : nil,
                 tagEmojis: [tag: "📌"], directoryTag: directory, directoryScope: scope).json
         }
         let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
@@ -162,7 +151,7 @@ private final class WheelSample: NSEvent {
         }
         let authority = UUID()
         let noteClickReplay = CommandLine.arguments.contains("--note-click")
-        try await installTasks(18, revision: 1, authority: authority, manyDirectories: noteClickReplay)
+        try await installTasks(18, revision: noteClickReplay ? 0 : 1, authority: authority, manyDirectories: noteClickReplay)
         guard workspace.hasInitialContent, let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "header-replay" }),
               let screen = NSScreen.screens.first else { throw ReplayError("Workspace did not mount") }
         window.collectionBehavior = [.auxiliary, .canJoinAllSpaces]
@@ -215,10 +204,15 @@ private final class WheelSample: NSEvent {
             window.center()
             try await focusReplayWindow(window)
             try await Task.sleep(for: .seconds(1))
+            // Deliver a completed historical tool row after the Bar has mounted.
+            let legacyOperation: JSONValue = .object(["type": .text("tool-operation"), "name": .text("timer"),
+                "id": .text("legacy-operation"), "executionId": .text("fixture"), "completedAt": .integer(1),
+                "result": .object(["ok": .bool(true)]), "arguments": .object(["text": .text("Archived reminder")])])
+            try await installTasks(18, revision: 1, authority: authority, manyDirectories: true, mokuTranscript: [legacyOperation])
+            guard workspace.catalog.moku?.transcript?.arrayValue == [legacyOperation] else {
+                throw ReplayError("Missing historical tool operation in mounted workspace")
+            }
             try await noteClicks(window, directory: directory)
-            let reminderFixture = Self(profile: directory.appending(path: "reminder-profile"))
-            try await reminderFixture.reminderSwipe(directory: directory)
-            try await focusReplayWindow(window)
             try await cardInteraction(window, directory: directory, authority: authority)
             try await fittingCards(window, directory: directory, authority: authority)
             try await statusFilters(window, directory: directory, authority: authority)
@@ -1377,31 +1371,37 @@ private final class WheelSample: NSEvent {
                        ("tag scroller", center(tagTarget))]
         let startOffset = camera.scrollOffset
         let model = presentation.overview
+        guard let folder = model.selectedDirectory,
+              let work = folder.children.first(where: { $0.tag == "Work" }),
+              model.railChoices.first?.id == work.id else {
+            throw ReplayError("Expected Work as the folder's first swipe target")
+        }
+        var wholeFolderSelected: Bool { model.selectedFilter?.id == folder.id && model.statusFilter == .all }
         try await postScroll(window, background, y: 9, phase: .began)
         try await postScroll(window, background, y: 0, phase: .cancelled)
         try await postScroll(window, background, y: 60, phase: nil, momentum: .begin)
         try await postScroll(window, background, y: 0, phase: nil, momentum: .end)
-        guard model.statusFilter == .all, !scene.notePanelOpen else { throw ReplayError("Orphan momentum took action") }
+        guard wholeFolderSelected, !scene.notePanelOpen else { throw ReplayError("Orphan momentum took action") }
         for (region, point) in targets {
             try await postScroll(window, point, y: 10, phase: .began)
-            guard !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Subthreshold swipe at " + region) }
+            guard !scene.notePanelOpen, wholeFolderSelected else { throw ReplayError("Subthreshold swipe at " + region) }
             try await postScroll(window, point, y: 17, phase: .changed)
-            guard !scene.notePanelOpen, model.statusFilter == .running else { throw ReplayError("Wrong swipe owner at " + region) }
+            guard !scene.notePanelOpen, model.selectedRailID == work.id else { throw ReplayError("Wrong swipe owner at " + region) }
             // Reverse before lift, cross onto the Bar and add inertia.
             try await postScroll(window, barPoint, y: -60, phase: .changed)
             try await postScroll(window, barPoint, y: 0, phase: .ended)
             try await postScroll(window, barPoint, y: -60, phase: nil, momentum: .begin, x: -20)
             try await postScroll(window, barPoint, y: 0, phase: nil, momentum: .end)
-            guard !scene.notePanelOpen, model.statusFilter == .running,
+            guard !scene.notePanelOpen, model.selectedRailID == work.id,
                   camera.scrollOffset == startOffset else { throw ReplayError("Swipe tail escaped at " + region) }
-            try model.chromeInteractions.activate(.directory, id: model.selectedDirectory!.id)
+            try model.chromeInteractions.activate(.directory, id: folder.id)
             try await Task.sleep(for: .milliseconds(600))
         }
         try swipeWithNaturalScrolling(monitor, in: window, at: background, direction: .up)
-        guard !scene.notePanelOpen, model.statusFilter == .running else {
+        guard !scene.notePanelOpen, model.selectedRailID == work.id else {
             throw ReplayError("Natural Scrolling changed the physical filter gesture")
         }
-        try model.chromeInteractions.activate(.directory, id: model.selectedDirectory!.id)
+        try model.chromeInteractions.activate(.directory, id: folder.id)
         try await Task.sleep(for: .milliseconds(650))
         let tagPoint = tags.convert(center(tags.bounds), to: nil)
         let tagOffset = tags.contentView.bounds.minX
@@ -1419,7 +1419,7 @@ private final class WheelSample: NSEvent {
         try await postScroll(window, barPoint, y: 40, phase: nil, momentum: .begin)
         try await postScroll(window, barPoint, y: 0, phase: nil, momentum: .end)
         guard scene.conversationOpen, scene.inputOpen, !scene.notePanelOpen, scene.noteOpenGeneration == beforeOpen,
-              model.statusFilter == .all, camera.scrollOffset == startOffset else {
+              wholeFolderSelected, camera.scrollOffset == startOffset else {
             throw ReplayError("The Bar swipe did not open the conversation directly")
         }
         try await Task.sleep(for: .milliseconds(650))
@@ -1479,7 +1479,7 @@ private final class WheelSample: NSEvent {
         guard !scene.conversationOpen, !scene.inputOpen else { throw ReplayError("Outside click did not close the conversation") }
         try await postClick(window, at: background, secondary: true)
         guard !scene.notePanelOpen, scene.noteOpenGeneration == beforeOpen,
-              model.statusFilter == .all, camera.scrollOffset == startOffset else {
+              wholeFolderSelected, camera.scrollOffset == startOffset else {
             throw ReplayError("Background right-click changed the Bar or Overview")
         }
         try await postClick(window, at: barPoint, secondary: true)
@@ -1518,7 +1518,7 @@ private final class WheelSample: NSEvent {
         try await postScroll(window, barPoint, y: 0, phase: .ended)
         try await postScroll(window, background, y: 40, phase: .began, flags: .maskShift)
         try await postScroll(window, background, y: 0, phase: .ended)
-        guard !scene.notePanelOpen, !scene.conversationOpen, model.statusFilter == .all else { throw ReplayError("Downward Bar or modified canvas input took action") }
+        guard !scene.notePanelOpen, !scene.conversationOpen, wholeFolderSelected else { throw ReplayError("Downward Bar or modified canvas input took action") }
         // The Note and the restored 18-card layout share a motion coordinator.
         // Test a fresh pan once the production camera admits a new contact.
         let panDeadline = ContinuousClock.now + .seconds(6)
@@ -1540,12 +1540,12 @@ private final class WheelSample: NSEvent {
         }
         try await postScroll(window, background, y: 40, phase: .began)
         try await postScroll(window, background, y: 0, phase: .ended)
-        guard scene.inputOpen, !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Swipe displaced the composer") }
+        guard scene.inputOpen, !scene.notePanelOpen, wholeFolderSelected else { throw ReplayError("Swipe displaced the composer") }
         scene.setInputOpen(false)
         presentation.openSettings()
         try await postScroll(window, background, y: 40, phase: .began)
         try await postScroll(window, background, y: 0, phase: .ended)
-        guard scene.settingsOpen, !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Swipe escaped Settings") }
+        guard scene.settingsOpen, !scene.notePanelOpen, wholeFolderSelected else { throw ReplayError("Swipe escaped Settings") }
         scene.closeSettings()
         let deadline = ContinuousClock.now + .seconds(4)
         while scene.settingsOpen || !monitor.enabled() {
@@ -1553,7 +1553,8 @@ private final class WheelSample: NSEvent {
             try await Task.sleep(for: .milliseconds(30))
         }
         try JSONSerialization.data(withJSONObject: ["regions": targets.map { $0.0 },
-            "rightClickOpenedNoteOnce": true, "swipeOpenedConversation": true, "backgroundRightClickOpenedNote": false,
+            "historicalToolOperationInstalled": true, "canvasSwipeTag": work.tag, "rightClickOpenedNoteOnce": true,
+            "swipeOpenedConversation": true, "backgroundRightClickOpenedNote": false,
             "conversationDraftRestoredInCompose": true, "conversationPeriodCount": periods.count, "conversationPaging": true,
             "olderReadingOffsetsOnResize": readingOffsets,
             "outsideClickClosedNote": true, "primaryClickOpenedCompose": true,
@@ -1561,78 +1562,6 @@ private final class WheelSample: NSEvent {
             "tagOffsets": [tagOffset, tags.contentView.bounds.minX], "noteOffsets": [original, scrolled],
             "naturalScrolling": true])
             .write(to: directory.appending(path: "overview-note-click.json"))
-    }
-
-    /// Exercise both event owners in the same production workspace, entirely offscreen.
-    private func reminderSwipe(directory: URL) async throws {
-        guard let edge = NSScreen.screens.map({ $0.frame.maxX }).max() else { throw ReplayError("Missing screen") }
-        // Keep WindowServer composing the panel while the controls stay offscreen.
-        let frame = CGRect(x: edge - 2, y: 200, width: 900, height: 680)
-        let window = ReminderReplayPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        let root = NSHostingView(rootView: NativeWorkspaceView(model: workspace, presentation: presentation)
-            .environment(\.scenePhase, .active))
-        window.contentView = root
-        window.setFrameOrigin(frame.origin)
-        window.makeKeyAndOrderFront(nil)
-        defer { window.close() }
-        guard NSScreen.screens.allSatisfy({ window.frame.intersection($0.frame).width <= 2 }) else {
-            throw ReplayError("Reminder interaction must run offscreen")
-        }
-        try await installTasks(18, revision: 1, authority: UUID(), manyDirectories: true)
-        try await Task.sleep(for: .seconds(1))
-        let timer = workspace.timer, scene = presentation.scene
-        timer.receive(nil)
-        let message = String(repeating: "Check this.\n", count: 10)
-        let row: JSONValue = .object(["type": .text("tool-operation"), "name": .text("timer"),
-            "id": .text("reminder"), "executionId": .text("fixture"), "completedAt": .integer(1),
-            "result": .object(["ok": .bool(true)]), "arguments": .object(["text": .text(message)])])
-        timer.receive(try HarnessThread(id: "moku", harnessID: "codex", revision: 1,
-            sessionState: .null, observation: .init(), cwd: "/fixture", settings: .object([:]),
-            createdAt: 1, updatedAt: 2, title: "Chief", tags: [], moku: true, transcript: .array([row])))
-        try await Task.sleep(for: .milliseconds(800))
-        guard let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: root),
-              let alert = timer.current else { throw ReplayError("Missing reminder or scroll monitor: pending=\(timer.pending.count)") }
-        func messageScroller(in view: NSView) -> NSScrollView? {
-            if let scroller = view as? NSScrollView, scroller.contentView.bounds.height > 0,
-               scroller.contentView.bounds.height <= 41, let document = scroller.documentView,
-               document.bounds.height > scroller.contentView.bounds.height + 80,
-               monitor.reminderScrollRegions?.contains(scroller.convert(CGPoint(x: scroller.bounds.midX,
-                    y: scroller.bounds.midY), to: nil), in: window) == true { return scroller }
-            return view.subviews.lazy.compactMap { messageScroller(in: $0) }.first
-        }
-        guard let scroller = messageScroller(in: root) else { throw ReplayError("Missing long reminder viewport") }
-        let clip = scroller.contentView
-        let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
-        let bodyOnScreen = window.convertToScreen(clip.convert(clip.bounds, to: nil))
-        guard NSScreen.screens.allSatisfy({ !$0.frame.intersects(bodyOnScreen) }) else {
-            throw ReplayError("Reminder viewport must stay outside all screens")
-        }
-        let generation = scene.noteOpenGeneration, camera = presentation.canvas.camera.scrollOffset
-        try await postScroll(window, point, y: -70, phase: .began)
-        try await postScroll(window, point, y: 0, phase: .ended)
-        let down = clip.bounds.minY
-        try await postScroll(window, point, y: 40, phase: .began)
-        try await postScroll(window, point, y: 0, phase: .ended)
-        let up = clip.bounds.minY
-        guard down > 0, up < down, presentation.overview.statusFilter == .all, scene.noteOpenGeneration == generation, !scene.notePanelOpen,
-              timer.current?.id == alert.id, presentation.canvas.camera.scrollOffset == camera else {
-            throw ReplayError("Long reminder lost native scroll or Note took its gesture: \(down), \(up)")
-        }
-        let size = monitor.configuration.size
-        let background = monitor.windowPoint(CGPoint(x: size.width * 0.72, y: size.height - 8))
-        try await postScroll(window, background, y: 36, phase: .began)
-        try await postScroll(window, background, y: 0, phase: .ended)
-        guard !scene.notePanelOpen, scene.noteOpenGeneration == generation, presentation.overview.statusFilter == .running, timer.current?.id == alert.id else {
-            throw ReplayError("Exposed Overview lost its status gesture while a reminder was pending")
-        }
-        try await Task.sleep(for: .milliseconds(700))
-        guard let receipt = descendant(NativeMokuTimerReceiptButton.ReceiptButton.self, in: root),
-              receipt.accessibilityPerformPress(), timer.current == nil else { throw ReplayError("Missing explicit receipt") }
-        try JSONSerialization.data(withJSONObject: ["offscreen": true, "scrollOffsets": [down, up],
-            "backgroundFilter": presentation.overview.statusFilter.rawValue, "explicitReceipt": true])
-            .write(to: directory.appending(path: "reminder-note-ownership.json"))
     }
 
     private func cardInteraction(_ window: NSWindow, directory: URL, authority: UUID) async throws {
