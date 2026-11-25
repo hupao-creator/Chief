@@ -172,7 +172,6 @@ private struct ConversationBubble: View {
     let viewportHeight: CGFloat
     let chinese: Bool
     let workspace: NativeWorkspaceModel?
-    @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
@@ -191,7 +190,7 @@ private struct ConversationBubble: View {
             }
         }
         .font(.system(size: 15))
-        .foregroundStyle(user || scheme == .dark ? Color.white : .black)
+        .foregroundStyle(Color.white)
         .padding(.horizontal, 13).padding(.vertical, 7)
         .padding(.bottom, tail ? ConversationBalloon.tailHeight : 0)
         .background {
@@ -207,8 +206,7 @@ private struct ConversationBubble: View {
                                               endPoint: .init(x: 0.5, y: (viewportHeight - y) / height)))
                 }
             } else {
-                shape.fill(scheme == .dark ? Color(red: 0.19, green: 0.19, blue: 0.20)
-                                          : Color(red: 0.914, green: 0.914, blue: 0.918))
+                shape.fill(Color(red: 0.19, green: 0.19, blue: 0.20))
             }
         }
         .help(Text(message.date, format: .dateTime))

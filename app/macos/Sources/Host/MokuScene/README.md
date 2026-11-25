@@ -75,7 +75,7 @@ Dock's separate trailing control inset. Its configuration adapts within that
 reserved content seat as described below. During a phase change the outgoing
 status fades through clear before the next label appears in the same seat.
 
-Moku’s Dock (idle, landing, composer, Talk and dispatch), interaction
+Moku’s Dock (idle, landing, composer, conversation, Talk and dispatch) and its interaction
 panel use a dark SwiftUI environment.
 Settings and the onboarding forms use the system appearance. Settings uses the
 opaque native window background, including with Reduce Transparency. The
@@ -293,7 +293,7 @@ On macOS, clicking the collapsed Moku row opens input; when a message is visible
 
 ### Chief Bar conversation
 
-In Overview and on Landing, a physical two-finger upward swipe over Chief Bar opens the conversation. Its regular Liquid Glass follows the workspace appearance, with an opaque Reduce Transparency fallback. The message list starts at the top of the capsule and the native composer stays at the bottom. Entry over the eyes also works with the compact editor already open. Editable text and overflowing native viewports keep their scroll input. The contact that opens the panel consumes its momentum. A new contact scrolls the messages.
+In Overview and on Landing, a physical two-finger upward swipe over Chief Bar opens the conversation. Its regular Liquid Glass uses the Bar’s dark appearance, with an opaque Reduce Transparency fallback. The message list starts at the top of the capsule and the native composer stays at the bottom. Entry over the eyes also works with the compact editor already open. Editable text and overflowing native viewports keep their scroll input. The contact that opens the panel consumes its momentum. A new contact scrolls the messages.
 
 The panel fits the current page and its composer. Its maximum height is the smallest of 648 points, 96% of the visible workspace height and the space inside the Dock’s outer margins. In an 860 × 600-point Overview window, those margins reserve 24 points above the panel and 30 below, leaving 546 points for a long conversation. The composer takes its measured height first. The message list scrolls in the remaining space as a draft wraps or attachments are added. When a smaller viewport would hide the latest reply, a reader at the end stays with it. Scrolling back to earlier messages keeps that reading position through a height change.
 
