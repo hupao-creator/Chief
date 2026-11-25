@@ -6,11 +6,11 @@
   <a href="https://github.com/hupao-creator/Chief/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/hupao-creator/Chief?style=flat&amp;label=stars&amp;color=blue"></a>
   <a href="https://github.com/hupao-creator/Chief/releases"><img alt="Latest release including prereleases" src="https://img.shields.io/github/v/release/hupao-creator/Chief?include_prereleases&amp;label=release&amp;color=orange"></a>
   <a href="https://github.com/hupao-creator/Chief/actions/workflows/ci.yml?query=branch%3Amain"><img alt="CI status on main" src="https://github.com/hupao-creator/Chief/actions/workflows/ci.yml/badge.svg?branch=main"></a>
-  <a href="https://github.com/hupao-creator/Chief/releases/tag/v0.1.0-alpha.4"><img alt="Alpha 4 DMG download size, 25.5 MiB" src="https://img.shields.io/badge/download-25.5%20MiB-blue"></a>
+  <a href="https://github.com/hupao-creator/Chief/releases?q=draft%3Afalse"><img alt="Download the latest macOS disk image" src="https://img.shields.io/badge/download-macOS%20DMG-blue"></a>
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/hupao-creator/Chief/releases/tag/v0.1.0-alpha.4">Download Alpha 4</a></strong> · <a href="docs/getting-started.md">Get started</a> · <a href="LICENSE">Apache 2.0</a>
+  <strong><a href="https://github.com/hupao-creator/Chief/releases?q=draft%3Afalse">Download latest release</a></strong> · <a href="docs/getting-started.md">Get started</a> · <a href="LICENSE">Apache 2.0</a>
 </p>
 
 [![Chief Overview filtered to bug fixes, with two illustrated reports above an active task](design/overview-readme-preview.webp)](design/overview-readme.png)
@@ -35,7 +35,7 @@ Read **one report** across related conversations. When you want to see how an ag
 
 ## What you get
 
-- **A fully native Mac app.** Built with **SwiftUI and AppKit**, Chief comes in a **26 MB** download.
+- **A fully native Mac app.** Chief is built with **SwiftUI and AppKit** for Apple silicon.
 - **Your agents in one place.** Bring **Codex, Claude, Pi Agent, and OpenCode** together with the accounts and models you already use.
 - **One place to delegate.** Give Chief a task, and it can coordinate agents **across harnesses and models**. Ask Codex to implement a change and Claude Code to review it.
 - **Live task overview.** See what’s running, which files changed, and **which agents are waiting for you**. Filter by project folder or tag to focus on one part of your work.
