@@ -479,9 +479,9 @@ opening an activity does not make that activity its target. Folding the selected
 card, suppression, losing the selected card's eligibility or starting completion
 promotion restores the workspace-centered input. A first execution in main with
 no expanded activity does not move it. When the target column changes, the
-Dock glides horizontally for 520ms with a cubic Bézier curve
-`(0.30, 0.12, 0.44, 1)`, including on its return to the workspace center.
-The curve starts moving immediately and eases to a stop. The compositor moves directly from the current
+Dock glides horizontally for 470ms, including on its return to the workspace
+center. It uses the same ease-in/ease-out curve as the compact Dock's vertical
+travel. The compositor moves directly from the current
 presentation position to the target, without overshoot or a settling rebound.
 On return to Overview, the native host holds the reading height through
 horizontal arrival. Route release and that arrival both have to occur before

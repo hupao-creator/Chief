@@ -135,8 +135,8 @@ struct NativeMokuHorizontalTravelCommand: NSViewRepresentable {
 
         if immediate || previous?.offset != next.offset {
             retarget("transform.translation.x", delta: immediate ? 0 : delta.x,
-                duration: columnChanged ? 0.52 : duration,
-                timing: columnChanged ? CAMediaTimingFunction(controlPoints: 0.30, 0.12, 0.44, 1) : timing)
+                duration: columnChanged ? 0.47 : duration,
+                timing: columnChanged ? CAMediaTimingFunction(name: .easeInEaseOut) : timing)
         }
         let holdHeight = !immediate && !next.reading && (next.frame != nil || activeAxes["transform.translation.x"] != nil)
         if immediate || previous?.verticalOffset != next.verticalOffset || heldLift != 0 || holdHeight {
