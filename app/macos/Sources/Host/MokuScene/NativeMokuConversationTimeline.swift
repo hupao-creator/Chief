@@ -72,7 +72,9 @@ struct NativeMokuConversationTimeline: View {
                     let resized = before.height != after.height || before.documentHeight != after.documentHeight
                     // Layout can change the gap before the native offset settles. Only a reader
                     // moving through the document gives up following the latest reply.
-                    if scrolling || (!resized && position.isPositionedByUser) {
+                    if !scrolling, before.nearEnd, after.height < before.height {
+                        position.scrollTo(edge: .bottom)
+                    } else if scrolling || (!resized && position.isPositionedByUser) {
                         atBottom = after.nearEnd
                     } else if resized, atBottom, !after.atEnd {
                         position.scrollTo(edge: .bottom)
