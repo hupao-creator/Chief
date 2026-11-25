@@ -841,6 +841,17 @@ public final class NativeWorkspacePresentation {
             && !browsingCollection && !messageMotion.active
     }
 
+    fileprivate var canOpenChiefConversation: Bool {
+        overviewSwipeAvailable && workspace.catalog.hasMoku
+    }
+
+    @discardableResult
+    fileprivate func openChiefConversation() -> Bool {
+        guard canOpenChiefConversation else { return false }
+        scene.openConversation()
+        return scene.conversationOpen
+    }
+
     public func perform(_ operation: @escaping () async throws -> Void) {
         workspace.dismissOperationError()
         Task { do { try await operation() } catch { workspace.report(error) } }
@@ -1098,11 +1109,7 @@ public struct NativeWorkspaceView: View {
                         regions: presentation.scene.swipeRegions,
                         available: { presentation.overviewSwipeAvailable },
                         canFilter: { !presentation.scene.inputOpen && !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
-                        openConversation: {
-                            guard presentation.overviewSwipeAvailable, model.catalog.hasMoku else { return false }
-                            presentation.scene.openConversation()
-                            return presentation.scene.conversationOpen
-                        },
+                        openConversation: { presentation.openChiefConversation() },
                         stepRail: { presentation.overview.stepRail(up: $0) }))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen
                         && !presentation.onboarding.blocksWorkspace),
@@ -1253,6 +1260,10 @@ public struct NativeWorkspaceCommands: Commands {
                 .disabled(presentation?.onboarding.blocksWorkspace == true)
             Button(locale.text("输入", "Compose")) { presentation?.scene.toggleInput(focusOnOpening: true) }
                 .keyboardShortcut("b", modifiers: [.command, .shift]).disabled(presentation?.onboarding.blocksWorkspace == true || presentation?.scene.dockRouteVisible != true || presentation?.scene.inputInteractionReady != true || presentation?.scene.settingsOpen == true)
+            Button(locale.text("与 Chief 的对话", "Conversation with Chief")) { presentation?.openChiefConversation() }
+                .keyboardShortcut("b", modifiers: [.command, .option])
+                .disabled(presentation?.canOpenChiefConversation != true)
+                .accessibilityIdentifier("moku-conversation-open")
         }
         CommandGroup(replacing: .appSettings) {
             Button(locale.text("设置…", "Settings…")) { presentation?.openSettings() }.keyboardShortcut(",")
