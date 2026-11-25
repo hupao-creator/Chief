@@ -3,6 +3,7 @@
   {"id":"PBT-RUNTIME-ADMISSION","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestSendAdmissionProperties","doc":"internal/core/runtime/README.md","cases":100},
   {"id":"PBT-RUNTIME-SETTINGS","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestSettingsPresentationProperties","doc":"internal/core/runtime/README.md","cases":100},
   {"id":"PBT-RUNTIME-ROLE-SETTINGS","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestBackgroundSettingsSaveProperties","doc":"internal/core/runtime/README.md","cases":100},
+  {"id":"PBT-MODEL-FORM-PREFLIGHT","suite":"go","engine":"rapid","package":"internal/core/model","test":"TestPublicFormPreflightProperties","doc":"internal/core/model/README.md","cases":100},
   {"id":"PBT-MOKU-WORKTREE","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestRemoveWorktreeProperties","doc":"internal/services/workspaces/README.md","cases":5},
   {"id":"PBT-MOKU-SEND","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestMokuSendProperties","doc":"internal/services/moku/README.md","cases":40},
   {"id":"PBT-MOKU-OUTBOX","suite":"go","engine":"rapid","package":"internal/core/runtime","test":"TestMokuOutboxProperties","doc":"internal/core/runtime/README.md","cases":100},

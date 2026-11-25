@@ -318,17 +318,23 @@ func decodeQuestionFormAnswer(form PublicQuestionForm, encoded any, present bool
 }
 
 func publicFormValueError(form PublicQuestionForm, value any, present bool, options []string, allowOther bool) string {
+	if !present {
+		// A hidden field has no client answer by construction. Its default, when
+		// present, is decoded before this check; without one there is no value
+		// for a native adapter to supply, so required cannot be satisfied here.
+		if form.Hidden != nil && *form.Hidden {
+			return ""
+		}
+		if form.Required {
+			return "An answer is required."
+		}
+		return ""
+	}
 	if form.Type == "external" {
 		if complete, ok := value.(bool); ok && complete {
 			return ""
 		}
 		return "Confirm that this step is complete."
-	}
-	if !present {
-		if form.Required {
-			return "An answer is required."
-		}
-		return ""
 	}
 	switch form.Type {
 	case "string":
