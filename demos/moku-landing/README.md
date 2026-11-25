@@ -104,6 +104,12 @@ Run the mounted workspace replay with the current Debug package.
 python3 demos/moku-landing/verify_header.py --talk-link --output .build/talk-link-replay
 ```
 
+The compact layout visit captures a one-line Chinese notice and a multiline
+notice ending with a run link. It checks that the short notice fits the
+58-point Overview row, the complete multiline document is visible, and the
+button has 8–16 points of clearance to the shell's bottom edge. The two
+window captures and `notification-layout.json` record the mounted result.
+
 The replay clicks the native glass execution capsules in the compact notification and the Chief conversation with AppKit mouse events. It captures each surface before navigating. The message contains labeled and bare links to different runs, a deleted Thread and a malformed URL. The replay checks the destination filter, historical row, loaded content and top scroll position, plus the unavailable page for a missing run. During the one-minute expiry observation the window ignores physical desktop clicks. Pointer input is enabled again before the replay follows the saved link into a Super Thread that cites a newer run. `talk-links.json` identifies the source surface and execution for each visit. The catalog and reading data are fixtures in a private profile.
 
 ### Overview Bar swipe at actual size

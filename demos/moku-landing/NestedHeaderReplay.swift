@@ -1247,9 +1247,10 @@ private final class WheelSample: NSEvent {
             }
         }
         func visit(from start: NativeOverviewFilter, to end: NativeOverviewFilter, reader: ApplicationThreadRef,
-                   history: Bool = true, bare: Bool = false, fromRunning: Bool = false, missingRun: Bool = false) async throws {
+                   history: Bool = true, bare: Bool = false, fromRunning: Bool = false, missingRun: Bool = false,
+                   linkTitle: String? = nil) async throws {
             let citation = ApplicationExecutionRef(thread: source, executionID: missingRun ? "removed-run" : bare ? "prior-run" : "cited-run")
-            let title = missingRun ? "Missing run" : bare ? "Linked task" : "Earlier run"
+            let title = linkTitle ?? (missingRun ? "Missing run" : bare ? "Linked task" : "Earlier run")
             try await focusReplayWindow(window)
             model.selectTag(start)
             if fromRunning {
@@ -1332,7 +1333,45 @@ private final class WheelSample: NSEvent {
         try await visit(from: design, to: design, reader: source)
         try await visit(from: other, to: other, reader: source, fromRunning: true)
 
-        try await install(revision: 3, text: "[Missing run](chief://execution?threadId=linked-task&executionId=removed-run)")
+        let shortText = "回放完成"
+        try await install(revision: 3, text: shortText)
+        try await wait("Short Talk did not settle") {
+            scene.talkPresentation.presented && scene.talkPresentation.message?.text == shortText
+                && scene.capsuleFrame.height == 58
+        }
+        try await Task.sleep(for: .milliseconds(550))
+        let shortCapture = directory.appending(path: "notification-short.png")
+        try await capture(window, to: shortCapture)
+        guard try recognizedLines(in: shortCapture, languages: ["zh-Hans"]).contains(where: {
+            $0.text.replacingOccurrences(of: " ", with: "").contains(shortText)
+        }) else { throw ReplayError("Short Talk text is missing") }
+        let shortHeight = scene.capsuleFrame.height
+
+        let prose = "已修复切换标签时出现的显示问题。窗口回放中，选择第一个标签可以看到对应任务，切换到第二个标签后可以查看另一组任务。两个标签的阅读状态分别保存，完整结果见下方记录。"
+        try await install(revision: 4, text: prose + "\n[修复与回放](chief://execution?threadId=linked-task&executionId=cited-run)")
+        try await wait("Chinese Talk link did not appear") { linkFrame("修复与回放") != nil }
+        try await Task.sleep(for: .milliseconds(550))
+        guard let content = window.contentView,
+              let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content),
+              let link = linkFrame("修复与回放"),
+              let text = descendant(MarkdownTextView.self, in: content, matching: { $0.string.contains(prose) }),
+              let container = text.textContainer, let manager = text.layoutManager else {
+            throw ReplayError("Missing settled Talk text or link")
+        }
+        let document = manager.usedRect(for: container).offsetBy(dx: text.textContainerOrigin.x, dy: text.textContainerOrigin.y)
+        guard text.visibleRect.insetBy(dx: -0.5, dy: -0.5).contains(document) else {
+            throw ReplayError("Multiline Talk is clipped")
+        }
+        let bar = scene.capsuleFrame
+        let bottom = monitor.windowPoint(CGPoint(x: bar.midX, y: bar.maxY))
+        let gap = link.minY - bottom.y
+        let longCapture = directory.appending(path: "notification-multiline.png")
+        try await capture(window, to: longCapture)
+        let layout = ["shortHeight": shortHeight, "multilineHeight": bar.height, "linkHeight": link.height, "linkBottomGap": gap]
+        try JSONEncoder().encode(layout).write(to: directory.appending(path: "notification-layout.json"))
+        guard (8...16).contains(gap) else { throw ReplayError("Unexpected Talk link bottom gap: \(gap) pt") }
+        try await visit(from: design, to: design, reader: source, history: false, linkTitle: "修复与回放")
+        try await install(revision: 5, text: "[Missing run](chief://execution?threadId=linked-task&executionId=removed-run)")
         try await visit(from: design, to: design, reader: source, history: false, missingRun: true)
         let report = ApplicationThreadRef(threadID: "linked-report", typeID: "report.document")
         var fields = reportFixtures([report.threadID])[0].objectValue!
@@ -1347,15 +1386,17 @@ private final class WheelSample: NSEvent {
         let ignoresMouse = window.ignoresMouseEvents
         window.ignoresMouseEvents = true
         defer { window.ignoresMouseEvents = ignoresMouse }
-        try await install(revision: 4, reports: [.object(fields)])
+        try await install(revision: 6, reports: [.object(fields)])
         // A fresh operation gets one real minute. The same message remains a
         // usable navigation source in the conversation after the compact bar folds.
         try await wait("Notification did not start its lease") { scene.talkPresentation.presented && scene.talkPresentation.deadline != nil }
         let leaseStart = ContinuousClock.now, deadline = scene.talkPresentation.deadline!
         guard leaseStart.duration(to: deadline) > .seconds(58) else { throw ReplayError("Short Talk lease") }
-        try await Task.sleep(until: deadline - .seconds(1), clock: .continuous)
+        try await Task.sleep(until: deadline - .seconds(1), tolerance: .zero, clock: .continuous)
+        let remaining = ContinuousClock.now.duration(to: deadline)
+        guard remaining > .zero else { throw ReplayError("Missed pre-expiry sample, time remaining: \(remaining)") }
         guard scene.talkPresentation.presented, scene.talkPresentation.deadline == deadline else {
-            throw ReplayError("Notification disappeared before its final second")
+            throw ReplayError("Notification disappeared with \(remaining) left in its lease")
         }
         try await Task.sleep(until: deadline + .milliseconds(100), clock: .continuous)
         try await wait("Notification outlived its lease") { scene.talkPresentation.message == nil }

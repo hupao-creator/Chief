@@ -7,7 +7,7 @@ import SwiftUI
 
 @MainActor enum NativeMokuTalkTypography {
     static let lineSpacing: CGFloat = 3
-    static let verticalPadding: CGFloat = 19
+    static let verticalPadding: CGFloat = 9
     static let leading: CGFloat = 64
     static let trailing: CGFloat = 20
     // Reserve the eyes and mirror that inset to keep prose centered on the shell.
