@@ -17,22 +17,14 @@
 
 The active task shows the latest agent activity and a summary of file changes. Select the screenshot to view it at full size. [Watch the Overview demo (MP4, 6.5 sec) →](design/overview-readme-demo.mp4)
 
-Chief brings Codex, Claude, Pi Agent, and OpenCode into one workspace.
-Talk to the **Chief** assistant to coordinate work, then open each task's conversation
-to follow the work and give it more direction.
+## What you get
 
-- **Ask once, coordinate across agents.** Give Chief a task, attach files, and include the full path of any project folder Chief should use. Chief can answer directly or assign work to the agents you've enabled. [Working with Chief →](docs/working-with-moku.md)
-- **See what needs you.** Overview uses a bento box design to show task status, questions, and permission requests on cards of different sizes. The canvas grows with your work for the feel of infinite horizontal scrolling as you browse from the first column to the last. Filter by folder or tag, then open a conversation to step in. [Overview →](docs/overview.md)
-- **Read results and keep going.** Read completed replies, revisit earlier runs, send a follow-up, or branch from an earlier run when the agent supports it. [Agent conversations →](docs/task-conversations.md)
-- **Connect the work.** Super Thread Agent prepares Super Threads with links back to source conversations. Git task cards can show branch and change summaries. [Super Threads and file changes →](docs/reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
-- **Give feedback beside the work.** Open a web page in a sidecard, annotate an element or area, and send the screenshot and comment to the current agent conversation. [Sidecards →](docs/sidecards.md)
-
-Chief uses the agent CLIs you’ve already configured on your Mac, with their
-existing accounts, models, and credentials. Chief connects its tools within the
-session without rewriting user or project configuration, registering global
-hooks, or installing global plugins.
-
-The interface uses SwiftUI and AppKit, backed by a Go service.
+- **Your agents in one Mac app.** Use Codex, Claude, Pi Agent, and OpenCode with the accounts and models you already use on your Mac.
+- **One place to delegate.** Give Chief a task and the files it needs. Chief can answer directly or assign the work to an agent you’ve enabled. [Working with Chief](docs/working-with-moku.md)
+- **Live task overview.** Filter by folder or tag to see what’s running, which files changed, and which agents need an answer or permission to proceed. [Overview](docs/overview.md)
+- **Conversations you can pick up again.** Revisit an earlier run, send a follow-up, or branch the conversation when the agent supports it. [Agent conversations](docs/task-conversations.md)
+- **Reports with sources.** A Super Thread summarizes completed work in a project and links back to the conversations behind it. [Super Threads](docs/reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
+- **Feedback right on the page.** Open a web page beside a conversation, mark what you want changed, and send the screenshot and your comment to the agent. [Sidecards](docs/sidecards.md#mark-up-a-web-page-and-send-feedback)
 
 <a name="auto-categorization"></a>
 
