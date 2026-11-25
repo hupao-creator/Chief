@@ -1095,8 +1095,9 @@ public struct NativeWorkspaceView: View {
                         available: { presentation.overviewSwipeAvailable },
                         canFilter: { !presentation.scene.inputOpen && !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
                         openConversation: {
-                            guard presentation.overviewSwipeAvailable, model.catalog.hasMoku else { return }
+                            guard presentation.overviewSwipeAvailable, model.catalog.hasMoku else { return false }
                             presentation.scene.openConversation()
+                            return presentation.scene.conversationOpen
                         },
                         stepRail: { presentation.overview.stepRail(up: $0) }))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen

@@ -251,7 +251,7 @@ of selection. A vertically dominant unmodified line-wheel event steps the same l
 
 The background, cards, carousel cover and filter controls accept these gestures.
 Horizontal starts retain their original owner through reversals. The
-[Chief Bar](../MokuScene/README.md#chief-bar-conversation) claims a physical upward swipe to open its conversation. Vertically
+[Chief Bar](../MokuScene/README.md#chief-bar-conversation) opens its conversation on secondary click and excludes filter swipes. Vertically
 overflowing native viewports keep scrolling at either limit. Editing,
 interventions, onboarding, Settings, readers and collection panels keep their input.
 

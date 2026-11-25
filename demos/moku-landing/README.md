@@ -110,7 +110,7 @@ python3 demos/moku-landing/verify_header.py --bar-swipe --output .build/overview
 
 This scenario keeps the workspace at 1× throughout, including its first frame.
 It checks the empty Overview with folded input as well as the populated canvas.
-The replay posts AppKit events to the window. An upward swipe over the eyes opens the conversation in Overview and on Landing. The replay checks filter swipes, native tag scrolling, camera travel, the return of the conversation draft to Compose, and gesture ownership while the editor or Settings is open. The replay installs a historical reminder operation and checks that Bar gestures stay available. The results are in `overview-bar-swipe.json` and `landing-bar-swipe.json`.
+The replay posts AppKit events to the window. A right-click opens the conversation in Overview, and a Control-click opens it on Landing. The replay checks filter swipes, native tag scrolling, camera travel, the return of the conversation draft to Compose, and gesture ownership while the editor or Settings is open. The replay installs a historical reminder operation and checks that Bar gestures stay available. The results are in `overview-bar-swipe.json` and `landing-bar-swipe.json`.
 
 The [live conversation replay](verify_conversation.py) uses the same production window with the real Runtime, SQLite, Codex CLI and an isolated loopback model peer. Build the current artifacts and choose a new evidence directory.
 
@@ -119,7 +119,7 @@ python3 tools/e2e/build.py --go ./scripts/go.sh --with-app
 python3 demos/moku-landing/verify_conversation.py --output .build/chief-conversation
 ```
 
-Run the same command with `--send-refresh` and a fresh output directory to exercise delayed sends. The replay holds its private Runtime during Return and during a compact send followed immediately by a swipe. The window checks outgoing accessibility rows with admission held, after receipt, and after the loopback peer releases Talk. A temporarily unavailable staged file exercises draft restoration and an explicit retry. After Escape the replay waits for the folded Compose button to settle under the pointer, then opens it with one click. The window measures bottom following as the first user bubble appears, then scrolls back and compares the reading offset across the delayed replies. The final public page checks the persisted row count, text, attachment names and identities.
+Run the same command with `--send-refresh` and a fresh output directory to exercise delayed sends. The replay holds its private Runtime during Return and during a compact send followed immediately by a right-click. The window checks outgoing accessibility rows with admission held, after receipt, and after the loopback peer releases Talk. A temporarily unavailable staged file exercises draft restoration and an explicit retry. After Escape the replay waits for the folded Compose button to settle under the pointer, then opens it with one click. The window measures bottom following as the first user bubble appears, then scrolls back and compares the reading offset across the delayed replies. The final public page checks the persisted row count, text, attachment names and identities.
 
 The first native visit of the layout and restart replay checks previously submitted messages and keyboard focus, types a Chinese message that wraps in the mounted editor, stages a PNG from disk and sends with Return. It observes the accepted text and filename, two consecutive Talk replies, and the unsent draft after closing and reopening. A second App and Runtime process reopen the same profile. Both visits compare ordered accessibility labels, individual dates and public content reads. Window screenshots show the resting bubbles and a held left swipe in dark and light appearances. The corresponding MP4s record the timestamps appearing and retracting. Escape dismisses the panel with its draft intact.
 
@@ -198,7 +198,7 @@ python3 demos/moku-landing/verify_header.py --conversation-opening --output .bui
 
 The replay opens the production Chief Bar with phased AppKit scroll events
 and momentum. It checks the first visit with cached history, reopening after
-the first nonempty page arrives late, and swiping from the compact editor.
+the first nonempty page arrives late, and right-clicking the compact bar.
 The last bubble is longer than the viewport. The replay measures the native
 clip against the document bottom and saves its window-relative bounds with
 each capture. Vision checks the final line against those bounds after recording,
