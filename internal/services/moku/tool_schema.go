@@ -114,17 +114,11 @@ func DescribeThreadCreation(targets []TargetDescription, cwd string) (ThreadCrea
 		"target": targetSchema,
 	}
 	schema := mokuObjectSchema(properties, "target", "worktree", "prompt")
-	// Keep the true/cwd dependency visible to schema clients as well as the parser.
-	schema["allOf"] = []any{
-		map[string]any{
-			"if":   map[string]any{"properties": map[string]any{"worktree": map[string]any{"const": true}}, "required": []string{"worktree"}},
-			"then": map[string]any{"required": []string{"cwd"}},
-		},
-		map[string]any{
-			"if":   map[string]any{"properties": map[string]any{"worktree": map[string]any{"const": false}}, "required": []string{"worktree"}},
-			"then": map[string]any{"properties": map[string]any{"worktreeName": map[string]any{"pattern": `^\s*$`}}},
-		},
-	}
+	// worktree is a required boolean. A single conditional expresses both
+	// cases without a root allOf, which can hide the entire tool in Claude.
+	schema["if"] = map[string]any{"properties": map[string]any{"worktree": map[string]any{"const": true}}}
+	schema["then"] = map[string]any{"required": []string{"cwd"}}
+	schema["else"] = map[string]any{"properties": map[string]any{"worktreeName": map[string]any{"pattern": `^\s*$`}}}
 	// Selection branches contain no properties to merge across Harnesses.
 	// Native model/thinking union hints remain within each named target.
 	result.InputSchema = mokuRaw(mokuVisibleUnionProperties(schema))
