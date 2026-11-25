@@ -45,4 +45,8 @@ Keep the pre-update backup if you may return to an earlier Alpha. Once Chief sav
 
 Alpha updates are manual, and macOS may ask for permissions again. Alpha has its own app data and uses the project folders and agent sign-ins you already have on this Mac.
 
+## Report a problem
+
+Give your report a short title and describe what you tried, what you expected, and what you saw. After you submit it, you can follow replies on the public GitHub issue. [Open the Chief Alpha feedback form](https://github.com/hupao-creator/Chief/issues/new?template=alpha-feedback.yml)
+
 [Back to the product guide](README.md)
