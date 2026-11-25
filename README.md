@@ -15,8 +15,6 @@
 
 [![Chief Overview filtered to bug fixes, with two illustrated reports above an active task](design/overview-readme-preview.webp)](design/overview-readme.png)
 
-The active task shows the latest agent activity and a summary of file changes. Select the screenshot to view it at full size. [Watch the Overview demo (MP4, 6.5 sec) →](design/overview-readme-demo.mp4)
-
 ## What you get
 
 - **A fully native Mac app.** Built with **SwiftUI and AppKit**, Chief comes in a **26 MB** download.
