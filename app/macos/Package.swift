@@ -44,7 +44,7 @@ let package = Package(
         .executableTarget(name: "Chief", dependencies: ["ChiefComposition", "ChiefCore", "ChiefUI", "ChiefPluginUI"], path: "Sources/App",
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
         .executableTarget(name: "ChiefProbe", dependencies: ["ChiefCore"], path: "Sources/Tools/Probe"),
-        .testTarget(name: "ChiefProperties", dependencies: ["ChiefUI", "ChiefCore", "ChiefPluginAPI", "ChiefPluginUI", "ChiefApplications"], path: "Tests/Properties"),
+        .testTarget(name: "ChiefProperties", dependencies: ["ChiefComposition", "ChiefUI", "ChiefCore", "ChiefPluginAPI", "ChiefPluginUI", "ChiefApplications"], path: "Tests/Properties"),
         .plugin(name: "CloudMetalCompiler", capability: .buildTool())
     ],
     swiftLanguageModes: [.v6]

@@ -199,7 +199,8 @@ An initialize-only read of a pinned profile with a concrete host preference
 uses committed settings without entering the configuration gate or writer queue.
 A disabled background binding also has no capture to commit. Presentation still
 loads current Harness facts and rechecks the selected source and workspace
-before replying. Selecting a host for an automatic preference or capturing a
+before replying. Global reads compare the JSON values of that profile. A save that
+only changes object-key order leaves the pending read valid. Selecting a host for an automatic preference or capturing a
 missing profile requires the normal gated merge. Concurrent initializers reuse
 an already saved profile and preserve the selected host, even when a late native
 reply differs; captures of different Harnesses retain both profiles. A changed
@@ -352,7 +353,9 @@ general routing priorities and instruction generation.
 ## Property boundaries
 
 **PBT-RUNTIME-SETTINGS** orders a pinned execution or ordinary defaults
-presentation around a settings save. Completions before commit, after commit or
+presentation around public saves of routing guidance and optional Claude model edits.
+The native capture and the real Claude save normalizer can serialize the same
+fields in different orders. Completions before commit, after commit or
 through cancellation check which source may be returned and which operation may
 advance the revision. **PBT-RUNTIME-ROLE-SETTINGS** checks read-only independent
 previews, conflicting saves and retention across retry. It also checks that cold

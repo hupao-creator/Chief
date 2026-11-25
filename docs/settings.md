@@ -10,6 +10,8 @@ Settings opens on **Chief Agent**, with Overview blurred behind it. Close Settin
 
 On the **Chief Agent** tab, choose the coordinating agent in the top row and at least one agent it can assign tasks to in the bottom row. Dashed lines connect Chief to the agents it can assign work to. Use **Chief Model** to choose the coordinating agent’s model. Before switching the coordinating agent, finish work that's running, waiting for a response, or waiting to send. Switching to a different agent starts a new Chief session. You can still read the saved messages from the previous agent by right-clicking Chief Bar in Overview.
 
+You can change a ready agent’s settings while Chief checks the others. Close Settings, then reopen **Chief Agent** to see the saved model and reasoning choice or variant. If an agent check fails, click **Retry** to check again.
+
 If Chief says no agents are available, install and sign in to a supported agent on your Mac, then return to the **Chief Agent** tab and click **Retry**. [Supported agents](getting-started.md#connect-an-agent)
 
 Use **Task Orchestration Preferences** to guide which models Chief chooses when it assigns tasks. Pick **Economy**, **Balanced**, or **Performance**, or select **Custom** and click the text box below. When the cursor appears, describe what you prefer. The hint disappears as you type. Hover over a choice marked with an info icon to read its description. Chief keeps your custom text if you switch presets. Chief chooses from the agents you've enabled and the models available when it assigns the work.

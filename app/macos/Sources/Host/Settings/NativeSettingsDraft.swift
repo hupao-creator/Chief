@@ -61,8 +61,11 @@ public final class NativeSettingsDraft {
         guard !retired else { return }
         guard revision >= latest.1 else { return }
         latest = (settings, revision)
-        if running == nil && !failed && Self.comparableValue(value) == saved && revision >= self.revision {
+        guard running == nil, !failed, revision >= self.revision else { return }
+        if Self.comparableValue(value) == saved {
             adopt(settings: settings, revision: revision)
+        } else if revision > self.revision, isProfileInitialization(settings) {
+            _ = mergeUncontestedChanges((settings, revision))
         }
     }
 
@@ -227,8 +230,8 @@ public final class NativeSettingsDraft {
             guard let self else { return false }
             defer {
                 self.running = nil
-                if !self.retired, !self.failed, Self.comparableValue(self.value) == self.saved, self.latest.1 > self.revision {
-                    self.adopt(settings: self.latest.0, revision: self.latest.1)
+                if self.latest.1 > self.revision {
+                    self.receive(settings: self.latest.0, revision: self.latest.1)
                 }
             }
             while self.ready != self.saved {
@@ -242,7 +245,8 @@ public final class NativeSettingsDraft {
                     switch result {
                     case let .conflict(settings, revision):
                         let authority = self.latest.1 > revision ? self.latest : (settings, revision)
-                        if self.reconcileFirstRunDiscovery, self.mergeUncontestedFirstRunChanges(authority) { continue }
+                        if self.reconcileFirstRunDiscovery || self.isProfileInitialization(authority.0),
+                           self.mergeUncontestedChanges(authority) { continue }
                         self.conflict = (settings, revision); self.conflicted = true; self.failed = true
                         self.error = "设置已被其他客户端修改，草稿已保留。保留我的修改并重试会合并独立修改，并以我的修改处理相同字段。"
                         self.status = .error; return false
@@ -281,7 +285,22 @@ public final class NativeSettingsDraft {
         }
     }
 
-    private func mergeUncontestedFirstRunChanges(_ authority: (settings: JSONValue, revision: Int)) -> Bool {
+    /// Cold discovery fills missing slots independently while a Settings visit
+    /// is open. Only additions (and their initial automatic host choice) qualify.
+    private func isProfileInitialization(_ next: JSONValue) -> Bool {
+        let path = ["moku", "executionHarnesses"]
+        let before = settingsAt(saved, path: path)?.objectValue ?? [:]
+        guard let after = settingsAt(next, path: path)?.objectValue, after.count > before.count,
+              before.allSatisfy({ after[$0.key] == $0.value }) else { return false }
+        var expected = settingsReplacing(saved, path: path, value: .object(after))
+        if saved["moku"]?["hostHarnessPreference"] == .text("auto"),
+           case .string(let host) = next["moku"]?["hostHarnessPreference"], before[host] == nil, after[host] != nil {
+            expected = settingsReplacing(expected, path: ["moku", "hostHarnessPreference"], value: .string(host))
+        }
+        return expected == next
+    }
+
+    private func mergeUncontestedChanges(_ authority: (settings: JSONValue, revision: Int)) -> Bool {
         guard authority.revision > revision else { return false }
         // Discovery and the first form can publish different Harness entries
         // concurrently. Admit the merge only when neither side can win a field
@@ -290,6 +309,9 @@ public final class NativeSettingsDraft {
         let editable = Self.rebase(base: saved, draft: value, latest: authority.settings)
         guard persisted == Self.rebase(base: saved, draft: authority.settings, latest: ready),
               editable == Self.rebase(base: saved, draft: authority.settings, latest: value) else { return false }
+        if let base = deferredBase {
+            deferredBase = Self.rebase(base: saved, draft: base, latest: authority.settings)
+        }
         ready = persisted; value = editable
         setSaved(authority.settings, revision: authority.revision)
         return true
