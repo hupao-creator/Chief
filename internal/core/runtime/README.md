@@ -22,14 +22,6 @@ sources stay absent. Invalid sources or storage failures roll back the whole
 change. No associated Super Thread/Collection is recursively archived, no links
 are removed, and restoring a report does not restore its sources.
 
-Moku note writes compare the note incarnation, content revision and
-`readingRevision` inside the store writer transaction. A mismatched basis returns
-the current note/evidence snapshot without changing the note. Full-exposure
-receipts accept only the current nonempty incarnation/revision, copying exact
-text from the authoritative record. Duplicate and stale receipts make no store
-write or notification. Reading evidence changes the Thread catalog revision but
-does not change `note.updatedAt`, create lifecycle events or wake Moku.
-
 [threads.go](threads.go) owns thread identity, execution admission and serialized session access. Harness session data remains opaque; each Harness validates it and produces its public observation and renderer projection. Accepted work belongs to the service and survives client disconnection.
 
 [Explicit worktree removal](worktree.go) requires an idle ordinary Thread.
@@ -154,6 +146,8 @@ interruption with no pending input or background work, using the existing
 ### Chief conversation
 
 The `moku-conversation` content scope belongs to the current Chief Thread. On demand, Runtime reads one profile snapshot and merges that Thread’s full coordinator transcript with its retained, read-only Chief sessions. The compact catalog preview is limited to recent operations and truncated text. The [conversation projection](moku_conversation.go) reads the stored audit rows directly.
+
+Existing SQLite records may contain a legacy `note` field. Typed Thread reads ignore it and preserve the owner, session state and transcript. Loading a profile requires no rewrite. Historical tool operations stay in the audit and only successful Talk operations produce Chief dialogue.
 
 The coordinator records the original user input after admission. The reader takes complete user messages, their attachment names and completed, successful `talk` arguments. Directories retain their submitted mention text. Native Harness turns can include injected context and are ineligible as a dialogue source. Assistant reasoning, diagnostics, dispatches, timers, failed or pending Talk calls, and private tool arguments have no dialogue row.
 

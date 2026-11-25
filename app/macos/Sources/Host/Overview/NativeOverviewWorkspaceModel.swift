@@ -408,7 +408,7 @@ public final class NativeOverviewWorkspaceModel {
         return content.activeIDs.contains(id) ? id : nil
     }
 
-    func revealNoteDestination(_ reference: ApplicationThreadRef) {
+    func revealExecutionDestination(_ reference: ApplicationThreadRef) {
         if let current = selectedFilter, filterMembers[current.selectionKey]?.contains(reference) == true {
             if tagSelection?.runningTag == true,
                reference.typeID != "agent" || workspace.catalog.thread(reference.threadID).map(statusFilter.includes) != true {

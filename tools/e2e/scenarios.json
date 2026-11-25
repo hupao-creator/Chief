@@ -38,7 +38,7 @@
     {
       "id": "E2E-CHIEF-001",
       "implementation": "implemented",
-      "title": "Open Chief Note and Compose while coordinator conversations stay outside reading navigation",
+      "title": "Open Compose and reject retired Chief controls while coordinator conversations stay outside reading navigation",
       "doc": "app/macos/Sources/Host/Interaction/README.md#e2e-contract",
       "evidence": ["chief-controls.json"]
     },

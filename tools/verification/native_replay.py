@@ -113,7 +113,7 @@ class NativeReplay:
         try:
             fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            raise RuntimeError("Another Note replay owns the graphical session; do not retry concurrently")
+            raise RuntimeError("Another native replay owns the graphical session; do not retry concurrently")
         self.termination_handler = signal.getsignal(signal.SIGTERM)
         def terminate(signum, frame):
             raise SystemExit("Native replay launcher terminated; cleaning up its owned app")

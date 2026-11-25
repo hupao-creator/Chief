@@ -38,9 +38,6 @@ type SessionConfiguration struct {
 	AppliedSettings  model.Settings
 	SettingsRevision int64
 	Cwd              string
-	// PreserveNote carries the persistent milestone note into a replacement
-	// Thread. A history reset leaves it false so the new Thread starts clean.
-	PreserveNote bool
 	// PreserveHistory retains the retired native session as read-only history.
 	PreserveHistory bool
 }
@@ -58,7 +55,6 @@ type Configuration struct {
 	Threads                  func() ([]model.ThreadRecord, error)
 	Thread                   func(string) (model.ThreadRecord, error)
 	UpdateThread             func(context.Context, string, func(*model.ThreadRecord) error) error
-	UpdateNote               func(context.Context, string, string, *model.NoteBasis) (model.NoteUpdateResult, error)
 	EnsureSession            func(context.Context, SessionConfiguration) (model.ThreadRecord, error)
 	ReplaceSession           func(context.Context, string, SessionConfiguration) (model.ThreadRecord, error)
 	ConfigureSession         func(context.Context, string, int64, SessionConfiguration) error

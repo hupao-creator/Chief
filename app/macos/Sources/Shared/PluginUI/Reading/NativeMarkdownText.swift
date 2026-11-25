@@ -102,22 +102,16 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
         if code { paragraph.defaultTabInterval = (" " as NSString).size(withAttributes: [.font: NativeMarkdownTypography.code(size: fontSize)]).width * 8 }
         switch alignment { case .left: paragraph.alignment = .left; case .center: paragraph.alignment = .center; case .right: paragraph.alignment = .right }
         var hasExecutionAttachment = false
-        var index = 0
-        while index < spans.count {
-            let span = spans[index]
-            index += 1
+        for (index, span) in spans.enumerated() {
             if let harnesses = executionLinkHarnesses, let url = MarkdownURLPolicy.url(span.link),
                let reference = ApplicationExecutionLink.parse(url) {
-                var title = span.text
-                while index < spans.count, spans[index].link == span.link {
-                    title += spans[index].text; index += 1
-                }
+                let title = span.text
                 // Leave the immediately following punctuation on the capsule's
                 // line instead of consuming the entire line with a long title.
-                let punctuation = index < spans.count ? spans[index].text.prefix(while: { $0.isPunctuation }) : ""
+                let punctuation = index + 1 < spans.count ? spans[index + 1].text.prefix(while: { $0.isPunctuation }) : ""
                 let trailingWidth = (String(punctuation) as NSString).size(withAttributes: [.font: NativeTypography.interPlatformFont(size: fontSize)]).width
                 let attachment = MarkdownExecutionAttachment(title: title, url: url,
-                    harness: harnesses[reference.thread.threadID], fontSize: fontSize, width: max(1, width - trailingWidth))
+                    harness: harnesses[reference.thread.threadID], fontSize: 13, width: max(1, width - trailingWidth))
                 let value = NSMutableAttributedString(attachment: attachment)
                 value.addAttributes([.font: NativeTypography.interPlatformFont(size: fontSize),
                     .paragraphStyle: paragraph, .nativeMarkdownExecution: url, .cursor: NSCursor.pointingHand,

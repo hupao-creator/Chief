@@ -103,7 +103,7 @@ contains every requested ID, including blocked and unreached entries.
 | `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve tagged tasks in the selected folder in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
 | `E2E-OVERVIEW-004` | Select the folder’s Running tag, switch spaces and return. Choose Completed in a top-level Inbox tag. | Tagged project and Inbox tasks plus an untagged Inbox task in the supported suite, or tagged reports and tasks across two folders in the Collection suite. `overview-filters.json` records the Runtime scope and source references alongside the mounted pages. | Checks scoped membership, the available left buttons, the empty Running view and the remembered folder choice. The [untagged work replay](../../demos/moku-landing/README.md#untagged-running-work-and-tag-visibility) checks the running empty state, a live untagged card, first assignment and selection of tags with overlapping membership. |
 | `E2E-OVERVIEW-005` | Launch, select filters through mounted controls, relaunch the same isolated profile, fork tasks and classify them. | Three tagged project tasks with distinct tags, one tagged Inbox task and forks with inherited or empty tags. | Checks launch and folder defaults, preference restoration, empty-catalog and unavailable-space fallback, first-assignment selection, batch order, Settings focus and reclassification. |
-| `E2E-CHIEF-001` | Open Note and switch to Compose. The legacy command is rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
+| `E2E-CHIEF-001` | Open Compose. Retired Note and history commands are rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
 | `E2E-SETTINGS-001` | Open Settings with Chief Agent selected and only Chief Agent, Auto-Categorization and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief Agent and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
 | `E2E-COLLECTION-001` | Switch folders, open a grouped report, return and revisit it. Archive and restore other reports while the folder stays selected. | The Library and Studio fixtures contain eight and four tagged reports respectively. Each cites a distinct completed task. Each folder also has a standalone tagged task. | Checks grouping under viewport pressure, selection on return, promotion after reading, folder unread counts, release after archive and regrouping on restore. |
@@ -453,54 +453,11 @@ observations and saved value. The [Settings preview](../../demos/settings-naviga
 can check the mounted editor with an in-memory save. Runtime persistence requires
 an isolated connected workspace. `E2E-SETTINGS-001` exercises preset persistence.
 
-### Chief Note execution link
+### Chief Talk execution links
 
-Prepare an isolated workspace with two directories. Give both ordinary Threads
-at least two completed runs with distinguishable replies longer than the viewport. Have one Super Thread
-cite a different run of the same Thread as the Note. Put links to both Threads
-near the bottom of a long Chief Note. Include enough Reports for a multipage
-Collection on All. Record the isolated window continuously and save the filter,
-carousel member, execution identities and link position alongside the recording.
+In an isolated workspace, send a Talk message with links to two different runs. Click one execution capsule in the compact bar. Check that the reader starts at the cited run’s heading, including when the task has since run again. Close the reader and swipe up over the eyes. Click the other link in the saved message and check its run independently. Repeat from another tag and from a Super Thread whose related card cites a different execution. After a fresh notification hides at one minute, follow the link from conversation history again. An invalid URL stays readable. A deleted Thread shows an unavailable notice. A missing run in an existing Thread opens the unavailable historical page.
 
-1. In the other directory, scroll the Note to the ordinary link and click it
-   with the system pointer. Check that the Note closes, Overview switches to the
-   target directory, then the reader opens.
-   The reader should open at the cited run’s heading. After the scoped body has loaded, check that its timeline
-   height exceeds its viewport, `top` is zero and `following` is false. Repeat from a filter that already contains the target and check that
-   its selection stays put. Click the reader’s **×** and verify the Note stays
-   closed on Overview. Reopen the Note and follow the historical link again.
-   Press Escape in the read-only text to return to the Note and compare the
-   link’s window position. On separate visits, use the Overview command and
-   click the reader backdrop. Both Overview exits leave the Note closed.
-2. Open the associated link from a different directory. Check the Report title
-   and the exact cited execution in its open side panel. Verify the directory
-   containing the Report was selected before its reader opened. Apply the same scroll
-   checks to that timeline. Close the expanded visit with the Report’s **×**
-   and verify Overview settles with the Note closed. Reopen the link. Use the conversation
-   contents to visit current and historical rows. Type a draft on the historical
-   run and switch away and back. **Back to related executions** should show
-   the Report’s list. Click the Report’s upper-left **×**. Wait for Overview to
-   settle and check that the Note stays closed. Press **⌘⇧N** and verify the
-   same Note text and citation are available.
-3. In All, start with another Report showing in the target Collection. Open
-   the associated link. The filter should stay on All. Check consecutive frames
-   for the Note closing, the carousel moving to the cited Report and settling,
-   then the reader expanding from that card. Compare the panel travel with a
-   direct click on the same card at the same window size and camera position.
-   Repeat the comparison for an ordinary Thread and an individual Report.
-   After a brief Report visit, type an unsent draft in its source conversation
-   and close the report. From the same window recording, check that the input
-   folds in its source column and travels back to the resting canvas center. Check the carousel page, collapsed Note and retired editor focus.
-   Reopen the Note and follow the same citation to recover the focused draft.
-   Check the separate Overview draft through its Compose shortcut. On the ordinary
-   Thread route, use Escape to check the restored Note’s scroll position.
-4. Repeat the three routes with system AXPress. Check English and Simplified
-   Chinese. Record the capture rate. Track source revision, executable identity, scoped replies,
-   input targets and returned state for each visit.
-
-The [Note link replay](../../demos/moku-landing/README.md#chief-note-execution-links) checks the click, space ordering, reader and execution target in an isolated window. The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-click-at-actual-size) checks windowed and full-screen left-rail navigation, Inbox statuses, live card membership, retained tags and direct Chief Bar right-click and Control-click, upward swipe into the conversation, primary click to compose, and draft-preserving outside dismissal through posted AppKit events. Its [live conversation replay](../../demos/moku-landing/verify_conversation.py) checks native Return, public dialogue, and App and Runtime restart in one isolated profile. The semantic Note toggle exercises the Note entrance. Mounted route identity
-and window frame recordings supply separate evidence.
-[Note and link behavior](../../app/macos/Sources/Host/MokuScene/README.md)
+The [mounted two-surface replay](../../demos/moku-landing/README.md#talk-execution-links) uses window-addressed mouse events, an isolated catalog and cached execution content. The [live conversation replay](../../demos/moku-landing/verify_conversation.py) checks native Return, public dialogue and restart against a private Runtime and loopback provider.
 
 ### Chief Bar opening
 
@@ -513,7 +470,7 @@ the eyes, composer and transcript during expansion and dismissal.
 
 ### Chief navigation
 
-Start with a private profile containing a Chief conversation and a completed task. A saved selection for the current Chief or a retained Chief archive must open Overview. Open Chief Note and inspect its accessible controls and the View menu. Compose and Chief Note have their own shortcuts. A plain Command-B leaves the current route in place. Check that the former history action is rejected, then open an ordinary task and a Super Thread from Overview.
+Start with a private profile containing a Chief conversation and a completed task. A saved selection for the current Chief or a retained Chief archive must open Overview. Open **View → Compose** and inspect its accessible controls. A plain Command-B leaves the current route in place. Check that retired navigation actions are rejected, then open an ordinary task and a Super Thread from Overview.
 
 ### Live Super Thread updates
 

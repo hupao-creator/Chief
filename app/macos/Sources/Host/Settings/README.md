@@ -144,10 +144,9 @@ the clear frames before expansion and at the end of the return.
 The [populated Overview replay](../../../../../tools/e2e/README.md#settings-over-a-populated-overview)
 checks these frames in both directions. Close, Escape and backdrop click share
 `NativeSettingsNavigation`'s draft gate; backdrop clicks never reach Overview.
-Native menus and IME retain their Escape priority. Input and Note
-visits remain retained beneath Settings, including draft and reading position.
+Native menus and IME retain their Escape priority. The composer retains its draft beneath Settings.
 Incoming messages and interventions cannot replace Settings. On release, a
-pending intervention takes its ordinary priority over a retained Note/composer.
+pending intervention takes its ordinary priority over the retained composer.
 
 `NativeSettingsTransition` owns the 420 ms capsule transition lifetime. The live
 page lays out at its final size; closing fades its ink before panel contraction. Reversals fence obsolete completions. Resize, inactivity and
@@ -326,8 +325,7 @@ and target feedback; the Settings page retains its native execution editors and 
 
 Changing the coordinating Harness is rejected through the existing save-error
 path while Moku or any ordinary Agent Thread is busy, including pending input
-and waiting interactions. Other settings remain editable. The selected Harness
-inherits the existing note when the idle replacement is applied.
+and waiting interactions. Other settings remain editable. Switching saves the previous conversation as read-only history.
 
 The [Settings e2e contract](#e2e-contract) exercises a mounted preset save,
 close and reopen against the real Runtime. It does not certify four-Harness cold

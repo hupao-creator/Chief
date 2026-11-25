@@ -126,7 +126,7 @@ private struct ConversationMessages: View {
     var body: some View {
         VStack(spacing: 0) {
             if showsRows, failure == nil, let page = displayedPage, !page.messages.isEmpty {
-                NativeMokuConversationTimeline(page: page, showEarlier: showEarlier, showNewer: before == nil ? nil : showNewer)
+                NativeMokuConversationTimeline(page: page, workspace: presentation.workspace, showEarlier: showEarlier, showNewer: before == nil ? nil : showNewer)
             } else {
                 VStack(spacing: 0) {
                     status

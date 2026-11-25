@@ -31,7 +31,6 @@ public struct HarnessThread: Hashable, Sendable {
     public let archived: Bool?
     public let moku: Bool?
     public let mokuHistory: Bool
-    public let note: ThreadNote?
     public let transcript: JSONValue?
 
     public init(json: JSONValue) throws {
@@ -83,15 +82,9 @@ public struct HarnessThread: Hashable, Sendable {
         } else {
             title = storedTitle
         }
-        note = try r.values["note"].map { try ThreadNote(json: $0) }
         transcript = r.values["transcript"]
-        // The note is Moku's own milestone recap; an ordinary thread must never
-        // publish one, because only Moku may author it.
-        if note != nil, moku != true {
-            throw PluginContractError("thread.note requires a Chief thread")
-        }
-        if mokuHistory, moku == true || archived != true || note != nil {
-            throw PluginContractError("thread.mokuHistory requires a read-only archived conversation without a current Chief note")
+        if mokuHistory, moku == true || archived != true {
+            throw PluginContractError("thread.mokuHistory requires a read-only archived conversation")
         }
         if let moku {
             guard moku, archived == nil else {
@@ -109,7 +102,7 @@ public struct HarnessThread: Hashable, Sendable {
                 createdAt: Double, updatedAt: Double, title: JSONText, tags: [JSONText],
                 worktree: JSONValue? = nil, userInterruptedExecutionID: JSONText? = nil, mokuInterruptedExecutionID: JSONText? = nil, executionTitles: [JSONText: JSONText] = [:], metadataState: JSONValue? = nil,
                 metadataRevision: Int? = nil, archived: Bool? = nil,
-                moku: Bool? = nil, mokuHistory: Bool = false, note: ThreadNote? = nil,
+                moku: Bool? = nil, mokuHistory: Bool = false,
                 transcript: JSONValue? = nil, tagEmojis: [JSONText: JSONText] = [:],
                 directoryTag: JSONText = "", directoryScope: JSONText = "") throws {
         var object: [JSONText: JSONValue] = [
@@ -129,7 +122,6 @@ public struct HarnessThread: Hashable, Sendable {
         object["archived"] = archived.map(JSONValue.bool)
         object["moku"] = moku.map(JSONValue.bool)
         if mokuHistory { object["mokuHistory"] = .bool(true) }
-        object["note"] = note?.json
         object["transcript"] = transcript
         try self.init(json: .object(object))
     }
@@ -145,83 +137,6 @@ public struct HarnessThread: Hashable, Sendable {
         }
         object["sessionState"] = state
         return try Self(json: .object(object))
-    }
-}
-
-/// Moku's single persistent milestone note. Revision is monotonic across clears
-/// within one incarnation, and an empty text is the explicit "no note" value the
-/// UI shows as empty.
-public struct ThreadNote: Hashable, Sendable {
-    public static let maximumCodePoints = 1200
-    /// Names this note incarnation. It is stable across updates and host
-    /// replacement; a history reset starts a new identity even though note
-    /// revisions restart at 1, so read state cannot suppress a new note.
-    public let id: JSONText
-    public let text: JSONText
-    public let revision: Int
-    public let updatedAt: Double
-    /// A CAS counter for evidence changes, independent of the text revision.
-    public let readingRevision: Int
-    public let lastExposure: ThreadNoteExposure?
-
-    public init(id: JSONText, text: JSONText, revision: Int, updatedAt: Double,
-                readingRevision: Int = 0, lastExposure: ThreadNoteExposure? = nil) throws {
-        try self.init(json: .object(["id": .string(id), "text": .string(text), "revision": .integer(revision),
-            "updatedAt": .number(updatedAt), "readingRevision": .integer(readingRevision),
-            "lastExposure": lastExposure?.json ?? .null]))
-    }
-
-    public init(json: JSONValue) throws {
-        let r = try ThreadContractReader(json, path: "note", keys: ["id", "text", "revision", "updatedAt", "readingRevision", "lastExposure"])
-        id = try r.identifier("id")
-        text = try r.rawText("text")
-        guard text.string.unicodeScalars.count <= Self.maximumCodePoints, !text.codeUnits.contains(0) else {
-            throw PluginContractError("note.text exceeds its code point limit or contains NUL")
-        }
-        if !text.codeUnits.isEmpty {
-            try ThreadContractReader.nonblank(text, path: "note.text")
-        }
-        revision = try r.integer("revision")
-        guard revision >= 1, revision <= 9_007_199_254_740_991 else { throw PluginContractError("note.revision is out of range") }
-        updatedAt = try r.number("updatedAt", minimum: 0)
-        readingRevision = try r.integer("readingRevision")
-        guard readingRevision >= 0, readingRevision <= 9_007_199_254_740_991 else {
-            throw PluginContractError("note.readingRevision is out of range")
-        }
-        if let value = json["lastExposure"], value != .null {
-            let exposure = try ThreadNoteExposure(json: value)
-            guard !text.codeUnits.isEmpty, exposure.revision <= revision, readingRevision > 0 else {
-                throw PluginContractError("note.lastExposure is inconsistent")
-            }
-            lastExposure = exposure
-        } else { lastExposure = nil }
-        self.json = json
-    }
-
-    /// The empty text is a clear, not a note the UI should show.
-    public var isEmpty: Bool { text.codeUnits.isEmpty }
-    public let json: JSONValue
-}
-
-public struct ThreadNoteExposure: Hashable, Sendable {
-    public let revision: Int
-    public let text: JSONText
-    public let recordedAt: Double
-    public let signal: JSONText
-    public let json: JSONValue
-
-    public init(json: JSONValue) throws {
-        let r = try ThreadContractReader(json, path: "note.lastExposure", keys: ["revision", "text", "recordedAt", "signal"])
-        revision = try r.integer("revision")
-        guard revision >= 1, revision <= 9_007_199_254_740_991 else { throw PluginContractError("note.lastExposure.revision is out of range") }
-        text = try r.rawText("text")
-        guard !text.codeUnits.isEmpty, text.string.unicodeScalars.count <= ThreadNote.maximumCodePoints,
-              !text.codeUnits.contains(0) else { throw PluginContractError("note.lastExposure.text is invalid") }
-        try ThreadContractReader.nonblank(text, path: "note.lastExposure.text")
-        recordedAt = try r.number("recordedAt", minimum: 0)
-        signal = try r.rawText("signal")
-        guard signal == "complete-viewport-coverage-v1" else { throw PluginContractError("note.lastExposure.signal is invalid") }
-        self.json = json
     }
 }
 

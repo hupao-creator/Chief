@@ -366,7 +366,7 @@ Inventory and integration boundaries:
 | Shared conversation / execution Sidecard | Timeline, activities, Markdown code and tables | SwiftUI wrapper; the timeline owns scroll position, follow behavior and cursor deferral |
 | Shared composer | Native multiline editor, attachment strip, host file picker | AppKit subclass and control-scoped List adapter; attachment indicators remain hidden |
 | Settings and shared selects | Main form, section strip, agent/error detail, native textareas, option and model menus | Wrapper/subclass only; bindings, validation and menu focus unchanged |
-| Moku | Note (including short viewport), directory completion, Talk and interaction bodies | Wrapper; completion uses native drag/accessibility instead of its old custom thumb |
+| Moku | Directory completion, Talk and interaction bodies | Wrapper; completion uses native drag/accessibility instead of its old custom thumb |
 | Overview | Horizontal folder bar | Native scroll wrapper with hidden indicators. The Host routes vertical filter swipes across the window. |
 | Git | Worktree/file list, diff reader and synchronized horizontal code panes | Wrapper/subclass; line selection and horizontal synchronization remain owned by Git |
 | Plugins | Report relations, OpenCode process, Browser annotation list | Wrapper; Browser comment TextEditor also uses the control-scoped adapter |
@@ -386,12 +386,11 @@ frames remain document-owned. The Browser does not inject scrollbar styles into
 external pages. The expanded Overview relations list uses `NativeScrollView`;
 the collapsed card is clipped and the onboarding illustration does not scroll.
 
-Settings, the general model selector, Thread Detail TOC and Note are parallel
+Settings, the general model selector, and Thread Detail TOC are parallel
 work areas. Changes here are limited to viewport construction and removal of
 local style overrides; do not replace their page structure, state or navigation
 when integrating. A new TOC/model menu should use the same wrapper or AppKit
-subclass and retain its own selection/reveal logic. The baseline includes main's
-Note history (#106) and Overview framing (#107).
+subclass and retain its own selection/reveal logic.
 
 ## Reading and execution disclosure
 
@@ -516,34 +515,7 @@ background. Characters, link attributes and native selection remain in the text
 storage, and Copy continues to omit the synthetic padding cells. Footnote returns reveal references through nested table and
 conversation viewports.
 
-`NativeMarkdownView` has an optional applied-document callback for Moku note exposure. It reports the requested document token only after the production parser result is applied, including when two versions produce equal blocks. The callback also reports conservative vertical-coverage eligibility from the production presentation tree: text headings, paragraphs, lists, quotes, rules and footnotes can qualify; code, tables, images and links that may load local previews cannot. Other readers omit the callback. The note host separately measures viewport, window qualification and dwell; a parser result by itself is never reading evidence.
-
-### Note execution capsules
-
-`NativeMarkdownView.executionLinkHarnesses` opts a host into native execution
-capsules. `nil` retains ordinary Markdown rendering; an empty map still renders
-neutral capsules. The Host supplies only public ordinary-thread brands from its
-plugin registry. Brand identities participate in the rendered-block and TextKit
-input comparisons, so catalog hydration changes logos without a note revision.
-`NativeMarkdownExecutionLink` hosts live clear Liquid Glass in TextKit attachment
-seats, with full-title copy descriptions and pointer passthrough for document
-selection. Its accessible Button routes through the document-owned current link
-action. The action carries the activated capsule’s visible window rectangle
-for the reading panel. Attachments remeasure at actual container widths and retire their native
-hosts when the corresponding source disappears. Other Markdown surfaces and
-ordinary web links retain their existing text behavior.
-The attachment seat reserves vertical space around the compact glass capsule;
-TextKit includes that space in line layout and pointer targeting, including for
-wrapped titles, while the capsule remains aligned with the surrounding baseline.
-
-Repeated native layout/selection notifications retain a capsule's SwiftUI glass
-root when attachment, selection, locale and appearance are unchanged; its action
-still forwards to the current callback. Width/scale measurements are bounded to
-eight entries per text input revision and checked before constructing attributed
-content. Probes restore the actual displayed container width, and plain prose
-does not become width-dependent merely because its document enables capsules.
-See the [Note performance measurements](../../../../../tools/verification/moku-note-performance/README.md)
-for the isolated production-control comparison and its visual limitations.
+`NativeMarkdownView` reports a requested document token after the parsed blocks have been applied.
 
 [Conversation/ThreadConversation.swift](Conversation/ThreadConversation.swift) and [ThreadTimeline.swift](Conversation/ThreadTimeline.swift) organize reading from the Harness's public turn index. [ThreadExecutionGroups.swift](Conversation/ThreadExecutionGroups.swift) presents adjacent execution rows under a summary with reasoning/tool counts and reported reasoning usage. Only the latest process summary in the running execution carries a left-to-right text highlight, and only while it is also the final message-stream group. Harnesses classify the native tail before withholding streaming replies; a later assistant reply stops the sweep immediately, including before its text is mounted. OpenCode checks the last native part because replies, reasoning and tools can share a message. The 64pt band uses opaque strong reading ink with a broad center and soft edges. Only while motion is admitted, its text base uses 55% muted ink so both sides of the band visibly recede; the wrench keeps normal ink. Inactive scenes and pending entrance restore normal static ink. Colors follow the light/dark palette; earlier groups, history, completed/interrupted/failed executions and waiting-for-user states stay static. Harnesses supply execution-running state separately from reader activity. The text mask clips a [native gradient layer](Conversation/ThreadExecutionLoadingSweep.swift). Its position animation holds off the far edge for 250 ms per cycle. Removing the running or entrance gate, losing the active scene or detaching the view retires the sweep. The decoration adds no accessibility content or hit target. The highlight travels at roughly 180pt/s with a short gap between passes, without animating the wrench or changing text layout. In Agent detail, the reading header's execution visibility control shows only this summary: nested Used tools group titles, Hooks, tool calls, commands, reasoning bodies and failed-tool diagnostics are details and never mount. Agent-only background terminal/task sections likewise show static counts/status rather than commands or descriptions, and hide with work; task failure is not a standalone Harness error. Summary-only historical groups do not acquire the scoped loader in [ThreadDeferredExecution.swift](Conversation/ThreadDeferredExecution.swift). The full member-row presentation uses scoped historical demand when explicitly selected. Execution membership takes precedence over attention styling, so a tool failure cannot escape the visibility group. Standalone errors and pending interactions keep their own timeline rows; a visible nonmember splitting a native run receives distinct summary identities. The summary itself has no disclosure arrow, hover treatment, keyboard focus or accessibility/reading action. Individual activity disclosures on other conversation surfaces retain their existing behavior.
 
@@ -1143,7 +1115,7 @@ feeding `ScrollPosition`, retained history positions or relative scroll commands
 Snapshots keep the raw offset and inset alongside the normalized position so
 replays can detect coordinate drift instead of accepting a finite but wrong value.
 
-Chief Note citations and execution-result visits use the nested reader for current
+Talk citations and execution-result visits use the nested reader for current
 and historical executions. The cited run keeps its identity through streaming,
 completion and a successor. A citation starts at the document heading with
 output following off. A result request locates the result after the body loads. Each Harness's typed detail rows supply visible
@@ -1158,8 +1130,7 @@ reading action immediately, even when the scroll position has not changed or a
 successor is running. This eligibility is separate from output following so final
 content layout and result-anchor positioning keep their existing behavior.
 Internal execution URLs are admitted by the shared Markdown parser but dispatched
-only through an explicitly supplied typed execution callback, currently the Moku
-note. They never fall through to external navigation.
+only through an explicitly supplied typed execution callback. Chief Talk uses the same [TextKit execution capsule](Reading/NativeMarkdownExecutionLink.swift) for labeled and bare links in both the conversation and compact bar. TextKit owns inline layout, selection and pointer tracking. The capsule exposes its Harness logo, title and arrow as a single accessible button.
 
 Timeline anchors retain document coordinates through nested rows. If a requested
 position is initially clamped because Markdown has not finished layout, content
@@ -1460,8 +1431,8 @@ Super Thread's related-execution reader. For long documents,
 offscreen space from the block metrics at the actual reading width. Approaching
 a section mounts its blocks once for the visit. Reversing direction keeps those
 views, their measured heights and their native selections. Reading more of a
-document can therefore increase the number of mounted views. Short replies,
-footnote anchors and exposure-tracked notes use measured blocks throughout.
+document can therefore increase the number of mounted views. Short replies and documents with
+footnote anchors use measured blocks throughout.
 See the [Markdown layout contract](../../../../../design/markdown.md) for the
 section sizes and streaming boundary.
 

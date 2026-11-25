@@ -17,7 +17,7 @@ public struct NativeMokuTimerMessage: Equatable, Identifiable, Sendable {
                   item["completedAt"]?.numberValue != nil, item["isError"]?.boolValue != true,
                   item["result"]?["ok"]?.boolValue == true,
                   let text = item["arguments"]?["text"]?.stringValue,
-                  text.unicodeScalars.count <= NativeMokuTalkMessage.maximumCodePoints,
+                  text.unicodeScalars.count <= 160,
                   !text.contains("\0"),
                   !text.trimmingCharacters(in: .whitespacesAndNewlines.union(.init(charactersIn: "\u{FEFF}\u{0085}"))).isEmpty
             else { return nil }

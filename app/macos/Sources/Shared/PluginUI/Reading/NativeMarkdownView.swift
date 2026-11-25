@@ -4,11 +4,6 @@ import ChiefCore
 import ChiefPluginAPI
 import SwiftUI
 
-public struct NativeMarkdownAppliedDocument: Equatable, Sendable {
-    public let token: String
-    public let coverageEligible: Bool
-}
-
 /// Native conversation/document Markdown. Hosts supply their external navigation
 /// and attachment resolver; plain Markdown never creates a browser view.
 public struct NativeMarkdownView: View {
@@ -22,10 +17,8 @@ public struct NativeMarkdownView: View {
     public var openExternal: ((URL) -> Void)?
     public var openExecution: ((ApplicationExecutionRef) -> Void)?
     public var resolveMedia: NativeMarkdownMediaResolver?
-    /// Opt-in decoration supplied only by the note; an empty map retains neutral capsules.
-    public var executionLinkHarnesses: [JSONText: AnyHarnessPlugin]?
     public var documentToken: String?
-    public var onDocumentApplied: ((NativeMarkdownAppliedDocument?) -> Void)?
+    public var onDocumentApplied: ((String?) -> Void)?
     @Environment(\.nativeMarkdownMediaResolver) private var environmentMediaResolver
     @Environment(\.nativeReadingPageCapacity) private var pageCapacity
     @StateObject private var model = MarkdownViewModel()
@@ -37,13 +30,11 @@ public struct NativeMarkdownView: View {
                 muted: Bool = false, openExternal: ((URL) -> Void)? = nil,
                 resolveMedia: NativeMarkdownMediaResolver? = nil,
                 openExecution: ((ApplicationExecutionRef) -> Void)? = nil,
-                executionLinkHarnesses: [JSONText: AnyHarnessPlugin]? = nil,
                 documentToken: String? = nil,
-                onDocumentApplied: ((NativeMarkdownAppliedDocument?) -> Void)? = nil) {
+                onDocumentApplied: ((String?) -> Void)? = nil) {
         self.text = text; self.sourceBytes = Data(text.utf8); self.streaming = streaming
         self.fontSize = fontSize; self.muted = muted; self.openExternal = openExternal
         self.resolveMedia = resolveMedia; self.openExecution = openExecution
-        self.executionLinkHarnesses = executionLinkHarnesses
         self.documentToken = documentToken; self.onDocumentApplied = onDocumentApplied
     }
 
@@ -61,7 +52,7 @@ public struct NativeMarkdownView: View {
         let options = MarkdownViewOptions(
             fontSize: fontSize, muted: muted,
             openLink: actions.open, resolveMedia: media,
-            anchorPrefix: model.anchorPrefix, actions: actions, executionLinkHarnesses: executionLinkHarnesses)
+            anchorPrefix: model.anchorPrefix, actions: actions)
         return Group {
             if pageCapacity != nil, streaming || hasStreamed {
                 // Page-level streaming keeps the open page invisible until it
@@ -115,8 +106,7 @@ public struct NativeMarkdownView: View {
     }
 
     private var defersDistantSections: Bool {
-        // Notes report exposure against the whole document. Footnote links
-        // resolve by finding their destination or return anchor in the window.
+        // Footnote links resolve by finding their destination or return anchor in the window.
         guard pageCapacity != nil, onDocumentApplied == nil,
               model.blocks.count > 2 * MarkdownReadingSections.blocksPerSection else { return false }
         return !model.blocks.contains { block in
@@ -139,7 +129,7 @@ struct MarkdownRevision: Equatable {
 @MainActor
 private final class MarkdownViewModel: ObservableObject {
     @Published var blocks: [MarkdownBlock] = []
-    @Published private(set) var applied: NativeMarkdownAppliedDocument?
+    @Published private(set) var applied: String?
     @Published private(set) var hasParsedContent = false
     let anchorPrefix = UUID().uuidString
     let actions = MarkdownViewActions()
@@ -154,7 +144,7 @@ private final class MarkdownViewModel: ObservableObject {
             return
         }
         pending = MarkdownRevision(text: text, streaming: streaming, token: token)
-        if applied?.token != token { applied = nil }
+        if applied != token { applied = nil }
         guard worker == nil else { return }
         let generation = UUID()
         workerGeneration = generation
@@ -172,8 +162,7 @@ private final class MarkdownViewModel: ObservableObject {
                         if blocks != document.blocks { blocks = document.blocks }
                         if !hasParsedContent { hasParsedContent = true }
                         // Cached/identical blocks still acknowledge this document identity.
-                        applied = next.token.map { NativeMarkdownAppliedDocument(token: $0,
-                            coverageEligible: document.coverageEligible) }
+                        applied = next.token
                     }
                 } catch { break }
             }
@@ -206,7 +195,6 @@ struct MarkdownViewOptions {
     var resolveMedia: NativeMarkdownMediaResolver?
     var anchorPrefix: String
     var actions: MarkdownViewActions? = nil
-    var executionLinkHarnesses: [JSONText: AnyHarnessPlugin]? = nil
 
     struct Rendering: Equatable, Sendable {
         let actions: ObjectIdentifier?
@@ -214,13 +202,11 @@ struct MarkdownViewOptions {
         let muted: Bool
         let anchorPrefix: String
         let media: Bool
-        let executionHarnesses: [JSONText: ObjectIdentifier]?
     }
 
     var rendering: Rendering {
         Rendering(actions: actions.map(ObjectIdentifier.init), fontSize: fontSize, muted: muted,
-                  anchorPrefix: anchorPrefix, media: resolveMedia != nil,
-                  executionHarnesses: executionLinkHarnesses?.mapValues(ObjectIdentifier.init))
+                  anchorPrefix: anchorPrefix, media: resolveMedia != nil)
     }
 }
 
@@ -383,7 +369,7 @@ struct MarkdownInlineView: View {
     var body: some View {
         MarkdownSelectableText(spans: displayedSpans, fontSize: fontSize, weight: weight, muted: muted, strongInk: strongInk, tracking: tracking,
                                lineHeight: lineHeight, alignment: alignment, images: images, helpText: imageFailure,
-                               executionLinkHarnesses: options.executionLinkHarnesses, openLink: options.openLink)
+                               openLink: options.openLink)
         .fixedSize(horizontal: false, vertical: true)
         .task(id: sources) {
             images = images.filter { sources.contains($0.key) }

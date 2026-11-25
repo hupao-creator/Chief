@@ -68,26 +68,18 @@ import ChiefPluginUI
     @ObservationIgnored var settingsSettle: (() -> Void)?
     public private(set) var flightActive = false
     public private(set) var readReplies: Set<JSONText> = []
-    struct NoteReadingOrigin {
-        enum Phase: String { case dismissing, locating, reading }
+    struct TalkReadingOrigin {
+        enum Phase: String { case locating, reading }
         let id = UUID()
         let reference: ApplicationExecutionRef
         var space: String
-        var phase = Phase.dismissing
-        var returnsToNote = false
+        var phase = Phase.locating
     }
-    var noteReadingOrigin: NoteReadingOrigin?
+    var talkReadingOrigin: TalkReadingOrigin?
 
-    func finishLinkedNoteDismissal(_ id: UUID?) {
-        guard let id, noteReadingOrigin?.id == id, noteReadingOrigin?.phase == .dismissing else { return }
-        noteReadingOrigin?.phase = .locating
+    func cancelPendingTalkReading() {
+        if let origin = talkReadingOrigin, origin.phase != .reading { talkReadingOrigin = nil }
     }
-
-    func cancelPendingNoteReading() {
-        if let origin = noteReadingOrigin, origin.phase != .reading { noteReadingOrigin = nil }
-    }
-    public private(set) var notePanelOpen = false
-    public private(set) var noteOpenGeneration = 0
     public var readingPanelVisible = false {
         didSet {
             if !dockRouteVisible { setInputOpen(false); dockHitRects = []; dockMentionHitRect = nil }
@@ -98,7 +90,7 @@ import ChiefPluginUI
         didSet {
             guard overviewVisible != oldValue, !overviewVisible else { return }
             talkPresentation.setPresented(false)
-            closeNotePanel()
+            cancelPendingTalkReading()
             setInputOpen(false)
             if !dockRouteVisible { dockHitRects = []; dockMentionHitRect = nil }
             if !dockRouteVisible, dockInteractionVisible { setDockInteractionVisible(false, question: false) }
@@ -133,11 +125,6 @@ import ChiefPluginUI
     private(set) var dockInteractionIsQuestion = false
     @ObservationIgnored private var replyReadOrder: [JSONText]
     @ObservationIgnored private let replyReadFileURL: URL?
-    @ObservationIgnored public var submitNoteExposure: ((JSONText, Int) async throws -> String)?
-    @ObservationIgnored private var pendingNoteExposure: (id: JSONText, revision: Int)?
-    @ObservationIgnored private var noteExposureTask: Task<Void, Never>?
-    @ObservationIgnored private var noteExposureAuthority = UUID()
-    @ObservationIgnored private var claimedNoteOpenGeneration = 0
 
     enum Command { case settings(Bool), coordinator(CGRect?, Bool), position, visibility, shellScroll, settle }
     public init(replyReadFileURL: URL? = nil,
@@ -251,7 +238,7 @@ import ChiefPluginUI
     }
     func openConversation() {
         guard overviewVisible, !readingPanelVisible, !dockCovered, !dockInteractionVisible,
-              !notePanelOpen, !disabled, inputInteractionReady else { return }
+              !disabled, inputInteractionReady else { return }
         let openingEditor = !inputOpen
         setInputOpen(true)
         conversationOpen = true
@@ -272,7 +259,7 @@ import ChiefPluginUI
         capsuleTask?.cancel(); capsuleTask = nil
         if open {
             talkPresentation.setPresented(false)
-            closeNotePanel()
+            cancelPendingTalkReading()
             retiringInput = nil; capsuleSealed = false; inputOpen = true
         }
         else if inputOpen {
@@ -316,83 +303,6 @@ import ChiefPluginUI
     func expireTalk(id: JSONText, deadline: ContinuousClock.Instant) { talkPresentation.expire(id: id, deadline: deadline) }
     public func dismissTalk() { talkPresentation.dismiss() }
 
-    /// The note panel belongs to the Overview dock only. Composer and
-    /// permission/question panels take priority; opening either closes it.
-    public func toggleNotePanel() { setNotePanelOpen(!notePanelOpen) }
-    /// Only the existing user entry points may start a fresh reading session.
-    public func openNotePanelFromUser() {
-        setNotePanelOpen(true)
-        if notePanelOpen { noteOpenGeneration &+= 1 }
-    }
-    public func toggleNotePanelFromUser() {
-        if notePanelOpen { setNotePanelOpen(false) }
-        else { openNotePanelFromUser() }
-    }
-    public func claimNoteOpenArm() -> Bool {
-        guard notePanelOpen, noteOpenGeneration > claimedNoteOpenGeneration else { return false }
-        claimedNoteOpenGeneration = noteOpenGeneration
-        return true
-    }
-    public func setNotePanelOpen(_ open: Bool) {
-        guard !settingsOpen else { return }
-        guard open != notePanelOpen else { return }
-        guard !open || (overviewVisible && !disabled && !dockCovered && !dockInteractionVisible) else { return }
-        if open { cancelPendingNoteReading(); setInputOpen(false) }
-        notePanelOpen = open
-        command?(.position)
-    }
-    private func closeNotePanel(cancelReading: Bool = true) {
-        if cancelReading { cancelPendingNoteReading() }
-        guard notePanelOpen else { return }
-        notePanelOpen = false
-        command?(.position)
-    }
-    public func noteUnread(_ note: NativeMokuNote?) -> Bool {
-        note?.hasUnexposedUpdate == true
-    }
-
-    public func reconcileNoteExposure(_ note: NativeMokuNote?) {
-        guard let pending = pendingNoteExposure else { return }
-        guard let note, note.id == pending.id, note.revision == pending.revision,
-              note.hasUnexposedUpdate else {
-            pendingNoteExposure = nil
-            noteExposureAuthority = UUID()
-            noteExposureTask?.cancel(); noteExposureTask = nil
-            return
-        }
-    }
-
-    public func resetNoteExposureAuthority() {
-        pendingNoteExposure = nil
-        suspendNoteExposureSubmission()
-    }
-
-    public func suspendNoteExposureSubmission() {
-        noteExposureAuthority = UUID()
-        noteExposureTask?.cancel(); noteExposureTask = nil
-    }
-
-    public func recordNoteExposure(_ note: NativeMokuNote) {
-        guard note.hasUnexposedUpdate else { return }
-        pendingNoteExposure = (note.id, note.revision)
-        retryNoteExposure()
-    }
-
-    public func retryNoteExposure() {
-        guard noteExposureTask == nil, let pending = pendingNoteExposure,
-              let submitNoteExposure else { return }
-        let authority = noteExposureAuthority
-        noteExposureTask = Task { [weak self] in
-            let status = try? await submitNoteExposure(pending.id, pending.revision)
-            guard let self, self.noteExposureAuthority == authority,
-                  self.pendingNoteExposure?.id == pending.id,
-                  self.pendingNoteExposure?.revision == pending.revision else { return }
-            self.noteExposureTask = nil
-            if status == "stale" { self.pendingNoteExposure = nil }
-            // Accepted/duplicate only become visible after the authoritative
-            // catalog arrives; failures wait for the next UI activity.
-        }
-    }
     public func retainDraft(_ draft: NativeComposerDraft, seal: Bool = false) {
         // A retiring view or late preview/import may still publish after
         // navigation has admitted another draft into this shared capsule.
@@ -414,9 +324,9 @@ import ChiefPluginUI
     public func openSettings() {
         guard canOpenSettings else { return }
         guard !settingsOpen || settingsClosing else { return }
-        cancelPendingNoteReading()
+        cancelPendingTalkReading()
         talkPresentation.setPresented(false)
-        // Keep the underlying input/Note visit alive. Settings temporarily owns
+        // Keep the underlying input visit alive. Settings temporarily owns
         // the capsule; a pending intervention is admitted after it retires.
         if !settingsOpen { settle() }
         settingsClosing = false; settingsOpen = true
@@ -443,7 +353,7 @@ import ChiefPluginUI
     }
     public func settle() { settingsSettle?(); command?(.settle) }
     func setDockInteractionVisible(_ value: Bool, question: Bool) {
-        if value && !settingsOpen { talkPresentation.setPresented(false); closeNotePanel() }
+        if value && !settingsOpen { talkPresentation.setPresented(false); cancelPendingTalkReading() }
         dockInteractionVisible = value; dockInteractionIsQuestion = question; command?(.position)
     }
     public func markReplyRead(_ key: JSONText) {
@@ -463,13 +373,13 @@ import ChiefPluginUI
         settingsTransitioning = false
         guard settingsClosing else { return }
         settingsClosing = false; settingsOpen = false
-        if dockInteractionVisible { closeNotePanel(); setInputOpen(false) }
+        if dockInteractionVisible { cancelPendingTalkReading(); setInputOpen(false) }
         onSettingsOpenChange?(false)
     }
     func setWindowVisible(_ value: Bool) {
         if !value {
             dockCharacter?.cancelOnboardingBlink()
-            talkPresentation.setPresented(false); closeNotePanel(cancelReading: false)
+            talkPresentation.setPresented(false)
         }
         windowVisible = value
     }

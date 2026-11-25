@@ -74,33 +74,25 @@ reopens the receipt store from the isolated profile. A new completed execution
 must reappear in both tag counts, and a document revision must relight its own tag. `tag-read.json` records the observed counts
 and selection. `source.json` identifies the checkout and platform.
 
-### Chief Note execution links
+### Talk execution links
 
-After building the current Debug package, run the mounted workspace replay.
+Run the mounted workspace replay with the current Debug package.
 
 ```sh
-python3 demos/moku-landing/verify_header.py --note-link --output .build/note-link-replay
+python3 demos/moku-landing/verify_header.py --talk-link --output .build/talk-link-replay
 ```
 
-A window-local mouse click on a Note citation opens an ordinary Thread from
-another directory, switches between sibling tags in one directory, repeats
-the visit from the matching tag, reveals a completed result from that folder’s
-empty Running tag, and opens the owning Super Thread in a different directory. The Report cites a later
-run of the same task. `note-links.json` records the filter during dismissal,
-location and reading, the mounted reader, and the requested execution and entry
-position. For ordinary Threads it also checks the loaded historical row and
-its scroll position against an offline two-run fixture. System-wide accessibility
-activation and live Report content use the [product replay](../../tools/e2e/README.md#chief-note-execution-link).
+The replay clicks the native glass execution capsules in the compact notification and the Chief conversation with AppKit mouse events. It captures each surface before navigating. The message contains labeled and bare links to different runs, a deleted Thread and a malformed URL. The replay checks the destination filter, historical row, loaded content and top scroll position, plus the unavailable page for a missing run. During the one-minute expiry observation the window ignores physical desktop clicks. Pointer input is enabled again before the replay follows the saved link into a Super Thread that cites a newer run. `talk-links.json` identifies the source surface and execution for each visit. The catalog and reading data are fixtures in a private profile.
 
-### Overview Note click at actual size
+### Overview Bar swipe at actual size
 
 ```sh
-python3 demos/moku-landing/verify_header.py --note-click --output .build/overview-note-click
+python3 demos/moku-landing/verify_header.py --bar-swipe --output .build/overview-bar-swipe
 ```
 
 This scenario keeps the workspace at 1× throughout, including its first frame.
 It checks the empty Overview with folded input as well as the populated canvas.
-The replay posts window-addressed AppKit mouse events to the mounted workspace. It checks that right-click opens Chief Note once in Overview and that Control-click opens it on Landing. A click on the canvas leaves Note closed, an outside primary click dismisses an open Note, and a primary click on Chief Bar opens Compose. Phased pixel scrolls verify that a subthreshold contact stays on the Bar, an upward swipe opens the conversation with its editor, and its momentum leaves the filter and Note alone. A draft typed in the panel reappears in the compact editor. They also exercise filter swipes, native tag and Note scrolling, camera travel, composer and Settings ownership, and inverted device deltas. The reminder fixture checks native scrolling and acknowledgment. See `overview-note-click.json`, `landing-note-click.json` and `reminder-note-ownership.json`. The posted events cover AppKit delivery to the window. Physical trackpad configuration remains a system-input check.
+The replay posts AppKit events to the window. An upward swipe over the eyes opens the conversation in Overview and on Landing. The replay checks filter swipes, native tag scrolling, camera travel, the return of the conversation draft to Compose, and gesture ownership while the editor, reminder or Settings is open. The results are in `overview-bar-swipe.json`, `landing-bar-swipe.json` and `reminder-scroll.json`.
 
 The [live conversation replay](verify_conversation.py) uses the same production window with the real Runtime, SQLite, Codex CLI and an isolated loopback model peer. Build the current artifacts and choose a new evidence directory.
 
@@ -115,11 +107,9 @@ The first native visit of the layout and restart replay checks previously submit
 
 The replay uses a 1100×800-point window and the application minimum of 860×600. Before sending, it measures the space above the date and below the last bubble in a two-message conversation at both sizes. Each visit then measures a longer exchange with one-line and four-line drafts in both windows. In the smaller window it scrolls the messages above the draft. The send and restart JSON receipts record the window margins, panel, list and editor heights, the attachment bubble’s height and the gaps for both a speaker change and consecutive replies. The `conversation-small-*.png` captures show the compact window with each draft. Text recognition checks that the latest reply and the draft’s last line are both visible in the four-line capture.
 
-The Note-click scenario also opens cached conversation pages in the production Dock. It crosses midnight and a 15-minute gap, captures the three centered date headings in `conversation-periods.png` and clicks both page controls. On the longer page it scrolls up, reveals the times and verifies that releasing the gesture restores the horizontal origin. The vertical reading position must hold both through the gesture and when the window becomes shorter. These replays use window-addressed AppKit events. Physical trackpad hardware and a remote model service have separate evidence boundaries.
+The Bar swipe scenario also opens cached conversation pages in the production Dock. It crosses midnight and a 15-minute gap, captures the three centered date headings in `conversation-periods.png` and clicks both page controls. On the longer page it scrolls up, reveals the times and verifies that releasing the gesture restores the horizontal origin. The vertical reading position must hold both through the gesture and when the window becomes shorter. These replays use window-addressed AppKit events. Physical trackpad hardware and a remote model service have separate evidence boundaries.
 
-The Note scroll check identifies the visible native viewport inside the mounted Note panel. It sends both scroll directions to the center of the capsule and checks the document offset after each event. The combined visit has a 150-second process timeout for the Note, reminder, card fitting, filter and Landing interactions.
-
-Use `--status-only` in place of `--note-click` to run the mixed catalog scenario
+Use `--status-only` in place of `--bar-swipe` to run the mixed catalog scenario
 independently. It mounts the [production Overview](../../app/macos/Sources/Host/Overview/README.md)
 with ordinary tasks, running interactions, completed work and eight reports.
 `overview-status.json` records the selected scope, tag and status, card area,
@@ -181,7 +171,7 @@ run the status replay through both localized card comparisons:
 python3 demos/moku-landing/verify_header.py --completed-card --output .build/completed-card-layout
 ```
 
-A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas selects the Running tag, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
+A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas selects the Running tag, and an explicit receipt advances the reminder. See `reminder-scroll.json`.
 
 ### Chief Bar opening
 

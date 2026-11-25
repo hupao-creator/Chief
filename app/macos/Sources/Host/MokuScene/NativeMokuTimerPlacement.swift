@@ -16,7 +16,7 @@ struct NativeMokuTimerPlacement: ViewModifier {
 
     func body(content: Content) -> some View {
         let resident = timer.current != nil && dockAvailable() && scene.dockRouteVisible && !scene.dockCovered
-            && !scene.inputOpen && !scene.inputLeaving && !scene.inputPinnedOpen && !scene.notePanelOpen
+            && !scene.inputOpen && !scene.inputLeaving && !scene.inputPinnedOpen
         content
             .environment(\.nativeMokuDockTimer, resident ? timer : nil)
             .safeAreaInset(edge: .bottom, spacing: 0) {

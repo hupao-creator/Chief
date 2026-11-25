@@ -260,8 +260,8 @@ of selection. A vertically dominant unmodified line-wheel event steps the same l
 
 The background, cards, carousel cover and filter controls accept these gestures.
 Horizontal starts retain their original owner through reversals. The
-[Chief Bar](../MokuScene/README.md#chief-bar-conversation) claims a physical upward swipe to open its conversation. A secondary click on the collapsed Bar opens Chief Note. Vertically
-overflowing native viewports keep scrolling at either limit. Open Note, editing,
+[Chief Bar](../MokuScene/README.md#chief-bar-conversation) claims a physical upward swipe to open its conversation. Vertically
+overflowing native viewports keep scrolling at either limit. Editing,
 interventions, onboarding, Settings, readers and collection panels keep their input.
 
 The directory Running tag filters the whole directory. Inbox statuses filter the selected top-level semantic tag. Both use eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and interrupted tasks with no ongoing work remain visible in ordinary directory and semantic selections and in the Inbox's All statuses view. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, counts, activity indicators and current tag selection use the full eligible catalog.
@@ -274,7 +274,7 @@ canvas above the localized status title, with no panel or scroll hint. The
 skillet gently bobs while three lowercase z’s drift above it. Reduce Motion
 holds both still. Each title is exposed to accessibility and the empty
 presentation passes input through to Overview. An empty ordinary selection shows a localized title and tag-switch hint on an opaque surface.
-The [status replay](../../../../../demos/moku-landing/README.md#overview-note-click-at-actual-size)
+The [status replay](../../../../../demos/moku-landing/README.md#overview-bar-swipe-at-actual-size)
 exercises empty and populated states and both input types.
 
 The selected left button stays expanded when its result is empty. Card borders stay the same on pointer hover. In the Inbox **Completed** view, keyboard
@@ -597,11 +597,11 @@ visibility, archive, directory/tag selection and exact execution coverage. It
 uses the full individual footprints, including offscreen cards. A report with a
 cover costs two cells and a coverless report costs one.
 
-When a Chief Note link targets a Report in a visible collection, the carousel pauses automatic
+When a Talk link targets a Report in a visible collection, the carousel pauses automatic
 advance and selects that member. The reader opens through the card’s ordinary
 opening path after the target page settles. A brief visit retains that member
-as the return page while it remains grouped. The [Note link contract](../MokuScene/README.md)
-covers dismissal and navigation back to the Note.
+as the return page while it remains grouped. The [Talk link contract](../MokuScene/README.md)
+covers execution navigation and return to Overview.
 
 The [profile-local reading record](NativeOverviewCollectionReading.swift) determines
 default membership across views. At **30 minutes** from the end of the last visit
@@ -873,7 +873,7 @@ choice, switches to another space, and returns to Running and full directory
 membership. The supported suite also selects Completed for an Inbox tag. The
 Collection suite uses two project directories. `overview-filters.json` records
 the public scope oracle and the mounted snapshots after each action. The
-[window replay](../../../../../demos/moku-landing/README.md#overview-note-click-at-actual-size)
+[window replay](../../../../../demos/moku-landing/README.md#overview-bar-swipe-at-actual-size)
 exercises native pointer input, distinguishes similarly named tags and folders,
 and checks the selected tint.
 

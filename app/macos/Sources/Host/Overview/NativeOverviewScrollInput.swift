@@ -168,15 +168,6 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             guard let window, event.window === window else { return event }
             if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
                 interruptGestures()
-                // A system secondary click arrives as rightMouseDown. AppKit
-                // can also deliver Control-click as a modified leftMouseDown.
-                let secondaryClick = event.type == .rightMouseDown
-                    || (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
-                let point = event.locationInWindow
-                if secondaryClick, window.isVisible, let swipeActions,
-                   swipeActions.regions.bar.contains(point, in: window),
-                   !swipeActions.regions.controls.contains(point, in: window),
-                   swipeActions.openNoteFromBar() { return nil }
                 return event
             }
             guard event.type == .scrollWheel else { return event }

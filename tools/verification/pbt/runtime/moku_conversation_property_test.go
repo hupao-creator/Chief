@@ -82,6 +82,7 @@ func TestMokuConversationProperties(t *testing.T) {
 				{"type": "message", "role": "user", "presentation": "internal", "content": "PRIVATE-DELIVERY"},
 				{"type": "message", "role": "user", "presentation": "unknown", "content": "PRIVATE-UNKNOWN"},
 				{"type": "tool-operation", "name": "talk", "arguments": map[string]string{"text": "PRIVATE-PENDING"}},
+				{"type": "tool-operation", "name": "update_note", "executionId": "previous-run", "completedAt": count + 1, "result": map[string]bool{"ok": true}, "arguments": map[string]string{"text": "PRIVATE-OLD-NOTE"}},
 				{"type": "tool-operation", "name": "create_thread", "arguments": map[string]string{"text": "PRIVATE-TOOL"}},
 			} {
 				extra["createdAt"], extra["id"], extra["status"] = count+1, fmt.Sprint(len(record.Transcript)), "complete"
@@ -89,6 +90,23 @@ func TestMokuConversationProperties(t *testing.T) {
 			}
 			return nil
 		}))
+		// Open a database with the coordinator record shape shipped in Alpha.
+		// The retired field must neither reject the owner nor leak into dialogue.
+		closeRuntime()
+		legacy, err := store.Open(filepath.Join(dir, "first", "state.sqlite"))
+		check(err)
+		_, err = legacy.Update(ctx, func(tx *store.Tx) error {
+			var record map[string]json.RawMessage
+			key := "thread:" + old.ID
+			if found, err := tx.Get(key, &record); err != nil || !found {
+				return fmt.Errorf("read legacy owner: found=%v, err=%v", found, err)
+			}
+			record["note"] = raw(map[string]any{"id": old.ID, "text": "PRIVATE-OLD-NOTE", "revision": 1, "updatedAt": 1, "readingRevision": 0})
+			return tx.Put(key, record)
+		})
+		check(err)
+		check(legacy.Close())
+		r, closeRuntime = open("first")
 		chief, err := r.ReplaceConfiguredMokuThread(ctx, old.ID, core.MokuConfiguration{HarnessID: "fixture", Cwd: dir, Unapplied: true, PreserveHistory: true})
 		check(err)
 		archive, err := r.Thread(old.ID)
@@ -102,14 +120,40 @@ func TestMokuConversationProperties(t *testing.T) {
 		commandID := "1788000000000_" + rapid.StringMatching("[a-zA-Z0-9_-]{16,80}").Draw(t, "command-id")
 		coordinator, talk := openChiefTool(t, model.WithFollowUpCommand(ctx, commandID), r, dir, harnesses, peer, input, "talk")
 		want = append(want, visible{Role: "user", Text: prompt})
-		for i := 0; i < 2; i++ {
-			_, err := talk.Execute(ctx, plugin.ToolCall{CallID: fmt.Sprint(i), Arguments: raw(map[string]string{"text": "Same reply."})})
+		link := fmt.Sprintf("[Review](chief://execution?threadId=%s&executionId=%s)", old.ID, chief.ID)
+		linked := strings.Repeat("界", rapid.IntRange(1, 64).Draw(t, "prose-length")) + " " + link + "\n" + link
+		for i, reply := range []string{"Same reply.", "Same reply.", linked, strings.Repeat("😀", 1024)} {
+			_, err := talk.Execute(ctx, plugin.ToolCall{CallID: fmt.Sprint(i), Arguments: raw(map[string]string{"text": reply})})
 			check(err)
-			want = append(want, visible{Role: "chief", Text: "Same reply."})
+			want = append(want, visible{Role: "chief", Text: reply})
 		}
-		_, err = talk.Execute(ctx, plugin.ToolCall{Arguments: raw(map[string]string{"text": strings.Repeat("PRIVATE-REJECTED", 32)})})
+		_, err = talk.Execute(ctx, plugin.ToolCall{Arguments: raw(map[string]string{"text": strings.Repeat("😀", 1025)})})
 		if err == nil {
 			t.Fatal("invalid Talk unexpectedly succeeded")
+		}
+		limits := map[string]int{"talk": 1024, "timer": 160}
+		for _, binding := range peer.tools.Bindings {
+			if limit, ok := limits[binding.Name]; ok {
+				var schema struct {
+					Properties map[string]struct{ MaxLength int }
+				}
+				check(json.Unmarshal(binding.InputSchema, &schema))
+				if schema.Properties["text"].MaxLength != limit {
+					t.Fatalf("%s schema has incorrect text budget", binding.Name)
+				}
+				delete(limits, binding.Name)
+			}
+			switch binding.Name {
+			case "update_note":
+				t.Fatal("retired tool injected")
+			case "timer":
+				if _, err := binding.Execute(ctx, plugin.ToolCall{Arguments: raw(map[string]string{"text": strings.Repeat("😀", 161)})}); err == nil {
+					t.Fatal("over-budget timer accepted")
+				}
+			}
+		}
+		if len(limits) != 0 {
+			t.Fatalf("communication tools missing: %v", limits)
 		}
 		check(coordinator.Stop(ctx))
 

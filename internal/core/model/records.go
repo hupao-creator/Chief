@@ -42,69 +42,6 @@ type SessionRecord struct {
 	UpdatedAt      int64  `json:"updatedAt"`
 }
 
-// ThreadNote is Moku's curated milestone recap: one persistent value, replaced
-// whole by the update_note tool. Revision is monotonic across clears; an empty
-// Text means no note content. ReadingRevision tracks evidence mutations, not a
-// highest read content revision. ID names
-// this note incarnation: it survives host replacement, which copies the note,
-// and a history reset starts a fresh ID even though numbering restarts at 1.
-type ThreadNote struct {
-	ID              string        `json:"id"`
-	Text            string        `json:"text"`
-	Revision        int64         `json:"revision"`
-	UpdatedAt       int64         `json:"updatedAt"`
-	ReadingRevision int64         `json:"readingRevision"`
-	LastExposure    *NoteExposure `json:"lastExposure,omitempty"`
-}
-
-const NoteExposureSignal = "complete-viewport-coverage-v1"
-
-// NoteExposure records a version actually presented in full. It says nothing
-// about the user's attention, understanding, or approval.
-type NoteExposure struct {
-	Revision   int64  `json:"revision"`
-	Text       string `json:"text"`
-	RecordedAt int64  `json:"recordedAt"`
-	Signal     string `json:"signal"`
-}
-
-type NoteBasis struct {
-	NoteID          string `json:"noteId"`
-	Revision        int64  `json:"revision"`
-	ReadingRevision int64  `json:"readingRevision"`
-}
-
-type NoteState struct {
-	Basis        *NoteBasis    `json:"basis"`
-	Note         *NoteSnapshot `json:"note"`
-	LastExposure *NoteExposure `json:"lastExposure"`
-}
-
-type NoteSnapshot struct {
-	ID        string `json:"id"`
-	Revision  int64  `json:"revision"`
-	Text      string `json:"text"`
-	UpdatedAt int64  `json:"updatedAt"`
-}
-
-type NoteUpdateResult struct {
-	OK    bool      `json:"ok"`
-	Code  string    `json:"code,omitempty"`
-	State NoteState `json:"state"`
-}
-
-func SnapshotNote(note *ThreadNote) NoteState {
-	if note == nil {
-		return NoteState{}
-	}
-	state := NoteState{Basis: &NoteBasis{NoteID: note.ID, Revision: note.Revision, ReadingRevision: note.ReadingRevision}, Note: &NoteSnapshot{ID: note.ID, Revision: note.Revision, Text: note.Text, UpdatedAt: note.UpdatedAt}}
-	if note.LastExposure != nil {
-		exposure := *note.LastExposure
-		state.LastExposure = &exposure
-	}
-	return state
-}
-
 type ThreadRecord struct {
 	SessionRecord
 	// DirectoryTag and DirectoryScope are host-derived presentation metadata.
@@ -120,7 +57,6 @@ type ThreadRecord struct {
 	Archived         *bool             `json:"archived,omitempty"`
 	Moku             bool              `json:"moku,omitempty"`
 	MokuHistory      bool              `json:"mokuHistory,omitempty"`
-	Note             *ThreadNote       `json:"note,omitempty"`
 	Transcript       []json.RawMessage `json:"transcript,omitempty"`
 	// Retain classification history when restoration or pool edits clear Tags.
 	HadSemanticTag bool `json:"hadSemanticTag,omitempty"`

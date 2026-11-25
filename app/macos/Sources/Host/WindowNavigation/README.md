@@ -109,7 +109,7 @@ card after primary travel and a committed folded layout. See the
 [admission contract](../../../../../design/reading.md). No panel-scale or WebKit Escape assertion replay is configured in this tree.
 
 Direct execution requests enter through Report/application `openExecution`,
-explicit `openThread` reading targets, or Moku note `openNoteExecution`. All four
+explicit `openThread` reading targets, or Talk `openTalkExecution`. All four
 Harnesses forward these requests to the shared conversation reader. The requested
 document owns the route's entry Back action, independently of start/result scroll
 position, current/history mode, or whether a newer execution already exists.
@@ -124,13 +124,12 @@ editing, IME composition, native menus and visible child windows that can take
 keyboard focus retain priority. Hidden or transitioning documents cannot consume
 another page's Escape.
 
-Moku note execution URLs are parsed by the shared Markdown link boundary and
-enter through `openNoteExecution`; there is no OS-level execution URL handler.
+Talk links from the notification and conversation share the typed `ApplicationExecutionLink` parser and `openTalkExecution` action. The host handles these URLs inside the workspace.
 This entry admits public ordinary threads, including archived and
 failed or Moku-tool-interrupted threads hidden from Overview. The reading request is
 exact and does not start execution. A missing or ineligible thread shows an
 unavailable notice; a missing execution uses the reader's unavailable page. Each click receives a fresh reading request.
-After Note dismissal, Overview resolves the tag space for the reader destination.
+After the link is activated, Overview resolves the tag space for the reader destination.
 It retains a space containing that Thread or Report, otherwise prefers a matching sibling
 tag within the selected folder, then a matching filter by scoped membership.
 An untagged Inbox destination opens directly and keeps the current space.
@@ -139,15 +138,9 @@ The new space finishes layout before the reader opens. A link outside a folder's
 turns to the linked Report. An offscreen destination or one without a card opens directly.
 The catalog indexes Super Thread ownership by ordinary Thread, across its runs.
 A unique owner opens the Report panel with the cited run beside the document.
-Both Note routes start at the heading of the exact run. The Report’s own
+Both Talk routes start at the heading of the exact run. The Report’s own
 related-list entry opens the current execution. Both side-panel entries retain
-the conversation TOC. Back to Chief Note restores the expanded Note.
-The Overview command, the reader backdrop and the Close button on either
-expanded citation dismiss to the canvas with the Note closed. The sidebar
-arrow returns to the related list. The Report keeps the same Close button there
-and dismisses to Overview with the Note closed. Admission rules remain entry-specific; archived
-ordinary threads are valid for both, while the Note additionally admits ordinary
-failed or Moku-tool-interrupted threads hidden from Overview.
+the conversation TOC. The sidebar arrow returns to the related list. Closing the reader returns to Overview.
 
 Retained current/result/history documents may mount the same row simultaneously.
 The Harness host gives each content-resource acquisition its own subscription
@@ -158,8 +151,7 @@ remaining handles.
 
 Agent and Report readers use a panel-owned Close rather than a Back control beside the
 traffic lights. A Report opened from the member grid uses a panel-owned Back
-arrow in that seat and returns to the same grid. An Agent opened from a Chief Note
-link uses Close in that seat. Escape in the cited document returns to the Note. Agent history executions have no dedicated upper-left Back button,
+arrow in that seat and returns to the same grid. An Agent opened from a Talk link uses Close in that seat. Escape in the cited document returns to Overview. Agent history executions have no dedicated upper-left Back button,
 including when the shared history document has no navigation host. History retains
 TOC navigation, Escape and its close action with the existing route-visit fence.
 Other application navigation retains its own window-navigation behavior.

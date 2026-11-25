@@ -13,8 +13,7 @@ Both labeled light/dark columns call the same production warm-dark clear glass;
 fixture text/appearance choices are separate. The controls expose backgrounds,
 intensity, motion and a regular-glass comparison. At zero intensity the clear
 glass remains. A local opaque preview does not change system preferences.
-Production Reduce Transparency retains priority. Expanded Note uses dark Regular
-Liquid Glass; this demo's expanded fixture still calls its clear branch.
+Production Reduce Transparency retains priority.
 The editable fixture is not the complete production composer, voice or focus flow.
 
 Requires the repository macOS/Xcode toolchain. This preview has no automated

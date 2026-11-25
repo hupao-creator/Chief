@@ -3,6 +3,27 @@ import ChiefCore
 import ChiefPluginAPI
 import SwiftUI
 
+/// Inline execution capsules share TextKit selection, wrapping and pointer handling with the prose.
+package struct NativeExecutionCapsuleText: View {
+    private let spans: [MarkdownSpan]
+    private let harnesses: [JSONText: AnyHarnessPlugin]
+    private let compact: Bool
+    @Environment(\.openURL) private var openURL
+
+    package init(runs: [(text: String, url: URL?)], harnesses: [JSONText: AnyHarnessPlugin], compact: Bool) {
+        spans = runs.map { MarkdownSpan(text: $0.text, link: $0.url?.absoluteString) }
+        self.harnesses = harnesses
+        self.compact = compact
+    }
+
+    package var body: some View {
+        MarkdownSelectableText(spans: spans, fontSize: compact ? 13 : 15, weight: compact ? 600 : 400,
+            strongInk: true, lineHeight: compact ? 19 : 20, alignment: compact ? .center : .left,
+            executionLinkHarnesses: harnesses, openLink: { openURL($0) })
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 extension NSAttributedString.Key {
     static let nativeMarkdownExecution = NSAttributedString.Key("ChiefMarkdownExecution")
 }
@@ -16,6 +37,7 @@ final class MarkdownExecutionAttachment: NSTextAttachment {
     let fontSize: CGFloat
     let size: CGSize
     let verticalInset: CGFloat
+    let wrapsTitle: Bool
 
     @MainActor init(title: String, url: URL, harness: AnyHarnessPlugin?, fontSize: CGFloat, width: CGFloat) {
         self.title = title; self.url = url; self.harness = harness; self.fontSize = fontSize
@@ -26,7 +48,9 @@ final class MarkdownExecutionAttachment: NSTextAttachment {
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineSpacing = 3 * scale
         let text = NSAttributedString(string: title, attributes: [.font: font, .paragraphStyle: paragraph])
-        let fittedWidth = min(width, ceil(text.size().width) + chrome)
+        let idealWidth = ceil(text.size().width) + chrome
+        wrapsTitle = idealWidth > width
+        let fittedWidth = min(width, idealWidth)
         let height = text.boundingRect(with: CGSize(width: max(1, fittedWidth - chrome), height: .greatestFiniteMagnitude),
                                        options: [.usesLineFragmentOrigin, .usesFontLeading]).height
         size = CGSize(width: max(1, fittedWidth), height: ceil(max(fontSize * 1.2, height) + 14 * scale))
@@ -71,9 +95,9 @@ private struct MarkdownExecutionCapsule: View {
                     if let harness = attachment.harness { harness.logo(size: 15 * scale) }
                     else { Image(systemName: "terminal").resizable().scaledToFit().foregroundStyle(NativePalette.thread.muted.swiftUI) }
                 }.frame(width: 15 * scale, height: 15 * scale).accessibilityHidden(true)
-                Text(attachment.title).font(NativeTypography.inter(size: attachment.fontSize))
+                Text(verbatim: attachment.title).font(NativeTypography.inter(size: attachment.fontSize))
                     .foregroundStyle(NativePalette.thread.inkStrong.swiftUI)
-                    .lineSpacing(3 * scale).fixedSize(horizontal: false, vertical: true)
+                    .lineSpacing(3 * scale).fixedSize(horizontal: !attachment.wrapsTitle, vertical: true)
                 Image(systemName: "arrow.up.right").font(.system(size: 10 * scale, weight: .medium))
                     .foregroundStyle(NativePalette.thread.muted.swiftUI).accessibilityHidden(true)
             }
@@ -90,7 +114,7 @@ private struct MarkdownExecutionCapsule: View {
         }
         .help("\(name) · \(attachment.title)")
         .accessibilityLabel("\(name) · \(attachment.title)")
-        .accessibilityIdentifier("moku-note-execution-link")
+        .accessibilityIdentifier("chief-execution-link")
     }
 }
 

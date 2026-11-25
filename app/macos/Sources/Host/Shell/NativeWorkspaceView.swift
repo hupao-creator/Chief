@@ -127,11 +127,6 @@ public final class NativeWorkspacePresentation {
         let state = NativeMokuSceneState(replyReadFileURL: workspace.client.storageDirectory.appendingPathComponent("native-moku-reply-read.json"),
             readingPanelMotion: messageMotion)
         state.executionDockPlacement.beginRoute(navigationRouteID)
-        state.submitNoteExposure = { [weak self] noteID, revision in
-            guard let self else { throw CancellationError() }
-            return try await NativeMokuNoteExposureSender.submit(workspace: self.workspace,
-                                                                  id: noteID, revision: revision)
-        }
         // Route is restored before the first layout. Do not wait for start()
         // or a saved thread briefly mounts the Overview capsule.
         state.readingPanelVisible = usesReadingPanel
@@ -162,11 +157,6 @@ public final class NativeWorkspacePresentation {
             self.moku.receive(event)
             if case .snapshot(_, let authority) = event, self.snapshotAuthority != authority {
                 self.snapshotAuthority = authority
-                // Hydration gets a new snapshot authority even on a same-profile
-                // reconnect. Preserve completed evidence only for the exact
-                // incarnation/version still present in the new catalog.
-                self.scene.reconcileNoteExposure(self.moku.note)
-                self.scene.retryNoteExposure()
                 // Rehydration interrupts rendering, not an accepted Close.
                 self.scene.settle(); NativeReadingPageMotion.cancelAll(finishingClose: true)
             }
@@ -181,10 +171,8 @@ public final class NativeWorkspacePresentation {
             guard let self else { return }
             self.overview.receive(.connection(status)); self.moku.receive(.connection(status))
             if status != .connected {
-                self.scene.suspendNoteExposureSubmission()
                 self.scene.settle(); NativeReadingPageMotion.cancelAll(finishingClose: true)
             }
-            else { self.scene.retryNoteExposure() }
             self.publishPresence()
         }
         if let state = workspace.state, let authority = workspace.snapshotAuthority {
@@ -272,9 +260,9 @@ public final class NativeWorkspacePresentation {
             requestID: JSONText(UUID().uuidString), mode: current == reference.executionID ? .current : .history))
     }
 
-    public func openNoteExecution(_ reference: ApplicationExecutionRef) {
-        guard selected == nil, scene.notePanelOpen, !scene.dockCovered,
-              !onboarding.blocksWorkspace, moku.note != nil else { return }
+    public func openTalkExecution(_ reference: ApplicationExecutionRef) {
+        guard selected == nil, scene.overviewVisible, !scene.dockCovered, !browsingCollection,
+              !onboarding.blocksWorkspace, !scene.dockInteractionVisible else { return }
         // The public catalog excludes private background agents. Failed and
         // interrupted ordinary threads remain valid explicit reading targets.
         guard reference.thread.typeID == "agent",
@@ -283,11 +271,12 @@ public final class NativeWorkspacePresentation {
             workspace.report(PluginContractError(NativePluginLocalization.localize("链接指向的执行不可用。", locale: Locale(identifier: workspace.locale.rawValue))))
             return
         }
-        scene.noteReadingOrigin = .init(reference: reference, space: overview.sceneKey)
-        scene.setNotePanelOpen(false)
+        scene.setInputOpen(false)
+        scene.dismissTalk()
+        scene.talkReadingOrigin = .init(reference: reference, space: overview.sceneKey)
     }
 
-    fileprivate struct NoteSourcePreparation: Equatable {
+    fileprivate struct TalkSourcePreparation: Equatable {
         let visit: UUID
         let destination: ApplicationThreadRef
         let space: String
@@ -295,8 +284,8 @@ public final class NativeWorkspacePresentation {
         let layoutRevision: UInt64
     }
 
-    fileprivate var noteSourcePreparation: NoteSourcePreparation? {
-        guard let origin = scene.noteReadingOrigin, origin.phase == .locating, selected == nil,
+    fileprivate var talkSourcePreparation: TalkSourcePreparation? {
+        guard let origin = scene.talkReadingOrigin, origin.phase == .locating, selected == nil,
               focused, documentVisible else { return nil }
         // Membership and ownership indexes update at the catalog boundary.
         // Restart only if this destination or its actual card changes.
@@ -307,40 +296,40 @@ public final class NativeWorkspacePresentation {
             card: overview.visibleCardID(for: destination), layoutRevision: overview.content.structureRevision)
     }
 
-    fileprivate func prepareNoteSource(_ request: NoteSourcePreparation?) async {
-        guard !Task.isCancelled, request == noteSourcePreparation else { return }
+    fileprivate func prepareTalkSource(_ request: TalkSourcePreparation?) async {
+        guard !Task.isCancelled, request == talkSourcePreparation else { return }
         overview.readingSource = nil
         guard let request else { return }
-        guard request.space == scene.noteReadingOrigin?.space else { scene.cancelPendingNoteReading(); return }
-        overview.revealNoteDestination(request.destination)
+        guard request.space == scene.talkReadingOrigin?.space else { scene.cancelPendingTalkReading(); return }
+        overview.revealExecutionDestination(request.destination)
         if request.space != overview.sceneKey {
             // The locating task for the new space must wait for its own canvas layout.
-            scene.noteReadingOrigin?.space = overview.sceneKey
+            scene.talkReadingOrigin?.space = overview.sceneKey
             return
         }
         if overview.error == nil {
             await canvas.prepareForPresentation()
-            guard !Task.isCancelled, request == noteSourcePreparation else { return }
+            guard !Task.isCancelled, request == talkSourcePreparation else { return }
             if let card = request.card, canvas.layoutError == nil,
                canvas.visibleFrame(for: card) != nil {
                 overview.readingSource = .init(member: request.destination) { [weak self] in
-                    guard let self, request == noteSourcePreparation else { return }
-                    finishNoteOpening(request, sourceCardID: card)
+                    guard let self, request == talkSourcePreparation else { return }
+                    finishTalkOpening(request, sourceCardID: card)
                 }
                 return
             }
         }
         // Explicit links also admit archived or failed Threads with no canvas card.
-        finishNoteOpening(request, sourceCardID: nil)
+        finishTalkOpening(request, sourceCardID: nil)
     }
 
-    private func finishNoteOpening(_ request: NoteSourcePreparation, sourceCardID: String?) {
-        guard request == noteSourcePreparation, var origin = scene.noteReadingOrigin else { return }
+    private func finishTalkOpening(_ request: TalkSourcePreparation, sourceCardID: String?) {
+        guard request == talkSourcePreparation, var origin = scene.talkReadingOrigin else { return }
         overview.readingSource = nil
         guard !scene.dockCovered, !scene.inputOpen, !browsingCollection, !onboarding.blocksWorkspace,
               let thread = workspace.catalog.thread(origin.reference.thread.threadID),
               thread.isOrdinaryAgent else {
-            scene.cancelPendingNoteReading()
+            scene.cancelPendingTalkReading()
             return
         }
         let reference = origin.reference
@@ -351,9 +340,9 @@ public final class NativeWorkspacePresentation {
             open(request.destination, sourceCardID: sourceCardID)
             reportSidecards.selectExecution(reference, position: .executionStart)
         }
-        guard selected == request.destination else { scene.cancelPendingNoteReading(); return }
+        guard selected == request.destination else { scene.cancelPendingTalkReading(); return }
         origin.phase = .reading
-        scene.noteReadingOrigin = origin
+        scene.talkReadingOrigin = origin
         if sourceCardID == nil { readingPanelSource = nil; readingPanelSourceCardID = nil }
     }
 
@@ -373,16 +362,13 @@ public final class NativeWorkspacePresentation {
     }
 
     func backFromReader() {
-        if scene.noteReadingOrigin != nil {
-            scene.noteReadingOrigin?.returnsToNote = true
-            messageMotion.close()
-        } else if selected?.typeID == "agent" { showOverview() }
+        if selected?.typeID == "agent" { showOverview() }
         else { closeApplication() }
     }
 
     public func showOverview() {
         guard !onboarding.blocksWorkspace else { return }
-        scene.cancelPendingNoteReading()
+        scene.cancelPendingTalkReading()
         if scene.settingsOpen {
             guard settingsNavigation.requestClose(model: workspace.settingsModel,
                 onClose: { _ in scene.closeSettings() }) else { return }
@@ -392,8 +378,6 @@ public final class NativeWorkspacePresentation {
             collectionPanel.close(owner: owner)
             return
         }
-        scene.noteReadingOrigin?.returnsToNote = false
-        scene.setNotePanelOpen(false)
         if readingCollectionMember { collectionPanel.retire() }
         // Reversal keeps the opening's source frozen. A settled return samples
         // its new destination only after the retained canvas has been prepared.
@@ -425,13 +409,11 @@ public final class NativeWorkspacePresentation {
 
     public func finishBack() {
         overview.recordApplicationClose()
-        let returnToNote = scene.noteReadingOrigin?.returnsToNote == true
         collectionPanel.returnToMembers()
         selected = nil; readingTarget = nil; threadIdentityVisit = nil; resetNavigation(); followUpVisible = false
         nativeApplicationNavigation = false
         applicationReturn = nil
         persistSelection(nil); publishPresence()
-        if returnToNote { scene.setNotePanelOpen(true) }
     }
 
     public func closeApplication() {
@@ -455,7 +437,7 @@ public final class NativeWorkspacePresentation {
     }
 
     private func resetNavigation() {
-        scene.noteReadingOrigin = nil
+        scene.talkReadingOrigin = nil
         clearSidecardComposer()
         visibleReportDocument = nil
         reportSidecards = NativeReportSidecardPresentation()
@@ -847,24 +829,12 @@ public final class NativeWorkspacePresentation {
         }
     }
 
-    /// The note command exists only where the Overview dock is mounted and
-    /// reachable, so it never overlays a thread or Settings.
-    public var canToggleMokuNote: Bool {
-        started && scene.overviewVisible && !scene.disabled && !scene.dockCovered
-            && !onboarding.blocksWorkspace
-            && workspace.catalog.hasMoku
-    }
     fileprivate var overviewSwipeAvailable: Bool {
         started && scene.overviewVisible && !workspace.stopping && !scene.dockCovered
             && !onboarding.blocksWorkspace && scene.windowVisible && scene.inputInteractionReady
-            && !scene.conversationOpen && !scene.inputLeaving && !scene.notePanelOpen
+            && !scene.conversationOpen && !scene.inputLeaving
             && !scene.dockInteractionVisible && moku.interaction == nil
             && !browsingCollection && !messageMotion.active
-    }
-
-    public func toggleMokuNote() {
-        guard canToggleMokuNote else { return }
-        scene.toggleNotePanelFromUser()
     }
 
     public func perform(_ operation: @escaping () async throws -> Void) {
@@ -915,7 +885,6 @@ public final class NativeWorkspacePresentation {
         overview.recordApplicationClose()
         started = false
         clearSidecardComposer()
-        scene.resetNoteExposureAuthority()
         workspace.onCatalogChange = nil; workspace.onConnectionChange = nil
         workspace.onOverviewFilter = nil; workspace.onFollowUp = nil; workspace.onStopped = nil
         scene.settle(); applicationHost.release()
@@ -971,8 +940,8 @@ public struct NativeWorkspaceView: View {
         .onChange(of: controlActiveState, initial: true) { _, state in presentation.setReadingWindowActive(state == .key) }
         .focusedSceneValue(\.workspacePresentation, presentation)
         .onAppear { presentation.start() }
-        .task(id: presentation.noteSourcePreparation) { [request = presentation.noteSourcePreparation] in
-            await presentation.prepareNoteSource(request)
+        .task(id: presentation.talkSourcePreparation) { [request = presentation.talkSourcePreparation] in
+            await presentation.prepareTalkSource(request)
         }
         .onDisappear { Task { await presentation.release() } }
         .onChange(of: model.settingsOpen) { _, value in
@@ -983,7 +952,7 @@ public struct NativeWorkspaceView: View {
             presentation.scene.settle(); NativeReadingPageMotion.cancelAll(finishingClose: true)
         }
         .onChange(of: presentation.collectionPanel.owner) { _, owner in
-            if owner != nil { presentation.scene.cancelPendingNoteReading() }
+            if owner != nil { presentation.scene.cancelPendingTalkReading() }
         }
         .onChange(of: model.stopping) { _, _ in presentation.publishPresence() }
         .onChange(of: presentation.onboarding.blocksWorkspace) { _, _ in presentation.publishPresence() }
@@ -1034,9 +1003,7 @@ public struct NativeWorkspaceView: View {
                     disabled: disabled || (detail.map { !model.canExecute($0) || (!presentation.dockInputAvailable && !presentation.retainsReportComposer) } ?? false),
                     interaction: presentation.moku.interaction, interactionIsQuestion: presentation.moku.interactionIsQuestion,
                     presentation: presentation.moku,
-                    note: presentation.moku.note,
-                    openExternal: { url in presentation.perform { try await model.services.openExternal(JSONText(url.absoluteString)) } },
-                    openExecution: presentation.openNoteExecution,
+                    openExecution: presentation.openTalkExecution,
                     loadMentionDirectories: detail == nil ? nil : { try await model.services.knownDirectories() },
                     onSend: { submission in
                         if let sidecardComposer {
@@ -1101,7 +1068,7 @@ public struct NativeWorkspaceView: View {
                 panelFrontIdentity: "workspace-reading-front",
                 threadPanelMotion: presentation.selected?.typeID == "agent",
                 reportPanelMotion: presentation.selected?.typeID == "report.document",
-                requiresPanelSource: presentation.scene.noteReadingOrigin != nil,
+                requiresPanelSource: presentation.scene.talkReadingOrigin != nil,
                 onParentPresentationChange: { active in
                     guard presentation.navigationRouteID == routeID, active || presentation.selected != nil else { return }
                     if !active || !presentation.readingCollectionMember { presentation.overview.setPresentationActive(active) }
@@ -1113,7 +1080,7 @@ public struct NativeWorkspaceView: View {
                     // folding Overview input or owned by IME/transient controls
                     // cannot also close this panel. Agent input stays expanded.
                     guard !presentation.scene.inputHandledOutsideClick else { return }
-                    if presentation.scene.noteReadingOrigin != nil || presentation.selected?.typeID == "agent" {
+                    if presentation.scene.talkReadingOrigin != nil || presentation.selected?.typeID == "agent" {
                         presentation.showOverview()
                     } else { presentation.closeApplication() }
                 },
@@ -1131,12 +1098,6 @@ public struct NativeWorkspaceView: View {
                         regions: presentation.scene.swipeRegions,
                         available: { presentation.overviewSwipeAvailable },
                         canFilter: { !presentation.scene.inputOpen && !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
-                        openNoteFromBar: {
-                            guard presentation.overviewSwipeAvailable, !presentation.scene.inputOpen, presentation.canToggleMokuNote,
-                                  model.timer.current == nil else { return false }
-                            presentation.scene.openNotePanelFromUser()
-                            return true
-                        },
                         openConversation: {
                             guard presentation.overviewSwipeAvailable, model.catalog.hasMoku,
                                   model.timer.current == nil else { return }
@@ -1175,7 +1136,7 @@ public struct NativeWorkspaceView: View {
                     onNavigationChange: { if presentation.navigationRouteID == routeID { presentation.navigation = $0 } }))
                 .modifier(NativeApplicationReadingPanel(enabled: presentation.usesReadingPanel,
                     suppressed: applicationSuppressed, returnsToCollection: presentation.readingCollectionMember,
-                    dismissToOverview: presentation.scene.noteReadingOrigin != nil ? {
+                    dismissToOverview: presentation.scene.talkReadingOrigin != nil ? {
                         if presentation.navigationRouteID == routeID { presentation.showOverview() }
                     } : nil,
                     onClose: { if presentation.navigationRouteID == routeID { presentation.backFromReader() } }))
@@ -1206,8 +1167,7 @@ public struct NativeWorkspaceView: View {
                 enabledSidecardIDs: enabledSidecards, services: presentation.sidecardServices(),
                 onBack: { if presentation.navigationRouteID == routeID { presentation.backFromReader() } },
                 onFollowUpVisibilityChange: { presentation.setFollowUpVisible($0) },
-                backLabel: presentation.scene.noteReadingOrigin != nil ? model.locale.text("返回 Chief 笔记", "Back to Chief Note")
-                    : model.locale.text("返回俯瞰", "Back to overview"),
+                backLabel: model.locale.text("返回俯瞰", "Back to overview"),
                 onNavigationChange: { if presentation.navigationRouteID == routeID { presentation.navigation = $0 } },
                 executionReveal: presentation.threadExecutionReveal,
                 onEntranceReady: { presentation.admitReadingEntrance(routeID: routeID, reference: selected) })
@@ -1293,9 +1253,6 @@ public struct NativeWorkspaceCommands: Commands {
                 .disabled(presentation?.onboarding.blocksWorkspace == true)
             Button(locale.text("输入", "Compose")) { presentation?.scene.toggleInput(focusOnOpening: true) }
                 .keyboardShortcut("b", modifiers: [.command, .shift]).disabled(presentation?.onboarding.blocksWorkspace == true || presentation?.scene.dockRouteVisible != true || presentation?.scene.inputInteractionReady != true || presentation?.scene.settingsOpen == true)
-            Button(locale.text("Chief 笔记", "Chief Note")) { presentation?.toggleMokuNote() }
-                .keyboardShortcut("n", modifiers: [.command, .shift])
-                .disabled(presentation?.canToggleMokuNote != true)
         }
         CommandGroup(replacing: .appSettings) {
             Button(locale.text("设置…", "Settings…")) { presentation?.openSettings() }.keyboardShortcut(",")

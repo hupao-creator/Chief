@@ -162,7 +162,7 @@ public extension NativeWorkspacePresentation {
             overview.selectTag(filter)
         case .overviewScroll, .overviewRetry,
              .overviewActivateFilter, .overviewScrollFilter,
-             .toggleMokuInput, .toggleMokuNote:
+             .toggleMokuInput:
             try performOverviewInteraction(action)
         }
     }
