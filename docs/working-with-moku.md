@@ -46,7 +46,7 @@ After a successful removal, the checkout folder is gone. The task conversation s
 
 ## Find Chief's replies
 
-In Overview, right-click Chief Bar to open your conversation above the input. You can also Control-click or use your trackpad’s secondary click. If you already have a draft open, right-click the bar beside the text to see the conversation and keep typing. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see the time beside each message, swipe left in the conversation and hold. Release to tuck the times away.
+In Overview, right-click Chief Bar to open your conversation above the input. The panel stays dark even when your Mac uses Light. You can also Control-click or use your trackpad’s secondary click. If you already have a draft open, right-click the bar beside the text to see the conversation and keep typing. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see the time beside each message, swipe left in the conversation and hold. Release to tuck the times away.
 
 Each time you open the panel, you can see the end of the latest message once the messages load. A larger gap marks a change of speaker. A short exchange fits in a compact panel. Longer conversations can fill most of a small window, with the input at the bottom. Scroll up above the input to read earlier messages. Your place stays put as new replies arrive while you’re reading further up. At the top of a page, **Earlier messages** takes you further back. **Newer messages** at the bottom takes you forward.
 
