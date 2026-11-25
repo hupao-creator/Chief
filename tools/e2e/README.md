@@ -254,6 +254,21 @@ Record the tested revision, app artifact, fixture delay, window sizes, and
 captured frames. The [onboarding layout contract](../../app/macos/Sources/Host/Onboarding/README.md)
 applies to the separate configuration editor on both pages.
 
+### Onboarding Agent configuration form spacing
+
+In a fresh profile with ready Codex and Pi catalogs, open **Configure separately**
+on the Tag and Super Thread Agent pages. Select Codex and capture the form with
+**Advanced options** collapsed and expanded. Compare the vertical distance
+between the Model and Reasoning effort popups with that between Service tier and
+Permission mode. With equally sized rows, those distances should match.
+Collapse and reopen the disclosure to check that it reserves no space for hidden
+fields and that the previously selected values reappear. Switch to Pi and check
+that no empty disclosure or advanced rows remain. Return to Codex and confirm
+the disclosure starts collapsed and the basic fields keep their spacing.
+
+Record the revision, app and catalog fixture, disclosure states and measured
+popup frames. See the [onboarding form contract](../../app/macos/Sources/Host/Onboarding/README.md).
+
 ### Full-surface loading mark
 
 Run the [same-window native replay](../../demos/chief-logo-loading/README.md#原生加载标记).

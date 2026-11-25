@@ -1173,6 +1173,9 @@ Codex service tier and the default-configuration toggle under one initially
 collapsed **Advanced options** disclosure. Pi execution snapshots have no
 secondary controls and therefore no empty disclosure. Field drafts remain owned
 by each Harness; collapse/expansion never saves, clears or replaces their values.
+Harness editors propagate their `settingsFormPage` presentation to the shared
+fields. Form pages rely on row padding for field spacing, with zero additional
+stack spacing inside the disclosure.
 Default mode retains its existing inheritance and explicit-toggle semantics.
 Read-only inherited profiles keep the disclosure and resource retry available.
 The host sets `nativeSettingsReadOnly`; the shared wrapper disables basic and
