@@ -1174,8 +1174,10 @@ collapsed **Advanced options** disclosure. Pi execution snapshots have no
 secondary controls and therefore no empty disclosure. Field drafts remain owned
 by each Harness; collapse/expansion never saves, clears or replaces their values.
 Harness editors propagate their `settingsFormPage` presentation to the shared
-fields. Form pages rely on row padding for field spacing, with zero additional
-stack spacing inside the disclosure.
+fields. Form pages rely on each row or resource notice for its own vertical
+padding, with zero stack spacing between consecutive fields and between a
+resource notice and its form group. The disclosure and group headers keep their
+own padding.
 Default mode retains its existing inheritance and explicit-toggle semantics.
 Read-only inherited profiles keep the disclosure and resource retry available.
 The host sets `nativeSettingsReadOnly`; the shared wrapper disables basic and

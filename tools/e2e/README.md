@@ -269,6 +269,19 @@ the disclosure starts collapsed and the basic fields keep their spacing.
 Record the revision, app and catalog fixture, disclosure states and measured
 popup frames. See the [onboarding form contract](../../app/macos/Sources/Host/Onboarding/README.md).
 
+### Harness resource notice spacing
+
+Mount the OpenCode execution form with a ready catalog in the Settings or
+onboarding form presentation, then with a fixture that shows a resource notice
+and Retry above the same fields. At the same width, compare the first popup's
+vertical offset from the top of the editor. The increase should equal the
+notice's rendered height, including its own padding. The distances between the
+Provider, Model and OpenCode model variant popups should be identical in both
+states. Repeat in wide inline and narrow stacked Settings layouts.
+
+Record the revision, catalog fixture, viewport width, and notice and popup
+frames. See the [shared form layout contract](../../app/macos/Sources/Shared/PluginUI/README.md#model-and-reasoning-selection).
+
 ### Full-surface loading mark
 
 Run the [same-window native replay](../../demos/chief-logo-loading/README.md#原生加载标记).
