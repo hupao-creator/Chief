@@ -150,6 +150,12 @@ class Desktop:
         running = settled("running", current, set())
         assert not running["overview"]["cards"]
         activate(other["kind"], other["id"])
+        if other["kind"] == "directory" and other["children"]:
+            # First entry selects the first visible tag. Click the current
+            # folder again to exercise its whole-folder membership below.
+            first_tag = other["children"][0]["id"]
+            self.stable(lambda s: s["selectedFilterId"] == first_tag)
+            activate("directory", other["id"])
         folder = settled("all", other, agents_in(other["scope"]))
         if other["scope"] == "inbox":
             activate("status", "completed")
