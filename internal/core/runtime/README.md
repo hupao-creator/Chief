@@ -342,7 +342,7 @@ by replacing the idle recovery handle.
 stable-ID tags and assignments from one immutable snapshot. Its content revision
 fences atomic mutations without reacting to unrelated stream writes. The writer
 checks revision, active membership and scope in the receipt transaction and returns
-current status on conflicts. [tags.go](tags.go) keeps public name/emoji projections
+current status on conflicts. A pool may contain a semantic tag named after the directory. Pool edits preserve distinct surviving assignments on existing Threads. [tags.go](tags.go) keeps public name/emoji projections
 and report source decoration synchronized while preserving stable tag identity.
 Archived Threads retain frozen decoration and do not consume active membership;
 restoration clears assignment before emitting `thread.restored`. Clearing

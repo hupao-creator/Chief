@@ -4,13 +4,13 @@
 
 Press **⌘K** to open **Overview**. Chief highlights your last folder or tag and shows its cards, even after you quit and reopen the app. On your first visit, or if that choice is unavailable when you reopen Chief, Overview selects the first available folder or Inbox tag in the top row. Click a folder icon at the top to see that project’s tagged work. Folders with the same name appear separately.
 
-Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. A task appears once it has a tag from Tag Agent. With only untagged tasks, Overview shows **No tagged conversations yet**. Your conversations stay saved.
+Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. If your conversations have no tags yet, Overview shows **No running conversations** until a task starts. Its card appears as soon as it’s running. If you already have folders or tags in Overview, click the hourglass next to Settings (**Running without a tag**) to find running tasks that are still waiting for a tag.
 
 When a task gets its first tag, Overview selects that tag and shows its cards. This also happens when you branch a conversation that already has a tag. If you’re reading a conversation or using Settings, you can keep working there. You’ll see the selected tag when you return to Overview. If a Super Thread collection is open, the switch waits until you close it.
 
 You can choose another folder or tag at any time. Later changes to the same task’s tags and reconnecting to the background service preserve your choice while it’s available.
 
-When a folder has tags to choose from, look for their emoji along the left edge. Move the pointer over or just beside an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. The selected tag keeps its name visible when you move the pointer away.
+Choose a folder to see every assigned tag along the left edge. Even a folder’s only tag has its own button. If a tag shares the folder’s name, choose the folder at the top for the whole project or the emoji on the left for that tag. Move the pointer over or just beside an emoji to see its tag name. The button expands just enough to fit the name. Long names end in an ellipsis when space runs out. Click the button to show the matching cards. The selected tag keeps its name visible when you move the pointer away.
 
 When you close a task conversation or Super Thread to return to Overview, the top and left filters come back into place together. Once the reader closes, you can choose another filter.
 

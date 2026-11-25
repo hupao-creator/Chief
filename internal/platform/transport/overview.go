@@ -613,7 +613,7 @@ func overviewValidContext(raw json.RawMessage) bool {
 	if !overviewNull(value["selectedScope"]) && value["selectedScope"] != nil && !overviewString(value["selectedScope"], 1, 4096) {
 		return false
 	}
-	seen := make(map[string]struct{})
+	seen := make(map[[3]string]struct{})
 	if !overviewArray(value["filters"], 2048, func(raw json.RawMessage) bool {
 		filter, valid := overviewObject(raw, []string{"tag", "kind", "aliases", "count", "threads"}, []string{"scope"})
 		if !valid || !overviewString(filter["tag"], 1, 4096) || !overviewEnum(filter["kind"], "directory", "semantic") ||
@@ -623,12 +623,11 @@ func overviewValidContext(raw json.RawMessage) bool {
 			!overviewArray(filter["threads"], 20000, overviewValidThread) {
 			return false
 		}
-		var tag, scope string
+		var tag, scope, kind string
 		_ = json.Unmarshal(filter["tag"], &tag)
 		_ = json.Unmarshal(filter["scope"], &scope)
-		// Selection is addressed by (scope, tag); a directory and a semantic
-		// filter with the same pair would be ambiguous.
-		key := scope + "\x00" + tag
+		_ = json.Unmarshal(filter["kind"], &kind)
+		key := [3]string{scope, kind, tag}
 		if _, duplicate := seen[key]; duplicate {
 			return false
 		}

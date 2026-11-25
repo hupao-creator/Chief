@@ -214,7 +214,7 @@ def run(args):
             peer.tagged_ids = {r["threadId"] for r in peer.receipts.values()}
             if "E2E-OVERVIEW-005" in requested:
                 peer.tag_names.update({peer.receipts["bench_create_02"]["threadId"]: "Plan work",
-                                       peer.receipts["bench_create_03"]["threadId"]: "Ship work"})
+                                       peer.receipts["bench_create_03"]["threadId"]: peer.overview_project.name})
             elif peer.overview_project:
                 peer.tagged_ids.remove(peer.receipts["bench_create_14"]["threadId"])
             collection.enable_agent(session, "tag", True)
@@ -266,7 +266,7 @@ def run(args):
             if "E2E-OVERVIEW-004" in requested:
                 execute("E2E-OVERVIEW-004", lambda: desktop.overview_filters(thread))
             if "E2E-OVERVIEW-005" in requested:
-                execute("E2E-OVERVIEW-005", lambda: overview_spaces.journey(desktop, app))
+                execute("E2E-OVERVIEW-005", lambda: overview_spaces.journey(desktop, app, send, thread_state))
             if "E2E-COLLECTION-001" in requested:
                 execute("E2E-COLLECTION-001", lambda: collection.journey(desktop, reports))
                 if args.suite == "all":

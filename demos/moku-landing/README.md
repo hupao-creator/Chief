@@ -12,6 +12,16 @@ Command-1/2/3/4 分别重置、演示成功、失败及归档。
 独立 app 路径写入 `.build/moku-landing/app-path.txt`。
 预览不配置自动断言、截图验收或验证报告，也不启动 Runtime 或真实模型。
 
+## Untagged running work and tag visibility
+
+Build the current Debug package, then run the mounted production workspace with an isolated catalog.
+
+```sh
+python3 demos/moku-landing/verify_header.py --tag-states --output .build/tag-states
+```
+
+The replay reads the empty message from a window capture, starts an untagged run, then assigns it the folder’s name. It clicks the folder and its sole child, opens running untagged work alongside existing tags, and selects six tags with equal and nested member sets. The evidence directory contains the three state screenshots and `tag-states.json`.
+
 ## Nested workspace header replay
 
 Build the current Debug package and use a new output directory. The optional
@@ -126,9 +136,9 @@ mounted scroll monitor. Each `rail-swipe` entry records finger direction,
 inversion, signed recognition delta, rail order and observed start and end IDs. It also records the signed vertical travel of
 entering and retiring cards from their mounted canvas motion endpoints.
 The replay checks that further contact and momentum events keep the same selection, and
-swipes both ways on a single selected choice and an empty rail. It also checks
+swipes between a folder’s sole semantic tag and Running, and checks an empty rail. It also checks
 cross-center contacts, inverted device deltas, horizontal camera travel, live
-status changes, and reentry to a folder whose sole left choice is empty Running.
+status changes, and reentry to a folder with an empty Running selection.
 A replayed catalog delta moves a semantic tag into first place while a semantic
 tag named Running and the built-in choice retain distinct identities. A live
 update to that replayed Thread preserves Running. A newly created Thread with

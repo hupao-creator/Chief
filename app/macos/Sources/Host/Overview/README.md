@@ -264,7 +264,7 @@ Horizontal starts retain their original owner through reversals. The
 overflowing native viewports keep scrolling at either limit. Open Note, editing,
 interventions, onboarding, Settings, readers and collection panels keep their input.
 
-The directory Running tag filters the whole directory. Inbox statuses filter the selected top-level semantic tag. Both use eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and interrupted tasks with no ongoing work remain visible in ordinary directory and semantic selections and in the Inbox's All statuses view. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
+The directory Running tag filters the whole directory. Inbox statuses filter the selected top-level semantic tag. Both use eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and interrupted tasks with no ongoing work remain visible in ordinary directory and semantic selections and in the Inbox's All statuses view. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, counts, activity indicators and current tag selection use the full eligible catalog.
 
 The [Running and Completed empty states](NativeOverviewStatusPresentation.swift) center the
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
@@ -332,14 +332,18 @@ Inbox groups work without a persistent directory, including managed temporary
 roots. Each exposed Inbox tag has its own button with an emoji and title.
 Overview restores the profile's last folder, Inbox tag or directory child when
 the catalog first offers spaces. With no eligible saved match, it selects the
-first nonempty top-row filter in display order. The selection, card membership
+first top-row filter in display order. The selection, card membership
 and published context resolve together. The startup surface waits for the
 live catalog while the initial connection is in progress. When startup falls
 back to the disk cache, a provisional automatic selection leaves the preference
 intact. An explicit choice is saved and live hydration resolves the preference
 again. The header reveals the selected chip
-when its filters first appear. A populated workspace without a space shows a
-tag-specific empty message and hides the filters. An empty or
+when its filters first appear. With no spaces, Overview shows eligible untagged Agent Threads that match Running.
+An empty result uses the sleeping skillet and the localized running empty state.
+When tagged spaces coexist with running untagged work, the hourglass beside
+Settings opens those untagged cards across scopes. This transient choice
+preserves the saved tag selection. A first assignment selects its semantic
+space. If the last untagged run ends, the saved space returns. An empty or
 unloaded catalog leaves the saved choice intact for the next nonempty catalog.
 The directory-wide selection shows its tagged members. Its top button keeps its name and folder-wide unread count when
 a child is selected. A project directory named Inbox and a semantic tag named
@@ -364,24 +368,15 @@ Saved choices use filter kind and canonical scope. The optional directory
 remembers that choice on reentry alongside ordinary saved directory tags. Absent
 fields use the catalog selection. Inbox status is session-local. Semantic choices also use
 the catalog's normalized name matching and scoped redirects. Display labels,
-emoji and positions can change independently. Each scope exposes up to five
-semantic tags. Directory membership uses persistent
+emoji and positions can change independently. Overview lists every distinct assigned semantic name in the eligible catalog. Directory membership uses persistent
 scope identity and excludes managed temporary roots. A symlink alias or linked
 checkout with another label remains in its canonical directory, and
 same-named directories stay separate.
 
-The left column omits a directory's sole semantic child when its actual selected
-Agent Thread ID set and application thread reference set both equal the
-directory's sets. This uses eligible catalog membership after the ordinary
-visibility/archive and report-coverage rules; equal member counts
-alone are insufficient. Tagged directory-only documents that change
-those sets keep the child visible. Multiple semantic names (including a name
-equal to the directory label) prevent this omission.
-Catalog membership changes recompute the decision. Canonical filters, navigation,
-published context and stored tags remain intact. An already selected semantic
-child stays visible and selected even if it becomes redundant, preserving its
-filtering meaning when later threads arrive. Selecting its directory then omits
-the redundant child. If a directory child leaves the catalog, its directory
+The left column includes each semantic tag even when its name matches the
+directory, its membership equals or overlaps another filter, or its projected
+card count is zero. Filter identity includes scope, kind and normalized name.
+Tagged application records without a scope contribute Inbox tags. A scoped tag with no displayable directory label appears directly in the top row. The rail scrolls when its controls exceed the available height. If a directory child leaves the catalog, its directory
 becomes the selection while that directory exists. Removing a selected Inbox
 tag or project directory resolves to the first available top-row choice. If a reader covers Overview,
 the published filter selection updates immediately and the canvas refreshes on

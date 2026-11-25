@@ -120,7 +120,7 @@ extension NativeWorkspacePresentation {
             .object(["id": .text(item.id), "label": .text(item.displayTag), "tag": .text(item.tag),
                 "kind": .text(item.isDirectory ? "directory" : "semantic"), "scope": .text(item.scope),
                 "count": .integer(item.count), "unreadCount": .integer(item.unreadCount), "aliases": .array(item.aliases.map(JSONValue.text)),
-                "children": .array(item.children.filter { $0.count > 0 }.map(filter))])
+                "children": .array(item.children.map(filter))])
         }
         let camera = canvas.camera
         let transform = camera.transform
