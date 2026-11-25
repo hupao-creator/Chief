@@ -393,7 +393,7 @@ result in the reader and a running follow-up in its Execution sidecard. It
 clicks the mounted **Close thread** button with mouse events confined to that
 window. A second visit reopens the same Agent during the fold, checks that the
 editor waits for the Harness mark and regains its draft, then presses Close again.
-The peer releases the same follow-up after both returns.
+Each recording continues until the Dock releases its reading column and finishes its lift into Overview. The peer releases the same follow-up after both returns.
 
 Record into a new directory on macOS with a 2× display, native Codex CLI,
 Python, OpenCV and ffprobe.
