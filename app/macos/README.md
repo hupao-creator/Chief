@@ -169,8 +169,8 @@ New shared features register once through `NativePlugins.make()`. Platform-speci
 ## System appearance and language
 
 AppKit supplies the appearance for the workspace, auxiliary windows and native
-panels. SwiftUI and WebKit reading surfaces and the first-run forms
-inherit the workspace color scheme. The Dock’s local dark appearance extends
+panels. SwiftUI and WebKit reading surfaces inherit the workspace color scheme.
+The first-run panel uses a local dark appearance. The Dock’s local dark appearance extends
 to the expanded Settings panel, its header character and its form controls.
 
 Chief uses the first language in macOS's global preferred-language list. Chinese

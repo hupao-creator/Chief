@@ -123,7 +123,8 @@ Thread archive data and commands remain independent of Settings.
 
 The expanded Dock supplies a local dark appearance to the Settings page, its
 form controls and their menus and help popovers. Onboarding shares the form
-components and follows the [system appearance](../../../README.md#system-appearance-and-language).
+components and supplies its own local dark appearance. The selected Harness
+mark on the black Chief character uses its dark-surface colors throughout a host switch.
 
 Settings is an Overview-only modal expansion of the resident Moku Dock. The
 same capsule grows toward a centered 780-point-wide surface, starting at a

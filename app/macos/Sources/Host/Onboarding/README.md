@@ -16,7 +16,7 @@ settings flush succeeds; ordinary preference writes preserve that state.
 
 The floating panel keeps the landing background and uses a neutral window
 surface with untinted Liquid Glass controls. The panel, hosted controls, and
-Tag and Super Thread animations inherit the system appearance. During the
+Tag and Super Thread animations use a local dark appearance in both system appearances. During the
 noninteractive handoff, the contracting surface takes on the Dock's capsule
 color. Discovery reveals each ready Harness by logo and name. Pending Harnesses share
 a single progress indicator. Each failed Harness has its own error and retry. An executable alone is not discovered:
@@ -101,7 +101,7 @@ pending backend work are retained.
 
 The Tag SpriteKit and Report SwiftUI sequences are abstract capability examples,
 shared with Settings through `NativeRoleConfigurationPanel` and with the visual
-demo. Role titles and subtitles are shown during onboarding. Each mounted Tag
+demo. Each configuration step opens with its role title. Each mounted Tag
 or Super Thread page plays once with the discovered Harness logos and retains
 its completed composition. When OpenCode is available, the Tag animation uses its
 plugin logo for Improve search, Update dev docs and Explore shortcuts in both

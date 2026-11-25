@@ -56,6 +56,7 @@ struct NativeOnboardingSurface: View {
         }
         .coordinateSpace(name: "onboarding")
         .ignoresSafeArea()
+        .environment(\.colorScheme, .dark)
         .environment(\.nativeSettingsCompactPresentation, true)
         .environment(\.nativeSettingsInteractions, state.interactions)
         .environment(\.nativeSettingsInteractionContext, state.context)
