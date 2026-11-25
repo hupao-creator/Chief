@@ -19,38 +19,12 @@ The active task shows the latest agent activity and a summary of file changes. S
 
 ## What you get
 
-- **Your agents in one Mac app.** Use Codex, Claude, Pi Agent, and OpenCode with the accounts and models you already use on your Mac.
-- **One place to delegate.** Give Chief a task and the files it needs. Chief can answer directly or assign the work to an agent you’ve enabled. [Working with Chief](docs/working-with-moku.md)
-- **Live task overview.** Filter by folder or tag to see what’s running, which files changed, and which agents need an answer or permission to proceed. [Overview](docs/overview.md)
-- **Conversations you can pick up again.** Revisit an earlier run, send a follow-up, or branch the conversation when the agent supports it. [Agent conversations](docs/task-conversations.md)
-- **Reports with sources.** A Super Thread summarizes completed work in a project and links back to the conversations behind it. [Super Threads](docs/reports-tags-and-changes.md#see-the-work-behind-a-super-thread)
-- **Feedback right on the page.** Open a web page beside a conversation, mark what you want changed, and send the screenshot and your comment to the agent. [Sidecards](docs/sidecards.md#mark-up-a-web-page-and-send-feedback)
-
-<a name="auto-categorization"></a>
-
-## Agent roles
-
-<table width="100%">
-  <thead>
-    <tr>
-      <th width="33%" align="center"><a href="docs/working-with-moku.md">Chief Agent</a></th>
-      <th width="33%" align="center"><a href="docs/reports-tags-and-changes.md#group-tasks-with-tags">Tag Agent</a></th>
-      <th width="33%" align="center"><a href="docs/reports-tags-and-changes.md#see-the-work-behind-a-super-thread">Super Thread Agent</a></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><img src="design/chief-agent-readme.webp" alt="One request branches into several agent tasks"></td>
-      <td align="center"><img src="design/tag-agent-readme.webp" alt="Conversation cards form three groups with colored tags"></td>
-      <td align="center"><img src="design/super-thread-agent-readme.webp" alt="Source conversations connect to a single report"></td>
-    </tr>
-    <tr>
-      <td align="center">Assign work to agents.</td>
-      <td align="center">Group tasks by topic.</td>
-      <td align="center">Sum up work with source links.</td>
-    </tr>
-  </tbody>
-</table>
+- **A fully native Mac app.** Built with **SwiftUI and AppKit**, Chief comes in a **26 MB** download.
+- **Your agents in one place.** Bring **Codex, Claude, Pi Agent, and OpenCode** together with the accounts and models you already use.
+- **One place to delegate.** Give Chief a task, and it can coordinate agents **across harnesses and models**. Ask Codex to implement a change and Claude Code to review it.
+- **Live task overview.** See what’s running, which files changed, and **which agents are waiting for you**. Filter by project folder or tag to focus on one part of your work.
+- **Designed around Liquid Glass.** Translucent controls keep your work in view as you move between the task overview and individual conversations.
+- **Your CLI setup stays yours.** Chief connects to your agents one session at a time, **without rewriting your user or project settings** or installing global hooks or plugins.
 
 ## License
 
