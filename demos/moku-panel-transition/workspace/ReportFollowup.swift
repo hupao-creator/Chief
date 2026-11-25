@@ -60,6 +60,7 @@ import SwiftUI
         panel.appearance = NSAppearance(named: .darkAqua)
         let view = NSHostingView(rootView: NativeWorkspaceView(model: model, presentation: host)
             .transformEnvironment(\._accessibilityReduceMotion) { if args[5].hasSuffix("-reduced") { $0 = true } }
+            .transformEnvironment(\.accessibilityEnabled) { if args[5].hasPrefix("tag-return") { $0 = true } }
             .environment(\.scenePhase, .active).environment(\.colorScheme, .dark))
         panel.contentView = view
         panel.orderFrontRegardless()

@@ -335,7 +335,9 @@ python3 demos/moku-panel-transition/workspace/check_tag_return.py /private/tmp/r
 python3 demos/moku-panel-transition/workspace/check_tag_return.py /private/tmp/report-tags/tag-return-reduced --reduced
 ```
 
-The checker uses FFmpeg and NumPy. It compares the left status icon and top tag label with
+The checker uses FFmpeg and NumPy. It locates the left status icon using the
+mounted All statuses button's frame in `filter-geometry.json`. It compares the
+left status icon and top tag label with
 their original positions in the same window recording and writes offsets in
 points and relative contrast for every encoded frame to `filter-frames.csv`.
 At rest, both landmarks must be within 1pt of their reference. Normal travel

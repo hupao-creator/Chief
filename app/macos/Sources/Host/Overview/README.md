@@ -264,7 +264,7 @@ Horizontal starts retain their original owner through reversals. The
 overflowing native viewports keep scrolling at either limit. Open Note, editing,
 interventions, onboarding, Settings, readers and collection panels keep their input.
 
-The directory Running tag filters the whole directory. Inbox statuses filter the selected top-level semantic tag. Both use eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and interrupted tasks with no ongoing work remain visible in ordinary directory and semantic selections and in the Inbox's All statuses view. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, counts, activity indicators and current tag selection use the full eligible catalog.
+The directory Running tag filters the whole directory. Running, All statuses and Completed in Inbox filter the selected top-level semantic tag. These scoped views use eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and interrupted tasks with no ongoing work remain visible in ordinary directory and semantic selections and in the Inbox's All statuses view. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, counts, activity indicators and current tag selection use the full eligible catalog.
 
 The [Running and Completed empty states](NativeOverviewStatusPresentation.swift) center the
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
@@ -350,7 +350,7 @@ a child is selected. A project directory named Inbox and a semantic tag named
 Inbox have distinct identities, icons and memberships.
 
 The left column lists the selected directory's visible semantic tags in their
-existing order, followed by the built-in ⏳ Running choice at every count.
+existing order, followed by the built-in ⏳ Running and 🔖 Unread presets.
 Running uses the directory's full eligible task membership and a distinct
 control identity from any user tag named Running. Selecting an ordinary tag
 or the current folder opens its full membership. Clicking another folder
@@ -358,10 +358,18 @@ restores its last left choice, falling back to its first visible semantic tag
 or the whole directory. The built-in is never an automatic first selection.
 
 For a top-row Inbox semantic tag the left column instead offers Running,
-All statuses and Completed in that order. An Inbox status stays with the
+Unread, All statuses and Completed in that order. An Inbox status stays with the
 selected tag during catalog updates. Choosing another Inbox tag or reopening
 the app starts that tag at All statuses. A real directory named Inbox uses
 the ordinary directory rail.
+
+If eligible conversations exist without a selected space, the left column offers
+Running and Unread, starting with the default untagged running view. Unread
+shows the workspace-wide [bookmark membership](#unread-bookmarks) and keeps its
+own canvas position. It is session-local and leaves the underlying folder or
+tag selection available. Choosing a folder, tag or another preset resumes the
+respective scope. A live first assignment can update the underlying space
+while Unread stays selected.
 
 Saved choices use filter kind and canonical scope. The optional directory
 `runningTag` marks an explicit built-in selection. `overviewRunningDirectories`
@@ -384,7 +392,7 @@ return. A change in status-filtered results alone keeps the selection.
 
 The left Liquid Glass column is vertically centered at the window edge.
 Compact controls are 46.2pt circles. Semantic tags show their emoji or 🏷️.
-Status choices show ⏳, 🗂️ and 🏁 with localized titles. A button expands
+Status choices show ⏳, 🔖, 🗂️ and 🏁 with localized titles. A button expands
 toward the center, keeping its glyph still. Its width includes the glyph,
 the measured single-line title and 13.2pt of inner padding, capped at
 189.2pt. Folder controls also cap at 16.5% of window width. Inbox controls
@@ -589,6 +597,14 @@ profile's `thread-reading/` directory. The client creates one immutable file
 per type, Thread ID and version. Revisiting that version is idempotent. A new
 revision or completed execution starts unread. The collection visit timer and
 ranking keep their independent rules.
+
+The Unread preset projects every visible, unarchived Agent or application Thread
+with a current unread version, across scopes and regardless of semantic tags.
+Report execution coverage still applies to folder and tag membership. Each
+Thread with an unread bookmark remains eligible in Unread, including an Agent
+Thread cited by a Report. Receipt and catalog changes update the preset's
+membership. When the last version is acknowledged, the selected preset shows
+the localized empty message with the sleeping skillet.
 
 ## Viewed application collections
 

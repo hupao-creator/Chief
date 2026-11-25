@@ -43,11 +43,12 @@ public enum NativeOverviewCardSnapshot {
 }
 
 enum NativeOverviewStatusFilter: String {
-    case running, all, completed
+    case running, unread, all, completed
 
-    func includes(_ thread: HarnessThread) -> Bool {
+    func includes(_ thread: HarnessThread, unread: Bool = false) -> Bool {
         switch self {
         case .all: true
+        case .unread: unread
         case .running: thread.pendingInput || thread.observation.isExecutionActive || thread.observation.backgroundWork != nil
         case .completed: !thread.pendingInput && thread.observation.backgroundWork == nil && thread.observation.latestExecution?.status == .completed
         }
@@ -66,20 +67,26 @@ public final class NativeOverviewWorkspaceModel {
     public let chromeInteractions = NativeOverviewChromeInteractions()
     public private(set) var tagSelection: NativeOverviewTagSelection?
     private var topTagStatus = NativeOverviewStatusFilter.all
+    private var browsingUnread = false
     var isTopSemanticSelected: Bool { selectedFilter?.isDirectory == false && selectedDirectory == nil }
     var statusFilter: NativeOverviewStatusFilter {
+        if browsingUnread { return .unread }
         if selectedFilter == nil || tagSelection?.runningTag == true { return .running }
         return isTopSemanticSelected ? topTagStatus : .all
     }
     var railChoices: [NativeOverviewRailChoice] {
-        guard selectedFilter != nil else { return [] }
-        if let directory = selectedDirectory {
-            return directory.children.map(NativeOverviewRailChoice.tag) + [.status(.running)]
+        let presets: [NativeOverviewRailChoice] = [.status(.running), .status(.unread)]
+        guard selectedFilter != nil else {
+            return browsingUnread || (globalConversationCount ?? 0) > 0 ? presets : []
         }
-        return [.status(.running), .status(.all), .status(.completed)]
+        if let directory = selectedDirectory {
+            return directory.children.map(NativeOverviewRailChoice.tag) + presets
+        }
+        return presets + [.status(.all), .status(.completed)]
     }
     var selectedRailID: String? {
-        if isTopSemanticSelected || tagSelection?.runningTag == true {
+        if browsingUnread || isTopSemanticSelected || tagSelection?.runningTag == true
+            || (selectedFilter == nil && !railChoices.isEmpty) {
             return statusFilter.rawValue
         }
         guard let selectedFilter, !selectedFilter.isDirectory else { return nil }
@@ -104,6 +111,7 @@ public final class NativeOverviewWorkspaceModel {
 
     func showUntaggedRunning() {
         deferredFirstTag = nil
+        browsingUnread = false
         browsingUntagged = true
         reconcile(captureMutation: false)
     }
@@ -371,11 +379,19 @@ public final class NativeOverviewWorkspaceModel {
         switch choice {
         case .tag(let filter):
             selectTag(filter)
+        case .status(.unread):
+            guard !browsingUnread else { return }
+            browsingUnread = true
+            reconcile(captureMutation: false, refreshSelection: false)
         case .status(let status):
             if let directory = selectedDirectory {
                 if status == .running { selectRunningTag(in: directory) }
-            } else if isTopSemanticSelected, topTagStatus != status {
+            } else if isTopSemanticSelected, browsingUnread || topTagStatus != status {
+                browsingUnread = false
                 topTagStatus = status
+                reconcile(captureMutation: false, refreshSelection: false)
+            } else if status == .running, browsingUnread {
+                browsingUnread = false
                 reconcile(captureMutation: false, refreshSelection: false)
             }
         }
@@ -387,7 +403,8 @@ public final class NativeOverviewWorkspaceModel {
     }
 
     private var browseSceneKey: String {
-        (selectedFilter?.selectionKey.nonEmpty ?? (selectedScope.isEmpty ? selectedTag : "\(selectedScope)\u{0}\(selectedTag)"))
+        if browsingUnread { return "\u{0}unread" }
+        return (selectedFilter?.selectionKey.nonEmpty ?? (selectedScope.isEmpty ? selectedTag : "\(selectedScope)\u{0}\(selectedTag)"))
             + (tagSelection?.runningTag == true ? "\u{0}running" : "\u{0}default")
     }
 
@@ -409,9 +426,14 @@ public final class NativeOverviewWorkspaceModel {
     }
 
     func revealNoteDestination(_ reference: ApplicationThreadRef) {
+        if browsingUnread {
+            if unreadVersions[reference] != nil { return }
+            browsingUnread = false
+            reconcile(captureMutation: false, refreshSelection: false)
+        }
         if let current = selectedFilter, filterMembers[current.selectionKey]?.contains(reference) == true {
             if tagSelection?.runningTag == true,
-               reference.typeID != "agent" || workspace.catalog.thread(reference.threadID).map(statusFilter.includes) != true {
+               reference.typeID != "agent" || workspace.catalog.thread(reference.threadID).map({ statusFilter.includes($0) }) != true {
                 selectTag(current)
             }
             return
@@ -592,6 +614,7 @@ public final class NativeOverviewWorkspaceModel {
         deferredFirstTag = nil
         canvasState.pendingRailSwipe = nil
         browsingUntagged = false
+        browsingUnread = false
         let filter = matchingFilter(tag: tag, scope: scope, kind: kind)
         let resolvedKind = kind ?? (filter?.isDirectory == true ? .directory : .semantic)
         tagSelection = tag.isEmpty ? filters.first?.selection
@@ -711,9 +734,7 @@ public final class NativeOverviewWorkspaceModel {
             // Scene identity belongs to the retained presentation too. Advancing
             // it while hidden could bookmark the old camera under a new selection.
             sceneKey = browseSceneKey
-            let selected = selectedFilter.flatMap { filterMembers[$0.selectionKey] }.map(resolve)
-                ?? NativeOverviewCollection(threads: catalogThreads.filter { untaggedRunningIDs.contains($0.id) }, applications: [])
-            let nextItems = try project(filterByStatus(selected))
+            let nextItems = try project(selectedCollection())
             if sceneKey != previousScene { revisions.removeAll() }
             if captureMutation, facts.overviewVisible, previousScene == sceneKey,
                previousItems.map(\.structuralIdentity) != nextItems.map(\.structuralIdentity) {
@@ -844,9 +865,10 @@ public final class NativeOverviewWorkspaceModel {
             presentationDirty = true
             return true
         }
-        if statusFilter != .all, changedThreads.contains(where: { thread in
+        let changedStatusMembership = browsingUnread ? changedUnread : statusFilter != .all && changedThreads.contains { thread in
             statusFilter.includes(thread) ? statusHiddenThreads.contains(thread.id) : content.activeIDs.contains(thread.id.string)
-        }) {
+        }
+        if changedStatusMembership {
             reconcile(captureMutation: captureMutation, refreshSelection: false)
             return true
         }
@@ -878,9 +900,17 @@ public final class NativeOverviewWorkspaceModel {
             && thread.tags.isEmpty && NativeOverviewStatusFilter.running.includes(thread)
     }
 
-    private func filterByStatus(_ selected: NativeOverviewCollection) -> NativeOverviewCollection {
+    private func selectedCollection() -> NativeOverviewCollection {
         statusHiddenThreads.removeAll(keepingCapacity: true)
         let status = statusFilter
+        // The same eligible versions drive bookmarks and this workspace-wide view.
+        if status == .unread {
+            return .init(threads: catalogThreads.filter {
+                status.includes($0, unread: unreadVersions[.init(threadID: $0.id, typeID: "agent")] != nil)
+            }, applications: catalogApplications.filter { unreadVersions[$0.entry.ref] != nil })
+        }
+        let selected = selectedFilter.flatMap { filterMembers[$0.selectionKey] }.map(resolve)
+            ?? NativeOverviewCollection(threads: catalogThreads.filter { untaggedRunningIDs.contains($0.id) }, applications: [])
         guard status != .all else { return selected }
         let threads = selected.threads.filter { thread in
             if status.includes(thread) { return true }
@@ -995,6 +1025,7 @@ public final class NativeOverviewWorkspaceModel {
     private func refreshUnreadIndicators() {
         refreshFilterIndicators(filters)
         selectedFilter = matchingFilter(tag: selectedTag, scope: selectedScope, kind: tagSelection?.kind)
+        if browsingUnread { reconcile(captureMutation: true, refreshSelection: false) }
     }
 
     func containsGlobalThread(_ id: JSONText) -> Bool { globalThreadIDs.contains(id) }
@@ -1158,8 +1189,8 @@ public final class NativeOverviewWorkspaceModel {
         guard allFilters.contains(where: { .text($0.tag) == request["tag"] && (scope.isEmpty || $0.scope == scope) }) else {
             return "unavailable"
         }
-        // A catalog request for the directory itself also leaves its Running tag.
-        return tagSelection?.runningTag != true && request["tag"] == context["selectedTag"]
+        // An explicit tag request can leave a preset even if the tag is already in context.
+        return !browsingUnread && tagSelection?.runningTag != true && request["tag"] == context["selectedTag"]
             && (scope.isEmpty || scope == selectedScope) ? "unchanged" : nil
     }
 

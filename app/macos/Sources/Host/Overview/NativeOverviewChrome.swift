@@ -346,6 +346,7 @@ public struct NativeOverviewChromeStrings: Sendable {
     public var filter = "按标签筛选"
     public var untaggedRunning = "未分配标签的运行中会话"
     public var runningOnly = "运行中"
+    public var unreadOnly = "未读"
     public var allStatuses = "全部状态"
     public var completedOnly = "已完成"
     public var statusFilter = "按状态筛选"

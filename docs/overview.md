@@ -16,9 +16,15 @@ When you close a task conversation or Super Thread to return to Overview, the to
 
 A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Selected folders have a muted gold tint.
 
-When you switch to another folder at the top, Chief restores your last left-side choice there, including **Running** if you chose it. If your saved choice is unavailable or you haven't made one, Chief opens the first visible semantic tag, or the whole folder if there are none. Click the current folder at the top to see all its tagged work.
+When you switch to another folder at the top, Chief restores the last tag or **Running** choice you made there. If your saved choice is unavailable or you haven't made one, Chief opens the first visible semantic tag, or the whole folder if there are none. Click the current folder at the top to see all its tagged work.
 
 Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find a task that’s running or waiting for your response. Choose that folder or Inbox tag, then click ⏳ on the left to see its running tasks. With **Reduce Motion** turned on in macOS, the dots stay still.
+
+## Find unread conversations
+
+Click 🔖 **Unread** next to **Running** on the left edge of Overview. You’ll see conversations with red bookmarks across the workspace, including results that have no tag and unread Super Thread documents.
+
+Open a card and wait for the result or document to appear. When you return to **Unread**, that card is gone. A new completed result or document revision brings it back. If you’ve read everything, Overview shows **No unread conversations** and keeps **Unread** selected. Choose another filter to leave this view.
 
 A red number on a folder counts conversations with an unread completed result or Super Thread document among its tagged cards. A red number on a tag counts unread conversations in that tag. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
@@ -30,7 +36,7 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 In a project folder, click ⏳ **Running** at the bottom of the left column. It shows running tasks from across that folder, including tasks under other tags. The hourglass stays available when the folder has no running tasks. Click another tag to see its cards, or click the folder at the top to see all its tagged work.
 
-When you choose an Inbox tag at the top, the left column offers three choices for that tag. Click ⏳ **Running**, 🗂️ **All statuses**, or 🏁 **Completed**. Each Inbox tag opens with **All statuses**. **Completed** includes successfully finished tasks with no pending input or background work and any Super Threads in that tag.
+When you choose an Inbox tag at the top, click ⏳ **Running**, 🗂️ **All statuses**, or 🏁 **Completed** to see conversations in that tag. Each Inbox tag opens with **All statuses**. **Completed** includes successfully finished tasks with no pending input or background work and any Super Threads in that tag. 🔖 **Unread** opens the workspace-wide view.
 
 **Running** includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. Cards enter and leave as the work changes. When the last running task leaves, a sleeping skillet appears above **No running conversations**.
 

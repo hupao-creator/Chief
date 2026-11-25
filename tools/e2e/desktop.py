@@ -128,7 +128,7 @@ class Desktop:
                 overview = state["overview"]
                 cards = overview["cards"]
                 agents = {card["ref"]["threadId"] for card in cards if card.get("ref", {}).get("typeId") == "agent"}
-                statuses = ["running", "all", "completed"] if space["scope"] == "inbox" else ["running"]
+                statuses = ["running", "unread", "all", "completed"] if space["scope"] == "inbox" else ["running", "unread"]
                 return (state["page"] == "overview" and "overview.filters.activate" in state["actions"]
                         and state["selectedFilterId"] == space["id"] and overview["status"] == status
                         and set(overview["controls"]["status"]) == set(statuses)
