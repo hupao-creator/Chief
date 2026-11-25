@@ -277,9 +277,7 @@ struct NativeSettingsPreferredHeightKey: PreferenceKey {
                                          visitPlaybackStarted: role == .tag ? $animationVisits.tag : role == .report ? $animationVisits.report : nil) {
                 if role == .moku {
                     NativeMokuSettings(model: model, harnesses: harnesses, locale: locale, focusRequest: navigation.focusRequest, motion: mokuMotion,
-                        harnessSettings: { request in
-                            AnyView(harnessSettings(request).environment(\.nativeSettingsModelLabel, locale.text("Chief 模型", "Chief Model")))
-                        }, controller: mokuController, onCoordinatorFrame: onCoordinatorFrame,
+                        harnessSettings: harnessSettings, controller: mokuController, onCoordinatorFrame: onCoordinatorFrame,
                         onCloseRequest: requestClose, presentation: .compact, showsRoutingGuidance: true, illustrationWidth: illustrationWidth)
                 } else if let application = activeApplications.first(where: { $0.id == activeSection }) {
                     applicationContent(application)

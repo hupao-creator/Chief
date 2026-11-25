@@ -8,11 +8,11 @@ struct NativeOnboardingSurface: View {
     let scene: NativeMokuSceneState
     let applicationSections: [NativeApplicationSettingsSection]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorSchemeContrast) private var contrast
     @State private var mapMotion = NativeMokuSettingsAnimationState()
     @State private var panelStep = NativeOnboardingStep.discovery
     @State private var presentedStep = NativeOnboardingStep.discovery
+    @State private var documentHeight: CGFloat = 160
+    @State private var handoffPanelSize: CGSize?
     @State private var contentVisible = true
     @State private var collapsed = false
     @State private var panelVisible = true
@@ -24,20 +24,22 @@ struct NativeOnboardingSurface: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let panelSize = size(in: geometry.size)
+            let illustrationWidth = min(NativeSettingsContentLayout.illustrationWidth, max(0, geometry.size.width - 124))
+            let panelWidth = illustrationWidth + 2 * NativeSettingsContentLayout.horizontalInset
+            let heightLimit = min(820, max(0, geometry.size.height - 64))
             let fallback = NativeMokuCapsuleLayout.surface(in: NativeMokuCapsuleLayout.frame(
                 in: CGRect(origin: .zero, size: geometry.size), landing: true), expanded: true, height: 76, centered: true)
             let destination = scene.capsuleFrame.width > 0 ? scene.capsuleFrame : fallback
-            panel
-                .frame(width: panelSize.width, height: panelSize.height)
+            panel(illustrationWidth: illustrationWidth, heightLimit: heightLimit)
+                .frame(width: panelWidth)
                 .opacity(contentVisible ? 1 : 0)
-                .frame(width: collapsed ? destination.width : panelSize.width,
-                       height: collapsed ? destination.height : panelSize.height)
+                .frame(width: collapsed ? destination.width : handoffPanelSize?.width,
+                       height: collapsed ? destination.height : handoffPanelSize?.height)
                 // Once the form ink has retired, carry the capsule's material
                 // color through the contraction so the Dock can appear behind it.
                 .background {
-                    (collapsed ? Color(white: 0.10) : Color(nsColor: .windowBackgroundColor))
-                        .opacity(reduceTransparency || contrast == .increased ? 1 : 0.96)
+                    if collapsed { Color(white: 0.10) }
+                    else { NativeSettingsPanelBackground() }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: NativeMokuCapsuleLayout.cornerRadius))
                 .overlay {
@@ -52,10 +54,12 @@ struct NativeOnboardingSurface: View {
                 .allowsHitTesting(state.step != .landing)
                 .accessibilityHidden(state.step == .landing)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .named("onboarding")) } action: { state.panelFrame = $0 }
-                .animation(motion, value: panelSize)
+                .animation(reduceMotion ? nil : motion, value: documentHeight)
         }
         .coordinateSpace(name: "onboarding")
         .ignoresSafeArea()
+        .environment(\.colorScheme, .dark)
+        .environment(\.nativeSettingsFormPage, true)
         .environment(\.nativeSettingsCompactPresentation, true)
         .environment(\.nativeSettingsInteractions, state.interactions)
         .environment(\.nativeSettingsInteractionContext, state.context)
@@ -67,22 +71,10 @@ struct NativeOnboardingSurface: View {
         .task(id: state.step) { await transition() }
     }
 
-    private func size(in viewport: CGSize) -> CGSize {
-        let height: CGFloat
-        switch panelStep {
-        case .discovery: height = 430
-        case .moku: height = 650
-        case .tag, .report: height = state.settings.draft.value["pluginSettings"]?.arrayValue?
-            .first(where: { $0["id"] == panelStep.settingID.map(JSONValue.text) })?["value"]?["mode"] == .text("override") ? 740 : 640
-        case .landing: height = 640
-        }
-        return .init(width: min(680, viewport.width - 64), height: min(height, viewport.height - 136))
-    }
-
-    private var panel: some View {
+    private func panel(illustrationWidth: CGFloat, heightLimit: CGFloat) -> some View {
         let isBackgroundRole = panelStep == .tag || panelStep == .report
         let navigationTopInset: CGFloat = 8
-        return VStack(spacing: 0) {
+        return NativeOnboardingPanelLayout(documentHeight: documentHeight, heightLimit: heightLimit) {
             HStack(spacing: 8) {
                 ForEach(NativeOnboardingStep.allCases, id: \.rawValue) { step in
                     Capsule().fill(step.rawValue <= panelStep.rawValue ? ink : secondary.opacity(0.2))
@@ -90,12 +82,9 @@ struct NativeOnboardingSurface: View {
                 }
             }.frame(height: 28).padding(.top, 16).padding(.bottom, 10)
                 .accessibilityLabel(locale.text("第 \(panelStep.rawValue + 1) 步，共 5 步", "Step \(panelStep.rawValue + 1) of 5"))
-            GeometryReader { viewport in
-                // Balance the space below the picker with the insets above the buttons.
-                scrollContent(minHeight: isBackgroundRole ? viewport.size.height : nil,
-                              bottomInset: isBackgroundRole
-                                ? NativeApplicationBackgroundEditor.agentPickerBottomInset - navigationTopInset : 20)
-            }
+            // Balance the space below the picker with the insets above the buttons.
+            scrollContent(illustrationWidth: illustrationWidth, bottomInset: isBackgroundRole
+                ? NativeApplicationBackgroundEditor.agentPickerBottomInset - navigationTopInset : 20)
             HStack {
                 if panelStep != .discovery {
                     Button(action: state.back) { Label(locale.text("返回", "Back"), systemImage: "chevron.left") }
@@ -120,14 +109,20 @@ struct NativeOnboardingSurface: View {
                         .nativeSettingsAction("next", label: "Continue") { Task { await state.advance() } }
                         .disabled(!pageReady || !state.canAdvance)
                 }
-            }.frame(maxWidth: 560).padding(.horizontal, 30).padding(.bottom, 22).padding(.top, navigationTopInset)
-        }.foregroundStyle(ink)
+            }.frame(maxWidth: NativeSettingsContentLayout.formWidth)
+                .padding(.horizontal, NativeSettingsContentLayout.horizontalInset)
+                .padding(.bottom, 22).padding(.top, navigationTopInset)
+        }
+        .font(.system(size: 13)).foregroundStyle(ink)
+        .tint(NativePalette.settings.accent.swiftUI)
     }
 
-    private func scrollContent(minHeight: CGFloat?, bottomInset: CGFloat) -> some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            ZStack(alignment: .top) {
+    private func scrollContent(illustrationWidth: CGFloat, bottomInset: CGFloat) -> some View {
+        let waiting = !state.admitted && state.error == nil && state.settings.draft.error == nil && discoveryError == nil
+        return ScrollViewReader { reader in
+            ScrollView {
                 VStack(spacing: 0) {
+                    Color.clear.frame(height: 0).id("onboarding-top")
                     if let error = state.error ?? state.settings.draft.error ?? discoveryError {
                         NativeSettingsNotice(message: error, kind: .error, action: AnyView(
                             HStack {
@@ -137,27 +132,28 @@ struct NativeOnboardingSurface: View {
                                     Button(locale.text("使用已保存的配置", "Use saved settings")) { state.settings.draft.discardConflict() }
                                 }
                             }.buttonStyle(.borderless))).padding(.bottom, 12)
+                            .frame(maxWidth: NativeSettingsContentLayout.formWidth)
                     }
                     if state.admitted && panelStep == .discovery { discovery.padding(.top, 22) }
                     else if state.admitted {
                         NativeRoleConfigurationPanel(role: panelStep == .moku ? .moku : panelStep == .tag ? .tag : .report,
-                            harnesses: state.installed, locale: locale, showsHeading: true) {
-                            configurationForStep(panelStep).disabled(state.busy)
+                            harnesses: state.installed, locale: locale, showsHeading: true, illustrationWidth: illustrationWidth) {
+                            configurationForStep(panelStep, illustrationWidth: illustrationWidth).disabled(state.busy)
                         }
                     }
                 }
                 .id(panelStep).transition(.opacity.combined(with: .offset(y: 10)))
                 .allowsHitTesting(pageReady)
                 .accessibilityHidden(!pageReady)
-                .frame(maxWidth: 560).padding(.horizontal, 30).padding(.bottom, bottomInset)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: minHeight, alignment: .top)
+                .frame(width: illustrationWidth)
+                .padding(.bottom, bottomInset)
+                .frame(minHeight: waiting ? 160 : nil)
+                .frame(maxWidth: .infinity)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { documentHeight = $0 }
             }
-        }.scrollIndicators(.never)
-        .overlay {
-            if !state.admitted && state.error == nil && state.settings.draft.error == nil && discoveryError == nil {
-                NativeSurfaceLoading()
-            }
+            .scrollBounceBehavior(.basedOnSize)
+            .onChange(of: panelStep) { _, _ in reader.scrollTo("onboarding-top", anchor: .top) }
+            .overlay { if waiting { NativeSurfaceLoading() } }
         }
     }
 
@@ -239,12 +235,12 @@ struct NativeOnboardingSurface: View {
         }.animation(reduceMotion ? nil : motion, value: ready.map(\.descriptor.id))
     }
 
-    private func configurationForStep(_ step: NativeOnboardingStep) -> some View {
-        configuration.environment(\.nativeSettingsReadiness, state.editors[step])
+    private func configurationForStep(_ step: NativeOnboardingStep, illustrationWidth: CGFloat) -> some View {
+        configuration(step, illustrationWidth: illustrationWidth).environment(\.nativeSettingsReadiness, state.editors[step])
     }
 
-    @ViewBuilder private var configuration: some View {
-        if panelStep == .moku {
+    @ViewBuilder private func configuration(_ step: NativeOnboardingStep, illustrationWidth: CGFloat) -> some View {
+        if step == .moku {
             NativeMokuSettings(model: state.settings, harnesses: state.installed, locale: locale, focusRequest: 0, motion: mapMotion,
                 harnessSettings: { request in
                     AnyView(NativeHarnessSettingsView(host: state.workspace.harnessHost,
@@ -252,8 +248,8 @@ struct NativeOnboardingSurface: View {
                             source: request.savedValue, scope: .global(executionOwner: .moku)),
                         section: request.section, executionSnapshot: true, settingsFormPage: true,
                         refreshSequence: request.refreshSequence, value: request.value))
-                }, onCoordinatorFrame: { _, _ in }, onCloseRequest: {}, presentation: .compact)
-        } else if let id = panelStep.settingID, let section = applicationSections.first(where: { $0.id == id }) {
+                }, onCoordinatorFrame: { _, _ in }, onCloseRequest: {}, presentation: .compact, illustrationWidth: illustrationWidth)
+        } else if let id = step.settingID, let section = applicationSections.first(where: { $0.id == id }) {
             let saved = state.settings.savedSettings["pluginSettings"]?.arrayValue?.first(where: { $0["id"] == .text(id) })?["value"] ?? .null
             section.content(saved, state.settings.applicationValueBinding(id))
                 .environment(\.nativeSettingsInteractionScope, id)
@@ -280,6 +276,7 @@ struct NativeOnboardingSurface: View {
 
         // Prepare the hidden Dock while the form fades. Its actual geometry is
         // then available for the contraction to the existing composer seat.
+        handoffPanelSize = state.panelFrame.isEmpty ? nil : state.panelFrame.size
         scene.disabled = !state.workspace.runtimeAvailable
         state.mountDock = true
         scene.setInputOpen(true)
@@ -310,5 +307,30 @@ struct NativeOnboardingSurface: View {
             // Descendant illustrations can keep animating after input opens.
             withAnimation(animation, completionCriteria: .logicallyComplete, updates) { continuation.resume() }
         }
+    }
+}
+
+/// The scroll document measures at its natural height. Only its viewport
+/// gives up space when the panel reaches the window or panel height limit.
+private struct NativeOnboardingPanelLayout: Layout {
+    let documentHeight: CGFloat
+    let heightLimit: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 0
+        let chromeHeight = subviews[0].sizeThatFits(.init(width: width, height: nil)).height
+            + subviews[2].sizeThatFits(.init(width: width, height: nil)).height
+        return CGSize(width: width, height: max(chromeHeight, min(heightLimit, chromeHeight + documentHeight)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let chrome = ProposedViewSize(width: bounds.width, height: nil)
+        let headerHeight = subviews[0].sizeThatFits(chrome).height
+        let footerHeight = subviews[2].sizeThatFits(chrome).height
+        let viewportHeight = max(0, bounds.height - headerHeight - footerHeight)
+        subviews[0].place(at: CGPoint(x: bounds.midX, y: bounds.minY), anchor: .top, proposal: chrome)
+        subviews[1].place(at: CGPoint(x: bounds.midX, y: bounds.minY + headerHeight), anchor: .top,
+                          proposal: .init(width: bounds.width, height: viewportHeight))
+        subviews[2].place(at: CGPoint(x: bounds.midX, y: bounds.maxY), anchor: .bottom, proposal: chrome)
     }
 }
