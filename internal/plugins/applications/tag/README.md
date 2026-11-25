@@ -70,11 +70,11 @@ and malformed IDs reject the call. Runtime owns name normalization, five-tag
 capacity, scope/active-member validation and transactional revision comparison.
 
 Tags have stable internal IDs; normalized names remain unique within their pool.
-Public Thread envelopes still carry label names and emoji. Names cannot contain
+A semantic tag can share the directory’s display name. Existing assignments retain every distinct valid name through pool edits until explicitly reassigned. Public Thread envelopes carry label names and emoji. Names cannot contain
 emoji prefixes. [taglabel](../../../services/taglabel/) validates complete Unicode
 Emoji 16.0 sequences. Invalid nonempty generated emoji falls back to `🏷️`;
 missing/empty creation emoji rejects. An omitted update emoji preserves it.
 
 Every public thread envelope includes `tagEmojis`, even when empty. Keys match semantic tags, excluding directory tags. Emoji-only changes publish revisions and update Report source decoration. [generate-tag-emoji.py](../../../../scripts/generate-tag-emoji.py) generates the Swift table from the pinned data; the generated table is a production resource. No parity test is configured here.
 
-Overview displays emoji and name separately from the identity, groups aliases with identical membership, and includes singly used semantic tags. Directory labels come from [directorytag](../../../services/directorytag/directorytag.go). [Overview presentation](../../../../app/macos/Sources/Host/Overview/README.md) owns visual filtering and motion.
+Overview displays emoji and name separately from the identity, gives each semantic name its own control within its scope, and includes singly used semantic tags. Directory labels come from [directorytag](../../../services/directorytag/directorytag.go). [Overview presentation](../../../../app/macos/Sources/Host/Overview/README.md) owns visual filtering and motion.

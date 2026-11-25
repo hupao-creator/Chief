@@ -339,6 +339,7 @@ public struct CodexHarnessSettingsView: View {
                 }
             }
         }
+        .environment(\.nativeSettingsFormPage, props.settingsFormPage)
         .onChange(of: resourceIdentity, initial: true) {
             switch props.resource.state {
             case .ready(let data): lastReady = .init(cwd: cwd, models: data.models)

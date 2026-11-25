@@ -335,7 +335,9 @@ python3 demos/moku-panel-transition/workspace/check_tag_return.py /private/tmp/r
 python3 demos/moku-panel-transition/workspace/check_tag_return.py /private/tmp/report-tags/tag-return-reduced --reduced
 ```
 
-The checker uses FFmpeg and NumPy. It compares the left status icon and top tag label with
+The checker uses FFmpeg and NumPy. It locates the left status icon using the
+mounted All statuses button's frame in `filter-geometry.json`. It compares the
+left status icon and top tag label with
 their original positions in the same window recording and writes offsets in
 points and relative contrast for every encoded frame to `filter-frames.csv`.
 At rest, both landmarks must be within 1pt of their reference. Normal travel
@@ -391,7 +393,7 @@ result in the reader and a running follow-up in its Execution sidecard. It
 clicks the mounted **Close thread** button with mouse events confined to that
 window. A second visit reopens the same Agent during the fold, checks that the
 editor waits for the Harness mark and regains its draft, then presses Close again.
-The peer releases the same follow-up after both returns.
+Each recording continues until the Dock releases its reading column and finishes its lift into Overview. The peer releases the same follow-up after both returns.
 
 Record into a new directory on macOS with a 2× display, native Codex CLI,
 Python, OpenCV and ffprobe.

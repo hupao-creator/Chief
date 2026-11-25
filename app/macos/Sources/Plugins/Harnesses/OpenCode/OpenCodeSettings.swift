@@ -263,7 +263,7 @@ public struct OpenCodeHarnessSettingsView: View {
             let status = ocCLIStatus(props.resource, locale: locale)
             NativeSettingsCliStatus(label: "OpenCode 2.x", status: status.text, kind: status.kind)
         } else {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: props.settingsFormPage ? 0 : 16) {
                 OpenCodeResourceStatus(resource: props.resource)
                 NativeSettingsGroup(title: props.executionSnapshot ? nil : ocLocalized("OpenCode Thread 默认配置", locale: locale)) {
                     if props.executionSnapshot {

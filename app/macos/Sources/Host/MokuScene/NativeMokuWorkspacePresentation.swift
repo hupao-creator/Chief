@@ -52,6 +52,7 @@ public final class NativeMokuWorkspacePresentation {
         }
         return running ? .running : .idle
     }
+    private(set) var executionRunning = false
     public private(set) var running = false
     public private(set) var sessionIdle = true
     public private(set) var landing = false
@@ -59,7 +60,6 @@ public final class NativeMokuWorkspacePresentation {
     public private(set) var talk: String?
     public private(set) var talkID: JSONText?
     public private(set) var talkMessage: NativeMokuTalkMessage?
-    public private(set) var note: NativeMokuNote?
     public private(set) var replyKey: JSONText?
     public private(set) var intervention: NativeMokuDockIntervention?
     public private(set) var activeOperation: NativeOverviewMokuOperation?
@@ -125,7 +125,8 @@ public final class NativeMokuWorkspacePresentation {
         let fallbackRunning = moku.map { thread in
             workspace.catalog.executions.contains { $0["threadId"] == .string(thread.id) }
         } ?? false
-        running = moku?.pendingInput == true || (execution.map { $0.status == .running } ?? fallbackRunning)
+        executionRunning = execution.map { $0.status == .running } ?? fallbackRunning
+        running = moku?.pendingInput == true || executionRunning
         sessionIdle = moku?.pendingInput != true && !(execution.map { $0.status == .running || $0.status == .waitingForUser } ?? fallbackRunning)
         tagAgentRunning = workspace.catalog.agentRuns.contains { run in
             guard let id = run["agentId"]?.stringValue else { return false }
@@ -153,7 +154,6 @@ public final class NativeMokuWorkspacePresentation {
         }
         talkMessage = NativeMokuTalkMessage.latest(in: moku)
         talkID = talkMessage?.id; talk = talkMessage?.text
-        note = NativeMokuNote.current(in: moku)
         replyKey = moku.flatMap { thread in harnessPresentation?.reply.flatMap { value in
             let text = value.excerpt.string.replacingOccurrences(of: "[*_~`>#-]+", with: " ", options: .regularExpression)
             guard !Self.normalizeWhitespace(text).isEmpty else { return nil }

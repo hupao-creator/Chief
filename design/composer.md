@@ -1,7 +1,7 @@
 # Resident composer ownership
 
 The [MokuScene guide](../app/macos/Sources/Host/MokuScene/README.md) owns Dock,
-Talk, Note, input and draft behavior. [Core](../app/macos/Sources/Core/README.md)
+Talk, input and draft behavior. [Core](../app/macos/Sources/Core/README.md)
 owns durable receipt and attachment handoff.
 [E2E-COMPOSER-001](../tools/e2e/README.md#composer-system-input-boundary) uses
 operator-assisted system Accessibility input with independent public persisted
@@ -38,7 +38,7 @@ explicit Browser annotation retain autofocus. The Dock requests automatic focus 
 current editor's text becomes visible. Explicit focus can acquire the admitted
 editor earlier. Incoming-reader publication cannot be cleared by its outgoing owner.
 
-In Overview, swiping up on Chief Bar opens its conversation around the same
+In Overview, right-clicking Chief Bar opens its conversation around the same
 editor. Opening from the collapsed Bar requests keyboard focus. The panel keeps
 the Chief draft and stays open through admission and the reply. See the
 [Chief Bar conversation contract](../app/macos/Sources/Host/MokuScene/README.md#chief-bar-conversation).
@@ -69,11 +69,11 @@ blocks input. The eyes flip to the Harness logo on entry and the logo flips
 back to the eyes on return. Both turns use the 420ms reading opening curve.
 Reduce Motion settles either direction immediately.
 The shell contracts around the bottom center of its reading column with the Harness logo upright.
-The turn runs in the stationary compact shell. Once the eyes settle, the reader can close
-and the bar can glide horizontally at the reading height until
+Agent panel travel overlaps the fold. The turn runs in the stationary compact
+shell. Once the eyes settle, the bar glides horizontally at the reading height until
 centered in the workspace, then rises vertically to its Overview seat.
-A centered reader only needs the lift. Closing a Super Thread with an
-execution selected uses the same sequence.
+A centered reader only needs the lift. When a Super Thread has an execution selected,
+its return to a visible card begins after the eyes settle.
 The editor reveals its input ink at its settled position during expansion.
 See the [Dock contract](../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer).
 
@@ -91,14 +91,7 @@ Submission orbit begins on captured
 input, but grants neither Stop authority nor navigation before confirmed
 execution admission. Receipt uncertainty preserves draft/recovery state.
 
-Ordinary Talk and Note share the capsule reading seat. Talk fades before Note
-expands and returns after Note ink retires. A rapid reversal continues current
-geometry and fences old completion callbacks. Hidden retained content keeps
-native identity/scroll state while leaving hit testing and accessibility.
-Talk's existing expiration can run behind an open Note; expired text does not
-return merely because Note closes. The expanded Note uses dark Regular Liquid
-Glass; the compact Dock uses its warm clear gradient. Reduce Transparency uses
-opaque fallback. Background input suppression does not dim read-only card ink.
+The compact Talk viewport supports selection, scrolling and execution links. Its one-minute lease begins on presentation. Chief’s conversation keeps each successful Talk message after the viewport closes.
 
 Source: [Dock](../app/macos/Sources/Host/MokuScene/NativeMokuDock.swift),
 [capsule](../app/macos/Sources/Host/MokuScene/NativeMokuCapsule.swift),

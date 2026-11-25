@@ -14,7 +14,7 @@ def launch(session, app):
     activate(session)
 
 
-def journey(desktop, app):
+def journey(desktop, app, send, thread_state):
     session = desktop.session
     preferences = session.profile / "desktop-preferences.json"
     review, plan, ship, inbox = (session.peer.receipts[f"bench_create_{i:02}"]["threadId"] for i in range(1, 5))
@@ -47,7 +47,7 @@ def journey(desktop, app):
                 rail_id = status
             assert overview["selectedRailId"] == rail_id
             assert {card["ref"]["threadId"] for card in overview["cards"]} == expected, overview
-            status_buttons = {"running", "all", "completed"} if scope == "inbox" else {"running"}
+            status_buttons = {"running", "unread", "all", "completed"} if scope == "inbox" else {"running", "unread"}
             return (selected["id"] in overview["controls"][kind] and set(overview["controls"]["status"]) == status_buttons
                     and not overview["layingOut"]
                     and set(overview["mountedCardIds"]) == expected
@@ -83,6 +83,12 @@ def journey(desktop, app):
     folder, inbox_tag = initial["overview"]["filters"]
     assert inbox_tag["scope"] == "inbox" and inbox_tag["kind"] == "semantic"
     assert folder["children"][0]["tag"] == "Plan work"
+    namesake = next(child for child in folder["children"] if child["tag"] == folder["tag"])
+    choose(namesake)
+    capture("folderNamesake", scope, "semantic", {ship}, tag=folder["tag"])
+    choose(folder)
+    capture("namesakeToFolder", scope, "directory", project)
+
     desktop.request({"name": "overview.filters.activate", "group": "status", "id": "running"})
     capture("emptyRunning", scope, "directory", set(), status="running")
     stop()
@@ -138,9 +144,31 @@ def journey(desktop, app):
     assert empty["selectedFilterId"] is None and not empty["overview"]["cards"]
     record("emptyRelaunch", empty)
     assert evidence["stages"]["emptyRelaunch"]["preference"] == evidence["stages"]["inboxBeforeEmpty"]["preference"]
-    enable_agent(session, "tag", True)
     archive(inbox, False)
+    def untagged_view(cards):
+        return desktop.stable(lambda state: state["page"] == "overview" and state["runtimeAvailable"]
+                              and state["selectedFilterId"] is None and not state["overview"]["filters"]
+                              and state["overview"]["status"] == "running" and not state["overview"]["layingOut"]
+                              and set(state["overview"]["mountedCardIds"]) == cards)
+    restored_inbox = thread_state(session, inbox)
+    assert not restored_inbox["tags"] and not restored_inbox.get("archived")
+    record("noRunning", untagged_view(set()))
+    previous = restored_inbox["observation"]["latestExecution"]["executionId"]
+    prompt = f"BENCH ITEM 04: E2E FOLLOWUP {session.nonce} E2E STOP {session.nonce}"
+    run = send(session, inbox, previous, prompt)["executionId"]
+    wait_for(lambda: session.peer.holds, bool, 30)
+    active = thread_state(session, inbox)
+    assert not active["tags"] and active["observation"]["latestExecution"]["executionId"] == run
+    assert active["observation"]["latestExecution"]["status"] == "running"
+    record("runningBeforeTag", untagged_view({inbox}))
+    enable_agent(session, "tag", True)
     capture("tagArrived", "inbox", "semantic", {inbox}, tag=inbox_tag["tag"])
+    tagged = thread_state(session, inbox)
+    assert tagged["tags"] == [inbox_tag["tag"]]
+    assert tagged["observation"]["latestExecution"]["executionId"] == run
+    assert tagged["observation"]["latestExecution"]["status"] == "running"
+    session.runtime.invoke("thread:interrupt", [{"threadId": inbox, "expectedCancellationId": tagged["cancellationId"]}])
+    wait_for(lambda: thread_state(session, inbox), lambda r: r["observation"]["latestExecution"]["status"] == "interrupted")
     for thread in sorted(project):
         archive(thread, False)
     wait_for(session.runtime.state, lambda state: project <= {
@@ -177,15 +205,16 @@ def journey(desktop, app):
     archive(inherited, True)
     archive(inherited, False)
     first, second = fork(inherited), fork(inherited)
-    assigned = {inherited: "Review work", first: "Ship work", second: "Plan work"}
+    assigned = {inherited: "Review work", first: folder["tag"], second: "Plan work"}
     peer = session.peer
     peer.tag_names.update(assigned)
     peer.tagged_ids.update(assigned)
+    all_threads = project | assigned.keys()
     choose(folder)
-    capture("unassignedForks", scope, "directory", project)
+    capture("unassignedForks", scope, "directory", all_threads)
     stop()
     reopen()
-    capture("beforeFirstAssignments", scope, "directory", project, first=True)
+    capture("beforeFirstAssignments", scope, "directory", all_threads, first=True)
     enable_agent(session, "tag", True)
     classified = wait_for(session.runtime.state, lambda state: {
         row["id"]: row["tags"][0] for row in state["threads"] if row["id"] in assigned and row["tags"]
@@ -204,14 +233,13 @@ def journey(desktop, app):
     for thread in assigned:
         archive(thread, True)
         archive(thread, False)
-    desktop.stable(lambda state: set(state["overview"]["mountedCardIds"]) == project)
+    desktop.stable(lambda state: set(state["overview"]["mountedCardIds"]) == all_threads)
     stop()
     reopen()
-    capture("clearedTagsRelaunch", scope, "directory", project)
+    capture("clearedTagsRelaunch", scope, "directory", all_threads)
     enable_agent(session, "tag", True)
     wait_for(session.runtime.state, lambda state: assigned.keys() <= {
         row["id"] for row in state["threads"] if row["tags"]})
-    all_threads = project | assigned.keys()
     desktop.stable(lambda state: set(state["overview"]["mountedCardIds"]) == all_threads)
     capture("reclassificationKeepsFolder", scope, "directory", all_threads)
 

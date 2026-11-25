@@ -637,10 +637,6 @@ func (c *Coordinator) ensurePrepared(ctx context.Context) (model.ThreadRecord, e
 			}
 		}
 		if configuration.HarnessID != current.HarnessID {
-
-			// A host-harness change keeps Moku's own milestone history. Only an
-			// explicit history reset starts with no note.
-			configuration.PreserveNote = true
 			configuration.PreserveHistory = true
 			current, err = c.config.ReplaceSession(ctx, current.ID, configuration)
 			if err != nil {

@@ -109,7 +109,6 @@ extension NativeWorkspacePresentation {
             if overview.error != nil || canvas.layoutError != nil { result.append("overview.retry") }
             if overview.chromeInteractions.hasButtons { result.append("overview.filters.activate") }
             if overview.chromeInteractions.canScroll { result.append("overview.filters.scroll") }
-            if canToggleMokuNote { result.append("moku.note.toggle") }
         }
         if scene.dockRouteVisible, !scene.disabled, !scene.dockCovered { result.append("moku.input.toggle") }
         return result
@@ -120,7 +119,7 @@ extension NativeWorkspacePresentation {
             .object(["id": .text(item.id), "label": .text(item.displayTag), "tag": .text(item.tag),
                 "kind": .text(item.isDirectory ? "directory" : "semantic"), "scope": .text(item.scope),
                 "count": .integer(item.count), "unreadCount": .integer(item.unreadCount), "aliases": .array(item.aliases.map(JSONValue.text)),
-                "children": .array(item.children.filter { $0.count > 0 }.map(filter))])
+                "children": .array(item.children.map(filter))])
         }
         let camera = canvas.camera
         let transform = camera.transform
@@ -182,8 +181,8 @@ extension NativeWorkspacePresentation {
             "selectedRailId": overview.selectedRailID.map(JSONValue.text) ?? .null,
             "status": .text(overview.statusFilter.rawValue),
             "dock": .object(["inputOpen": .bool(scene.inputOpen), "inputLeaving": .bool(scene.inputLeaving),
-                "noteExecutionPhase": scene.noteReadingOrigin.map { .text($0.phase.rawValue) } ?? .null,
-                "noteOpen": .bool(scene.notePanelOpen), "covered": .bool(scene.dockCovered)])
+                "talkExecutionPhase": scene.talkReadingOrigin.map { .text($0.phase.rawValue) } ?? .null,
+                "covered": .bool(scene.dockCovered)])
         ])
     }
 
@@ -194,7 +193,6 @@ extension NativeWorkspacePresentation {
         case .overviewActivateFilter(let group, let id): try overview.chromeInteractions.activate(group, id: id)
         case .overviewScrollFilter(let id): try overview.chromeInteractions.scrollTo(id)
         case .toggleMokuInput: scene.toggleInput(focusOnOpening: true)
-        case .toggleMokuNote: toggleMokuNote()
         default: throw NativeInteractionError("invalid_request", "Not an Overview action")
         }
     }

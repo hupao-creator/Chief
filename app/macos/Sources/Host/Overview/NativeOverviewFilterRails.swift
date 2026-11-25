@@ -23,6 +23,18 @@ struct NativeOverviewTagRail: View {
     var interactions: NativeOverviewChromeInteractions?
 
     var body: some View {
+        ViewThatFits(in: .vertical) {
+            buttons.fixedSize(horizontal: false, vertical: true)
+            ScrollView(.vertical) { buttons.padding(.vertical, 4) }
+                .scrollIndicators(.automatic)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(choices.contains { if case .tag = $0 { true } else { false } } ? strings.filter : strings.statusFilter)
+        .accessibilityHidden(choices.isEmpty)
+    }
+
+    private var buttons: some View {
         VStack(alignment: .leading, spacing: OverviewTagMetrics.railSpacing) {
             ForEach(choices) { choice in
                 switch choice {
@@ -41,6 +53,7 @@ struct NativeOverviewTagRail: View {
                 case .status(let status):
                     let (title, emoji) = switch status {
                     case .running: (strings.runningOnly, "⏳")
+                    case .unread: (strings.unreadOnly, "🔖")
                     case .all: (strings.allStatuses, "🗂️")
                     case .completed: (strings.completedOnly, "🏁")
                     }
@@ -49,9 +62,6 @@ struct NativeOverviewTagRail: View {
                 }
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(choices.contains(.status(.all)) ? strings.statusFilter : strings.filter)
-        .accessibilityHidden(choices.isEmpty)
     }
 
     private func button(_ choice: NativeOverviewRailChoice, title: String, emoji: String,

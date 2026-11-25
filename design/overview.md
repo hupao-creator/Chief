@@ -78,7 +78,10 @@ Carousel travel and metadata ink share 460ms easing; backward motion mirrors the
 shared ink mask. Open/archive recheck the actual selection and motion owner,
 including actions from an already-open native menu. Hover mounts the bottom
 capsule over the fixed cover viewport without shifting the cover, metadata or
-upper-right count. Retained focus and menu tracking do not extend hover
+upper-right count. Both capsules use Liquid Glass. The cover, spacing and
+metadata sit over the same opaque Overview surface used by standalone Report
+cards. Carousel metadata uses the shared Report layout and flat emoji badge.
+Retained focus and menu tracking do not extend hover
 visibility. The hovered controls retain native keyboard/accessibility operation; on exit
 the entire bottom control surface unmounts, including hit/AX children. Menu
 tracking pauses automatic paging. Stale removed-member actions are rejected.

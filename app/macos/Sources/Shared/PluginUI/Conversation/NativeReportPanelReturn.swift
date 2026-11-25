@@ -5,10 +5,10 @@ import SwiftUI
 /// Preparation retains layout without a start time. Both native surfaces use
 /// the same monotonic start and duration as the owning route's completion.
 public struct NativeReportPanelReturn {
-    public let source: CGRect
+    public let source: CGRect?
     public let startedAt: TimeInterval?
     public let duration: TimeInterval
-    public init(source: CGRect, startedAt: TimeInterval?, duration: TimeInterval) {
+    public init(source: CGRect?, startedAt: TimeInterval?, duration: TimeInterval) {
         self.source = source; self.startedAt = startedAt; self.duration = duration
     }
 }
@@ -116,11 +116,11 @@ private struct ReportReturnHost<Content: View>: NSViewRepresentable {
               window != nil, carrier.bounds.width > 0, carrier.bounds.height > 0,
               let layer = carrier.layer else { return }
         startedAt = start
-        if main, let content = host.layer {
+        if main, let source = returning.source, let content = host.layer {
             NativeReadingPanelReturn.animate(surface: layer, content: content, aperture: aperture, paper: paper,
                 fromPosition: .zero,
                 fromPath: CGPath(roundedRect: carrier.bounds, cornerWidth: 22, cornerHeight: 22, transform: nil),
-                source: returning.source, readerWidth: carrier.bounds.width,
+                source: source, readerWidth: carrier.bounds.width,
                 duration: returning.duration, startedAt: start)
         } else {
             // The auxiliary surface retains its original position and viewport.

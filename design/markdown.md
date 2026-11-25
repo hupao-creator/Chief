@@ -19,7 +19,7 @@ and keeps its native views for the visit. The scroll extent can adjust on first
 entry into a section or on reflow. Returning to a section preserves its layout
 and block-local text selection.
 
-Standalone documents, exposure-tracked notes and footnoted replies use the
+Standalone documents and footnoted replies use the
 fully measured column. Footnote destinations and return anchors stay mounted.
 Lists, quotes, tables and code fences keep their internal width and selection
 rules. A single large block is laid out as a unit. Streaming retains its own

@@ -363,21 +363,10 @@ func (c *Coordinator) sendContext(ctx context.Context, input model.AgentInput, d
 		if !same {
 			continue
 		}
-		record, err := c.current()
-		if err != nil {
-			return nil, err
-		}
-		return withNoteContext(entries, record), nil
+		return append([]plugin.ContextEntry{{ID: "super-thread", Content: noSuperThreadSource}}, entries...), nil
 	}
 }
 
-// withNoteContext prepends Moku's own note to every outbound input. Moku
-// authored the note, but harness context compaction can still drop earlier
-// turns, so each send carries the current value rather than relying on history.
-func withNoteContext(entries []plugin.ContextEntry, record model.ThreadRecord) []plugin.ContextEntry {
-	return append([]plugin.ContextEntry{{ID: "moku-note", Content: MokuNoteContext(model.SnapshotNote(record.Note))},
-		{ID: "super-thread", Content: noSuperThreadSource}}, entries...)
-}
 func (c *Coordinator) withWorkspaceHint(entries []plugin.ContextEntry, input model.AgentInput, directoryTag, directoryScopeID *string) ([]plugin.ContextEntry, error) {
 	directories := []string{}
 	seen := map[string]bool{}

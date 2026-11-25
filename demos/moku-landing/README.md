@@ -12,6 +12,16 @@ Command-1/2/3/4 分别重置、演示成功、失败及归档。
 独立 app 路径写入 `.build/moku-landing/app-path.txt`。
 预览不配置自动断言、截图验收或验证报告，也不启动 Runtime 或真实模型。
 
+## Untagged running work and tag visibility
+
+Build the current Debug package, then run the mounted production workspace with an isolated catalog.
+
+```sh
+python3 demos/moku-landing/verify_header.py --tag-states --output .build/tag-states
+```
+
+The replay reads the empty Inbox message from a window capture, adds an untagged project run and checks that the first card and its folder arrive together. It then assigns the folder’s name as a semantic tag. It clicks the folder and its sole child, then selects six tags with equal and nested member sets. The evidence directory contains the three state screenshots and `tag-states.json`.
+
 ## Nested workspace header replay
 
 Build the current Debug package and use a new output directory. The optional
@@ -64,33 +74,53 @@ reopens the receipt store from the isolated profile. A new completed execution
 must reappear in both tag counts, and a document revision must relight its own tag. `tag-read.json` records the observed counts
 and selection. `source.json` identifies the checkout and platform.
 
-### Chief Note execution links
+### Unread preset
 
-After building the current Debug package, run the mounted workspace replay.
+Build the current Debug package and run the mounted workspace with a fresh profile.
 
 ```sh
-python3 demos/moku-landing/verify_header.py --note-link --output .build/note-link-replay
+python3 demos/moku-landing/verify_header.py --unread-filter --output .build/unread-filter
 ```
 
-A window-local mouse click on a Note citation opens an ordinary Thread from
-another directory, switches between sibling tags in one directory, repeats
-the visit from the matching tag, reveals a completed result from that folder’s
-empty Running tag, and opens the owning Super Thread in a different directory. The Report cites a later
-run of the same task. `note-links.json` records the filter during dismissal,
-location and reading, the mounted reader, and the requested execution and entry
-position. For ordinary Threads it also checks the loaded historical row and
-its scroll position against an offline two-run fixture. System-wide accessibility
-activation and live Report content use the [product replay](../../tools/e2e/README.md#chief-note-execution-link).
+The replay uses window-local AppKit input to open Unread and find an untagged
+completed result. After a tag arrives, it holds the tag to mark the result as
+read. It checks the persisted receipt, the empty canvas with Unread still
+selected, and the accessible button name and visible empty message in English
+and Chinese. A catalog patch publishes a new completed execution of the same Thread.
+The replay also switches between folder Running, a custom tag named Unread and
+folder Unread with both Agent and Super Thread cards. A second catalog has one
+unread task in Chief and one in the top-level stock research tag. Both badges
+start at one. The replay switches between them in Unread, clears the folder’s
+tag, adds a second tag to the research task and checks both tags after its
+version is acknowledged. It also checks a Report covering the Chief task and a
+catalog with no top-row space. The output contains `unread-filter.json`, the empty-state captures and `source.json`.
+This uses the production native workspace and fixture snapshots and mutations.
 
-### Overview Note click at actual size
+### Talk execution links
+
+Run the mounted workspace replay with the current Debug package.
 
 ```sh
-python3 demos/moku-landing/verify_header.py --note-click --output .build/overview-note-click
+python3 demos/moku-landing/verify_header.py --talk-link --output .build/talk-link-replay
+```
+
+The compact layout visit captures a one-line Chinese notice and a multiline
+notice ending with a run link. It checks that the short notice fits the
+58-point Overview row, the complete multiline document is visible, and the
+button has 8–16 points of clearance to the shell's bottom edge. The two
+window captures and `notification-layout.json` record the mounted result.
+
+The replay clicks the native glass execution capsules in the compact notification and the Chief conversation with AppKit mouse events. It captures each surface before navigating. The message contains labeled and bare links to different runs, a deleted Thread and a malformed URL. The replay checks the destination filter, historical row, loaded content and top scroll position, plus the unavailable page for a missing run. During the one-minute expiry observation the window ignores physical desktop clicks. Pointer input is enabled again before the replay follows the saved link into a Super Thread that cites a newer run. `talk-links.json` identifies the source surface and execution for each visit. The catalog and reading data are fixtures in a private profile.
+
+### Overview Bar swipe at actual size
+
+```sh
+python3 demos/moku-landing/verify_header.py --bar-swipe --output .build/overview-bar-swipe
 ```
 
 This scenario keeps the workspace at 1× throughout, including its first frame.
 It checks the empty Overview with folded input as well as the populated canvas.
-The replay posts window-addressed AppKit mouse events to the mounted workspace. It checks that right-click opens Chief Note once in Overview and that Control-click opens it on Landing. A click on the canvas leaves Note closed, an outside primary click dismisses an open Note, and a primary click on Chief Bar opens Compose. Phased pixel scrolls verify that a subthreshold contact stays on the Bar, an upward swipe opens the conversation with its editor, and its momentum leaves the filter and Note alone. A draft typed in the panel reappears in the compact editor. They also exercise filter swipes, native tag and Note scrolling, camera travel, composer and Settings ownership, and inverted device deltas. The reminder fixture checks native scrolling and acknowledgment. See `overview-note-click.json`, `landing-note-click.json` and `reminder-note-ownership.json`. The posted events cover AppKit delivery to the window. Physical trackpad configuration remains a system-input check.
+The replay posts AppKit events to the window. A right-click opens the conversation in Overview, and a Control-click opens it on Landing. The replay checks filter swipes, native tag scrolling, camera travel, the return of the conversation draft to Compose, and gesture ownership while the editor or Settings is open. The replay installs a historical reminder operation and checks that Bar gestures stay available. The results are in `overview-bar-swipe.json` and `landing-bar-swipe.json`.
 
 The [live conversation replay](verify_conversation.py) uses the same production window with the real Runtime, SQLite, Codex CLI and an isolated loopback model peer. Build the current artifacts and choose a new evidence directory.
 
@@ -99,17 +129,15 @@ python3 tools/e2e/build.py --go ./scripts/go.sh --with-app
 python3 demos/moku-landing/verify_conversation.py --output .build/chief-conversation
 ```
 
-Run the same command with `--send-refresh` and a fresh output directory to exercise delayed sends. The replay holds its private Runtime during Return and during a compact send followed immediately by a swipe. The window checks outgoing accessibility rows with admission held, after receipt, and after the loopback peer releases Talk. A temporarily unavailable staged file exercises draft restoration and an explicit retry. After Escape the replay waits for the folded Compose button to settle under the pointer, then opens it with one click. The window measures bottom following as the first user bubble appears, then scrolls back and compares the reading offset across the delayed replies. The final public page checks the persisted row count, text, attachment names and identities.
+Run the same command with `--send-refresh` and a fresh output directory to exercise delayed sends. The replay holds its private Runtime during Return and during a compact send followed immediately by a right-click. The window checks outgoing accessibility rows with admission held, after receipt, and after the loopback peer releases Talk. A temporarily unavailable staged file exercises draft restoration and an explicit retry. The replay measures the vertical offset between the native face and the attachment button while running, with the rejection visible and after the compact retry finishes. Their centers must agree within one point. After Escape the replay waits for the folded Compose button to settle under the pointer, then opens it with one click. The window measures bottom following as the first user bubble appears, then scrolls back and compares the reading offset across the delayed replies. The replay checks that the typing bubble appears at the left edge below the messages after the Chief run starts, follows the bottom, and disappears on completion while the earlier reading position holds. `conversation-typing.mp4` and `conversation-typing.png` show the running window, and `conversation-typing-finished.png` shows the final reply. The final public page checks the persisted row count, text, attachment names and identities.
 
-The first native visit of the layout and restart replay checks previously submitted messages and keyboard focus, types a Chinese message that wraps in the mounted editor, stages a PNG from disk and sends with Return. It observes the accepted text and filename, two consecutive Talk replies, and the unsent draft after closing and reopening. A second App and Runtime process reopen the same profile. Both visits compare ordered accessibility labels, individual dates and public content reads. Window screenshots show the resting bubbles and a held left swipe in dark and light appearances. The corresponding MP4s record the timestamps appearing and retracting. Escape dismisses the panel with its draft intact.
+The first native visit of the layout and restart replay checks previously submitted messages and keyboard focus, types a Chinese message that wraps in the mounted editor, stages a PNG from disk and sends with Return. It observes the accepted text and filename, two consecutive Talk replies, and the unsent draft after closing and reopening. A second App and Runtime process reopen the same profile. Both visits compare ordered accessibility labels, individual dates and public content reads. Window screenshots show the resting bubbles and the transcript during a held left swipe in dark and light appearances. The replay checks the reading position and inspects the right edge for individual times. Escape dismisses the panel with its draft intact.
 
 The replay uses a 1100×800-point window and the application minimum of 860×600. Before sending, it measures the space above the date and below the last bubble in a two-message conversation at both sizes. Each visit then measures a longer exchange with one-line and four-line drafts in both windows. In the smaller window it scrolls the messages above the draft. The send and restart JSON receipts record the window margins, panel, list and editor heights, the attachment bubble’s height and the gaps for both a speaker change and consecutive replies. The `conversation-small-*.png` captures show the compact window with each draft. Text recognition checks that the latest reply and the draft’s last line are both visible in the four-line capture.
 
-The Note-click scenario also opens cached conversation pages in the production Dock. It crosses midnight and a 15-minute gap, captures the three centered date headings in `conversation-periods.png` and clicks both page controls. On the longer page it scrolls up, reveals the times and verifies that releasing the gesture restores the horizontal origin. The vertical reading position must hold both through the gesture and when the window becomes shorter. These replays use window-addressed AppKit events. Physical trackpad hardware and a remote model service have separate evidence boundaries.
+The Bar swipe scenario also opens cached conversation pages in the production Dock. It crosses midnight and a 15-minute gap, captures the three centered date headings in `conversation-periods.png` and clicks both page controls. On the longer page it scrolls up, holds a left swipe and checks that the transcript stays in place and the right edge shows no individual times. The vertical reading position must hold both through the gesture and when the window becomes shorter. These replays use window-addressed AppKit events. Physical trackpad hardware and a remote model service have separate evidence boundaries.
 
-The Note scroll check identifies the visible native viewport inside the mounted Note panel. It sends both scroll directions to the center of the capsule and checks the document offset after each event. The combined visit has a 150-second process timeout for the Note, reminder, card fitting, filter and Landing interactions.
-
-Use `--status-only` in place of `--note-click` to run the mixed catalog scenario
+Use `--status-only` in place of `--bar-swipe` to run the mixed catalog scenario
 independently. It mounts the [production Overview](../../app/macos/Sources/Host/Overview/README.md)
 with ordinary tasks, running interactions, completed work and eight reports.
 `overview-status.json` records the selected scope, tag and status, card area,
@@ -126,9 +154,9 @@ mounted scroll monitor. Each `rail-swipe` entry records finger direction,
 inversion, signed recognition delta, rail order and observed start and end IDs. It also records the signed vertical travel of
 entering and retiring cards from their mounted canvas motion endpoints.
 The replay checks that further contact and momentum events keep the same selection, and
-swipes both ways on a single selected choice and an empty rail. It also checks
+swipes between a folder’s sole semantic tag and Running, and checks an empty rail. It also checks
 cross-center contacts, inverted device deltas, horizontal camera travel, live
-status changes, and reentry to a folder whose sole left choice is empty Running.
+status changes, and reentry to a folder with an empty Running selection.
 A replayed catalog delta moves a semantic tag into first place while a semantic
 tag named Running and the built-in choice retain distinct identities. A live
 update to that replayed Thread preserves Running. A newly created Thread with
@@ -171,8 +199,6 @@ run the status replay through both localized card comparisons:
 python3 demos/moku-landing/verify_header.py --completed-card --output .build/completed-card-layout
 ```
 
-A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas selects the Running tag, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
-
 ### Chief Bar opening
 
 ```sh
@@ -180,21 +206,22 @@ xcrun swift build --package-path app/macos
 python3 demos/moku-landing/verify_header.py --conversation-opening --output .build/chief-bar-opening
 ```
 
-The replay opens the production Chief Bar with phased AppKit scroll events
-and momentum. It checks the first visit with cached history, reopening after
-the first nonempty page arrives late, and swiping from the compact editor.
+The replay right-clicks the production Chief Bar. It checks the first visit
+with cached history, reopening after the first nonempty page arrives late,
+and opening history from the expanded compact editor.
 The last bubble is longer than the viewport. The replay measures the native
 clip against the document bottom and saves its window-relative bounds with
 each capture. Vision checks the final line against those bounds after recording,
-outside the input and animation sequence. A new contact scrolls back, then a
-content revision and window shrink must preserve the native vertical offset.
+outside the input and animation sequence. Scrolling up and back down within the page must keep the document height stable.
+An appended reply must extend the document while preserving the reading offset,
+and shrinking the window must also preserve that offset.
 Scrolling to the beginning must reveal the first message. The earlier and newer
 page controls must reach the preceding page and return to the newest reply.
 
 `conversation-opening.mp4` records the opening and outside-click dismissal.
 The compact-editor visit includes a two-second reading pause before dismissal.
 Inspect consecutive frames for both eyes staying inside the bottom row as they
-blink and travel between the center and editor seats. The replay also interrupts an opening with an outside click and swipes again
+blink and travel between the center and editor seats. The replay also interrupts an opening with an outside click and right-clicks again
 as soon as the editor finishes folding. Check intermediate eye positions and a clear composer on
 each visit. The reopened viewport must show the final line.
 `source.json` binds the run to the source and `conversation-opening.json`
@@ -213,11 +240,13 @@ python3 demos/moku-landing/verify_header.py --conversation-performance --profile
 
 Each run opens a full cached page five times from the collapsed Bar in one
 isolated workspace. ScreenCaptureKit timestamps the displayed window frames.
-The clock starts before the first upward scroll event. The collector compares
+The clock starts just before posting the right mouse-down event. The collector compares
 each frame with the resting Bar and the final line of the settled reply, which
 Vision locates after capture. It records the longest visible pause in the
-sampled area and intervals between main run-loop ticks. The separate profile
-samples the first visit at 1 ms intervals. The [same-machine comparison](evidence/conversation-opening/measurements.md)
+sampled area and intervals between main run-loop ticks. The first timer tick
+that observes a visible editable text view as the key window’s first responder
+bounds the time to input readiness. The separate profile samples the first
+visit at 1 ms intervals. The [secondary-click comparison](evidence/conversation-opening/secondary-click.md)
 includes the workload, per-visit results and retained samples.
 
 The header replay mounts the 46.2-point production filters at the top of a

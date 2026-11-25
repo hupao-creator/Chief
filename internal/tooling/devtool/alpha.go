@@ -63,13 +63,18 @@ func Alpha(ctx context.Context, repo, output, buildNumber string) (string, error
 	if err = os.Symlink("/Applications", filepath.Join(payload, "Applications")); err != nil {
 		return "", err
 	}
-	for _, directory := range []string{payload, release} {
-		if err = copyFile(filepath.Join(repo, "app/macos/build/alpha-installation.txt"), filepath.Join(directory, "READ-ME-FIRST.txt"), 0644); err != nil {
-			return "", err
-		}
+	if err = copyFile(filepath.Join(repo, "app/macos/build/alpha-installation.txt"), filepath.Join(release, "READ-ME-FIRST.txt"), 0644); err != nil {
+		return "", err
+	}
+	buildAssets := filepath.Join(repo, "app/macos/build")
+	if err = copyFile(filepath.Join(buildAssets, "alpha-layout.dsstore"), filepath.Join(payload, ".DS_Store"), 0644); err != nil {
+		return "", err
+	}
+	if err = copyFile(filepath.Join(buildAssets, "alpha-install.png"), filepath.Join(payload, ".install.png"), 0644); err != nil {
+		return "", err
 	}
 	image := filepath.Join(release, name+".dmg")
-	if err = runVisible(ctx, repo, nil, "/usr/bin/hdiutil", "create", "-volname", "Chief "+provenance.ReleaseVersion, "-srcfolder", payload, "-fs", "HFS+", "-format", "UDZO", image); err != nil {
+	if err = runVisible(ctx, repo, nil, "/usr/bin/hdiutil", "create", "-volname", "Install Chief Alpha", "-srcfolder", payload, "-fs", "HFS+", "-format", "UDZO", image); err != nil {
 		return "", err
 	}
 	if err = runVisible(ctx, repo, nil, "/usr/bin/hdiutil", "verify", image); err != nil {

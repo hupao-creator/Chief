@@ -85,6 +85,10 @@ private struct NativeSettingsPopup: NSViewRepresentable {
         var choose: ((Int) -> Void)?
         private weak var activation: NativeSettingsFieldActivation?
         private let owner = UUID()
+        override func viewDidChangeEffectiveAppearance() {
+            super.viewDidChangeEffectiveAppearance()
+            menu?.appearance = effectiveAppearance
+        }
         @objc func chooseItem(_ sender: NSPopUpButton) {
             guard isEnabled, let item = selectedItem, item.isEnabled else { return }
             choose?(item.tag)

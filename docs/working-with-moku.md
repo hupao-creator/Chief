@@ -24,7 +24,7 @@ Click **+** just to the right of Chief's eyes to open the file chooser. It start
 
 To browse the connected host, Control-click **+** and choose **Choose host files** to attach files or **Choose a host directory** to reference a folder.
 
-When you send from Overview, Chief takes the current Overview folder into account. A folder you select with **+** or **Choose a host directory** takes priority. To find a task created without a project folder, open Overview after Tag Agent has assigned it a tag, then choose that tag at the top.
+When you send from Overview, Chief takes the current Overview folder into account. A folder you select with **+** or **Choose a host directory** takes priority. To find a running task in a project folder, select the folder in Overview and click ⏳ **Running** in the left column. Once Tag Agent assigns the task its first tag, Overview opens that tag.
 
 Click an image thumbnail to preview it, or click **×** on a file or folder to remove it. Wait for the files to finish preparing, then click **Send**. You can attach up to 20 files per message. Size limits apply, and the agent running Chief determines which attachment types it can use. If you want Chief to delegate work on a file, say which file the agent should use in your request.
 
@@ -44,27 +44,25 @@ Chief also keeps the worktree if it cannot verify the files or find a saved bran
 
 After a successful removal, the checkout folder is gone. The task conversation stays in its original project, and its saved commits and branches remain in Git. Start a new task if you want an agent to do more work there.
 
-## Find Chief's replies and notes
+## Find Chief's replies
 
-In Overview, swipe up with two fingers over Chief’s eyes to read your conversation. The conversation opens above the input. If you already have a draft open, swipe up over the eyes beside the text to see the conversation and keep typing. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see the time beside each message, swipe left in the conversation and hold. Release to tuck the times away.
+In Overview, right-click Chief Bar to open your conversation above the input. The panel stays dark even when your Mac uses Light. You can also Control-click or use your trackpad’s secondary click. If you already have a draft open, right-click the bar beside the text to see the conversation and keep typing. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see when an individual message was sent, hold the pointer over its bubble.
+
+While Chief is working, a small gray bubble with three dots appears on the left below the latest message. The dots rise in turn, or stay still if Reduce Motion is on. The bubble disappears when Chief finishes, stops, or encounters an error.
 
 Each time you open the panel, you can see the end of the latest message once the messages load. A larger gap marks a change of speaker. A short exchange fits in a compact panel. Longer conversations can fill most of a small window, with the input at the bottom. Scroll up above the input to read earlier messages. Your place stays put as new replies arrive while you’re reading further up. At the top of a page, **Earlier messages** takes you further back. **Newer messages** at the bottom takes you forward.
 
-Use the input at the bottom to reply. A draft you started in the compact bar is already there. Press **Return** or click **Send**. Your message appears on the right as soon as you send it, and the panel stays open for Chief’s reply. You can also send from the compact bar and swipe up over the eyes to see your message while Chief is working. Press **Esc** or click outside the bar to close it and keep your draft.
+Use the input at the bottom to reply. A draft you started in the compact bar is already there. Press **Return** or click **Send**. Your message appears on the right as soon as you send it, and the panel stays open for Chief’s reply. You can also send from the compact bar and right-click it to see your message while Chief is working. Press **Esc** or click outside the bar to close it and keep your draft.
 
 You can revisit these messages after restarting Chief in the same profile, including saved exchanges with a previous coordinating agent. A message can be recovered as long as Chief still has its conversation record. Clearing the history removes those exchanges. Messages you sent directly to a task stay in that task’s conversation.
 
-- **Replies.** Chief also shows its latest reply briefly on the compact bar. You can select the text, scroll through a longer reply, or swipe up to read it again.
+- **Replies.** When Chief assigns your request, look here for what it handed off. Check back for the result or anything Chief needs from you. Chief also shows its latest reply on the compact bar for one minute. The bar grows to fit the text and any run links. If a reply is too long to fit, scroll down inside the bar to read the rest. You can select the text or click a link to open that run. Right-click the bar to read the reply again.
 - **Task updates.** Watch the bar for **Dispatching task**. **Thread started** means the task is ready to open. If the handoff fails, the bar shows **Dispatch failed**. Open the task card in Overview to see how the work is going.
-- **Notes.** In Overview, right-click Chief Bar with the input box closed to open **Chief Note**. You can also press **⌘⇧N**. Click the eyes centered below the note to start a message, or click a run’s link to read it. The note closes. If the conversation or its Super Thread is outside your selected folder or tag, Overview switches to a matching view before the reader opens. If the conversation belongs to exactly one Super Thread, its card opens with the run you clicked in **Related executions**. If its collection is visible, it turns to that Super Thread’s page first. Other links open the cited run in the task conversation. In both readers, you start at the top of the run. Click the **×** at the top left of the reader or press **⌘K** to return to Overview with the note closed. To resume the note from a task conversation, press **Esc** in the run you opened. In a Super Thread, you can use **Back to related executions** to browse other runs before closing the report. To reopen the note from Overview, right-click Chief Bar again.
+- **Links to a run.** Click the capsule with the arrow in the compact reply or in your conversation with Chief. The capsule shows Chief’s label or the task name. Each link opens the run it names, even if the agent has since started another. If the task belongs to one Super Thread, the run opens beside that report. Otherwise it opens in the task conversation. Both readers start at the top of the run. Click **×** or press **⌘K** to return to Overview. If the run is unavailable, you can still read the original message in your conversation with Chief.
 
-## Stop work or acknowledge an alert
+## Stop Chief or a delegated task
 
 To stop Chief's current response, hover over its eyes at the bottom of Overview and click the square **Stop Chief** button on the right. With the input box open, **Stop Chief** appears in the same spot whenever the draft cannot be sent. If you want to stop Chief while keeping a ready draft, fold the bar with **⌘⇧B**, then hover over the eyes. To stop one or more delegated tasks, name them in a message to Chief. Chief tries each request separately. You can also stop a task yourself from its conversation. [Stop a run](task-conversations.md#respond-to-a-request-or-stop-a-run)
-
-When Chief sends an alert, read it in the compact bar at the bottom of the workspace. Scroll inside a longer message to read the rest. To open Chief Note while an alert is visible, press **⌘⇧N**. Click **Received** to confirm just that alert. If more are waiting, the bar shows how many and brings up the next one.
-
-The bell keeps ringing until you confirm the last alert. If the bell fails to play, you can still confirm the message or click **Retry bell**. An open input box keeps your draft and selection above the alert. After the final receipt, the bar returns to its current task. Quitting Chief clears pending alerts.
 
 If a message fails to send, review the error and the text in the input box before retrying. If Chief is still checking the previous send, wait for confirmation or use **Check previous receipt** if shown. Open any task card Chief already created to see what happened.
 

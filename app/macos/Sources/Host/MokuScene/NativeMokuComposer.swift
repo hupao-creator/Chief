@@ -111,14 +111,13 @@ struct NativeMokuComposerInput: View {
     var initialSelection: NSRange?
     var onEditorStateChange: ((NativeComposerEditorState) -> Void)?
     var onKeyDown: ((NativeComposerKeyEvent) -> Bool)?
-    var onEditorSeatChange: (CGFloat) -> Void = { _ in }
+    var onEditorSeatChange: ((CGFloat) -> Void)?
     var onEscape: (() -> Void)?
     let onSend: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.locale) private var locale
     @Environment(\.nativeOfflineDraftEditing) private var offlineDraftEditing
-    @State private var editorRowHeight: CGFloat = 58
-    @State private var footerHeight: CGFloat = 0
+    @Namespace private var composerSpace
     @State private var editorID = UUID()
     @State private var composingDraft: NativeComposerDraft?
     @State private var hostPicker: NativeComposerHostFilePicker.Mode?
@@ -158,16 +157,9 @@ struct NativeMokuComposerInput: View {
                 editor
                 HStack(spacing: 0) { actions }
             }.padding(.leading, 6).padding(.trailing, Self.actionTrailingInset)
-                .onGeometryChange(for: CGFloat.self) { compact ? 34 : $0.size.height } action: { editorRowHeight = $0 }
             footer
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
-        }.foregroundStyle(.primary).disabled(editingUnavailable || readOnly)
-            // Sizes are local to the row. Resolving an editor anchor through
-            // an animating ancestor also includes its transient translation,
-            // which must not be fed back into the face's bottom inset.
-            .onChange(of: editorRowHeight / 2 + footerHeight + (compact ? 6 : 0), initial: true) { _, inset in
-                onEditorSeatChange(inset)
-            }
+        }.coordinateSpace(name: composerSpace)
+            .foregroundStyle(.primary).disabled(editingUnavailable || readOnly)
     }
     private var footer: some View {
         VStack(spacing: 0) {
@@ -206,6 +198,14 @@ struct NativeMokuComposerInput: View {
     // seats must never consume its entire width or compress native text to zero.
     private var eyeSeat: some View {
         Color.clear.frame(width: 43, height: 34)
+            // Read the reserved seat inside the editor, including any footer.
+            // Reopening must publish its current inset even if layout settled while folded.
+            .onGeometryChange(for: CGFloat?.self) { [active = onEditorSeatChange != nil, composerSpace] geometry in
+                guard active, let composer = geometry.bounds(of: .named(composerSpace)) else { return nil }
+                return composer.maxY - geometry.size.height / 2
+            } action: { inset in
+                if let inset { onEditorSeatChange?(inset) }
+            }
             .overlay {
                 if showsEyes {
                     NativeMokuBlinkingEyes(expression: .focus, focus: 1)

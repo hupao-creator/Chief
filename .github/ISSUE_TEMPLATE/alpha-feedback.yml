@@ -1,0 +1,26 @@
+name: Chief Alpha feedback
+description: Report a problem you ran into on your Mac. 欢迎用中文填写。
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: What were you trying to do?
+      description: Where did you run into the problem? Describe the steps you remember.
+      placeholder: In Overview, I clicked a completed task card to read the agent's reply.
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What did you expect, and what happened?
+      description: You can include an error message or screenshot. Remove account details, secrets, and private file paths before posting publicly.
+      placeholder: I expected the conversation to open. The card highlighted, but I stayed in Overview.
+    validations:
+      required: true
+
+  - type: input
+    id: setup
+    attributes:
+      label: Versions and agent (optional)
+      description: Include the Chief Alpha version or DMG filename, your macOS version, and the agent if one was involved.

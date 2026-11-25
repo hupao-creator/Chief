@@ -81,7 +81,7 @@ private struct ToolFeedbackDock: View {
         func record(_ action: String) { events.append(["action": action, "seconds": CACurrentMediaTime() - start]) }
         try await pause(400)
         record("start")
-        try tool("update_note", sequence: 1)
+        try tool("list_threads", sequence: 1)
         try await pause(3416)
         record("first lap")
         try await pause(850)
@@ -102,7 +102,7 @@ private struct ToolFeedbackDock: View {
         try await pause(240)
         record("reverse fade")
         executionID = "replacement"
-        try tool("update_note", sequence: 3)
+        try tool("list_threads", sequence: 3)
         // Retirement reversed just after the lap. Keep recording through the
         // landing, lid recovery and next relay before measuring pursuit again.
         try await pause(4440)
@@ -138,7 +138,7 @@ private struct ToolFeedbackDock: View {
         guard let character = host.scene.dockCharacter else { throw ReplayFailure("Missing Dock character") }
         try await orbitFadeFrames(panel: panel, character: character) { running, key in
             executionID = JSONText(key)
-            if running { try tool("update_note", sequence: revision + 1) }
+            if running { try tool("list_threads", sequence: revision + 1) }
             else { try deliver(.completed) }
             try await until("Updated compact expression") {
                 character.input?.running == running && (!running || character.input?.executionKey == host.moku.executionKey)
@@ -147,7 +147,7 @@ private struct ToolFeedbackDock: View {
         return
     }
 
-    try tool("update_note", sequence: 1)
+    try tool("list_threads", sequence: 1)
     try await until("First tool shows three dots") {
         guard let character = host.scene.dockCharacter else { return false }
         return character.input?.running == true && character.orbitDots.count == 3 && character.orbitOpacity > 0.5
@@ -176,7 +176,7 @@ private struct ToolFeedbackDock: View {
 
     for terminal in [PublicExecution.Status.failed, .interrupted] {
         executionID = JSONText("run-" + terminal.rawValue)
-        try tool("update_note", sequence: 1)
+        try tool("list_threads", sequence: 1)
         try await until("Tool running before " + terminal.rawValue) { character.input?.running == true }
         try deliver(terminal)
         try await until(terminal.rawValue + " retires orbit") {
@@ -191,7 +191,7 @@ private struct ToolFeedbackDock: View {
         PublicInteraction(id: "ask", kind: .question, title: "Choose", actions: [.init(id: "send", intent: .submit, label: "Submit")],
             questions: [.init(id: "q", prompt: "Which?", multiple: false, allowOther: true, secret: false, options: [])])
     ] {
-        try tool("update_note", sequence: 1)
+        try tool("list_threads", sequence: 1)
         try await until("Tool running before request") { character.input?.running == true }
         try deliver(.waitingForUser, interactions: [request])
         try await until("Intervention takes the seat") {

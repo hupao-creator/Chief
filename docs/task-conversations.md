@@ -8,7 +8,7 @@ Click **Show work** when it appears for a summary, including the number of reaso
 
 A Codex task continues normally when a command returns binary data. You can follow the agent’s next step in the same conversation.
 
-When you open a Codex task, Chief’s eyes flip to the Codex logo, which settles upright at the left of the input bar. When you close the conversation, the bar shrinks with the logo still upright. Once the bar is compact, the logo flips back to Chief’s eyes. The conversation then closes. If the bar is centered below the conversation, it stays centered as it shrinks and rises back into Overview.
+When you open a Codex task, Chief’s eyes flip to the Codex logo at the left of the input bar. When you close the conversation, the input bar shrinks. The panel moves back to its card if it’s still visible, or dismisses in place if the card has left the view. Once the bar is compact, the logo flips back to Chief’s eyes. A centered bar stays centered as it rises back into Overview.
 
 When a conversation opens with an **Execution** sidecard on the right, the input bar glides beneath it and opens there. Click **×** at the top left of the conversation or click the blank margin to return to Overview. The bar shrinks beneath the sidecard, moves left at the same height, then rises into place at the center of Overview.
 

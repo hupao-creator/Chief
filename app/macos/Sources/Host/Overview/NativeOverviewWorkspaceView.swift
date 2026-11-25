@@ -64,7 +64,7 @@ public struct NativeOverviewWorkspaceView: View {
             let viewport = Self.viewport(in: geometry.size, hasFilters: hasFilters,
                                          hasDock: model.workspace.catalog.hasMoku)
             let railEdgeInset = min(12, geometry.size.width * 0.015)
-            let railWidth = model.isInboxTagSelected ? geometry.size.width / 2 - railEdgeInset
+            let railWidth = model.isTopSemanticSelected ? geometry.size.width / 2 - railEdgeInset
                 : geometry.size.width * 0.15 * OverviewTagMetrics.tagScale
             let headerBottom = OverviewTagMetrics.headerBottom(in: geometry.size, hasFilters: !landing && hasFilters)
             // The last card can make the Dock switch to landing before the
@@ -76,7 +76,7 @@ public struct NativeOverviewWorkspaceView: View {
             let canvasVisible = !landing || retiringToLanding
             ZStack {
                 NativeOverviewCanvas(contentSource: model.content, sceneKey: model.sceneKey, state: model.canvasState,
-                    selectionID: model.selectedFilter?.id,
+                    selectionID: model.statusFilter == .unread ? nil : model.selectedFilter?.id,
                     toolbarBottom: viewport.toolbarBottom, bottomReservedHeight: viewport.bottomReservedHeight,
                     headerInputBottom: headerBottom,
                     visible: model.facts.overviewVisible && model.facts.documentVisible && canvasVisible,
@@ -96,12 +96,10 @@ public struct NativeOverviewWorkspaceView: View {
                     .accessibilityHidden(landing)
                 if !landing && model.content.isEmpty && model.error == nil, model.globalConversationCount != nil {
                     switch model.statusFilter {
-                    case .running, .completed:
+                    case .running, .unread, .completed:
                         NativeOverviewStatusEmptyState(title: emptyTitle)
                     case .all:
-                        NativeOverviewEmptyState(title: emptyTitle, detail: model.selectedFilter == nil
-                            ? locale.text("Thread 获得语义标签后会显示在这里。", "Threads appear here once they have a tag.")
-                            : locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads."))
+                        NativeOverviewEmptyState(title: emptyTitle, detail: locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads."))
                     }
                 }
                 if let error = model.error ?? model.canvasState.layoutError {
@@ -183,17 +181,18 @@ public struct NativeOverviewWorkspaceView: View {
     private var emptyTitle: String {
         switch model.statusFilter {
         case .running: return locale.text("没有运行中的会话", "No running conversations")
+        case .unread: return locale.text("没有未读会话", "No unread conversations")
         case .completed: return locale.text("没有已完成的会话", "No completed conversations")
         case .all: break
         }
-        if !model.selectedTag.isEmpty { return locale.text("没有 \(model.selectedFilter?.tag ?? model.selectedTag) 会话", "No \(model.selectedFilter?.tag ?? model.selectedTag) conversations") }
-        return locale.text("暂无带语义标签的会话", "No tagged conversations yet")
+        return locale.text("没有 \(model.selectedFilter?.tag ?? model.selectedTag) 会话", "No \(model.selectedFilter?.tag ?? model.selectedTag) conversations")
     }
     private var chromeStrings: NativeOverviewChromeStrings {
         var strings = NativeOverviewChromeStrings()
         if locale == .english {
             strings.settings = "Settings"; strings.restart = "Restart development app"; strings.actions = "Overview actions"
             strings.runningOnly = "Running"
+            strings.unreadOnly = "Unread"
             strings.allStatuses = "All statuses"
             strings.completedOnly = "Completed"
             strings.statusFilter = "Filter by status"

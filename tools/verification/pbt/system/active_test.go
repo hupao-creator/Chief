@@ -22,7 +22,7 @@ func startChain(ctx context.Context, invoke systemInvoke, mock *provider) (model
 			return false
 		}
 		for _, t := range s.Threads {
-			if t.Moku && t.Note != nil && t.Note.Text == "SYSTEM_CHAIN_VERIFIED" {
+			if t.Moku && hasChainReply(t) {
 				return verifyFanout(s, mock.workspaces) == nil
 			}
 		}

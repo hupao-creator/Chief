@@ -10,6 +10,7 @@ public struct NativeSettingsDescriptionHint: View {
     public let description: String
     private let onVisibilityChange: ((Bool) -> Void)?
     private let onActivateLabel: (() -> Void)?
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.locale) private var locale
     @Environment(\.nativeSettingsLocalAgentDetail) private var localAgentDetail
     @Environment(\.nativeSettingsFormPage) private var settingsFormPage
@@ -43,6 +44,7 @@ public struct NativeSettingsDescriptionHint: View {
                         Text(description).font(.callout).textSelection(.enabled)
                             .padding().frame(idealWidth: 280, maxWidth: 320)
                             .fixedSize(horizontal: false, vertical: true)
+                            .preferredColorScheme(colorScheme)
                     }
                 Spacer(minLength: 0)
             }

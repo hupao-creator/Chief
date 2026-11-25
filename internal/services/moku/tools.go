@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -301,26 +300,14 @@ func (c *Coordinator) executeTool(ctx context.Context, owner, name string, raw j
 			}
 			return encode(map[string]any{"ok": true, "threadId": id, "answer": answer})
 		}
-	case "update_note":
-		text, expected, err := parseNoteUpdate(raw)
-		if err != nil {
-			return nil, plugin.CallerError(err)
-		}
-		if c.config.UpdateNote == nil {
-			return nil, errors.New("Chief note update unavailable")
-		}
-		updated, err := c.config.UpdateNote(ctx, owner, text, expected)
-		if err != nil {
-			return nil, err
-		}
-		return encode(updated)
-	case "talk", "timer":
+	case "talk":
 		original, ok := object["text"].(string)
 		if !ok {
 			return nil, fmt.Errorf("%s 的 text 必须是纯文本字符串", name)
 		}
-		if utf8.RuneCountInString(original) > TalkTextMaxCharacters {
-			return nil, fmt.Errorf("%s 的 text 最多 %d 个 Unicode 码点（含空白和换行）；请缩短后重试，内容不会截断", name, TalkTextMaxCharacters)
+		limit := TalkTextMaxCharacters
+		if utf8.RuneCountInString(original) > limit {
+			return nil, fmt.Errorf("%s 的 text 最多 %d 个 Unicode 码点（含空白和换行）；请缩短后重试，内容不会截断", name, limit)
 		}
 		if len(object) != 1 {
 			return nil, fmt.Errorf("%s 只接受 text 参数", name)
@@ -407,62 +394,6 @@ func (c *Coordinator) sendToThread(ctx context.Context, arguments map[string]any
 		results = append(results, result)
 	}
 	return json.Marshal(map[string]any{"ok": ok, "results": results})
-}
-
-// parseNoteUpdate is the protocol boundary for update_note. The whole note is
-// replaced, so an exactly empty string is the explicit clear and every other
-// input must be usable, user-visible Markdown. Rejections are caller-correctable
-// and never truncate the submitted content.
-func parseNoteUpdate(raw json.RawMessage) (string, *model.NoteBasis, error) {
-	object, err := model.DecodeObject(raw)
-	if err != nil {
-		return "", nil, errors.New("update_note 参数无效")
-	}
-	text, ok := object["text"].(string)
-	value, present := object["expected"]
-	if !ok || !present || len(object) != 2 {
-		return "", nil, errors.New("update_note 只接受 text 和 expected 参数")
-	}
-	if utf8.RuneCountInString(text) > NoteTextMaxCharacters {
-		return "", nil, fmt.Errorf("update_note 的 text 最多 %d 个 Unicode 码点（含空白和换行）；请缩短后重试，内容不会截断", NoteTextMaxCharacters)
-	}
-	if text != "" {
-		blank := strings.TrimFunc(text, func(r rune) bool { return r == '\u0085' || mokuWhitespace(r) }) == ""
-		if blank || strings.ContainsRune(text, 0) {
-			return "", nil, errors.New("update_note 的 text 必须包含非空白内容，且不能包含 NUL；仅空字符串可以清除笔记")
-		}
-	}
-	if value == nil {
-		return text, nil, nil
-	}
-	basis, ok := value.(map[string]any)
-	if !ok || len(basis) != 3 {
-		return "", nil, errors.New("update_note expected 无效")
-	}
-	id, ok := basis["noteId"].(string)
-	if !ok || !noteUUID.MatchString(id) {
-		return "", nil, errors.New("update_note expected.noteId 无效")
-	}
-	revision, ok := noteSafeInteger(basis["revision"], 1)
-	if !ok {
-		return "", nil, errors.New("update_note expected.revision 无效")
-	}
-	reading, ok := noteSafeInteger(basis["readingRevision"], 0)
-	if !ok {
-		return "", nil, errors.New("update_note expected.readingRevision 无效")
-	}
-	return text, &model.NoteBasis{NoteID: id, Revision: revision, ReadingRevision: reading}, nil
-}
-
-var noteUUID = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-
-func noteSafeInteger(value any, minimum int64) (int64, bool) {
-	n, ok := value.(json.Number)
-	if !ok {
-		return 0, false
-	}
-	v, err := n.Int64()
-	return v, err == nil && v >= minimum && v <= model.MaximumSafeInteger
 }
 
 func (c *Coordinator) target(ctx context.Context, id string, description ThreadCreationDescription) (plugin.Harness, json.RawMessage, error) {

@@ -29,14 +29,6 @@ The parsers and validators above are production boundaries. No executable
 command-boundary replay is configured in this source tree; see the
 [verification index](../../../tools/verification/facts.md).
 
-`ThreadNote` carries `readingRevision` and one server-owned `lastExposure` snapshot.
-An exposure is evidence that the exact nonempty revision completed foreground
-viewport coverage; it does not assert attention, understanding or approval.
-`moku:record-note-exposure` is a write command with one closed object containing
-`noteId` (UUID), positive safe `revision`, and the sole signal
-`complete-viewport-coverage-v1`. Validation rejects client text, timestamps,
-extra fields and out-of-range numbers before Runtime admission.
-
 `harness:detect-installation` is a read-only command with one bounded Harness ID
 string. It returns that Harness's installation facts independently. The existing
 zero-argument `harness:detect-installations` command remains explicit environment
@@ -46,7 +38,7 @@ refresh and batch recovery.
 display-only `directoryTag`. The scope must be nonempty, at most 4096 UTF-16 units
 and contain no NUL; a display tag never identifies a selected directory.
 
-`ThreadRecord.mokuHistory` marks an archived, read-only conversation retained when the coordinating Harness changes. It retains the original Harness payload and transcript but no Moku note; Runtime forbids execution, fork and unarchiving. Current Moku identity remains singular.
+`ThreadRecord.mokuHistory` marks an archived, read-only conversation retained when the coordinating Harness changes. It retains the original Harness payload and transcript. Runtime forbids execution, fork and unarchiving. Current Moku identity remains singular.
 
 A managed Thread has a `worktree.cwd` for execution, separate from its base
 `cwd`. After [explicit removal](../../services/workspaces/README.md#explicit-removal)

@@ -17,18 +17,16 @@ public struct ThreadCardProviderStatus: View {
     public let terminal: ThreadCardTerminalStatus?
     public let running: Bool
     public let completedBackground: Bool
-    public let usesRegularGlass: Bool
     public let emojiUsesLiquidGlass: Bool
     @Environment(\.locale) private var locale
     @Environment(\.threadCardUnread) private var unread
     @Environment(\.threadCardProviderColor) private var providerColor
     public init(label: String, brandKey: String, emoji: String? = nil,
-                terminal: ThreadCardTerminalStatus? = nil, completedBackground: Bool = false, usesRegularGlass: Bool = false,
+                terminal: ThreadCardTerminalStatus? = nil, completedBackground: Bool = false,
                 emojiUsesLiquidGlass: Bool = false, running: Bool = false) {
         self.label = label; self.brandKey = brandKey; self.emoji = emoji; self.terminal = terminal
         self.running = running
         self.completedBackground = completedBackground
-        self.usesRegularGlass = usesRegularGlass
         self.emojiUsesLiquidGlass = emojiUsesLiquidGlass
     }
     public var body: some View {
@@ -47,7 +45,7 @@ public struct ThreadCardProviderStatus: View {
             }
         }
         .modifier(ThreadCardBadgeMaterial(hasEmoji: emoji?.isEmpty == false,
-            completed: terminal == .completed || completedBackground, usesRegularGlass: usesRegularGlass,
+            completed: terminal == .completed || completedBackground,
             emojiUsesLiquidGlass: emojiUsesLiquidGlass))
         .overlay(alignment: .topLeading) {
             if unread {
@@ -77,15 +75,11 @@ public struct ThreadCardProviderStatus: View {
 private struct ThreadCardBadgeMaterial: ViewModifier {
     let hasEmoji: Bool
     let completed: Bool
-    let usesRegularGlass: Bool
     let emojiUsesLiquidGlass: Bool
     @Environment(\.threadCardUsesFlatMaterials) private var flatMaterials
 
     @ViewBuilder func body(content: Content) -> some View {
-        if usesRegularGlass {
-            content.nativeRegularCardGlass(in: Circle(), opaque: NativePalette.overviewWorkStatusFill.swiftUI,
-                tint: .mint.opacity(0.12), interactive: true)
-        } else if emojiUsesLiquidGlass && hasEmoji {
+        if emojiUsesLiquidGlass && hasEmoji {
             content.nativeRegularCardGlass(in: Circle(), opaque: completed
                 ? NativePalette.overviewWorkStatusFill.swiftUI : NativePalette.overview.surfaceStrong.swiftUI)
         } else if flatMaterials && hasEmoji {

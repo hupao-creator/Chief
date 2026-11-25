@@ -24,7 +24,7 @@ public enum NativeWorkspaceAction: Sendable {
     case overviewScroll(Double), overviewRetry
     case overviewActivateFilter(NativeOverviewControlGroup, String)
     case overviewScrollFilter(String)
-    case toggleMokuInput, toggleMokuNote
+    case toggleMokuInput
 
     public var name: String {
         switch self {
@@ -42,7 +42,6 @@ public enum NativeWorkspaceAction: Sendable {
         case .overviewActivateFilter: "overview.filters.activate"
         case .overviewScrollFilter: "overview.filters.scroll"
         case .toggleMokuInput: "moku.input.toggle"
-        case .toggleMokuNote: "moku.note.toggle"
         }
     }
 
@@ -108,7 +107,6 @@ public enum NativeWorkspaceAction: Sendable {
             self = .overviewActivateFilter(group, try string("id"))
         case "overview.filters.scroll": try fields(["filterId"]); self = .overviewScrollFilter(try string("filterId"))
         case "moku.input.toggle": try fields([]); self = .toggleMokuInput
-        case "moku.note.toggle": try fields([]); self = .toggleMokuNote
         default: throw NativeInteractionError("invalid_request", "Unknown action: \(name)")
         }
     }

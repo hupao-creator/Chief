@@ -87,6 +87,12 @@ joins Chief's resource. Confirming waits for the revision-checked save of the co
 The save does not reacquire native snapshots for the copied profiles or recheck
 the selected Harness's native catalog.
 
+Below the independent Harness picker, basic and expanded advanced fields use
+the shared Settings form rhythm. The field stacks get their spacing from each
+row's vertical padding. **Advanced options** starts collapsed, and
+conditional fields only occupy space while visible.
+See the [form spacing replay](../../../../../tools/e2e/README.md#onboarding-agent-configuration-form-spacing).
+
 Tag and Super Thread share Settings' Agent off, Use Chief and Configure separately
 choices. Turning a role off keeps its source mode and retained independent
 profile, and bypasses that role's resource/availability gate. Selecting either

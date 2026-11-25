@@ -76,6 +76,7 @@ def journey(desktop, reports):
     def unread_by_folder(state):
         return {f["scope"]: f["unreadCount"] for f in state["overview"]["filters"] if f["kind"] == "directory"}
 
+    desktop.request({"name": "filter.select", "filterId": library["id"]})
     initial = observe("initial", refs, refs[:6])
     fresh = {d["scope"]: len(reports_in(d["scope"])) + 1 for d in directories}
     assert unread_by_folder(initial) == fresh

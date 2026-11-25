@@ -31,6 +31,14 @@ import SwiftUI
         }
     }
 
+    static func firstView<T: NSView>(in node: NSView, matching: (T) -> Bool) -> T? {
+        if let candidate = node as? T, matching(candidate) { return candidate }
+        for child in node.subviews {
+            if let match = firstView(in: child, matching: matching) { return match }
+        }
+        return nil
+    }
+
     static func capture() async throws {
         try prepareIsolatedNativeReplay()
         let args = CommandLine.arguments
@@ -130,7 +138,16 @@ import SwiftUI
                     try pressReadingPanelClose(in: panel, identifier: "agent-reading-panel-frame")
                 }
                 try await wait("Overview did not regain the bar") { host.selected == nil && scene.overviewVisible && !scene.inputOpen }
-                try await Task.sleep(for: .milliseconds(1150))
+                try await wait("Dock did not release the reading column") {
+                    scene.harnessSeat == nil && abs(scene.capsuleFrame.midX - view.bounds.midX) < 1
+                }
+                guard let travel: MokuHorizontalTravelView = firstView(in: view, matching: { _ in true }) else {
+                    throw PluginContractError("Missing Dock carrier")
+                }
+                // Let the model destination commit before sampling its two native axes.
+                try await Task.sleep(for: .milliseconds(80))
+                try await wait("Dock did not finish its lift") { travel.presentationCorrection == .zero }
+                try await Task.sleep(for: .milliseconds(100))
             } catch {
                 record("failed")
                 try saveObservations(failure: String(describing: error))

@@ -39,12 +39,14 @@ parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--capture", action="store_true", help="save images of the wide, narrow and four-column layouts")
 parser.add_argument("--keyboard", action="store_true", help="focus a card with system Accessibility and check arrow keys and Return")
 scenario = parser.add_mutually_exclusive_group()
-scenario.add_argument("--note-click", action="store_true", help="run Note and scroll interactions entirely at actual size")
+scenario.add_argument("--bar-swipe", action="store_true", help="run Chief Bar and scroll interactions entirely at actual size")
 scenario.add_argument("--conversation-opening", action="store_true", help="record Chief Bar opening and verify the native reading position")
 scenario.add_argument("--conversation-performance", action="store_true", help="measure five Chief Bar openings against a full cached page using Release modules")
 parser.add_argument("--profile-opening", action="store_true", help="sample the main thread during the first measured opening")
-scenario.add_argument("--note-link", action="store_true", help="follow Chief Note execution links across and within tag spaces")
+scenario.add_argument("--talk-link", action="store_true", help="click execution links in Talk notifications and conversation history across and within tag spaces")
+scenario.add_argument("--tag-states", action="store_true", help="check untagged running work and select every assigned tag")
 scenario.add_argument("--tag-read", action="store_true", help="check tag read receipts with window-local pointer input")
+scenario.add_argument("--unread-filter", action="store_true", help="exercise the native Unread preset and mark-as-read receipts")
 scenario.add_argument("--status-only", action="store_true", help="run the mounted folder and Inbox rail scenario, including full screen")
 scenario.add_argument("--completed-card", action="store_true", help="capture the completed Inbox card in both languages")
 parser.add_argument("--header-glass", action="store_true", help="capture and measure the production directory row over gray")
@@ -52,9 +54,9 @@ parser.add_argument("--rail-hover", action="store_true", help="capture the mount
 args = parser.parse_args()
 if args.profile_opening and not args.conversation_performance:
     parser.error("--profile-opening requires --conversation-performance")
-if (args.header_glass or args.rail_hover) and (args.tag_read or args.status_only or args.completed_card or args.note_click or args.note_link or args.conversation_opening or args.conversation_performance):
+if (args.header_glass or args.rail_hover) and (args.unread_filter or args.tag_read or args.tag_states or args.status_only or args.completed_card or args.bar_swipe or args.talk_link or args.conversation_opening or args.conversation_performance):
     parser.error("choose dedicated chrome captures or the workspace scenario")
-if (args.tag_read or args.note_link or args.status_only or args.completed_card or args.conversation_opening or args.conversation_performance or args.header_glass or args.rail_hover) and args.keyboard:
+if (args.unread_filter or args.tag_read or args.tag_states or args.talk_link or args.status_only or args.completed_card or args.conversation_opening or args.conversation_performance or args.header_glass or args.rail_hover) and args.keyboard:
     parser.error("--keyboard requires the card interaction scenario")
 with lease() if args.conversation_performance else nullcontext(), native_lease():
     args.output.mkdir(parents=True, exist_ok=False)
@@ -99,14 +101,18 @@ with lease() if args.conversation_performance else nullcontext(), native_lease()
                     "cpu": subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True).strip()},
                     indent=2) + "\n")
         arguments = ["--capture"] if args.capture or args.completed_card else []
-        if args.note_link:
-            arguments.append("--note-link")
-        if args.note_click:
-            arguments.append("--note-click")
+        if args.talk_link:
+            arguments.append("--talk-link")
+        if args.bar_swipe:
+            arguments.append("--bar-swipe")
         if args.conversation_opening:
             arguments.append("--conversation-opening")
+        if args.tag_states:
+            arguments.append("--tag-states")
         if args.tag_read:
             arguments.append("--tag-read")
+        if args.unread_filter:
+            arguments.append("--unread-filter")
         if args.conversation_performance:
             arguments.append("--conversation-performance")
         if args.profile_opening:
@@ -118,9 +124,9 @@ with lease() if args.conversation_performance else nullcontext(), native_lease()
         if args.keyboard:
             arguments.append("--keyboard")
         with keyboard_client(replay, args.output) if args.keyboard else nullcontext():
-            # The combined visit also runs the reminder, card fitting, status rail and Landing scenarios.
+            # The combined visit also runs card fitting, status rail and Landing scenarios.
             timeout = 75 if args.status_only or args.completed_card else 60
-            status = replay.run(arguments, timeout=150 if args.note_click else timeout)
+            status = replay.run(arguments, timeout=150 if args.bar_swipe or args.talk_link else timeout)
     finally:
         try:
             replay.export(args.output)
@@ -133,10 +139,14 @@ if args.header_glass or args.rail_hover:
     passed = all((args.output / receipt).is_file() and
                  json.loads((args.output / receipt).read_text()).get("status") == "passed" for receipt in receipts)
     sys.exit(status or int(not passed))
+if args.tag_states:
+    sys.exit(status or int(not (args.output / "tag-states.json").is_file()))
 if args.tag_read:
     sys.exit(status or int(not (args.output / "tag-read.json").is_file()))
-if args.note_link:
-    sys.exit(status or int(not (args.output / "note-links.json").is_file()))
+if args.unread_filter:
+    sys.exit(status or int(not (args.output / "unread-filter.json").is_file()))
+if args.talk_link:
+    sys.exit(status or int(not (args.output / "talk-links.json").is_file()))
 if args.completed_card:
     sys.exit(status or int(not (args.output / "overview-completed-card.json").is_file()))
 if args.conversation_opening:
@@ -152,7 +162,7 @@ if args.conversation_performance:
 if args.status_only:
     sys.exit(status or int(not (args.output / "overview-status.json").is_file()))
 receipts = ["overview-scroll.json", "overview-fit.json"]
-receipts += ["overview-status.json", "overview-note-click.json", "landing-note-click.json", "reminder-note-ownership.json"] if args.note_click else ["nested-header.json", "collection-fit.json"]
+receipts += ["overview-status.json", "overview-bar-swipe.json", "landing-bar-swipe.json"] if args.bar_swipe else ["nested-header.json", "collection-fit.json"]
 if args.keyboard:
     receipts.append("overview-keyboard.json")
 sys.exit(status or int(not all((args.output / name).is_file() for name in receipts)))

@@ -57,7 +57,7 @@ fill missing historical titles.
 
 This is a native reader policy shared by Codex, Claude, Pi and OpenCode across
 live, loaded historical, inherited/fork and deferred execution content (including
-OpenCode child sessions). Chief's coordinator audit, Note and Dock retain
+OpenCode child sessions). Chief's coordinator audit and Dock retain
 their own projections. Adjacent execution entries stay grouped across hidden entries. Running/waiting
 executions retain settled assistant replies. Unfinished assistant messages do
 not display incrementally: each message renders its complete body only after
@@ -169,9 +169,9 @@ New shared features register once through `NativePlugins.make()`. Platform-speci
 ## System appearance and language
 
 AppKit supplies the appearance for the workspace, auxiliary windows and native
-panels. SwiftUI and WebKit reading surfaces, Settings, and the first-run forms
-inherit the workspace color scheme. Chief's Dock uses its dark capsule material,
-and the expanded Settings surface and its header character use the system scheme.
+panels. SwiftUI and WebKit reading surfaces and the first-run forms
+inherit the workspace color scheme. The Dock’s local dark appearance extends
+to the expanded Settings panel, its header character and its form controls.
 
 Chief uses the first language in macOS's global preferred-language list. Chinese
 language identifiers, across scripts and regions, resolve to Simplified Chinese
@@ -239,7 +239,7 @@ Agent panels carry source title/emoji ink separately during deferred opening,
 show a scoped skeleton while loading, and draw the full parsed Markdown body
 once the reader is admitted. Completed turns keep their footer in the normal layout; running turns keep
 their existing latest-message positioning.
-Closing retains the 420ms native return: reader content fades over the first
+Closing to a visible card takes 420ms. Reader content fades over the first
 80%, travel reaches the source card at 86%, and the shell crossfades to the
 refreshed card over the final 14%. See the shared PluginUI and WindowNavigation
 documentation for lifecycle boundaries and the current presentation contracts.
@@ -277,12 +277,10 @@ and [production-component demo](../../demos/report-thread/README.md).
 Super Thread browsing combines profile-local reading activity with the layout
 of the current filter in the available window. Reading a report or a uniquely associated Thread can promote
 the report. The Report renderer keeps a sliding cover, fading
-metadata and stationary Liquid Glass navigation. Collections also provide a
-continuous regular-glass backdrop and regular-glass emoji badges at the existing
-metadata seat; the Host omits only their opaque shell. The 4pt internal spacing
-shares the backdrop, preserving the card geometry without a visible seam.
-Reduce Transparency uses opaque palette fills. Single Report cards retain their
-ordinary flat material.
+metadata. The page count and hover navigation use stationary Liquid Glass
+over the cover. The collection card shares the ordinary Report card's opaque
+shell, metadata and emoji badge. Its member grid opens on a rounded regular
+Liquid Glass panel with an opaque reading fill under Reduce Transparency.
 See [Overview collection ownership](Sources/Host/Overview/README.md#viewed-application-collections)
 and the [production fixture](../../demos/super-thread-carousel/README.md).
 

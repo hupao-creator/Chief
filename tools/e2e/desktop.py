@@ -128,7 +128,7 @@ class Desktop:
                 overview = state["overview"]
                 cards = overview["cards"]
                 agents = {card["ref"]["threadId"] for card in cards if card.get("ref", {}).get("typeId") == "agent"}
-                statuses = ["running", "all", "completed"] if space["scope"] == "inbox" else ["running"]
+                statuses = ["running", "unread", "all", "completed"] if space["scope"] == "inbox" else ["running", "unread"]
                 return (state["page"] == "overview" and "overview.filters.activate" in state["actions"]
                         and state["selectedFilterId"] == space["id"] and overview["status"] == status
                         and set(overview["controls"]["status"]) == set(statuses)
@@ -150,6 +150,12 @@ class Desktop:
         running = settled("running", current, set())
         assert not running["overview"]["cards"]
         activate(other["kind"], other["id"])
+        if other["kind"] == "directory" and other["children"]:
+            # First entry selects the first visible tag. Click the current
+            # folder again to exercise its whole-folder membership below.
+            first_tag = other["children"][0]["id"]
+            self.stable(lambda s: s["selectedFilterId"] == first_tag)
+            activate("directory", other["id"])
         folder = settled("all", other, agents_in(other["scope"]))
         if other["scope"] == "inbox":
             activate("status", "completed")
@@ -189,21 +195,21 @@ class Desktop:
         save(self.session.output / "ui-overview.json", self.stable(lambda s: s["page"] == "overview"))
 
     def chief_controls(self):
-        overview = self.stable(lambda s: s["page"] == "overview" and "moku.note.toggle" in s["actions"])
-        assert "moku.history.toggle" not in overview["actions"]
+        overview = self.stable(lambda s: s["page"] == "overview" and "moku.input.toggle" in s["actions"])
         hidden = {t["id"] for t in self.session.runtime.state()["threads"] if t.get("moku") or t.get("mokuHistory")}
         assert hidden and hidden.isdisjoint(t["threadId"] for t in overview["threads"])
-        rejected = self.client.request({"name": "moku.history.toggle"})
-        assert rejected["ok"] is False and rejected["error"]["code"] == "invalid_request"
-        assert rejected["snapshot"]["page"] == "overview"
-        self.request({"name": "moku.note.toggle"})
-        note = self.stable(lambda s: s["page"] == "overview" and s["overview"]["dock"]["noteOpen"])
+        rejected = {}
+        for name in ("moku.history.toggle", "moku.note.toggle"):
+            assert name not in overview["actions"]
+            result = self.client.request({"name": name})
+            assert result["ok"] is False and result["error"]["code"] == "invalid_request"
+            assert result["snapshot"]["page"] == "overview"
+            rejected[name] = result
         self.request({"name": "moku.input.toggle"})
-        composer = self.stable(lambda s: s["page"] == "overview" and s["overview"]["dock"]["inputOpen"]
-                               and not s["overview"]["dock"]["noteOpen"])
+        composer = self.stable(lambda s: s["page"] == "overview" and s["overview"]["dock"]["inputOpen"])
         self.request({"name": "moku.input.toggle"})
         self.stable(lambda s: not s["overview"]["dock"]["inputOpen"])
-        save(self.session.output / "chief-controls.json", {"note": note, "composer": composer, "rejected": rejected})
+        save(self.session.output / "chief-controls.json", {"composer": composer, "rejected": rejected})
 
     def settings(self):
         def wait_for_chief():

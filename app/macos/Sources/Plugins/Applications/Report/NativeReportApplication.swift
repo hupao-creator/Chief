@@ -24,7 +24,7 @@ import SwiftUI
     }
     var bookmarkVersion: KeyPath<NativeReportView, JSONText>? { \.contentRevision }
     var overviewCollection: ApplicationOverviewCollectionPolicy? {
-        .init(footprint: .init(columns: 1, rows: 2), providesCardSurface: true)
+        .init(footprint: .init(columns: 1, rows: 2))
     }
     func estimatedReadingSeconds(entry: ApplicationThreadCatalogEntry<NativeReportView>) -> TimeInterval {
         TimeInterval(entry.view.readingSeconds)

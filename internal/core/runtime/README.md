@@ -22,14 +22,6 @@ sources stay absent. Invalid sources or storage failures roll back the whole
 change. No associated Super Thread/Collection is recursively archived, no links
 are removed, and restoring a report does not restore its sources.
 
-Moku note writes compare the note incarnation, content revision and
-`readingRevision` inside the store writer transaction. A mismatched basis returns
-the current note/evidence snapshot without changing the note. Full-exposure
-receipts accept only the current nonempty incarnation/revision, copying exact
-text from the authoritative record. Duplicate and stale receipts make no store
-write or notification. Reading evidence changes the Thread catalog revision but
-does not change `note.updatedAt`, create lifecycle events or wake Moku.
-
 [threads.go](threads.go) owns thread identity, execution admission and serialized session access. Harness session data remains opaque; each Harness validates it and produces its public observation and renderer projection. Accepted work belongs to the service and survives client disconnection.
 
 [Explicit worktree removal](worktree.go) requires an idle ordinary Thread.
@@ -78,10 +70,9 @@ Thread renderers retain the existing null projection and retry only that identit
 under `projectionMu`. `Snapshot` returns detached state; replays attached to a live
 Runtime use that public read boundary so the background publisher retains the
 same cache ownership.
-Moku audit previews additionally retain the latest 256 successful completed
-`timer` operations across executions so coalesced publication and reconnect can
-catch up immediate communication. The Swift workspace owns their transient
-queue and acknowledgments; Runtime adds no scheduling or receipt state. Loading a reading page does not reopen a native execution process. A coordinating-Harness change retains the prior Moku record as an archived, read-only `mokuHistory` conversation, including its native state and attachment ownership. These histories cannot be unarchived, forked, reconfigured or executed; native history questions and automatic admission also reject them. An explicit Moku history reset removes them and releases their attachments. Settled execution details are fetched on disclosure; live turns retain the information needed for output and interactions.
+The Moku catalog carries a bounded audit preview of the latest execution.
+The stored transcript retains tool operations as audit history.
+Loading a reading page does not reopen a native execution process. A coordinating-Harness change retains the prior Moku record as an archived, read-only `mokuHistory` conversation, including its native state and attachment ownership. These histories cannot be unarchived, forked, reconfigured or executed; native history questions and automatic admission also reject them. An explicit Moku history reset removes them and releases their attachments. Settled execution details are fetched on disclosure; live turns retain the information needed for output and interactions.
 
 The composer's known-directory lookup takes one store snapshot and reads each
 cwd from the matching immutable Thread record in the catalog cache. A changed
@@ -154,6 +145,8 @@ interruption with no pending input or background work, using the existing
 ### Chief conversation
 
 The `moku-conversation` content scope belongs to the current Chief Thread. On demand, Runtime reads one profile snapshot and merges that Thread’s full coordinator transcript with its retained, read-only Chief sessions. The compact catalog preview is limited to recent operations and truncated text. The [conversation projection](moku_conversation.go) reads the stored audit rows directly.
+
+Existing SQLite records may contain a legacy `note` field. Typed Thread reads ignore it and preserve the owner, session state and transcript. Loading a profile requires no rewrite. Historical tool operations stay in the audit and only successful Talk operations produce Chief dialogue.
 
 The coordinator records the original user input after admission. The reader takes complete user messages, their attachment names and completed, successful `talk` arguments. Directories retain their submitted mention text. Native Harness turns can include injected context and are ineligible as a dialogue source. Assistant reasoning, diagnostics, dispatches, timers, failed or pending Talk calls, and private tool arguments have no dialogue row.
 
@@ -342,7 +335,7 @@ by replacing the idle recovery handle.
 stable-ID tags and assignments from one immutable snapshot. Its content revision
 fences atomic mutations without reacting to unrelated stream writes. The writer
 checks revision, active membership and scope in the receipt transaction and returns
-current status on conflicts. [tags.go](tags.go) keeps public name/emoji projections
+current status on conflicts. A pool may contain a semantic tag named after the directory. Pool edits preserve distinct surviving assignments on existing Threads. [tags.go](tags.go) keeps public name/emoji projections
 and report source decoration synchronized while preserving stable tag identity.
 Archived Threads retain frozen decoration and do not consume active membership;
 restoration clears assignment before emitting `thread.restored`. Clearing

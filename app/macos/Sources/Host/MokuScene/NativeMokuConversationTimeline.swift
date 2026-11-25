@@ -3,17 +3,17 @@ import SwiftUI
 
 struct NativeMokuConversationTimeline: View {
     let page: NativeMokuConversationPage
+    let showsTyping: Bool
+    var workspace: NativeWorkspaceModel?
     let showEarlier: (JSONText) -> Void
     let showNewer: (() -> Void)?
     @Environment(\.calendar) private var calendar
     @Environment(\.locale) private var locale
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var viewport
     // Target the inset below the last bubble when the timeline first mounts.
     @State private var position = ScrollPosition(id: TimelineEnd.bottom, anchor: .bottomLeading)
     @State private var atBottom = true
     @State private var scrolling = false
-    @State private var revealed: CGFloat = 0
 
     private struct ReadingViewport: Equatable {
         let height: CGFloat
@@ -23,32 +23,25 @@ struct NativeMokuConversationTimeline: View {
     }
     private enum TimelineEnd: Hashable { case bottom }
 
-    private let timeColumn: CGFloat = 78
     private var chinese: Bool { locale.language.languageCode?.identifier == "zh" }
 
     var body: some View {
         GeometryReader { bounds in
             let width = bounds.size.width
             ScrollViewReader { proxy in
-                ScrollView([.horizontal, .vertical]) {
+                ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 0) {
                         if let cursor = page.before {
                             pageButton(chinese ? "较早消息" : "Earlier messages", width: width) { showEarlier(cursor) }
                                 .accessibilityIdentifier("moku-conversation-earlier")
                         }
-                        // The trailing rows and the end target share one exact layout. A tall last
-                        // reply must not resolve to a lazy height estimate on entry or on send.
-                        let rows = page.messages.enumerated()
-                        let tailCount = 6
-                        if rows.count > tailCount {
-                            LazyVStack(alignment: .leading, spacing: 0) {
-                                ForEach(rows.dropLast(tailCount), id: \.element.id) { index, message in
-                                    row(message, at: index, width: width, height: bounds.size.height)
-                                }
-                            }
-                        }
-                        ForEach(rows.suffix(tailCount), id: \.element.id) { index, message in
+                        ForEach(page.messages.enumerated(), id: \.element.id) { index, message in
                             row(message, at: index, width: width, height: bounds.size.height)
+                        }
+                        if showsTyping {
+                            ConversationTypingBubble(chinese: chinese)
+                                .padding(.leading, 14)
+                                .padding(.top, page.messages.last.map { $0.fromUser ? 14 : 7 } ?? 0)
                         }
                         if let showNewer {
                             pageButton(chinese ? "较新消息" : "Newer messages", width: width, action: showNewer)
@@ -57,18 +50,14 @@ struct NativeMokuConversationTimeline: View {
                         Color.clear.frame(height: 12).id(TimelineEnd.bottom)
                     }
                     .scrollTargetLayout()
-                    .frame(width: width + timeColumn, alignment: .leading)
+                    .frame(width: width, alignment: .leading)
                     .padding(.top, 12)
                     .reportMokuConversationHeight()
                 }
-                .scrollIndicators(.hidden, axes: .horizontal)
                 .defaultScrollAnchor(.bottomLeading, for: .initialOffset)
                 .defaultScrollAnchor(atBottom ? .bottomLeading : nil, for: .sizeChanges)
                 .defaultScrollAnchor(.topLeading, for: .alignment)
                 .scrollPosition($position)
-                .onScrollGeometryChange(for: CGFloat.self) { min(timeColumn, max(0, $0.visibleRect.minX)) } action: { _, x in
-                    revealed = x
-                }
                 .onScrollGeometryChange(for: ReadingViewport.self) { geometry in
                     let gap = geometry.contentSize.height - geometry.visibleRect.maxY
                     return ReadingViewport(height: geometry.containerSize.height, documentHeight: geometry.contentSize.height,
@@ -77,26 +66,19 @@ struct NativeMokuConversationTimeline: View {
                     let resized = before.height != after.height || before.documentHeight != after.documentHeight
                     // Layout can change the gap before the native offset settles. Only a reader
                     // moving through the document gives up following the latest reply.
-                    if !scrolling, revealed < 1, before.nearEnd, after.height < before.height {
-                        // A point used to release horizontal timestamps otherwise survives a
-                        // window or editor resize, even when the last bubble stayed visible.
+                    if !scrolling, before.nearEnd, after.height < before.height {
                         position.scrollTo(edge: .bottom)
                     } else if scrolling || (!resized && position.isPositionedByUser) {
                         atBottom = after.nearEnd
-                    } else if resized, atBottom, !after.atEnd, revealed < 1 {
+                    } else if resized, atBottom, !after.atEnd {
                         position.scrollTo(edge: .bottom)
                     }
                 }
-                .onScrollPhaseChange { _, phase, context in
+                .onScrollPhaseChange { _, phase in
                     scrolling = phase == .tracking || phase == .interacting || phase == .decelerating
-                    if (phase == .idle || phase == .decelerating), context.geometry.visibleRect.minX > 0.5 {
-                        // A point preserves the reader's vertical offset on a two-axis scroll view.
-                        let resting = CGPoint(x: 0, y: context.geometry.visibleRect.minY)
-                        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { position.scrollTo(point: resting) }
-                    }
                 }
                 .onChange(of: page.messages.last?.id) { _, last in
-                    if atBottom, revealed < 1, last != nil { proxy.scrollTo(TimelineEnd.bottom, anchor: .bottomLeading) }
+                    if atBottom, last != nil { proxy.scrollTo(TimelineEnd.bottom, anchor: .bottomLeading) }
                 }
             }
         }
@@ -113,23 +95,15 @@ struct NativeMokuConversationTimeline: View {
         return VStack(alignment: .leading, spacing: 0) {
             if starts {
                 separator(message.date)
-                    .frame(width: width).offset(x: revealed)
+                    .frame(width: width)
                     .padding(.top, index == 0 ? 2 : 20).padding(.bottom, 8)
             }
-            HStack(spacing: 0) {
-                ConversationBubble(message: message, tail: tail, viewport: viewport,
-                                   viewportHeight: height, chinese: chinese)
-                    .frame(maxWidth: max(1, (width - 28) * 0.76),
-                           alignment: message.fromUser ? .trailing : .leading)
-                    .padding(.horizontal, 14)
-                    .frame(width: width, alignment: message.fromUser ? .trailing : .leading)
-                    .offset(x: message.fromUser ? 0 : revealed)
-                Text(message.date, format: .dateTime.hour().minute())
-                    .font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary)
-                    .lineLimit(1).padding(.trailing, 13)
-                    .frame(width: timeColumn, alignment: .trailing)
-                    .accessibilityHidden(true)
-            }
+            ConversationBubble(message: message, tail: tail, viewport: viewport,
+                               viewportHeight: height, chinese: chinese, workspace: workspace)
+                .frame(maxWidth: max(1, (width - 28) * 0.76),
+                       alignment: message.fromUser ? .trailing : .leading)
+                .padding(.horizontal, 14)
+                .frame(width: width, alignment: message.fromUser ? .trailing : .leading)
         }
         .padding(.top, starts ? 0 : bubbleSpacing)
         .id(message.id)
@@ -141,7 +115,7 @@ struct NativeMokuConversationTimeline: View {
 
     private func pageButton(_ title: String, width: CGFloat, action: @escaping () -> Void) -> some View {
         Button(title, action: action).buttonStyle(.plain).font(.caption).foregroundStyle(.secondary)
-            .padding(.vertical, 6).frame(width: width).offset(x: revealed)
+            .padding(.vertical, 6).frame(width: width)
     }
 
     private func separator(_ date: Date) -> some View {
@@ -170,22 +144,26 @@ private struct ConversationBubble: View {
     let viewport: Namespace.ID
     let viewportHeight: CGFloat
     let chinese: Bool
-    @Environment(\.colorScheme) private var scheme
+    let workspace: NativeWorkspaceModel?
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         let user = message.fromUser
         let shape = ConversationBalloon(outgoing: user, tail: tail)
         let speaker = user ? (chinese ? "你" : "You") : "Chief"
-        let spoken = ([speaker, message.text] + message.attachments).filter { !$0.isEmpty }.joined(separator: ", ")
+        let talk = user ? nil : NativeMokuTalkText(message.text)
+        let spoken = ([speaker, talk?.hasLinks == true ? "" : message.text] + message.attachments).filter { !$0.isEmpty }.joined(separator: ", ")
         VStack(alignment: .leading, spacing: 4) {
-            if !message.text.isEmpty { Text(verbatim: message.text).textSelection(.enabled) }
+            if !message.text.isEmpty {
+                if let talk, talk.hasLinks { NativeMokuTalkLinks(content: talk, workspace: workspace, compact: false) }
+                else { Text(verbatim: message.text).textSelection(.enabled) }
+            }
             ForEach(message.attachments.indices, id: \.self) { i in
                 Label(message.attachments[i], systemImage: "paperclip").font(.callout).lineLimit(2)
             }
         }
         .font(.system(size: 15))
-        .foregroundStyle(user || scheme == .dark ? Color.white : .black)
+        .foregroundStyle(Color.white)
         .padding(.horizontal, 13).padding(.vertical, 7)
         .padding(.bottom, tail ? ConversationBalloon.tailHeight : 0)
         .background {
@@ -201,20 +179,56 @@ private struct ConversationBubble: View {
                                               endPoint: .init(x: 0.5, y: (viewportHeight - y) / height)))
                 }
             } else {
-                shape.fill(scheme == .dark ? Color(red: 0.19, green: 0.19, blue: 0.20)
-                                          : Color(red: 0.914, green: 0.914, blue: 0.918))
+                shape.fill(ConversationBalloon.incomingColor)
             }
         }
         .help(Text(message.date, format: .dateTime))
-        .accessibilityElement(children: .ignore)
-        .accessibilityAddTraits(.isStaticText)
+        .accessibilityElement(children: talk?.hasLinks == true ? .contain : .ignore)
+        .accessibilityAddTraits(talk?.hasLinks == true ? [] : .isStaticText)
         .accessibilityLabel(Text("\(Text(verbatim: spoken)) — \(Text(message.date, format: .dateTime))"))
         .accessibilityIdentifier("moku-conversation-message")
     }
 }
 
+private struct ConversationTypingBubble: View {
+    let chinese: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Group {
+            if reduceMotion {
+                dots(time: 0)
+            } else {
+                TimelineView(.animation(minimumInterval: 1 / 30)) { clock in
+                    dots(time: clock.date.timeIntervalSinceReferenceDate)
+                }
+            }
+        }
+        .frame(width: 49, height: 28)
+        .padding(.bottom, ConversationBalloon.tailHeight)
+        .background(ConversationBalloon(outgoing: false, tail: true).fill(ConversationBalloon.incomingColor))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(chinese ? "Chief 正在处理" : "Chief is working")
+        .accessibilityAddTraits(.isStaticText)
+        .accessibilityIdentifier("moku-conversation-typing")
+    }
+
+    private func dots(time: TimeInterval) -> some View {
+        HStack(spacing: 4) {
+            ForEach(0..<3) { index in
+                let phase = (time - Double(index) * 0.14).truncatingRemainder(dividingBy: 1.45)
+                let lift = phase > 0 && phase < 0.64 ? (1 - cos(2 * .pi * phase / 0.64)) / 2 : 0
+                Circle().fill(.white.opacity(0.58 + 0.30 * lift))
+                    .frame(width: 6, height: 6)
+                    .offset(y: -2.5 * lift)
+            }
+        }
+    }
+}
+
 /// The terminal tail turns down from inside the lower corner and stays within the balloon's width.
 private struct ConversationBalloon: Shape {
+    static let incomingColor = Color(red: 0.19, green: 0.19, blue: 0.20)
     static let tailHeight: CGFloat = 5.5
     let outgoing: Bool
     let tail: Bool

@@ -40,17 +40,10 @@ normalizes its distinct labels once. The
 [CPU benchmark and scenario matrix](../../../../../tools/verification/overview-performance/README.md)
 distinguishes model work from GUI and GPU work.
 
-Ordinary Overview cards, including Agent Threads and individual Reports, use
-opaque palette surfaces and a soft border, including completed cards.
-Super Thread collections provide one continuous regular Liquid Glass plate
-behind their cover, metadata and intervening layout space. Their policy's
-`providesCardSurface` omits the Canvas's opaque shell; glass remains in the
-semantic camera plane so scrolling updates its backdrop geometry. Collection
-emoji badges opt into regular glass with a light mint tint at the unchanged
-44pt diameter / top 12pt / trailing 17pt metadata seat. Reduce Transparency
-uses opaque palette fills; the material helper falls back to system Material
-when Liquid Glass is unavailable. Other card content keeps the shared flat
-policy for provider badges, terminal marks and plan highlights.
+Overview cards, including Agent Threads, individual Reports and Super Thread
+collections, use the Canvas's opaque palette surface and soft border. Reports
+share their metadata and flat 44pt emoji badge across individual cards,
+carousel pages and member cards. Carousel navigation retains native Liquid Glass.
 Running Agent Threads show a diagonal sweep of harness-colored perforations
 behind the stationary emoji. Reduce Motion holds the pattern still. Idle badges
 have a neutral fill and completed badges have a green completion fill and
@@ -58,8 +51,6 @@ terminal symbol. Their accessible labels follow the projected execution status.
 The isolated `--benchmark-agent-emoji-badge liquid-glass` scenario can compare only
 Agent emoji backdrops with regular glass; ordinary launch defaults and all other
 card materials remain unchanged. See the [external comparison](../../../../../tools/benchmarks/README.md#agent-emoji-badge-material-comparison).
-Only Super Thread collections opt into the new card material; individual Report
-and ordinary Thread surfaces stay flat.
 There is no `glass world` preference. The filter capsules, Moku,
 Settings and shared controls outside a card keep their own materials.
 
@@ -260,11 +251,11 @@ of selection. A vertically dominant unmodified line-wheel event steps the same l
 
 The background, cards, carousel cover and filter controls accept these gestures.
 Horizontal starts retain their original owner through reversals. The
-[Chief Bar](../MokuScene/README.md#chief-bar-conversation) claims a physical upward swipe to open its conversation. A secondary click on the collapsed Bar opens Chief Note. Vertically
-overflowing native viewports keep scrolling at either limit. Open Note, editing,
+[Chief Bar](../MokuScene/README.md#chief-bar-conversation) opens its conversation on secondary click and excludes filter swipes. Vertically
+overflowing native viewports keep scrolling at either limit. Editing,
 interventions, onboarding, Settings, readers and collection panels keep their input.
 
-The directory Running tag filters the whole directory. Inbox statuses filter the selected top-level semantic tag. Both use eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and interrupted tasks with no ongoing work remain visible in ordinary directory and semantic selections and in the Inbox's All statuses view. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, redundancy rules, counts, activity indicators and current tag selection use the full eligible catalog.
+The directory Running tag filters the whole directory. Running, All statuses and Completed in Inbox filter the selected top-level semantic tag. These scoped views use eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and interrupted tasks with no ongoing work remain visible in ordinary directory and semantic selections and in the Inbox's All statuses view. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, counts, activity indicators and current tag selection use the full eligible catalog.
 
 The [Running and Completed empty states](NativeOverviewStatusPresentation.swift) center the
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
@@ -274,7 +265,7 @@ canvas above the localized status title, with no panel or scroll hint. The
 skillet gently bobs while three lowercase z’s drift above it. Reduce Motion
 holds both still. Each title is exposed to accessibility and the empty
 presentation passes input through to Overview. An empty ordinary selection shows a localized title and tag-switch hint on an opaque surface.
-The [status replay](../../../../../demos/moku-landing/README.md#overview-note-click-at-actual-size)
+The [status replay](../../../../../demos/moku-landing/README.md#overview-bar-swipe-at-actual-size)
 exercises empty and populated states and both input types.
 
 The selected left button stays expanded when its result is empty. Card borders stay the same on pointer hover. In the Inbox **Completed** view, keyboard
@@ -298,7 +289,7 @@ A superseded layout worker cannot pause input after a newer layout has settled o
 The top row and left rail stay mounted behind Agent and Report readers. When a
 panel begins its return to Overview, both filter groups approach
 their resting positions together, traveling 16pt inward from the left and top
-on the same 420ms curve.
+over the duration of the panel return.
 They regain input and accessibility when Overview owns the route. Reopening the
 reader during return withdraws both groups from their current positions.
 Reduce Motion keeps them at their resting coordinates during the backdrop fade.
@@ -312,11 +303,13 @@ turns so metadata and cached posters can enter with the card transition.
 [Report cover contract](../../../../../internal/plugins/applications/report/README.md#cover-cards)
 and [mounted switch benchmark](../../../../../tools/verification/tag-space/README.md).
 
-The top row lists project directories and Inbox semantic tags. A Thread needs at
-least one assigned semantic tag to participate in a space. Agent membership uses
-`HarnessThread.tags`; application membership uses `tags.semanticTags`. Directory
-labels alone do not create a space or contribute cards, unread counts or activity.
-An untagged Report cannot hide a tagged source through execution coverage.
+The top row lists project directories and Inbox semantic tags. An eligible Agent
+Thread with a displayable project directory contributes its folder and card in
+the same catalog update, including when `HarnessThread.tags` is empty.
+The folder uses the Thread’s canonical directory scope and display label.
+An Inbox Thread contributes a top-row tag once it has a semantic assignment.
+Application membership requires `tags.semanticTags`. An untagged Report cannot
+hide a source through execution coverage.
 
 A live first semantic assignment selects the Agent Thread's scoped filter through
 normal selection reconciliation. A fork born with an inherited tag counts as a new
@@ -332,21 +325,21 @@ Inbox groups work without a persistent directory, including managed temporary
 roots. Each exposed Inbox tag has its own button with an emoji and title.
 Overview restores the profile's last folder, Inbox tag or directory child when
 the catalog first offers spaces. With no eligible saved match, it selects the
-first nonempty top-row filter in display order. The selection, card membership
+first top-row filter in display order. The selection, card membership
 and published context resolve together. The startup surface waits for the
 live catalog while the initial connection is in progress. When startup falls
 back to the disk cache, a provisional automatic selection leaves the preference
 intact. An explicit choice is saved and live hydration resolves the preference
 again. The header reveals the selected chip
-when its filters first appear. A populated workspace without a space shows a
-tag-specific empty message and hides the filters. An empty or
-unloaded catalog leaves the saved choice intact for the next nonempty catalog.
-The directory-wide selection shows its tagged members. Its top button keeps its name and folder-wide unread count when
+when its filters first appear. With no spaces, Overview shows eligible untagged Agent Threads that match Running.
+An empty result uses the sleeping skillet and the localized running empty state.
+An empty or unloaded catalog leaves the saved choice intact for the next nonempty catalog.
+The directory-wide selection includes Agent Threads awaiting classification. Its top button keeps its name and folder-wide unread count when
 a child is selected. A project directory named Inbox and a semantic tag named
 Inbox have distinct identities, icons and memberships.
 
 The left column lists the selected directory's visible semantic tags in their
-existing order, followed by the built-in ⏳ Running choice at every count.
+existing order, followed by the built-in ⏳ Running and 🔖 Unread presets.
 Running uses the directory's full eligible task membership and a distinct
 control identity from any user tag named Running. Selecting an ordinary tag
 or the current folder opens its full membership. Clicking another folder
@@ -354,34 +347,32 @@ restores its last left choice, falling back to its first visible semantic tag
 or the whole directory. The built-in is never an automatic first selection.
 
 For a top-row Inbox semantic tag the left column instead offers Running,
-All statuses and Completed in that order. An Inbox status stays with the
-selected tag during catalog updates. Choosing another Inbox tag or reopening
-the app starts that tag at All statuses. A real directory named Inbox uses
-the ordinary directory rail.
+Unread, All statuses and Completed in that order. An Inbox status stays with the
+selected tag during catalog updates. Switching top buttons in Unread keeps that
+preset active. Other Inbox tag changes and reopening the app start at All statuses.
+A real directory named Inbox uses the ordinary directory rail.
+
+If eligible conversations exist without a selected space, the left column offers
+Running and Unread, starting with the default untagged running view. Unread
+uses the [bookmark membership](#unread-bookmarks) and keeps a canvas position
+for each top-row space. It is session-local. Selecting the current top button,
+a left-side tag or another preset leaves Unread. A live first assignment can
+update the underlying space while Unread stays selected.
 
 Saved choices use filter kind and canonical scope. The optional directory
 `runningTag` marks an explicit built-in selection. `overviewRunningDirectories`
 remembers that choice on reentry alongside ordinary saved directory tags. Absent
 fields use the catalog selection. Inbox status is session-local. Semantic choices also use
 the catalog's normalized name matching and scoped redirects. Display labels,
-emoji and positions can change independently. Each scope exposes up to five
-semantic tags. Directory membership uses persistent
+emoji and positions can change independently. Overview lists every distinct assigned semantic name in the eligible catalog. Directory membership uses persistent
 scope identity and excludes managed temporary roots. A symlink alias or linked
 checkout with another label remains in its canonical directory, and
 same-named directories stay separate.
 
-The left column omits a directory's sole semantic child when its actual selected
-Agent Thread ID set and application thread reference set both equal the
-directory's sets. This uses eligible catalog membership after the ordinary
-visibility/archive and report-coverage rules; equal member counts
-alone are insufficient. Tagged directory-only documents that change
-those sets keep the child visible. Multiple semantic names (including a name
-equal to the directory label) prevent this omission.
-Catalog membership changes recompute the decision. Canonical filters, navigation,
-published context and stored tags remain intact. An already selected semantic
-child stays visible and selected even if it becomes redundant, preserving its
-filtering meaning when later threads arrive. Selecting its directory then omits
-the redundant child. If a directory child leaves the catalog, its directory
+The left column includes each semantic tag even when its name matches the
+directory, its membership equals or overlaps another filter, or its projected
+card count is zero. Filter identity includes scope, kind and normalized name.
+Tagged application records without a scope contribute Inbox tags. A scoped tag with no displayable directory label appears directly in the top row. The rail scrolls when its controls exceed the available height. If a directory child leaves the catalog, its directory
 becomes the selection while that directory exists. Removing a selected Inbox
 tag or project directory resolves to the first available top-row choice. If a reader covers Overview,
 the published filter selection updates immediately and the canvas refreshes on
@@ -389,7 +380,7 @@ return. A change in status-filtered results alone keeps the selection.
 
 The left Liquid Glass column is vertically centered at the window edge.
 Compact controls are 46.2pt circles. Semantic tags show their emoji or 🏷️.
-Status choices show ⏳, 🗂️ and 🏁 with localized titles. A button expands
+Status choices show ⏳, 🔖, 🗂️ and 🏁 with localized titles. A button expands
 toward the center, keeping its glyph still. Its width includes the glyph,
 the measured single-line title and 13.2pt of inner padding, capped at
 189.2pt. Folder controls also cap at 16.5% of window width. Inbox controls
@@ -499,8 +490,8 @@ See the [reading choreography](../../../../../design/reading.md)
 for secondary Sidecard admission and cancellation.
 
 The presentation gate and prepared return apply to Agent and Report panels.
-Report returns to its document card.
-All sample their destination only after the refreshed canvas preparation completes.
+A Report can return to its document or collection card. The refreshed projection
+determines whether a card can supply a destination.
 
 The outer reading stack pauses Overview projection when opening begins. Cards
 fade completely out during travel. Once the panel settles, it hides the separate
@@ -515,9 +506,9 @@ snapshots, native controls, drafts and camera remain retained. Settings, Git
 monitoring, runtime, notifications keep their existing lifecycles.
 
 Before an animated return, the stack unhides the same host at the latest viewport,
-resumes projection and awaits a new canvas
-preparation receipt before sampling the current source frame. Removed/archived
-cards cannot supply that destination. Preparation is cancelled with its route;
+resumes projection and checks source membership. If the card remains, the stack
+awaits a canvas preparation receipt before sampling its frame. If the card has
+left the filter, the panel dismisses in place as the canvas updates. Preparation is cancelled with its route;
 replacement, focus loss, disconnect/recovery and direct returns cannot let an old
 waiter close a newer visit. A reversal during opening uses the participating parent
 immediately. Hidden and foreground structural changes both resolve to the latest
@@ -595,6 +586,15 @@ per type, Thread ID and version. Revisiting that version is idempotent. A new
 revision or completed execution starts unread. The collection visit timer and
 ranking keep their independent rules.
 
+The Unread preset intersects current unread versions with the browsing membership
+of the selected top-row folder or semantic tag. A folder includes its full
+membership even when a child tag was selected before entering Unread. Report
+coverage is resolved for that space before the unread filter. Each overlapping tag
+can include the same unread Thread. With no top-row space, all eligible unread
+versions are visible. Receipt and catalog changes update the preset’s membership.
+When the selected space has no unread versions, the preset shows the localized
+empty message with the sleeping skillet.
+
 ## Viewed application collections
 
 Report opts into one two-cell collection per selected space. The Host first applies
@@ -602,11 +602,11 @@ visibility, archive, directory/tag selection and exact execution coverage. It
 uses the full individual footprints, including offscreen cards. A report with a
 cover costs two cells and a coverless report costs one.
 
-When a Chief Note link targets a Report in a visible collection, the carousel pauses automatic
+When a Talk link targets a Report in a visible collection, the carousel pauses automatic
 advance and selects that member. The reader opens through the card’s ordinary
 opening path after the target page settles. A brief visit retains that member
-as the return page while it remains grouped. The [Note link contract](../MokuScene/README.md)
-covers dismissal and navigation back to the Note.
+as the return page while it remains grouped. The [Talk link contract](../MokuScene/README.md)
+covers execution navigation and return to Overview.
 
 The [profile-local reading record](NativeOverviewCollectionReading.swift) determines
 default membership across views. At **30 minutes** from the end of the last visit
@@ -661,13 +661,10 @@ paging mirrors only the mask so the reveal follows cover travel. Outgoing ink
 stays above incoming ink. At the current 320×408pt grid footprint, the cover is
 273.8pt high and metadata is 130.2pt high. WebKit and its poster share a centered, uniformly scaled
 360×308 CSS-pixel viewport, including for existing fixed-width HTML.
-The 4pt layout spacing and card shell stay fixed;
-the spacing is filled by the same glass plate as the body, without an exposed
-background seam or a separate body glass edge. It reuses `NativeReportCover` and `NativeReportCard`
-with `showsCover: false`, rather than duplicating metadata. Coverless reports use
-their emoji on the ordinary surface. Arrow/dot/menu controls use native Liquid
-Glass; the collection owns its regular-glass outer plate while the Canvas
-retains geometry, clipping and hit testing. During page travel,
+The 4pt layout spacing and metadata sit over the fixed, opaque Canvas card
+shell. The carousel reuses `NativeReportCover` and `NativeReportCard` with
+`showsCover: false` for the metadata. Coverless reports use their emoji on the
+ordinary surface. Arrow/dot/menu controls use native Liquid Glass. During page travel,
 metadata gates pointer/accessibility/actions without disabling its visual label.
 Open and archive callbacks recheck the current collection pose, including an
 already-open context menu; accepted archive work may finish across page changes.
@@ -707,9 +704,9 @@ The count expands from the collection card into the workspace's centered reading
 panel, using `NativeCollectionPanelPresentation`, the same `NativeReadingPageStack`
 compositor, window-relative margins and emphasized 420ms opening as Agent/Report
 readers. Overview and Dock fade out and reject input/accessibility while the panel
-is open; this is not a screen-sized popover or a zoomed canvas child. The
-member grid shares the workspace window's ultra-thin material. Close floats in
-the upper-left corner and stays fixed as rows scroll.
+is open. The panel uses rounded regular Liquid Glass throughout opening,
+scrolling and return. Reduce Transparency uses an opaque reading fill. Close
+floats in the upper-left corner and stays fixed as rows scroll.
 Resizing reflows the open grid even if its source card temporarily leaves the
 Overview viewport.
 The grid uses the panel width and member count to fit 280–360pt cards with
@@ -878,7 +875,7 @@ choice, switches to another space, and returns to Running and full directory
 membership. The supported suite also selects Completed for an Inbox tag. The
 Collection suite uses two project directories. `overview-filters.json` records
 the public scope oracle and the mounted snapshots after each action. The
-[window replay](../../../../../demos/moku-landing/README.md#overview-note-click-at-actual-size)
+[window replay](../../../../../demos/moku-landing/README.md#overview-bar-swipe-at-actual-size)
 exercises native pointer input, distinguishes similarly named tags and folders,
 and checks the selected tint.
 

@@ -68,15 +68,6 @@ private final class WheelSample: NSEvent {
     override var timestamp: TimeInterval { ProcessInfo.processInfo.systemUptime }
 }
 
-@MainActor private final class ReminderReplayPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-}
-
-@MainActor private final class SilentReminderBell: NativeMokuTimerPlaying {
-    func startLoop() throws {}
-    func stop() {}
-}
-
 @main @MainActor private struct NestedHeaderReplay: App {
     @State private var collectionViewport: CGSize?
     @State private var captureScheme: ColorScheme?
@@ -84,24 +75,22 @@ private final class WheelSample: NSEvent {
     private let workspace: NativeWorkspaceModel
     private let presentation: NativeWorkspacePresentation
 
-    init() { self.init(profile: nil) }
-
-    private init(profile: URL?) {
+    init() {
         do {
-            if profile == nil { try prepareIsolatedNativeReplay() }
+            try prepareIsolatedNativeReplay()
             let liveProfile = CommandLine.arguments.firstIndex(of: "--live-conversation").map {
                 URL(filePath: CommandLine.arguments[$0 + 1])
             }
             if let liveProfile, liveProfile.lastPathComponent != "profile" || !liveProfile.deletingLastPathComponent().lastPathComponent.hasPrefix("me2e-") {
                 throw ReplayError("Expected a private e2e profile")
             }
-            let directory = profile ?? liveProfile ?? URL(filePath: FileManager.default.currentDirectoryPath)
+            let directory = liveProfile ?? URL(filePath: FileManager.default.currentDirectoryPath)
             let preferences = DesktopPreferences(directory: directory)
             try preferences.setOnboardingCompleted(true)
             let liveLocale: DesktopLocale = CommandLine.arguments.contains("--restart") ? .english : .chinese
             workspace = NativeWorkspaceModel(client: RuntimeClient(profile: try RuntimeProfile(dataDirectory: directory)),
                 preferences: preferences, plugins: try .init(harnesses: [AnyHarnessPlugin(CodexHarnessPlugin())], sidecards: [], applications: NativeApplicationModules.make()),
-                timer: NativeMokuTimerController(player: SilentReminderBell()), locale: liveProfile == nil ? .system : liveLocale)
+                locale: liveProfile == nil ? .system : liveLocale)
             presentation = NativeWorkspacePresentation(workspace: workspace)
         } catch { fatalError(String(describing: error)) }
     }
@@ -134,20 +123,31 @@ private final class WheelSample: NSEvent {
 
     private func installTasks(_ count: Int, revision: Int, authority: UUID, firstDirectoryCount: Int? = nil,
                               manyDirectories: Bool = false, firstTagCount: Int? = nil, reports: [JSONValue] = [], extraThreads: [JSONValue] = [],
-                              noteText: String? = nil) async throws {
+                              talk: String? = nil, historicalTimer: JSONValue? = nil) async throws {
         let extra = manyDirectories ? (0..<12).map { "project-task-\($0)" } : []
         let ids = (0..<count).map { "task-\($0)" } + extra + ["moku"]
-        let note = try ThreadNote(id: "fixture-note", text: JSONText(noteText ?? String(repeating: "A note paragraph.\n\n", count: 55)),
-                                  revision: 1, updatedAt: 2)
+        let message: [JSONValue] = talk.map {
+            [.object(["type": .text("tool-operation"), "id": .text("talk-\(revision)"), "name": .text("talk"),
+                      "executionId": .text("chief-run"), "createdAt": .integer(1), "completedAt": .integer(2),
+                      "arguments": .object(["text": .text($0)]), "result": .object(["ok": .bool(true)])])]
+        } ?? historicalTimer.map { [$0] } ?? []
+        let execution = try talk.map { _ in try PublicExecution(executionID: "chief-run", status: .completed, startedAt: 1, finishedAt: 2) }
         let threads = try ids.enumerated().map { index, id in
             let other = firstDirectoryCount.map { index >= $0 && id != "moku" } ?? false
             let directory: JSONText = index >= count && manyDirectories ? JSONText("Project \(index)") : (other ? "Other" : "Fixture")
             let scope: JSONText = index >= count && manyDirectories ? JSONText("/fixture/\(index)") : (other ? "/other" : "/fixture")
             let tag: JSONText = firstTagCount.map { index >= $0 } == true ? "Review" : "Work"
-            return try HarnessThread(id: JSONText(id), harnessID: "codex", revision: 0, sessionState: .null,
-                observation: .init(), cwd: scope, settings: .object([:]), createdAt: 1, updatedAt: 2,
-                title: JSONText(id), tags: [tag], moku: id == "moku" ? true : nil, note: (manyDirectories || noteText != nil) && id == "moku" ? note : nil, transcript: id == "moku" ? .array([]) : nil,
+            let record = try HarnessThread(id: JSONText(id), harnessID: "codex", revision: revision, sessionState: .null,
+                observation: .init(latestExecution: id == "moku" ? execution : nil), cwd: scope, settings: .object([:]), createdAt: 1, updatedAt: 2,
+                title: JSONText(id), tags: [tag], moku: id == "moku" ? true : nil, transcript: id == "moku" ? .array(message) : nil,
                 tagEmojis: [tag: "📌"], directoryTag: directory, directoryScope: scope).json
+            // A cached Alpha catalog can carry the retired field on its Chief owner.
+            if id == "moku", talk != nil, var fields = record.objectValue {
+                fields["note"] = .object(["id": .text("f5b11c72-379b-4fc8-a592-222a98deafe5"), "text": .text("Retired content"),
+                    "revision": .integer(1), "updatedAt": .integer(1), "readingRevision": .integer(0)])
+                return JSONValue.object(fields)
+            }
+            return record
         }
         let snapshot: JSONValue = .object(["revision": .integer(revision), "settingsRevision": .integer(0),
             "defaultCwd": .text("/fixture"), "settings": .object([:]), "threads": .array(threads + extraThreads),
@@ -161,8 +161,8 @@ private final class WheelSample: NSEvent {
             return
         }
         let authority = UUID()
-        let noteClickReplay = CommandLine.arguments.contains("--note-click")
-        try await installTasks(18, revision: 1, authority: authority, manyDirectories: noteClickReplay)
+        let barSwipeReplay = CommandLine.arguments.contains("--bar-swipe")
+        try await installTasks(18, revision: barSwipeReplay ? 0 : 1, authority: authority, manyDirectories: barSwipeReplay)
         guard workspace.hasInitialContent, let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "header-replay" }),
               let screen = NSScreen.screens.first else { throw ReplayError("Workspace did not mount") }
         window.collectionBehavior = [.auxiliary, .canJoinAllSpaces]
@@ -180,16 +180,28 @@ private final class WheelSample: NSEvent {
             try await conversationOpening(window, directory: directory)
             return
         }
+        if CommandLine.arguments.contains("--tag-states") {
+            window.center()
+            try await focusReplayWindow(window)
+            try await tagStates(window, directory: directory, authority: authority)
+            return
+        }
         if CommandLine.arguments.contains("--tag-read") {
             window.center()
             try await focusReplayWindow(window)
             try await tagRead(window, directory: directory, authority: authority)
             return
         }
-        if CommandLine.arguments.contains("--note-link") {
+        if CommandLine.arguments.contains("--unread-filter") {
             window.center()
             try await focusReplayWindow(window)
-            try await noteLinks(window, directory: directory, authority: authority)
+            try await unreadFilter(window, directory: directory, authority: authority)
+            return
+        }
+        if CommandLine.arguments.contains("--talk-link") {
+            window.center()
+            try await focusReplayWindow(window)
+            try await talkLinks(window, directory: directory, authority: authority)
             return
         }
         if CommandLine.arguments.contains("--status-only") || CommandLine.arguments.contains("--completed-card") {
@@ -198,15 +210,20 @@ private final class WheelSample: NSEvent {
             try await statusFilters(window, directory: directory, authority: authority)
             return
         }
-        if noteClickReplay {
+        if barSwipeReplay {
             window.setContentSize(CGSize(width: 900, height: 680))
             window.center()
             try await focusReplayWindow(window)
             try await Task.sleep(for: .seconds(1))
-            try await noteClicks(window, directory: directory)
-            let reminderFixture = Self(profile: directory.appending(path: "reminder-profile"))
-            try await reminderFixture.reminderSwipe(directory: directory)
-            try await focusReplayWindow(window)
+            // Deliver a completed historical tool row after the Bar has mounted.
+            let legacyOperation: JSONValue = .object(["type": .text("tool-operation"), "name": .text("timer"),
+                "id": .text("legacy-operation"), "executionId": .text("fixture"), "completedAt": .integer(1),
+                "result": .object(["ok": .bool(true)]), "arguments": .object(["text": .text("Archived reminder")])])
+            try await installTasks(18, revision: 1, authority: authority, manyDirectories: true, historicalTimer: legacyOperation)
+            guard workspace.catalog.moku?.transcript?.arrayValue == [legacyOperation] else {
+                throw ReplayError("Missing historical tool operation in mounted workspace")
+            }
+            try await barSwipes(window, directory: directory)
             try await cardInteraction(window, directory: directory, authority: authority)
             try await fittingCards(window, directory: directory, authority: authority)
             try await statusFilters(window, directory: directory, authority: authority)
@@ -217,25 +234,18 @@ private final class WheelSample: NSEvent {
             try await Task.sleep(for: .milliseconds(650))
             try await postScroll(window, CGPoint(x: 80, y: 120), y: 40, phase: .began)
             try await postScroll(window, CGPoint(x: 80, y: 120), y: 0, phase: .ended)
-            guard !presentation.scene.notePanelOpen, let content = window.contentView,
+            guard !presentation.scene.conversationOpen, let content = window.contentView,
                   let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else {
-                throw ReplayError("Empty Overview background opened Note")
+                throw ReplayError("Empty Overview background opened the conversation")
             }
             let bar = presentation.scene.capsuleFrame
             let eyes = monitor.windowPoint(CGPoint(x: bar.midX, y: bar.midY))
-            try await postScroll(window, eyes, y: 40, phase: .began)
-            try await postScroll(window, eyes, y: 0, phase: .ended)
-            let generation = presentation.scene.noteOpenGeneration
-            guard presentation.scene.conversationOpen, presentation.scene.inputOpen, !presentation.scene.notePanelOpen else {
-                throw ReplayError("Landing Bar swipe did not open the conversation")
-            }
-            presentation.scene.setInputOpen(false)
-            try await Task.sleep(for: .milliseconds(650))
             try await postClick(window, at: eyes, flags: .control)
-            guard presentation.scene.notePanelOpen, presentation.scene.noteOpenGeneration == generation + 1,
-                  !presentation.scene.inputOpen else { throw ReplayError("Control-click did not open Note directly on Landing") }
-            try JSONSerialization.data(withJSONObject: ["controlClickOpenedNote": true, "swipeOpenedConversation": true])
-                .write(to: directory.appending(path: "landing-note-click.json"))
+            guard presentation.scene.conversationOpen, presentation.scene.inputOpen else {
+                throw ReplayError("Landing Bar Control-click did not open the conversation")
+            }
+            try JSONSerialization.data(withJSONObject: ["controlClickOpenedConversation": true])
+                .write(to: directory.appending(path: "landing-bar-swipe.json"))
             return
         }
         var records: [[String: Any]] = []
@@ -309,7 +319,10 @@ private final class WheelSample: NSEvent {
             try await Task.sleep(for: .milliseconds(450))
         }
         window.setContentSize(regularSize)
+        window.collectionBehavior = [.auxiliary, .canJoinAllSpaces]
         window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
         captureScheme = restart ? .light : .dark
         try await focusReplayWindow(window)
         workspace.start()
@@ -317,7 +330,7 @@ private final class WheelSample: NSEvent {
         try await wait("Live Chief did not mount") { workspace.runtimeAvailable && workspace.catalog.hasMoku && scene.capsuleFrame.width > 0 }
         try await Task.sleep(for: .milliseconds(750))
         guard let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else { throw ReplayError("Missing Bar event monitor") }
-        func swipe() async throws {
+        func openHistory() async throws {
             let eyePoint: CGPoint
             if scene.inputOpen {
                 let bar = scene.capsuleFrame
@@ -330,9 +343,8 @@ private final class WheelSample: NSEvent {
             }
             let pixel = window.convertToBacking(CGRect(origin: eyePoint, size: .zero))
             let point = window.convertFromBacking(CGRect(x: floor(pixel.minX) + 0.5, y: floor(pixel.minY) + 0.5, width: 0, height: 0)).origin
-            try await postScroll(window, point, y: 36, phase: .began)
-            try await postScroll(window, point, y: 0, phase: .ended)
-            try await wait("Swipe did not open conversation") { scene.conversationOpen && scene.inputOpen && !scene.notePanelOpen }
+            try await postClick(window, at: point, secondary: true)
+            try await wait("Right-click did not open conversation") { scene.conversationOpen && scene.inputOpen }
         }
         func spokenRows() -> [String] {
             conversationElements(in: window).filter { $0.id == "moku-conversation-message" }.map { $0.label.isEmpty ? $0.value : $0.label }
@@ -343,12 +355,12 @@ private final class WheelSample: NSEvent {
         let expected = fixture.messages.enumerated().map { index, text in
             (index == 0 || index == 2 ? workspace.locale.text("你, ", "You, ") : "Chief, ") + text + (index == 2 ? ", " + fixture.attachment : "")
         }
-        try await swipe()
+        try await openHistory()
         let initial = restart ? expected : Array(expected.prefix(2))
         try await wait("Expected \(initial.count) messages on opening, found \(labels())") { labels() == initial }
         guard let field = descendant(NSTextView.self, in: content, matching: { $0.isEditable && !$0.isHiddenOrHasHiddenAncestor })
             else { throw ReplayError("Missing native composer") }
-        try await wait("Swipe did not focus the native editor") { window.firstResponder === field }
+        try await wait("Right-click did not focus the native editor") { window.firstResponder === field }
         if let argument = CommandLine.arguments.firstIndex(of: "--send-refresh"),
            let pid = Int32(CommandLine.arguments[argument + 1]) {
             let connection = try RuntimeProfile(dataDirectory: profile).readConnection()
@@ -362,7 +374,24 @@ private final class WheelSample: NSEvent {
             func endDistance(_ scroll: NSScrollView) -> CGFloat {
                 (scroll.documentView?.bounds.maxY ?? 0) - scroll.documentVisibleRect.maxY
             }
+            func typingFrame() -> CGRect? {
+                conversationElements(in: window).first { $0.id == "moku-conversation-typing" }?.frame
+            }
+            func checkEyes(_ stage: String) async throws -> CGFloat {
+                var offset = CGFloat.infinity
+                try await wait("Eyes left the input row \(stage), offset \(offset) pt", timeout: .seconds(3)) {
+                    guard let face = descendant(NativeMokuCharacterCanvas.self, in: content, matching: {
+                        $0.seat == .face && !$0.isHiddenOrHasHiddenAncestor
+                    }), let plus = try? filterButton("moku-add-attachment", in: window) else { return false }
+                    offset = window.convertToScreen(face.convert(face.bounds, to: nil)).midY - plus.frame.midY
+                    return abs(offset) <= 1
+                }
+                return offset
+            }
             let panelScroll = try await scroller()
+            try await wait("Initial Chief run did not settle") {
+                workspace.catalog.moku?.observation.latestExecution?.status == .completed && typingFrame() == nil
+            }
             let originalEnd = panelScroll.documentVisibleRect.maxY
             field.insertText(fixture.messages[2], replacementRange: field.selectedRange())
             // Suspend only the child owned by this replay, after the history is mounted.
@@ -375,7 +404,7 @@ private final class WheelSample: NSEvent {
             let captured = labels()
             let panelObservedMS = (ProcessInfo.processInfo.systemUptime - panelReturnTime) * 1000
             try JSONEncoder().encode(captured).write(to: evidence.appending(path: "panel-before-admission.json"))
-            guard scene.conversationOpen, field.string.isEmpty, captured == first else {
+            guard scene.conversationOpen, field.string.isEmpty, captured == first, typingFrame() == nil else {
                 throw ReplayError("Open panel after Return with admission held: \(captured)")
             }
             try await wait("Reader at the end did not follow the captured message", timeout: .seconds(2)) {
@@ -384,6 +413,20 @@ private final class WheelSample: NSEvent {
             let followed = endDistance(panelScroll)
             kill(pid, SIGCONT)
             try await wait("First send did not settle before Talk") { !presentation.dockDraft.submitting && labels() == first }
+            try await wait("Typing bubble did not follow the running Chief turn at the end") {
+                guard workspace.catalog.moku?.observation.latestExecution?.status == .running,
+                      let bubble = typingFrame() else { return false }
+                let list = window.convertToScreen(panelScroll.convert(panelScroll.bounds, to: nil))
+                return bubble.width > 0 && list.contains(bubble) && abs(bubble.minX - list.minX - 14) <= 1
+                    && abs(endDistance(panelScroll)) <= 1
+            }
+            let typingEndDistance = endDistance(panelScroll)
+            let runningEyeOffset = try await checkEyes("while running")
+            try await focusReplayWindow(window)
+            try await recordWindow(window, to: evidence.appending(path: "conversation-typing.mp4")) {
+                try await capture(window, to: evidence.appending(path: "conversation-typing.png"))
+                try await Task.sleep(for: .seconds(3))
+            }
             let draft = presentation.dockDraft
             field.insertText(fixture.messages[2], replacementRange: field.selectedRange())
             await draft.importFiles([NativeComposerFile(url: profile.deletingLastPathComponent().appending(path: fixture.attachment))])
@@ -398,11 +441,13 @@ private final class WheelSample: NSEvent {
                     draft.attachments.first?.attachment == file && labels() == first
             }
             let rejection = draft.error ?? ""
+            let rejectedEyeOffset = try await checkEyes("above the send error")
             try JSONEncoder().encode(["error": rejection, "draft": field.string]).write(to: evidence.appending(path: "rejected-send.json"))
             try FileManager.default.moveItem(at: held, to: bytes)
             try await pressKey("\u{1b}", code: 53, in: window)
             try await wait("Panel did not dismiss") { !scene.conversationOpen && !scene.inputOpen }
             guard let dock = descendant(MokuHorizontalTravelView.self, in: content) else { throw ReplayError("Missing Dock host") }
+            try await focusReplayWindow(window)
             var eyes = CGRect.null
             // Escape can expose the accessibility button while the Dock is still folding.
             // Send one click once its frame is stable and native hits reach the hosted control.
@@ -430,8 +475,8 @@ private final class WheelSample: NSEvent {
             guard kill(pid, SIGSTOP) == 0 else { throw ReplayError("Could not hold compact send") }
             let compactReturnTime = ProcessInfo.processInfo.systemUptime
             try await pressKey("\r", code: 36, in: window)
-            try await swipe()
-            try await wait("Compact send missing on immediate swipe", timeout: .seconds(3)) { labels() == second && draft.submitting }
+            try await openHistory()
+            try await wait("Compact send missing on immediate right-click", timeout: .seconds(3)) { labels() == second && draft.submitting }
             let compactCapture = labels()
             let compactObservedMS = (ProcessInfo.processInfo.systemUptime - compactReturnTime) * 1000
             try JSONEncoder().encode(compactCapture).write(to: evidence.appending(path: "compact-before-admission.json"))
@@ -448,12 +493,25 @@ private final class WheelSample: NSEvent {
             try Data().write(to: profile.deletingLastPathComponent().appending(path: "allow-reply"))
             let finished = second + Array(expected.suffix(2))
             try await wait("Talk changed the outgoing rows") { labels() == finished }
+            try await wait("Typing bubble remained after Chief finished") {
+                workspace.catalog.moku?.observation.latestExecution?.status == .completed && typingFrame() == nil
+            }
             let afterTalkY = compactScroll.documentVisibleRect.minY
             guard abs(afterTalkY - readingY) < 1 else { throw ReplayError("Talk moved the earlier reading position") }
+            try await postScroll(window, point, y: -2000, phase: .began)
+            try await postScroll(window, point, y: 0, phase: .ended)
+            try await wait("Completed conversation did not return to its final reply") {
+                abs(endDistance(compactScroll)) <= 1 && typingFrame() == nil && labels() == finished
+            }
+            let finishedEyeOffset = try await checkEyes("after retry and completion")
+            try await capture(window, to: evidence.appending(path: "conversation-typing-finished.png"))
             let observations: [String: Any] = ["beforeAdmission": captured, "rejection": rejection,
                 "compactBeforeAdmission": compactCapture, "beforeTalk": beforeTalk, "afterTalk": labels(),
                 "panelReturnToObservationMS": panelObservedMS, "compactReturnToObservationMS": compactObservedMS,
-                "distanceFromEndAfterSend": followed, "readingY": readingY, "readingYAfterTalk": afterTalkY]
+                "distanceFromEndAfterSend": followed, "distanceFromEndWhileTyping": typingEndDistance,
+                "eyeOffsetWhileRunning": runningEyeOffset, "eyeOffsetAboveError": rejectedEyeOffset,
+                "eyeOffsetAfterCompletion": finishedEyeOffset,
+                "readingY": readingY, "readingYAfterTalk": afterTalkY]
             try JSONSerialization.data(withJSONObject: observations, options: [.prettyPrinted, .sortedKeys])
                 .write(to: evidence.appending(path: "conversation-refresh.json"))
             return
@@ -493,7 +551,7 @@ private final class WheelSample: NSEvent {
             try await postClick(window, at: monitor.windowPoint(CGPoint(x: 45, y: 85)))
             try await wait("Outside click did not close the panel") { !scene.conversationOpen }
             try await Task.sleep(for: .milliseconds(650))
-            try await swipe()
+            try await openHistory()
             try await wait("Reopened history differs") { labels() == expected }
         }
         try await wait("Reopened composer did not restore the draft") {
@@ -512,16 +570,11 @@ private final class WheelSample: NSEvent {
         let bar = scene.capsuleFrame
         let point = monitor.windowPoint(CGPoint(x: bar.midX, y: bar.minY + bar.height * 0.4))
         let timeline = try await conversationScroller(in: content, at: point)
-        var held: CGFloat = 0
-        try await recordWindow(window, to: evidence.appending(path: "conversation-times-" + stage + ".mp4")) {
-            try await Task.sleep(for: .milliseconds(300))
-            held = try await revealTimes(window, at: point, timeline: timeline,
-                                         captureTo: evidence.appending(path: "conversation-times-" + stage + ".png"))
-            try await Task.sleep(for: .milliseconds(400))
-        }
+        try await checkHorizontalSwipe(window, at: point, timeline: timeline,
+                                       captureTo: evidence.appending(path: "conversation-swipe-" + stage + ".png"))
         var observed: [String: Any] = ["rows": labels(), "draft": presentation.dockDraft.text,
-            "conversationOpen": scene.conversationOpen, "noteOpen": scene.notePanelOpen,
-            "period": periods[0].value, "timestampsHeldPoints": held, "timestampsReleasedPoints": timeline.contentView.bounds.minX]
+            "conversationOpen": scene.conversationOpen,
+            "period": periods[0].value]
         observed["short"] = short
         func measure() throws -> [String: CGFloat] {
             let nodes = conversationElements(in: window)
@@ -622,11 +675,8 @@ private final class WheelSample: NSEvent {
         }
         func open() async throws {
             let point = barPoint()
-            try await postScroll(window, point, y: 42, phase: .began)
-            try await postScroll(window, point, y: 0, phase: .ended)
-            try await postScroll(window, point, y: 90, phase: nil, momentum: .begin)
-            try await postScroll(window, point, y: 0, phase: nil, momentum: .end)
-            guard scene.conversationOpen else { throw ReplayError("Upward contact did not open Chief Bar") }
+            try await postClick(window, at: point, secondary: true)
+            guard scene.conversationOpen else { throw ReplayError("Right-click did not open Chief Bar") }
         }
         func bottomGap(_ timeline: NSScrollView) -> CGFloat {
             timeline.contentView.documentRect.maxY - timeline.contentView.bounds.maxY
@@ -688,11 +738,33 @@ private final class WheelSample: NSEvent {
             let clip = timeline.contentView
             let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
             let initial = clip.bounds.minY
-            try await postScroll(window, point, y: 240, phase: .began)
-            try await postScroll(window, point, y: 0, phase: .ended)
+            let documentHeight = clip.documentRect.height
+            for delta: Int32 in [800, 800, -600] {
+                let before = clip.bounds.minY
+                try await postScroll(window, point, y: delta, phase: .began)
+                try await postScroll(window, point, y: 0, phase: .ended)
+                // A lifted gesture can keep moving the native clip. Measure the
+                // reader's resting position before sending the next input or reply.
+                var lastOffset = clip.bounds.minY
+                var stableSince = ContinuousClock.now
+                try await wait("Conversation scroll did not settle", timeout: .seconds(4)) {
+                    if clip.bounds.minY != lastOffset {
+                        lastOffset = clip.bounds.minY
+                        stableSince = .now
+                    }
+                    return stableSince.duration(to: .now) >= .milliseconds(200)
+                }
+                let after = clip.bounds.minY
+                samples.append(["scrollDelta": delta, "beforeY": before, "afterY": after,
+                                "documentHeight": clip.documentRect.height])
+                if (before - after) * CGFloat(delta.signum()) < 40 || abs(clip.documentRect.height - documentHeight) >= 2 {
+                    failures.append("Scroll \(delta) moved \(before) to \(after), document height \(documentHeight) to \(clip.documentRect.height)")
+                }
+            }
             let reading = clip.bounds.minY
             let revised = latestPage(rows + [row(32, "A newer message arrived.")])
             try await client.publishReplayConversation(revised)
+            try await wait("Appended reply did not extend the document") { clip.documentRect.height > documentHeight + 1 }
             try await Task.sleep(for: .milliseconds(200))
             let revisedY = clip.bounds.minY
             window.setContentSize(.init(width: content.bounds.width, height: 660))
@@ -766,11 +838,10 @@ private final class WheelSample: NSEvent {
             _ = try await captureViewport("from-compose")
             try await dismiss()
 
-            // Interrupt before the transcript settles. A fresh swipe is admitted
+            // Interrupt before the transcript settles. A fresh right-click is admitted
             // as soon as Overview releases the retiring editor.
             let pointToReopen = barPoint()
-            try await postScroll(window, pointToReopen, y: 42, phase: .began)
-            try await postScroll(window, pointToReopen, y: 0, phase: .ended)
+            try await postClick(window, at: pointToReopen, secondary: true)
             guard scene.conversationOpen else { throw ReplayError("Interrupted visit did not open") }
             try await postClick(window, at: outside)
             guard !scene.conversationOpen else { throw ReplayError("Interrupted visit did not close") }
@@ -806,40 +877,37 @@ private final class WheelSample: NSEvent {
     private func conversationScroller(in content: NSView, at point: CGPoint) async throws -> NSScrollView {
         let deadline = ContinuousClock.now + .seconds(3)
         while true {
-            var candidates = [String]()
-            if let timeline = descendant(NSScrollView.self, in: content, matching: { view in
-                let rect = view.convert(view.bounds, to: nil)
-                let width = view.documentView?.bounds.width ?? 0
-                candidates.append("\(rect)/\(width)/\(view.contentView.bounds)")
-                return rect.contains(point) && width > view.contentView.bounds.width + 40
-            }) { return timeline }
-            guard ContinuousClock.now < deadline else { throw ReplayError("Missing conversation scroller at \(point) in \(candidates)") }
+            let hit = content.hitTest(content.superview?.convert(point, from: nil) ?? point)
+            if let timeline = hit as? NSScrollView ?? hit?.enclosingScrollView { return timeline }
+            guard ContinuousClock.now < deadline else { throw ReplayError("Missing conversation scroller at \(point), hit=\(String(describing: hit))") }
             try await Task.sleep(for: .milliseconds(40))
         }
     }
 
-    private func revealTimes(_ window: NSWindow, at point: CGPoint, timeline: NSScrollView, captureTo url: URL? = nil) async throws -> CGFloat {
+    private func checkHorizontalSwipe(_ window: NSWindow, at point: CGPoint, timeline: NSScrollView, captureTo url: URL) async throws {
         let before = timeline.contentView.bounds
+        func checkPosition() throws {
+            let current = timeline.contentView.bounds
+            guard abs(current.minX) < 1, abs(current.minY - before.minY) < 1 else {
+                throw ReplayError("Horizontal swipe moved the transcript: \(before) → \(current)")
+            }
+        }
         try await postScroll(window, point, y: 0, phase: .began, x: -32)
         try await postScroll(window, point, y: 0, phase: .changed, x: -46)
-        let held = timeline.contentView.bounds.origin
-        guard before.minX < 1, held.x > 50, abs(before.minY - held.y) < 1 else {
-            throw ReplayError("Holding a left swipe did not reveal times in place: \(before) → \(timeline.contentView.bounds)")
-        }
-        if let url {
-            try await Task.sleep(for: .milliseconds(350))
-            try await capture(window, to: url)
-        }
+        try checkPosition()
+        try await capture(window, to: url)
         try await postScroll(window, point, y: 0, phase: .ended)
-        let deadline = ContinuousClock.now + .seconds(3)
-        while abs(timeline.contentView.bounds.minX) >= 1 {
-            guard ContinuousClock.now < deadline else { throw ReplayError("Lifting did not hide timestamps") }
-            try await Task.sleep(for: .milliseconds(30))
+        try checkPosition()
+
+        // Inspect the trailing edge where per-message times would appear, excluding the date heading.
+        let rect = timeline.convert(timeline.bounds, to: nil)
+        let size = window.frame.size
+        let region = CGRect(x: (rect.maxX - 78) / size.width, y: rect.minY / size.height,
+                            width: 78 / size.width, height: rect.height / size.height)
+        let ink = try recognizedLines(in: url, languages: ["en-US", "zh-Hans"], region: region)
+        guard !ink.contains(where: { $0.text.range(of: #"[0-9]{1,2}[:：][0-9]{2}"#, options: .regularExpression) != nil }) else {
+            throw ReplayError("Horizontal swipe exposed a message time: \(ink)")
         }
-        guard abs(before.minY - timeline.contentView.bounds.minY) < 1 else {
-            throw ReplayError("Releasing timestamps moved the transcript vertically: \(before) → \(held) → \(timeline.contentView.bounds.origin)")
-        }
-        return held.x
     }
 
     private func conversationElements(in window: NSWindow) -> [(id: String, role: String, label: String, value: String, frame: CGRect)] {
@@ -1137,14 +1205,14 @@ private final class WheelSample: NSEvent {
         _ = monitor.handle(WheelSample(window: window, point: point, x: 0, y: 0, phase: .ended))
     }
 
-    private func cacheNoteRuns(for thread: JSONText) throws {
+    private func cacheLinkedRuns(for thread: JSONText) throws {
         let cache = RuntimeOfflineStore(storageDirectory: workspace.client.storageDirectory, hostID: nil)
         func state(_ turns: [JSONValue]) -> JSONValue {
             .object(["schema": .text("mokusei.harness.codex.thread.v1"), "updatedAt": .integer(3),
                      "turns": .array(turns), "backgroundTerminals": .array([])])
         }
         var turns = [JSONValue]()
-        for (index, run) in ["cited-run", "later-run"].enumerated() {
+        for (index, run) in ["prior-run", "cited-run", "later-run"].enumerated() {
             let time = JSONValue.integer(index + 1)
             let reply = (1...40).map { "\(run) paragraph \($0)." }.joined(separator: "\n\n")
             var turn: [JSONText: JSONValue] = ["executionId": .text(run), "status": .text("completed"),
@@ -1177,19 +1245,21 @@ private final class WheelSample: NSEvent {
                               thread: "moku", scope: .mokuConversation(before: "message--120"))
     }
 
-    private func noteLinks(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+    private func talkLinks(_ window: NSWindow, directory: URL, authority: UUID) async throws {
         let model = presentation.overview, scene = presentation.scene
         let source = ApplicationThreadRef(threadID: "linked-task", typeID: "agent")
-        let citation = ApplicationExecutionRef(thread: source, executionID: "cited-run")
-        try cacheNoteRuns(for: source.threadID)
-        let events = await workspace.client.events()
-        let contentDelivery = Task {
-            for await event in events {
-                if case .threadContent = event { workspace.harnessHost.receive(event) }
-            }
-        }
-        defer { contentDelivery.cancel() }
-        let note = "[Earlier run](chief://execution?threadId=linked-task&executionId=cited-run)"
+        try cacheLinkedRuns(for: source.threadID)
+        // Feed production workspace connection observation and content subscriptions
+        // from an isolated catalog and reading cache.
+        await workspace.client.setStatus(.connected)
+        workspace.start()
+        let earlier = "chief://execution?threadId=linked-task&executionId=prior-run"
+        let message = "First: " + earlier + ". Then [Earlier run](chief://execution?threadId=linked-task&executionId=cited-run). "
+            + "[Deleted](chief://execution?threadId=missing&executionId=gone) or chief://execution?threadId=broken"
+        let cache = RuntimeOfflineStore(storageDirectory: workspace.client.storageDirectory, hostID: nil)
+        try cache.saveContent(.object(["messages": .array([.object([
+            "id": .text("linked-talk"), "role": .text("chief"), "createdAt": .integer(1000), "text": .text(message)
+        ])])]), thread: "moku", scope: .mokuConversation(before: nil))
         let thread = try HarnessThread(id: source.threadID, harnessID: "codex", revision: 1, sessionState: .null,
             observation: .init(latestExecution: .init(executionID: "later-run", status: .completed, startedAt: 1, finishedAt: 2)),
             cwd: "/other", settings: .object([:]), createdAt: 1, updatedAt: 2, title: "Linked task",
@@ -1197,71 +1267,93 @@ private final class WheelSample: NSEvent {
         let bug = try HarnessThread(id: "other-bug", harnessID: "codex", revision: 1, sessionState: .null,
             observation: .init(), cwd: "/other", settings: .object([:]), createdAt: 1, updatedAt: 2, title: "Bug",
             tags: ["Bugs"], tagEmojis: ["Bugs": "🐛"], directoryTag: "Other", directoryScope: "/other")
-        func install(revision: Int, reports: [JSONValue] = []) async throws {
+        func install(revision: Int, reports: [JSONValue] = [], text: String? = nil) async throws {
             try await installTasks(2, revision: revision, authority: authority, firstDirectoryCount: 1,
-                reports: reports, extraThreads: [thread.json, bug.json], noteText: note)
+                reports: reports, extraThreads: [thread.json, bug.json], talk: text ?? message)
         }
         try await install(revision: 2)
         guard let project = model.visibleFilters.first(where: { $0.scope == "/fixture" }),
               let other = model.visibleFilters.first(where: { $0.scope == "/other" }),
               let bugs = other.children.first(where: { $0.tag == "Bugs" }),
               let design = other.children.first(where: { $0.tag == "Design" }) else {
-            throw ReplayError("Missing Note fixture filters")
+            throw ReplayError("Missing Talk fixture filters")
         }
         func wait(_ message: String, until ready: () -> Bool) async throws {
             let deadline = ContinuousClock.now + .seconds(6)
             while !ready() {
                 guard ContinuousClock.now < deadline else {
-                    throw ReplayError("\(message), note=\(scene.notePanelOpen), focused=\(model.facts.focused), phase=\(scene.noteReadingOrigin?.phase.rawValue ?? "none"), filter=\(model.selectedFilter?.id ?? "All"), reader=\(presentation.selected?.threadID.string ?? "none")")
+                    let nodes = conversationElements(in: window).map { ["role": $0.role, "id": $0.id, "label": $0.label, "value": $0.value, "frame": NSStringFromRect($0.frame)] }
+                    try JSONEncoder().encode(nodes).write(to: directory.appending(path: "failed-controls.json"))
+                    throw ReplayError("\(message), focused=\(model.facts.focused), phase=\(scene.talkReadingOrigin?.phase.rawValue ?? "none"), filter=\(model.selectedFilter?.id ?? "All"), reader=\(presentation.selected?.threadID.string ?? "none")")
                 }
                 try await Task.sleep(for: .milliseconds(5))
             }
         }
         var visits = [[String: Any]]()
+        func linkFrame(_ title: String) -> CGRect? {
+            guard let content = window.contentView, let button = conversationElements(in: window).first(where: {
+                $0.id == "chief-execution-link" && $0.role == "AXButton" && $0.label.hasSuffix(" · " + title)
+            }) else { return nil }
+            let frame = window.convertFromScreen(button.frame)
+            let point = CGPoint(x: frame.midX, y: frame.midY)
+            // AX can publish final geometry before the Bar finishes travelling.
+            // Click only once the actual TextKit seat owns this point.
+            guard !frame.isEmpty, content.hitTest(content.superview?.convert(point, from: nil) ?? point) is MarkdownTextView
+            else { return nil }
+            return frame
+        }
+        func click(_ title: String, history: Bool) async throws {
+            try await focusReplayWindow(window)
+            try await wait("Missing clickable " + title + " on " + (history ? "history" : "notification")) { linkFrame(title) != nil }
+            guard let frame = linkFrame(title) else { throw ReplayError("Talk link left the window before the click") }
+            let point = CGPoint(x: frame.midX, y: frame.midY)
+            // Queue release before AppKit starts tracking the mouse in selectable text.
+            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                guard let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                    context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0) else {
+                    throw ReplayError("Cannot construct Talk link click")
+                }
+                NSApp.postEvent(event, atStart: false)
+            }
+        }
         func visit(from start: NativeOverviewFilter, to end: NativeOverviewFilter, reader: ApplicationThreadRef,
-                   fromRunning: Bool = false) async throws {
+                   history: Bool = true, bare: Bool = false, fromRunning: Bool = false, missingRun: Bool = false,
+                   linkTitle: String? = nil) async throws {
+            let citation = ApplicationExecutionRef(thread: source, executionID: missingRun ? "removed-run" : bare ? "prior-run" : "cited-run")
+            let title = linkTitle ?? (missingRun ? "Missing run" : bare ? "Linked task" : "Earlier run")
+            try await focusReplayWindow(window)
             model.selectTag(start)
             if fromRunning {
                 try model.chromeInteractions.activate(.status, id: "running")
                 guard model.statusFilter == .running, model.items.isEmpty else { throw ReplayError("Expected empty folder Running") }
             }
             await presentation.canvas.prepareForPresentation()
-            scene.openNotePanelFromUser()
-            func linkFrame() -> CGRect? {
-                guard let content = window.contentView,
-                      let link = descendant(MarkdownExecutionHost.self, in: content) else { return nil }
-                let frame = link.convert(link.bounds, to: nil)
-                let point = CGPoint(x: frame.midX, y: frame.midY)
-                // A retained link participates only once its TextKit seat accepts pointer input.
-                guard content.hitTest(content.superview?.convert(point, from: nil) ?? point) is MarkdownTextView
-                else { return nil }
-                return frame
-            }
-            try await wait("Note link did not become clickable") { linkFrame() != nil }
-            guard let frame = linkFrame() else { throw ReplayError("Note link left the window before the click") }
-            // TextKit tracks the mouse until release. Queue both events for the replay window.
-            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-                guard let event = NSEvent.mouseEvent(with: type, location: CGPoint(x: frame.midX, y: frame.midY),
-                    modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
-                    context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0) else {
-                    throw ReplayError("Cannot construct Note link click")
+            if history { scene.openConversation() }
+            try await wait("Talk surface did not appear") { history ? scene.conversationOpen : scene.talkPresentation.presented }
+            if visits.count < 2 {
+                let surface = history ? "history" : "notification"
+                try await wait("Execution capsule did not settle in " + surface) { linkFrame(title) != nil }
+                try await Task.sleep(for: .milliseconds(550))
+                try await focusReplayWindow(window)
+                guard window.isKeyWindow, linkFrame(title) != nil else {
+                    throw ReplayError("Lost the active \(surface) before capture: key=\(window.isKeyWindow), notice=\(scene.talkPresentation.presented), conversation=\(scene.conversationOpen)")
                 }
-                NSApp.postEvent(event, atStart: false)
+                let screenshot = directory.appending(path: surface + "-capsules.png")
+                try await capture(window, to: screenshot)
+                let lines = try recognizedLines(in: screenshot, languages: ["en-US"]).map(\.text)
+                for label in ["Linked task", "Earlier run", "Deleted"] {
+                    guard lines.contains(where: { $0.localizedCaseInsensitiveContains(label) }) else {
+                        throw ReplayError("Capsule title wrapped or clipped in \(surface): \(label); visible text: \(lines)")
+                    }
+                }
             }
-            try await wait("Note click missed its execution link") { scene.noteReadingOrigin != nil }
-            guard let origin = scene.noteReadingOrigin, origin.phase == .dismissing, origin.reference == citation,
-                  model.selectedFilter?.id == start.id, presentation.selected == nil else {
-                throw ReplayError("Note click lost its citation or changed space before dismissal")
-            }
-            try await wait("Did not locate the destination on Overview before opening the reader") {
-                scene.noteReadingOrigin?.phase == .locating && model.selectedFilter?.id == end.id &&
-                    !scene.notePanelOpen && presentation.selected == nil
-            }
+            try await click(title, history: history)
             try await wait("Destination reader did not mount") { presentation.mountedReadingThread == reader }
             guard model.statusFilter == .all,
                   model.selectedFilter?.id == end.id, presentation.selected == reader,
-                  presentation.readingPanelSource != nil, scene.noteReadingOrigin?.id == origin.id,
-                  scene.noteReadingOrigin?.phase == .reading else { throw ReplayError("Incorrect reader entrance or space") }
+                  presentation.readingPanelSource != nil, scene.talkReadingOrigin?.reference == citation,
+                  scene.talkReadingOrigin?.phase == .reading else { throw ReplayError("Incorrect reader entrance or space") }
             let position: HarnessReadingTarget.Position?
             let opened: ApplicationExecutionRef?
             if reader == source {
@@ -1276,15 +1368,23 @@ private final class WheelSample: NSEvent {
             guard let opened, opened == citation, let position, position == .executionStart else {
                 throw ReplayError("Opened the wrong run or position")
             }
-            var record: [String: any Sendable] = ["dismissing": start.id, "locating": end.id, "reading": end.id,
+            var record: [String: any Sendable] = ["from": start.id, "reading": end.id, "surface": history ? "history" : "notification",
+                "format": bare ? "bare" : "labeled",
                 "reader": reader.threadID.string, "source": opened.thread.threadID.string,
                 "execution": opened.executionID.string, "position": position.rawValue, "fromFolderRunning": fromRunning]
-            if reader == source {
+            if missingRun {
+                try await wait("Missing execution did not open the unavailable page") {
+                    presentation.readingInteractionSnapshot()["controls"]?.arrayValue?.contains {
+                        $0["role"] == .text("conversation") && $0["value"]?["destination"] == .text("unavailable")
+                    } == true
+                }
+                record["unavailable"] = true
+            } else if reader == source {
                 try await wait("Historical reply did not load at its heading") {
                     let controls = presentation.readingInteractionSnapshot()["controls"]?.arrayValue ?? []
-                    guard controls.contains(where: { $0["role"] == .text("history") && $0["value"]?["rowId"] == .text("turn:cited-run") }),
+                    guard controls.contains(where: { $0["role"] == .text("history") && $0["value"]?["rowId"] == .text("turn:" + citation.executionID.string) }),
                           controls.contains(where: { $0["role"] == .text("row.load") && $0["value"]?["state"] == .text("ready")
-                              && $0["value"]?["rowId"] == .text("turn:cited-run") }),
+                              && $0["value"]?["rowId"] == .text("turn:" + citation.executionID.string) }),
                           let value = controls.first(where: { $0["role"] == .text("timeline") && $0["id"]?.stringValue?.contains("history") == true })?["value"],
                           let height = value["height"]?.numberValue, let viewport = value["viewport"]?.numberValue,
                           viewport > 0, height > viewport, value["top"]?.numberValue == 0, value["following"] == .bool(false) else { return false }
@@ -1296,14 +1396,54 @@ private final class WheelSample: NSEvent {
             presentation.showOverview()
             try await wait("Reader did not close to the destination space") {
                 presentation.selected == nil && model.presentationActive && !presentation.messageMotion.active
-                    && !scene.notePanelOpen && model.selectedFilter?.id == end.id
+                    && model.selectedFilter?.id == end.id
             }
         }
-        try await visit(from: project, to: other, reader: source)
-        try await visit(from: bugs, to: design, reader: source)
+        try await visit(from: project, to: other, reader: source, history: false)
+        try await visit(from: bugs, to: design, reader: source, bare: true)
         try await visit(from: design, to: design, reader: source)
         try await visit(from: other, to: other, reader: source, fromRunning: true)
 
+        let shortText = "回放完成"
+        try await install(revision: 3, text: shortText)
+        try await wait("Short Talk did not settle") {
+            scene.talkPresentation.presented && scene.talkPresentation.message?.text == shortText
+                && scene.capsuleFrame.height == 58
+        }
+        try await Task.sleep(for: .milliseconds(550))
+        let shortCapture = directory.appending(path: "notification-short.png")
+        try await capture(window, to: shortCapture)
+        guard try recognizedLines(in: shortCapture, languages: ["zh-Hans"]).contains(where: {
+            $0.text.replacingOccurrences(of: " ", with: "").contains(shortText)
+        }) else { throw ReplayError("Short Talk text is missing") }
+        let shortHeight = scene.capsuleFrame.height
+
+        let prose = "已修复切换标签时出现的显示问题。窗口回放中，选择第一个标签可以看到对应任务，切换到第二个标签后可以查看另一组任务。两个标签的阅读状态分别保存，完整结果见下方记录。"
+        try await install(revision: 4, text: prose + "\n[修复与回放](chief://execution?threadId=linked-task&executionId=cited-run)")
+        try await wait("Chinese Talk link did not appear") { linkFrame("修复与回放") != nil }
+        try await Task.sleep(for: .milliseconds(550))
+        guard let content = window.contentView,
+              let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content),
+              let link = linkFrame("修复与回放"),
+              let text = descendant(MarkdownTextView.self, in: content, matching: { $0.string.contains(prose) }),
+              let container = text.textContainer, let manager = text.layoutManager else {
+            throw ReplayError("Missing settled Talk text or link")
+        }
+        let document = manager.usedRect(for: container).offsetBy(dx: text.textContainerOrigin.x, dy: text.textContainerOrigin.y)
+        guard text.visibleRect.insetBy(dx: -0.5, dy: -0.5).contains(document) else {
+            throw ReplayError("Multiline Talk is clipped")
+        }
+        let bar = scene.capsuleFrame
+        let bottom = monitor.windowPoint(CGPoint(x: bar.midX, y: bar.maxY))
+        let gap = link.minY - bottom.y
+        let longCapture = directory.appending(path: "notification-multiline.png")
+        try await capture(window, to: longCapture)
+        let layout = ["shortHeight": shortHeight, "multilineHeight": bar.height, "linkHeight": link.height, "linkBottomGap": gap]
+        try JSONEncoder().encode(layout).write(to: directory.appending(path: "notification-layout.json"))
+        guard (8...16).contains(gap) else { throw ReplayError("Unexpected Talk link bottom gap: \(gap) pt") }
+        try await visit(from: design, to: design, reader: source, history: false, linkTitle: "修复与回放")
+        try await install(revision: 5, text: "[Missing run](chief://execution?threadId=linked-task&executionId=removed-run)")
+        try await visit(from: design, to: design, reader: source, history: false, missingRun: true)
         let report = ApplicationThreadRef(threadID: "linked-report", typeID: "report.document")
         var fields = reportFixtures([report.threadID])[0].objectValue!
         let related = JSONValue.array([.object(["thread": source.json, "executionId": .text("later-run")])])
@@ -1312,14 +1452,46 @@ private final class WheelSample: NSEvent {
         fields["view"] = .object(view)
         fields["presentations"] = .array([.object(["id": .text("mokusei.overview"), "apiVersion": .integer(1),
             "schemaVersion": .integer(1), "value": .object(["coversExecutions": related])])])
-        try await install(revision: 3, reports: [.object(fields)])
+        // Observe notification expiry in isolation from real desktop clicks. The
+        // pointer visits before and after this idle interval use a normal window.
+        let ignoresMouse = window.ignoresMouseEvents
+        window.ignoresMouseEvents = true
+        defer { window.ignoresMouseEvents = ignoresMouse }
+        try await install(revision: 6, reports: [.object(fields)])
+        // A fresh operation gets one real minute. The same message remains a
+        // usable navigation source in the conversation after the compact bar folds.
+        try await wait("Notification did not start its lease") { scene.talkPresentation.presented && scene.talkPresentation.deadline != nil }
+        let leaseStart = ContinuousClock.now, deadline = scene.talkPresentation.deadline!
+        guard leaseStart.duration(to: deadline) > .seconds(58) else { throw ReplayError("Short Talk lease") }
+        try await Task.sleep(until: deadline - .seconds(1), tolerance: .zero, clock: .continuous)
+        let remaining = ContinuousClock.now.duration(to: deadline)
+        guard remaining > .zero else { throw ReplayError("Missed pre-expiry sample, time remaining: \(remaining)") }
+        guard scene.talkPresentation.presented, scene.talkPresentation.deadline == deadline else {
+            throw ReplayError("Notification disappeared with \(remaining) left in its lease")
+        }
+        try await Task.sleep(until: deadline + .milliseconds(100), clock: .continuous)
+        try await wait("Notification outlived its lease") { scene.talkPresentation.message == nil }
+        let elapsed = leaseStart.duration(to: .now).components
+        window.ignoresMouseEvents = ignoresMouse
         try await visit(from: design, to: project, reader: report)
-        try JSONSerialization.data(withJSONObject: visits, options: [.prettyPrinted, .sortedKeys])
-            .write(to: directory.appending(path: "note-links.json"))
+        scene.openConversation()
+        try await wait("Saved message did not show its malformed URL as ordinary text") {
+            guard let root = window.contentView,
+                  descendant(MarkdownTextView.self, in: root, matching: { $0.string.contains("chief://execution?threadId=broken") }) != nil else { return false }
+            return linkFrame("chief://execution?threadId=broken") == nil
+        }
+        try await click("Deleted", history: true)
+        try await wait("Missing Thread did not show its unavailable notice") {
+            workspace.localizedOperationError?.contains(workspace.locale.text("不可用", "unavailable")) == true && presentation.selected == nil
+        }
+        let receipt: [String: Any] = ["visits": visits, "expirySeconds": Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18,
+            "sourceCodePoints": message.unicodeScalars.count, "missingThreadAlert": true]
+        try JSONSerialization.data(withJSONObject: receipt, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "talk-links.json"))
     }
 
     private func postClick(_ window: NSWindow, at point: CGPoint, secondary: Bool = false,
-                           flags: NSEvent.ModifierFlags = []) async throws {
+                           flags: NSEvent.ModifierFlags = [], holdFor: Duration = .milliseconds(45)) async throws {
         let types: [NSEvent.EventType] = secondary ? [.rightMouseDown, .rightMouseUp] : [.leftMouseDown, .leftMouseUp]
         for (index, type) in types.enumerated() {
             guard let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: flags,
@@ -1328,12 +1500,12 @@ private final class WheelSample: NSEvent {
                 throw ReplayError("Cannot construct window click")
             }
             NSApp.postEvent(event, atStart: false)
-            try await Task.sleep(for: .milliseconds(45))
+            try await Task.sleep(for: index == 0 ? holdFor : .milliseconds(45))
         }
     }
 
     /// Exercise installed AppKit monitors and native scroll responders.
-    private func noteClicks(_ window: NSWindow, directory: URL) async throws {
+    private func barSwipes(_ window: NSWindow, directory: URL) async throws {
         guard let content = window.contentView,
               let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content),
               let parent = descendant(NativeReadingParentView.self, in: content),
@@ -1365,40 +1537,44 @@ private final class WheelSample: NSEvent {
                        ("tag scroller", center(tagTarget))]
         let startOffset = camera.scrollOffset
         let model = presentation.overview
+        guard let folder = model.selectedDirectory,
+              let work = folder.children.first(where: { $0.tag == "Work" }),
+              model.railChoices.first?.id == work.id else {
+            throw ReplayError("Expected Work as the folder's first swipe target")
+        }
+        var wholeFolderSelected: Bool { model.selectedFilter?.id == folder.id && model.statusFilter == .all }
         try await postScroll(window, background, y: 9, phase: .began)
         try await postScroll(window, background, y: 0, phase: .cancelled)
         try await postScroll(window, background, y: 60, phase: nil, momentum: .begin)
         try await postScroll(window, background, y: 0, phase: nil, momentum: .end)
-        guard model.statusFilter == .all, !scene.notePanelOpen else { throw ReplayError("Orphan momentum took action") }
+        guard wholeFolderSelected else { throw ReplayError("Orphan momentum took action") }
         for (region, point) in targets {
             try await postScroll(window, point, y: 10, phase: .began)
-            guard !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Subthreshold swipe at " + region) }
+            guard wholeFolderSelected else { throw ReplayError("Subthreshold swipe at " + region) }
             try await postScroll(window, point, y: 17, phase: .changed)
-            guard !scene.notePanelOpen, model.statusFilter == .running else { throw ReplayError("Wrong swipe owner at " + region) }
+            guard model.selectedRailID == work.id else { throw ReplayError("Wrong swipe owner at " + region) }
             // Reverse before lift, cross onto the Bar and add inertia.
             try await postScroll(window, barPoint, y: -60, phase: .changed)
             try await postScroll(window, barPoint, y: 0, phase: .ended)
             try await postScroll(window, barPoint, y: -60, phase: nil, momentum: .begin, x: -20)
             try await postScroll(window, barPoint, y: 0, phase: nil, momentum: .end)
-            guard !scene.notePanelOpen, model.statusFilter == .running,
+            guard model.selectedRailID == work.id,
                   camera.scrollOffset == startOffset else { throw ReplayError("Swipe tail escaped at " + region) }
-            try model.chromeInteractions.activate(.directory, id: model.selectedDirectory!.id)
+            try model.chromeInteractions.activate(.directory, id: folder.id)
             try await Task.sleep(for: .milliseconds(600))
         }
         try swipeWithNaturalScrolling(monitor, in: window, at: background, direction: .up)
-        guard !scene.notePanelOpen, model.statusFilter == .running else {
+        guard model.selectedRailID == work.id else {
             throw ReplayError("Natural Scrolling changed the physical filter gesture")
         }
-        try model.chromeInteractions.activate(.directory, id: model.selectedDirectory!.id)
+        try model.chromeInteractions.activate(.directory, id: folder.id)
         try await Task.sleep(for: .milliseconds(650))
         let tagPoint = tags.convert(center(tags.bounds), to: nil)
         let tagOffset = tags.contentView.bounds.minX
         try await postScroll(window, tagPoint, y: 0, phase: .began, x: tagOffset > 0 ? 40 : -40)
         try await postScroll(window, tagPoint, y: 0, phase: .ended)
-        guard tags.contentView.bounds.minX != tagOffset, camera.scrollOffset == startOffset,
-              !scene.notePanelOpen else { throw ReplayError("The overflowing tags lost horizontal scrolling") }
+        guard tags.contentView.bounds.minX != tagOffset, camera.scrollOffset == startOffset else { throw ReplayError("The overflowing tags lost horizontal scrolling") }
 
-        let beforeOpen = scene.noteOpenGeneration
         try cacheConversationPages()
         try await postScroll(window, barPoint, y: 10, phase: .began)
         guard !scene.conversationOpen else { throw ReplayError("A subthreshold contact opened the conversation") }
@@ -1406,9 +1582,11 @@ private final class WheelSample: NSEvent {
         try await postScroll(window, barPoint, y: 0, phase: .ended)
         try await postScroll(window, barPoint, y: 40, phase: nil, momentum: .begin)
         try await postScroll(window, barPoint, y: 0, phase: nil, momentum: .end)
-        guard scene.conversationOpen, scene.inputOpen, !scene.notePanelOpen, scene.noteOpenGeneration == beforeOpen,
-              model.statusFilter == .all, camera.scrollOffset == startOffset else {
-            throw ReplayError("The Bar swipe did not open the conversation directly")
+        guard !scene.conversationOpen, wholeFolderSelected else { throw ReplayError("Upward Bar swipe took action") }
+        try await postClick(window, at: barPoint, secondary: true)
+        guard scene.conversationOpen, scene.inputOpen,
+              wholeFolderSelected, camera.scrollOffset == startOffset else {
+            throw ReplayError("The Bar right-click did not open the conversation directly")
         }
         try await Task.sleep(for: .milliseconds(650))
         let page = conversationElements(in: window)
@@ -1441,7 +1619,8 @@ private final class WheelSample: NSEvent {
                 guard timeline.contentView.bounds.minY > 20, timeline.contentView.bounds.minY < bottom - 20 else {
                     throw ReplayError("Could not scroll up from the latest cached message: \(bottom) → \(timeline.contentView.bounds.minY)")
                 }
-                _ = try await revealTimes(window, at: point, timeline: timeline)
+                try await checkHorizontalSwipe(window, at: point, timeline: timeline,
+                                               captureTo: directory.appending(path: "conversation-horizontal-swipe.png"))
                 let reading = timeline.contentView.bounds
                 let size = content.bounds.size
                 window.setContentSize(.init(width: size.width, height: NativeGeometry.minimumWindow.height))
@@ -1465,75 +1644,38 @@ private final class WheelSample: NSEvent {
         try await postClick(window, at: background)
         try await Task.sleep(for: .milliseconds(650))
         guard !scene.conversationOpen, !scene.inputOpen else { throw ReplayError("Outside click did not close the conversation") }
-        try await postClick(window, at: background, secondary: true)
-        guard !scene.notePanelOpen, scene.noteOpenGeneration == beforeOpen,
-              model.statusFilter == .all, camera.scrollOffset == startOffset else {
-            throw ReplayError("Background right-click changed the Bar or Overview")
-        }
-        try await postClick(window, at: barPoint, secondary: true)
-        guard scene.notePanelOpen, scene.noteOpenGeneration == beforeOpen + 1, !scene.inputOpen else {
-            throw ReplayError("Chief Bar right-click did not open Note directly")
-        }
-        try await Task.sleep(for: .milliseconds(850))
-        let notePoint = monitor.windowPoint(center(scene.capsuleFrame))
-        // SwiftUI can return a graphics host from hitTest even inside the Note viewport.
-        // Observe the mounted scroll view and send both gestures to the original window point.
-        let notePanel = window.convertFromScreen(try accessibleControl("moku-note-panel", role: .group, in: window).frame)
-        guard notePanel.contains(notePoint), let scroller = descendant(NSScrollView.self, in: content, matching: { view in
-            let clip = view.contentView
-            let viewport = clip.convert(clip.visibleRect, to: nil)
-            return !view.isHiddenOrHasHiddenAncestor && notePanel.contains(viewport) && viewport.contains(notePoint)
-                && (view.documentView?.bounds.height ?? 0) > clip.bounds.height + 80
-        }) else { throw ReplayError("Missing overflowing Chief Note viewport at the gesture point") }
-        if CommandLine.arguments.contains("--capture") {
-            try await capture(window, to: directory.appending(path: "chief-note.png"))
-        }
-        let generation = scene.noteOpenGeneration
-        let original = scroller.contentView.bounds.minY
-        try await postScroll(window, notePoint, y: -70, phase: .began)
-        try await postScroll(window, notePoint, y: 0, phase: .ended)
-        let scrolled = scroller.contentView.bounds.minY
-        try await postScroll(window, notePoint, y: 40, phase: .began)
-        try await postScroll(window, notePoint, y: 0, phase: .ended)
-        guard scrolled > original, scroller.contentView.bounds.minY < scrolled,
-              scene.notePanelOpen, scene.noteOpenGeneration == generation else {
-            throw ReplayError("The open Note lost native scrolling or opened twice")
-        }
-        try await postClick(window, at: background)
-        guard !scene.notePanelOpen else { throw ReplayError("Outside click did not close Note") }
-        try await Task.sleep(for: .milliseconds(650))
         try await postScroll(window, barPoint, y: -40, phase: .began)
         try await postScroll(window, barPoint, y: 0, phase: .ended)
         try await postScroll(window, background, y: 40, phase: .began, flags: .maskShift)
         try await postScroll(window, background, y: 0, phase: .ended)
-        guard !scene.notePanelOpen, !scene.conversationOpen, model.statusFilter == .all else { throw ReplayError("Downward Bar or modified canvas input took action") }
-        // The Note and the restored 18-card layout share a motion coordinator.
+        guard !scene.conversationOpen, wholeFolderSelected else { throw ReplayError("Downward Bar or modified canvas input took action") }
+        // The conversation and the restored 18-card layout share a motion coordinator.
         // Test a fresh pan once the production camera admits a new contact.
         let panDeadline = ContinuousClock.now + .seconds(6)
         while !monitor.enabled() {
             guard ContinuousClock.now < panDeadline else {
-                throw ReplayError("Camera did not resume after Note: stage=\(String(describing: presentation.canvas.motionStages.activeOwner)), layout=\(presentation.canvas.isLayingOut)")
+                throw ReplayError("Camera did not resume after conversation: stage=\(String(describing: presentation.canvas.motionStages.activeOwner)), layout=\(presentation.canvas.isLayingOut)")
             }
             try await Task.sleep(for: .milliseconds(30))
         }
         let panStart = camera.scrollOffset
         try await postScroll(window, background, y: 3, phase: .began, x: panStart > 0 ? 40 : -40)
         try await postScroll(window, background, y: 0, phase: .ended)
-        guard !scene.notePanelOpen, camera.scrollOffset != panStart else {
+        guard camera.scrollOffset != panStart else {
             throw ReplayError("Horizontal window scroll did not reach the camera: offset=\(panStart)->\(camera.scrollOffset)/\(camera.maximumOffset), point=\(background), phase=\(monitor.sequence.stage), owner=\(String(describing: monitor.sequence.owner)), pause=\(presentation.canvas.interactionPauseReasons), layingOut=\(presentation.canvas.isLayingOut), input=\(scene.inputOpen)")
         }
         try await postClick(window, at: barPoint)
-        guard scene.inputOpen, !scene.conversationOpen, !scene.notePanelOpen, presentation.dockDraft.text == draft else {
+        guard scene.inputOpen, !scene.conversationOpen, presentation.dockDraft.text == draft else {
             throw ReplayError("Primary Bar click did not reopen Compose with the conversation draft")
         }
         try await postScroll(window, background, y: 40, phase: .began)
         try await postScroll(window, background, y: 0, phase: .ended)
-        guard scene.inputOpen, !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Swipe displaced the composer") }
+        guard scene.inputOpen, wholeFolderSelected else { throw ReplayError("Swipe displaced the composer") }
         scene.setInputOpen(false)
         presentation.openSettings()
         try await postScroll(window, background, y: 40, phase: .began)
         try await postScroll(window, background, y: 0, phase: .ended)
-        guard scene.settingsOpen, !scene.notePanelOpen, model.statusFilter == .all else { throw ReplayError("Swipe escaped Settings") }
+        guard scene.settingsOpen, wholeFolderSelected else { throw ReplayError("Swipe escaped Settings") }
         scene.closeSettings()
         let deadline = ContinuousClock.now + .seconds(4)
         while scene.settingsOpen || !monitor.enabled() {
@@ -1541,86 +1683,13 @@ private final class WheelSample: NSEvent {
             try await Task.sleep(for: .milliseconds(30))
         }
         try JSONSerialization.data(withJSONObject: ["regions": targets.map { $0.0 },
-            "rightClickOpenedNoteOnce": true, "swipeOpenedConversation": true, "backgroundRightClickOpenedNote": false,
             "conversationDraftRestoredInCompose": true, "conversationPeriodCount": periods.count, "conversationPaging": true,
             "olderReadingOffsetsOnResize": readingOffsets,
-            "outsideClickClosedNote": true, "primaryClickOpenedCompose": true,
+            "primaryClickOpenedCompose": true, "rightClickOpenedConversation": true, "historicalToolOperationInstalled": true,
             "horizontalScroll": true, "composerScrollExcluded": true, "settingsScrollExcluded": true,
-            "tagOffsets": [tagOffset, tags.contentView.bounds.minX], "noteOffsets": [original, scrolled],
+            "tagOffsets": [tagOffset, tags.contentView.bounds.minX],
             "naturalScrolling": true])
-            .write(to: directory.appending(path: "overview-note-click.json"))
-    }
-
-    /// Exercise both event owners in the same production workspace, entirely offscreen.
-    private func reminderSwipe(directory: URL) async throws {
-        guard let edge = NSScreen.screens.map({ $0.frame.maxX }).max() else { throw ReplayError("Missing screen") }
-        // Keep WindowServer composing the panel while the controls stay offscreen.
-        let frame = CGRect(x: edge - 2, y: 200, width: 900, height: 680)
-        let window = ReminderReplayPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        let root = NSHostingView(rootView: NativeWorkspaceView(model: workspace, presentation: presentation)
-            .environment(\.scenePhase, .active))
-        window.contentView = root
-        window.setFrameOrigin(frame.origin)
-        window.makeKeyAndOrderFront(nil)
-        defer { window.close() }
-        guard NSScreen.screens.allSatisfy({ window.frame.intersection($0.frame).width <= 2 }) else {
-            throw ReplayError("Reminder interaction must run offscreen")
-        }
-        try await installTasks(18, revision: 1, authority: UUID(), manyDirectories: true)
-        try await Task.sleep(for: .seconds(1))
-        let timer = workspace.timer, scene = presentation.scene
-        timer.receive(nil)
-        let message = String(repeating: "Check this.\n", count: 10)
-        let row: JSONValue = .object(["type": .text("tool-operation"), "name": .text("timer"),
-            "id": .text("reminder"), "executionId": .text("fixture"), "completedAt": .integer(1),
-            "result": .object(["ok": .bool(true)]), "arguments": .object(["text": .text(message)])])
-        timer.receive(try HarnessThread(id: "moku", harnessID: "codex", revision: 1,
-            sessionState: .null, observation: .init(), cwd: "/fixture", settings: .object([:]),
-            createdAt: 1, updatedAt: 2, title: "Chief", tags: [], moku: true, transcript: .array([row])))
-        try await Task.sleep(for: .milliseconds(800))
-        guard let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: root),
-              let alert = timer.current else { throw ReplayError("Missing reminder or scroll monitor: pending=\(timer.pending.count)") }
-        func messageScroller(in view: NSView) -> NSScrollView? {
-            if let scroller = view as? NSScrollView, scroller.contentView.bounds.height > 0,
-               scroller.contentView.bounds.height <= 41, let document = scroller.documentView,
-               document.bounds.height > scroller.contentView.bounds.height + 80,
-               monitor.reminderScrollRegions?.contains(scroller.convert(CGPoint(x: scroller.bounds.midX,
-                    y: scroller.bounds.midY), to: nil), in: window) == true { return scroller }
-            return view.subviews.lazy.compactMap { messageScroller(in: $0) }.first
-        }
-        guard let scroller = messageScroller(in: root) else { throw ReplayError("Missing long reminder viewport") }
-        let clip = scroller.contentView
-        let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
-        let bodyOnScreen = window.convertToScreen(clip.convert(clip.bounds, to: nil))
-        guard NSScreen.screens.allSatisfy({ !$0.frame.intersects(bodyOnScreen) }) else {
-            throw ReplayError("Reminder viewport must stay outside all screens")
-        }
-        let generation = scene.noteOpenGeneration, camera = presentation.canvas.camera.scrollOffset
-        try await postScroll(window, point, y: -70, phase: .began)
-        try await postScroll(window, point, y: 0, phase: .ended)
-        let down = clip.bounds.minY
-        try await postScroll(window, point, y: 40, phase: .began)
-        try await postScroll(window, point, y: 0, phase: .ended)
-        let up = clip.bounds.minY
-        guard down > 0, up < down, presentation.overview.statusFilter == .all, scene.noteOpenGeneration == generation, !scene.notePanelOpen,
-              timer.current?.id == alert.id, presentation.canvas.camera.scrollOffset == camera else {
-            throw ReplayError("Long reminder lost native scroll or Note took its gesture: \(down), \(up)")
-        }
-        let size = monitor.configuration.size
-        let background = monitor.windowPoint(CGPoint(x: size.width * 0.72, y: size.height - 8))
-        try await postScroll(window, background, y: 36, phase: .began)
-        try await postScroll(window, background, y: 0, phase: .ended)
-        guard !scene.notePanelOpen, scene.noteOpenGeneration == generation, presentation.overview.statusFilter == .running, timer.current?.id == alert.id else {
-            throw ReplayError("Exposed Overview lost its status gesture while a reminder was pending")
-        }
-        try await Task.sleep(for: .milliseconds(700))
-        guard let receipt = descendant(NativeMokuTimerReceiptButton.ReceiptButton.self, in: root),
-              receipt.accessibilityPerformPress(), timer.current == nil else { throw ReplayError("Missing explicit receipt") }
-        try JSONSerialization.data(withJSONObject: ["offscreen": true, "scrollOffsets": [down, up],
-            "backgroundFilter": presentation.overview.statusFilter.rawValue, "explicitReceipt": true])
-            .write(to: directory.appending(path: "reminder-note-ownership.json"))
+            .write(to: directory.appending(path: "overview-bar-swipe.json"))
     }
 
     private func cardInteraction(_ window: NSWindow, directory: URL, authority: UUID) async throws {
@@ -1690,7 +1759,7 @@ private final class WheelSample: NSEvent {
         }
         try await postScroll(window, windowPoint, y: 40, phase: .began)
         try await postScroll(window, windowPoint, y: 0, phase: .ended)
-        guard !presentation.scene.notePanelOpen, presentation.overview.statusFilter == .all, presentation.selected?.threadID.string == target.id else {
+        guard presentation.overview.statusFilter == .all, presentation.selected?.threadID.string == target.id else {
             throw ReplayError("A swipe in the reader activated Overview")
         }
         presentation.showOverview()
@@ -1950,6 +2019,311 @@ private final class WheelSample: NSEvent {
             .write(to: directory.appending(path: "tag-read.json"))
     }
 
+    private func unreadFilter(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+        let model = presentation.overview, canvas = presentation.canvas
+        let untagged: JSONText = "untagged-result"
+        let unreadButton = "overview-status-unread"
+        let runningButton = "overview-status-running"
+        let cursor = CGEvent(source: nil)?.location
+        defer { if let cursor { CGWarpMouseCursorPosition(cursor) } }
+        workspace.updateSystemLocale(.english)
+
+        func task(_ id: JSONText, run: JSONText, status: PublicExecution.Status = .completed,
+                  revision: Int = 1, tags: [JSONText] = [], folder: JSONText? = "Fixture") throws -> JSONValue {
+            let cwd = folder.map { JSONText("/" + $0.string.lowercased()) } ?? ""
+            let completed = status == .completed
+            let execution = try PublicExecution(executionID: run, status: status, startedAt: 1, finishedAt: completed ? 2 : nil)
+            return try HarnessThread(id: id, harnessID: "codex", revision: revision, sessionState: .null,
+                observation: .init(latestExecution: execution), cwd: cwd, settings: .object([:]),
+                createdAt: 1, updatedAt: 2, title: id, tags: tags,
+                tagEmojis: Dictionary(uniqueKeysWithValues: tags.map { ($0, "📌") }),
+                directoryTag: folder ?? "", directoryScope: folder == nil ? "inbox" : cwd).json
+        }
+        let running = try task("running-task", run: "running", status: .running)
+        let alreadyRead = try task("already-read", run: "read")
+        let history = workspace.preferences.threadReadHistory
+        try history.markRead(.init(threadID: "already-read", typeID: "agent"), version: "read")
+        try await installTasks(0, revision: 2, authority: authority,
+            extraThreads: [task(untagged, run: "first-run"), running, alreadyRead])
+
+        func wait(_ message: String, until ready: () -> Bool) async throws {
+            let deadline = ContinuousClock.now + .seconds(6)
+            while !ready() {
+                guard ContinuousClock.now < deadline else { throw ReplayError(message) }
+                try await Task.sleep(for: .milliseconds(30))
+            }
+        }
+        func clickButton(_ id: String, holdFor: Duration = .milliseconds(45)) async throws {
+            try await wait("Missing button " + id) { (try? filterButton(id, in: window).frame.isEmpty) == false }
+            func buttonPoint() throws -> CGPoint {
+                let frame = window.convertFromScreen(try filterButton(id, in: window).frame)
+                return CGPoint(x: frame.minX + OverviewTagMetrics.railDiameter / 2, y: frame.midY)
+            }
+            // A catalog change can move the rail during hover or window activation.
+            // Press the mounted control at its settled location.
+            var point = try buttonPoint()
+            let deadline = ContinuousClock.now + .seconds(4)
+            while true {
+                try await movePointer(window, to: point)
+                let current = try buttonPoint()
+                if hypot(current.x - point.x, current.y - point.y) < 1 { break }
+                guard ContinuousClock.now < deadline else { throw ReplayError("Unstable button " + id) }
+                point = current
+            }
+            try await postClick(window, at: point, holdFor: holdFor)
+        }
+        var samples = [[String: Any]]()
+        func check(_ step: String, selected: String, cards: Set<String>, top: String? = nil) async throws {
+            do {
+                try await wait("Overview did not settle at " + step) {
+                    presentation.selected == nil && model.selectedRailID == selected
+                        && (top == nil || (model.selectedDirectory ?? model.selectedFilter)?.tag == top)
+                        && Set(model.items.map(\.id)) == cards && canvas.mountedCardIDs == cards && !canvas.isLayingOut
+                }
+            } catch {
+                try? await capture(window, to: directory.appending(path: "failed-unread-stage.png"))
+                throw ReplayError("\(error): selected=\(String(describing: model.selectedRailID)), items=\(model.items.map(\.id)), mounted=\(canvas.mountedCardIDs.sorted()), layingOut=\(canvas.isLayingOut), error=\(model.error ?? canvas.layoutError ?? "none")")
+            }
+            samples.append(["step": step, "selection": selected, "cards": canvas.mountedCardIDs.sorted(),
+                            "top": (model.selectedDirectory ?? model.selectedFilter)?.tag ?? "", "rail": model.railChoices.map(\.id)])
+        }
+        try await clickButton(runningButton)
+        try await check("folder Running before tagging", selected: "running", cards: ["running-task"])
+        try await clickButton(unreadButton)
+        try await check("unread without tags", selected: "unread", cards: [untagged.string])
+        guard model.visibleFilters.map(\.id) == ["directory:/fixture:fixture"],
+              model.railChoices.map(\.id) == ["running", "unread"] else {
+            throw ReplayError("Unread was unavailable without tags")
+        }
+        try await installTasks(0, revision: 3, authority: authority,
+            extraThreads: [task(untagged, run: "first-run", revision: 2, tags: ["Review"]), running, alreadyRead])
+        try await check("result is still unread after tagging", selected: "unread", cards: [untagged.string])
+        guard let review = model.selectedDirectory?.children.first(where: { $0.tag == "Review" }) else {
+            throw ReplayError("Missing tag for mark-as-read input")
+        }
+        try await clickButton(review.id, holdFor: .milliseconds(600))
+        try await check("mark as read with zero unread", selected: "unread", cards: [])
+        let ref = ApplicationThreadRef(threadID: untagged, typeID: "agent")
+        let saved = NativeThreadReadHistory(profile: directory.deletingLastPathComponent())
+        guard !saved.isUnread(ref, version: "first-run") else {
+            throw ReplayError("Mark as read did not persist the version receipt")
+        }
+        try await movePointer(window, to: CGPoint(x: window.frame.width / 2, y: window.frame.height / 2))
+        for (locale, label, empty) in [(DesktopLocale.english, "Unread", "No unread conversations"),
+                                       (.chinese, "未读", "没有未读会话")] {
+            workspace.updateSystemLocale(locale)
+            try await wait("Missing localized Unread button") {
+                guard let control = try? filterButton(unreadButton, in: window) else { return false }
+                return control.title == label || control.label == label
+            }
+            let unread = try filterButton(unreadButton, in: window)
+            let running = try filterButton(runningButton, in: window)
+            guard unread.frame.maxY < running.frame.minY,
+                  abs(unread.frame.height - running.frame.height) < 1,
+                  unread.frame.width > running.frame.width + 1 else {
+                throw ReplayError("Unread did not use the selected preset capsule")
+            }
+            let image = directory.appending(path: "unread-empty-" + locale.rawValue + ".png")
+            try await capture(window, to: image)
+            let lines = try recognizedLines(in: image, languages: locale == .english ? ["en-US"] : ["zh-Hans", "en-US"])
+            guard lines.contains(where: { $0.text.replacingOccurrences(of: " ", with: "") == empty.replacingOccurrences(of: " ", with: "") }) else {
+                throw ReplayError("Wrong empty-state text: \(lines.map(\.text))")
+            }
+            samples.append(["step": "localized empty state", "button": label, "message": empty, "screenshot": image.lastPathComponent])
+        }
+        let updated = try task(untagged, run: "later-run", revision: 3)
+        guard let state = workspace.state else { throw ReplayError("Missing unread fixture catalog") }
+        let patch: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(3), "revision": .integer(4),
+            "threads": .object(["upserts": .array([updated]), "removedIds": .array([])])])
+        let next = try RuntimeState.applying(patch, to: state)
+        await workspace.installPrepared(next, event: .mutation(patch, state: next, authority: authority))
+        try await check("new completed result reappears", selected: "unread", cards: [untagged.string])
+
+        let tagged = try task("tagged-task", run: "tagged", tags: ["Unread"])
+        try await installTasks(0, revision: 5, authority: authority, reports: reportFixtures(["Report"]),
+            extraThreads: [updated, running, alreadyRead, tagged])
+        try await check("tagged and untagged results plus report", selected: "unread",
+                        cards: [untagged.string, "tagged-task", "Report"])
+        guard let child = model.selectedDirectory?.children.first(where: { $0.tag == "Unread" }) else {
+            throw ReplayError("Missing semantic tag named Unread")
+        }
+        try await clickButton(runningButton)
+        try await check("folder Running", selected: "running", cards: ["running-task"])
+        try await clickButton(child.id)
+        try await check("semantic Unread", selected: child.id, cards: ["tagged-task"])
+        try await clickButton(unreadButton)
+        try await check("return to folder Unread", selected: "unread", cards: [untagged.string, "tagged-task", "Report"])
+        let animation: JSONText = "横移动画", market: JSONText = "核对东山精密最新行情"
+        let animationTask = try task(animation, run: "motion", tags: ["设计"], folder: "Chief")
+        let marketTask = try task(market, run: "quote", tags: ["个股研究"], folder: nil)
+        try await installTasks(0, revision: 6, authority: authority, extraThreads: [animationTask, marketTask])
+        guard let chief = model.visibleFilters.first(where: { $0.tag == "Chief" }),
+              let research = model.visibleFilters.first(where: { $0.tag == "个股研究" }),
+              let design = chief.children.first else { throw ReplayError("Missing scoped unread controls") }
+
+        func checkCounts(_ expected: [String: Int]) async throws {
+            let actual = Dictionary(uniqueKeysWithValues: model.visibleFilters.map { ($0.tag, $0.unreadCount) })
+            guard actual == expected else { throw ReplayError("Unexpected top unread counts: \(actual)") }
+            let unread = workspace.locale.text("条未读", "unread")
+            try await wait("Mounted top badges did not match \(expected)") {
+                model.visibleFilters.allSatisfy { filter in
+                    guard let value = try? filterButton(filter.id, in: window).value, let count = expected[filter.tag] else { return false }
+                    return count == 0 ? !value.contains(unread) : value.hasSuffix(" · \(count) \(unread)")
+                }
+            }
+            samples.append(["topUnreadCounts": actual])
+        }
+        try await check("Chief folder", selected: "unread", cards: [animation.string], top: "Chief")
+        try await checkCounts(["Chief": 1, "个股研究": 1])
+        try await clickButton(research.id)
+        try await check("research tag", selected: "unread", cards: [market.string], top: "个股研究")
+        try await clickButton(chief.id)
+        try await check("back to Chief", selected: "unread", cards: [animation.string], top: "Chief")
+        try await clickButton(design.id, holdFor: .milliseconds(600))
+        try await check("read Chief while research stays unread", selected: "unread", cards: [], top: "Chief")
+        try await checkCounts(["Chief": 0, "个股研究": 1])
+        try await clickButton(research.id)
+        try await check("research after Chief receipt", selected: "unread", cards: [market.string], top: "个股研究")
+
+        let shared = try task(market, run: "quote", revision: 2, tags: ["个股研究", "行情"], folder: nil)
+        let sharedPatch: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(6), "revision": .integer(7),
+            "threads": .object(["upserts": .array([shared]), "removedIds": .array([])])])
+        guard let current = workspace.state else { throw ReplayError("Missing market fixture catalog") }
+        let sharedState = try RuntimeState.applying(sharedPatch, to: current)
+        await workspace.installPrepared(sharedState, event: .mutation(sharedPatch, state: sharedState, authority: authority))
+        try await check("shared result after retagging", selected: "unread", cards: [market.string], top: "个股研究")
+        try await checkCounts(["Chief": 0, "个股研究": 1, "行情": 1])
+        guard let quotes = model.visibleFilters.first(where: { $0.tag == "行情" }) else { throw ReplayError("Missing second tag") }
+        try await clickButton(quotes.id)
+        try await check("second tag includes shared result", selected: "unread", cards: [market.string], top: "行情")
+        try model.markRead(.init(threadID: market, typeID: "agent"), version: "quote")
+        try await check("shared receipt", selected: "unread", cards: [], top: "行情")
+        try await checkCounts(["Chief": 0, "个股研究": 0, "行情": 0])
+        try await clickButton(research.id)
+        try await check("first tag reflects shared receipt", selected: "unread", cards: [], top: "个股研究")
+
+        var report = reportFixtures(["Motion report"])[0].objectValue!
+        report["scope"] = .text("/chief")
+        report["presentations"] = .array([.object(["id": .text("mokusei.overview"), "apiVersion": .integer(1),
+            "schemaVersion": .integer(1), "value": .object(["coversExecutions": .array([.object([
+                "thread": ApplicationThreadRef(threadID: animation, typeID: "agent").json,
+                "executionId": .text("next-motion")])])])])])
+        try await installTasks(0, revision: 8, authority: authority, reports: [.object(report)], extraThreads: [
+            task(animation, run: "next-motion", revision: 2, tags: ["设计"], folder: "Chief"),
+            task(market, run: "next-quote", revision: 3, tags: ["个股研究"], folder: nil)])
+        try await check("research with covered task in Chief", selected: "unread", cards: [market.string], top: "个股研究")
+        try await clickButton(chief.id)
+        try await check("report represents the covered Chief task", selected: "unread", cards: ["Motion report"], top: "Chief")
+        try await checkCounts(["Chief": 1, "个股研究": 1])
+
+        try await installTasks(0, revision: 9, authority: authority,
+            extraThreads: [task("no-space", run: "unclassified", folder: nil)])
+        try await check("unread without any top space", selected: "unread", cards: ["no-space"])
+        try await checkCounts([:])
+        try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "unread-filter.json"))
+    }
+
+    private func tagStates(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+        let model = presentation.overview, canvas = presentation.canvas
+        workspace.updateSystemLocale(.english)
+        captureScheme = .dark
+        var revision = 2
+        var samples = [[String: Any]]()
+        func thread(_ id: JSONText, _ status: PublicExecution.Status, tags: [JSONText] = [],
+                    cwd: JSONText = "/linked/task", scope: JSONText = "/fixture", label: JSONText = "Fixture") throws -> JSONValue {
+            let execution = try PublicExecution(executionID: "run", status: status, startedAt: 1,
+                finishedAt: status == .completed ? 2 : nil)
+            return try HarnessThread(id: id, harnessID: "codex", revision: revision, sessionState: .null,
+                observation: .init(latestExecution: execution), cwd: cwd, settings: .object([:]),
+                createdAt: 1, updatedAt: Double(revision), title: id, tags: tags,
+                tagEmojis: Dictionary(uniqueKeysWithValues: tags.map { ($0, "📌") }),
+                directoryTag: label, directoryScope: scope).json
+        }
+        func patch(_ rows: [JSONValue]) async throws {
+            let delta: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(revision - 1),
+                "revision": .integer(revision), "threads": .object(["upserts": .array(rows), "removedIds": .array([])])])
+            let next = try RuntimeState.applying(delta, to: workspace.state!)
+            await workspace.installPrepared(next, event: .mutation(delta, state: next, authority: authority))
+            revision += 1
+        }
+        func check(_ stage: String, _ cards: Set<String>, _ selected: String?, captureFrame: Bool = false) async throws {
+            try await wait("Unexpected \(stage): selected=\(String(describing: model.selectedFilter?.id)), cards=\(canvas.mountedCardIDs), route=\(presentation.interactionPage)", timeout: .seconds(5)) {
+                !presentation.moku.landing && model.selectedFilter?.id == selected
+                    && Set(model.items.map(\.id)) == cards && canvas.mountedCardIDs == cards && !canvas.isLayingOut
+            }
+            if captureFrame {
+                // Filter entry can continue after an unchanged card has settled.
+                try await Task.sleep(for: .milliseconds(600))
+                try await capture(window, to: directory.appending(path: stage + ".png"))
+            }
+            samples.append(["stage": stage, "cards": canvas.mountedCardIDs.sorted(), "filter": selected ?? "",
+                            "status": model.statusFilter.rawValue, "rail": model.railChoices.map(\.id)])
+        }
+        func press(_ id: String) async throws {
+            try await wait("Missing " + id, timeout: .seconds(5)) { (try? filterButton(id, in: window)) != nil }
+            try await focusReplayWindow(window)
+            let frame = window.convertFromScreen(try filterButton(id, in: window).frame)
+            try click(window, at: CGPoint(x: frame.minX + frame.height / 2, y: frame.midY))
+        }
+        try await installTasks(0, revision: revision, authority: authority, extraThreads: [thread("Inbox", .completed, cwd: "", scope: "inbox", label: "")])
+        revision += 1
+        try await check("no-running", [], nil, captureFrame: true)
+        let copy = try recognizedLines(in: directory.appending(path: "no-running.png"), languages: ["en-US"],
+                                       region: CGRect(x: 0, y: 0, width: 1, height: 1))
+        guard copy.contains(where: { $0.text.contains("No running conversations") }) else {
+            throw ReplayError("Missing no-running message: " + copy.map(\.text).joined(separator: ", "))
+        }
+        try await patch([thread("Task", .running)])
+        let folderID = "directory:/fixture:fixture", tagID = "semantic:/fixture:fixture"
+        guard model.visibleFilters.map(\.id) == [folderID], model.selectedFilter?.id == folderID,
+              model.items.map(\.id) == ["Task"], model.railChoices.map(\.id) == ["running", "unread"] else {
+            throw ReplayError("First untagged project card and folder did not enter the same catalog update")
+        }
+        try await check("running-without-tag", ["Task"], folderID, captureFrame: true)
+        for id in [folderID, "overview-status-running", "overview-status-unread"] {
+            _ = try filterButton(id, in: window)
+        }
+        try await patch([thread("Task", .running, tags: ["Fixture"])])
+        try await check("first-tag", ["Task"], tagID, captureFrame: true)
+        try await press(folderID)
+        try await check("sole-equal-child", ["Task"], folderID)
+        try await press(tagID)
+        try await check("sole-child-selected", ["Task"], tagID)
+
+        let names: [JSONText] = ["Fixture", "Shared", "Review", "Ship", "Test", "Write"]
+        try await patch([thread("Task", .completed, tags: names), thread("Other", .completed, tags: ["Shared", "Review"])])
+        try await press(folderID)
+        try await check("folder-with-overlap", ["Task", "Other"], folderID)
+        guard let children = model.selectedDirectory?.children, children.count == names.count, Set(children.map(\.tag)) == Set(names.map(\.string)) else {
+            throw ReplayError("Distinct assigned labels were lost or duplicated")
+        }
+        for child in children {
+            try await press(child.id)
+            let ids: Set<String> = ["Shared", "Review"].contains(child.tag) ? ["Task", "Other"] : ["Task"]
+            try await check("select-" + child.tag, ids, child.id)
+        }
+        var report = reportFixtures(["Report"])[0].objectValue!
+        report["presentations"] = .array([.object(["id": .text("mokusei.overview"), "apiVersion": .integer(1),
+            "schemaVersion": .integer(1), "value": .object(["tagFilter": .text("directory"), "coversExecutions": .array([])])])])
+        try await installTasks(0, revision: revision, authority: authority, reports: [.object(report)])
+        let emptyTag = "semantic:/fixture:development"
+        try await press(emptyTag)
+        try await check("assigned-tag-with-zero-projected-cards", [], emptyTag)
+
+        report.removeValue(forKey: "scope")
+        report["presentations"] = .array([])
+        try await installTasks(0, revision: revision + 1, authority: authority, reports: [.object(report)])
+        try await check("unscoped-document-tag", ["Report"], "semantic:inbox:development")
+
+        var unnamedFolder = try thread("Task", .completed, tags: ["Topic"]).objectValue!
+        unnamedFolder["directoryTag"] = .text("")
+        try await installTasks(0, revision: revision + 2, authority: authority, extraThreads: [.object(unnamedFolder)])
+        try await check("semantic-tag-without-folder-label", ["Task"], "semantic:/fixture:topic")
+        try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "tag-states.json"))
+    }
+
     private func statusFilters(_ window: NSWindow, directory: URL, authority: UUID) async throws {
         let model = presentation.overview, canvas = presentation.canvas
         let running = ["Executing", "Permission", "Background", "Submitting"]
@@ -2061,14 +2435,15 @@ private final class WheelSample: NSEvent {
             return faces
         }
         func checkEmptyCopy(in url: URL, mode: NativeOverviewStatusFilter) throws -> [String] {
-            let running = workspace.locale.text("没有运行中的会话", "No running conversations")
-            let completed = workspace.locale.text("没有已完成的会话", "No completed conversations")
-            let isRunning = mode == .running
-            return try checkStatusText(in: url, expected: [isRunning ? running : completed], absent: [
-                isRunning ? completed : running,
+            let messages: [NativeOverviewStatusFilter: String] = [
+                .running: workspace.locale.text("没有运行中的会话", "No running conversations"),
+                .unread: workspace.locale.text("没有未读会话", "No unread conversations"),
+                .completed: workspace.locale.text("没有已完成的会话", "No completed conversations")]
+            guard let expected = messages[mode] else { throw ReplayError("Unexpected empty status " + mode.rawValue) }
+            let absent = messages.values.filter { $0 != expected } + [
                 workspace.locale.text("在右半区上滑可查看全部状态", "Scroll up on the right to show all statuses"),
-                workspace.locale.text("在右半区下滑可查看全部状态", "Scroll down on the right to show all statuses")
-            ]).map(\.text)
+                workspace.locale.text("在右半区下滑可查看全部状态", "Scroll down on the right to show all statuses")]
+            return try checkStatusText(in: url, expected: [expected], absent: absent).map(\.text)
         }
         func normalized(_ text: String) -> String {
             text.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).joined()
@@ -2101,8 +2476,7 @@ private final class WheelSample: NSEvent {
             let visibleTags = model.visibleFilters.flatMap { [$0.id] + $0.children.map(\.id) }
             guard model.statusFilter == mode, model.selectedTag == selected, visibleTags == tagIDs,
                   (agents + documents + collected).sorted() == expected.sorted(),
-                  !needsBothReportCards || (!documents.isEmpty && !collected.isEmpty),
-                  !presentation.scene.notePanelOpen else {
+                  !needsBothReportCards || (!documents.isEmpty && !collected.isEmpty) else {
                 throw ReplayError("Unexpected \(name): mode=\(model.statusFilter), agents=\(agents), reports=\(documents), grouped=\(collected), tags=\(visibleTags), selected=\(model.selectedTag)")
             }
             let expectsStatusEmpty = mode != .all && expected.isEmpty
@@ -2122,7 +2496,7 @@ private final class WheelSample: NSEvent {
             }
             var sample: [String: Any] = ["step": name, "status": mode.rawValue, "selectedTag": selected, "scope": model.selectedScope, "visibleTags": visibleTags,
                 "agents": agents, "individualReports": documents, "collectionMembers": collected,
-                "mountedCardCount": canvas.mountedCardIDs.count, "noteOpen": presentation.scene.notePanelOpen,
+                "mountedCardCount": canvas.mountedCardIDs.count,
                 "cardViewport": [canvas.cardRegionInWindow.minX, canvas.cardRegionInWindow.width]]
             if let logo {
                 let frame = logo.convert(logo.bounds, to: content)
@@ -2242,7 +2616,9 @@ private final class WheelSample: NSEvent {
             guard changedCards.allSatisfy({ id in
                 guard let dy = travel[id] else { return false }
                 return direction == .up ? dy < 0 : dy > 0
-            }) else { throw ReplayError("Wrong card motion for \(direction) from \(String(describing: before)): \(travel)") }
+            }) else {
+                throw ReplayError("Wrong card motion for \(direction) in \(model.selectedTag) from \(String(describing: before)) to \(String(describing: model.selectedRailID)): \(travel)")
+            }
             samples.append(["step": "rail-swipe", "cardTravelY": travel, "finger": direction.rawValue, "invertedFromDevice": naturalScrolling,
                             "recognitionDeltaY": naturalScrolling ? -y : y, "rail": model.railChoices.map(\.id),
                             "from": before ?? "whole-folder", "to": model.selectedRailID ?? "whole-folder"])
@@ -2275,7 +2651,8 @@ private final class WheelSample: NSEvent {
               let namedFolder = tags.first(where: { $0.scope == "/other/Inbox" && $0.isDirectory }) else {
             throw ReplayError("Missing scoped Shipping controls")
         }
-        let allCards = ordinary + reportIDs
+        let allCards = ordinary + ["Directory only"] + reportIDs
+        let folderUnread = ["Background", "Delivered"] + reportIDs
         try await check("all", .all, allCards)
         try await waitForFilterInput()
         let panPoint = monitor.windowPoint(CGPoint(x: canvas.cardRegionInWindow.width * 0.8, y: content.bounds.height - 8))
@@ -2291,9 +2668,9 @@ private final class WheelSample: NSEvent {
         try await swipe(.down, right: false)
         try await check("whole-folder-down", .all, allCards)
         let semanticIDs = parent.children.map(\.id)
-        guard model.railChoices.map(\.id) == semanticIDs + ["running"],
-              model.chromeInteractions.mountedIDs(in: .status) == ["running"] else {
-            throw ReplayError("Directory Running did not follow its semantic tags")
+        guard model.railChoices.map(\.id) == semanticIDs + ["running", "unread"],
+              Set(model.chromeInteractions.mountedIDs(in: .status)) == ["running", "unread"] else {
+            throw ReplayError("Directory status presets did not follow its semantic tags")
         }
         try await swipe(.up, crossCenter: true)
         try await check("right-to-development", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: development.tag)
@@ -2306,9 +2683,13 @@ private final class WheelSample: NSEvent {
         try await swipe(.up)
         try await check("directory-running", .running, running)
         try await swipe(.up, overButton: "overview-status-running")
+        try await check("running-to-unread", .unread, folderUnread)
+        try await swipe(.up, overButton: "overview-status-unread")
         try await check("last-to-first-tag", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: development.tag)
         try await swipe(.down, overButton: development.id)
-        try await check("first-to-last-tag", .running, running)
+        try await check("first-to-last-tag", .unread, folderUnread, selected: development.tag)
+        try await swipe(.down, overButton: "overview-status-unread")
+        try await check("unread-to-running", .running, running)
         try await updateThread("Delivered", .running, revision: 9)
         try await check("directory-live-admit", .running, running + ["Delivered"])
         try await updateThread("Delivered", .completed, revision: 10)
@@ -2389,10 +2770,10 @@ private final class WheelSample: NSEvent {
         let shippingCenter = window.convertPoint(fromScreen: CGPoint(x: shippingButton.frame.midX, y: shippingButton.frame.midY))
         try click(window, at: shippingCenter)
         try await check("inbox-top-resets-status", .all, ["Inbox tagged"], selected: inboxShipping.tag)
-        guard model.railChoices.map(\.id) == ["running", "all", "completed"] else {
+        guard model.railChoices.map(\.id) == ["running", "unread", "all", "completed"] else {
             throw ReplayError("Inbox tag lost its status order")
         }
-        for id in ["running", "all", "completed"] {
+        for id in ["running", "unread", "all", "completed"] {
             let frame = window.convertFromScreen(try filterButton("overview-status-" + id, in: window).frame)
             guard abs(frame.minX - 12) <= 1 else { throw ReplayError("Inbox control is outside the left column") }
         }
@@ -2401,25 +2782,31 @@ private final class WheelSample: NSEvent {
         try await activate(.semantic, inboxLabel.id)
         try await check("inbox-label", .all, ["Inbox label"], selected: inboxLabel.tag)
         try await activate(.directory, namedFolder.id)
-        try await check("directory-named-inbox", .all, [namedFolderTask], selected: namedFolder.tag)
-        guard model.railChoices.map(\.id) == ["running"] else { throw ReplayError("Expected a running-only directory rail") }
+        try await check("directory-named-inbox", .all, [namedFolderTask], selected: "Development")
+        guard let child = namedFolder.children.first, model.railChoices.map(\.id) == [child.id, "running", "unread"] else {
+            throw ReplayError("A sole semantic tag with the folder's membership was hidden")
+        }
         try await swipe(.up)
         try await check("empty-directory-running", .running, [], selected: namedFolder.tag)
-        for direction in [FingerSwipe.up, .down] {
-            try await swipe(direction)
-            try await check(direction == .up ? "single-choice-up" : "single-choice-down", .running, [], selected: namedFolder.tag)
-        }
+        try await swipe(.up)
+        try await check("sole-directory-unread", .unread, [], selected: namedFolder.tag)
+        try await swipe(.up)
+        try await check("unread-to-sole-child", .all, [namedFolderTask], selected: child.tag)
+        try await swipe(.down)
+        try await check("sole-child-to-unread", .unread, [], selected: child.tag)
+        try await swipe(.down)
+        try await check("restore-sole-directory-running", .running, [], selected: namedFolder.tag)
         try await activate(.directory, parent.id)
         try await check("directory-restores-shipping", .all, ["Delivered"], selected: shipping.tag)
         try await activate(.directory, parent.id)
-        try await check("directory-selected", .all, ordinary + reportIDs)
+        try await check("directory-selected", .all, allCards)
         let cardViewport = canvas.cardRegionInWindow
         guard cardViewport == CGRect(origin: .zero, size: content.bounds.size) else { throw ReplayError("A filter consumed card space") }
         let developmentFrame = try filterButton(development.id, in: window).frame
         try click(window, at: window.convertPoint(fromScreen: CGPoint(x: developmentFrame.midX, y: developmentFrame.midY)))
         try await check("mouse-development", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: development.tag)
         try await swipe(.down, naturalScrolling: true)
-        try await check("natural-down-first-to-last", .running, running)
+        try await check("natural-down-first-to-last", .unread, folderUnread, selected: development.tag)
         try await swipe(.up, naturalScrolling: true)
         try await check("natural-up-last-to-first", .all, ordinary.filter { $0 != "Delivered" } + reportIDs, selected: development.tag)
         try await swipe(.up, naturalScrolling: true)
@@ -2429,7 +2816,7 @@ private final class WheelSample: NSEvent {
         try await swipe(.up, naturalScrolling: true)
         try await check("natural-up-back-to-middle", .all, ["Delivered"], selected: shipping.tag)
         try await swipe(.up, naturalScrolling: true)
-        try await check("natural-up-middle-to-last", .running, running)
+        try await check("natural-up-middle-to-running", .running, running)
         try await activate(.directory, namedFolder.id)
         try await check("restore-empty-running", .running, [], selected: namedFolder.tag)
         try await activate(.semantic, inboxShipping.id)
@@ -2437,6 +2824,8 @@ private final class WheelSample: NSEvent {
         let originalLocale = workspace.locale
         defer { workspace.updateSystemLocale(originalLocale) }
         workspace.updateSystemLocale(.chinese)
+        try await swipe(.down)
+        try await check("inbox-unread", .unread, ["Inbox tagged"], selected: "Shipping")
         try await swipe(.down)
         try await check("empty-tag", .running, [], selected: "Shipping")
         if CommandLine.arguments.contains("--capture") {
@@ -2453,6 +2842,8 @@ private final class WheelSample: NSEvent {
         try await check("first-to-last-status", .completed, ["Inbox tagged"], selected: "Shipping")
         try await wheel(1, right: false)
         try await check("last-to-first-status", .running, [], selected: "Shipping")
+        try await wheel(1, right: false)
+        try await check("running-to-unread-status", .unread, ["Inbox tagged"], selected: "Shipping")
         try await wheel(1, right: false)
         workspace.updateSystemLocale(.english)
         try await check("inbox-all", .all, ["Inbox tagged"], selected: "Shipping", checkDeliveredLayout: true)
@@ -2480,12 +2871,19 @@ private final class WheelSample: NSEvent {
         try await wheel(1, right: true)
         try await check("wrap-from-empty-completed", .running, ["Inbox tagged"], selected: "Shipping")
         try await wheel(1, right: true)
+        try await check("running-to-unread-wheel", .unread, [], selected: "Shipping")
+        try await wheel(1, right: true)
         try await check("back-from-running-wheel", .all, ["Inbox tagged"], selected: "Shipping")
+        try await swipe(.down)
+        try await check("inbox-unread-with-active-task", .unread, [], selected: "Shipping")
         try await swipe(.down)
         try await check("inbox-running", .running, ["Inbox tagged"], selected: "Shipping")
         try await updateThread("Inbox tagged", .completed, revision: 12)
         try await check("inbox-running-live-remove", .running, [], selected: "Shipping")
         try await swipe(.up)
+        try await check("inbox-unread-with-completed-task", .unread, ["Inbox tagged"], selected: "Shipping")
+        try await swipe(.up)
+        try await check("inbox-all-with-completed-task", .all, ["Inbox tagged"], selected: "Shipping")
         try await swipe(.up)
         if CommandLine.arguments.contains("--capture") { captureScheme = .dark }
         try await check("completed-live-admit", .completed, ["Inbox tagged"], selected: "Shipping", checkDeliveredLayout: true)
@@ -2616,7 +3014,8 @@ private final class WheelSample: NSEvent {
                 guard abs(local.minX - 12) <= 1, frame.width <= 142.9,
                       local.minY >= 0, local.maxY <= fullViewport.height, abs(frame.height - side) <= 1,
                       expanded[id] == nil ? abs(frame.width - side) <= 1 : frame.width > side + 1 else {
-                    throw ReplayError("Unexpected \(name) button frame for \(id): \(frame), expanded=\(expanded)")
+                    try await capture(window, to: directory.appending(path: "failed-" + name + ".png"))
+                    throw ReplayError("Unexpected \(name) button frame for \(id): \(frame), expanded=\(expanded), selected=\(model.selectedRailID ?? "none")")
                 }
             }
             let runningButton = try filterButton(runningID, in: window)
@@ -2624,7 +3023,7 @@ private final class WheelSample: NSEvent {
             guard abs(runningFrame.minX - 12) <= 1, abs(runningFrame.height - side) <= 1,
                   runningExpanded ? runningFrame.width > side + 1 : abs(runningFrame.width - side) <= 1,
                   try ids.allSatisfy({ try filterButton($0, in: window).frame.minY > runningButton.frame.maxY }),
-                  model.chromeInteractions.mountedIDs(in: .status) == ["running"] else {
+                  Set(model.chromeInteractions.mountedIDs(in: .status)) == ["running", "unread"] else {
                 throw ReplayError("Unexpected position or selection of the built-in Running tag at " + name)
             }
             widths[runningID] = runningFrame.width
@@ -2830,7 +3229,7 @@ private final class WheelSample: NSEvent {
         let reordered = try RuntimeState.applying(reorder, to: workspace.state!)
         await workspace.installPrepared(reordered, event: .mutation(reorder, state: reordered, authority: authority, replayed: true))
         let order = model.railChoices.map(\.id)
-        guard order.count == 6, order.first == support.id, order.last == "running",
+        guard order.count == 7, order.first == support.id, order.suffix(2) == ["running", "unread"],
               model.selectedRailID == "running", model.items.map(\.id) == ["Compact-2"] else {
             throw ReplayError("Membership reorder moved or cleared the built-in Running tag: \(order)")
         }
@@ -2896,16 +3295,16 @@ private final class WheelSample: NSEvent {
             guard ContinuousClock.now < deadline else { throw ReplayError("Untagged-only workspace did not settle") }
             try await Task.sleep(for: .milliseconds(30))
         }
-        let emptyPoint = windowPoint(right: true)
-        for y: Int32 in [40, -40] {
-            try await postScroll(window, emptyPoint, y: y, phase: .began)
-            try await postScroll(window, emptyPoint, y: 0, phase: .ended)
-            guard model.railChoices.isEmpty, model.selectedRailID == nil else { throw ReplayError("Swipe selected an empty rail") }
+        for (direction, status) in [(FingerSwipe.up, NativeOverviewStatusFilter.unread), (.down, .running)] {
+            try await swipe(direction)
+            guard model.railChoices.map(\.id) == ["running", "unread"], model.selectedRailID == status.rawValue else {
+                throw ReplayError("Untagged swipe \(direction) selected \(String(describing: model.selectedRailID)), rail=\(model.railChoices.map(\.id))")
+            }
         }
         let savedIDs = workspace.catalog.threads.map(\.id.string)
         guard model.visibleFilters.isEmpty, model.selectedFilter == nil, model.selectedTag.isEmpty,
-              model.statusFilter == .all, savedIDs.contains("Inbox tagged"), savedIDs.contains("Inbox untagged"),
-              model.chromeInteractions.mountedIDs(in: .status).isEmpty else {
+              model.statusFilter == .running, savedIDs.contains("Inbox tagged"), savedIDs.contains("Inbox untagged"),
+              Set(model.chromeInteractions.mountedIDs(in: .status)) == ["running", "unread"] else {
             throw ReplayError("Unexpected cards, controls or thread loss after removing the last tag")
         }
         samples.append(["step": "last-inbox-tag-removed", "previousTag": inboxShipping.id, "scope": model.selectedScope,

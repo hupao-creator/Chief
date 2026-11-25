@@ -162,8 +162,8 @@ private struct NativeCollectionPanelHost: ViewModifier {
                 .animation(NativeReadingPageTiming.openingAnimation, value: presentation.parentVisible)
                 .allowsHitTesting(!open).disabled(open).accessibilityHidden(open)
             NativeReadingPageStack(open: open, identity: "collection-members", motion: presentation.motion,
-                stationaryParent: true, emphasizedOpening: true, panel: true, collectionPanel: true,
-                panelSource: presentation.source, threadPanelMotion: true,
+                stationaryParent: true, emphasizedOpening: true, panel: true, panelUsesGlass: true,
+                panelSource: { presentation.source }, threadPanelMotion: true,
                 onParentPresentationChange: { presentation.parentVisible = $0 },
                 onPanelOutsideClick: { close() },
                 onClose: { presentation.retire() }) {

@@ -129,9 +129,9 @@ public struct NativeOverviewChrome: View {
         // while retaining separate outlines at rest.
         GlassEffectContainer(spacing: OverviewTagMetrics.spacing) {
             HStack(spacing: OverviewTagMetrics.spacing) {
-                if let onRestart { iconButton("RotateCcw", size: 15, title: strings.restart, action: onRestart) }
+                if let onRestart { iconButton("RotateCcw", title: strings.restart, action: onRestart) }
                 if onSettings != nil || onSettingsWithOrigin != nil {
-                    iconButton("Settings", size: 15, title: strings.settings,
+                    iconButton("Settings", title: strings.settings,
                                settingsAnchor: settingsAnchor, onSettingsFrameChange: onSettingsFrameChange) {
                         if let rect = settingsAnchor.frame, let onSettingsWithOrigin { onSettingsWithOrigin(rect) }
                         else { onSettings?() }
@@ -262,21 +262,20 @@ public struct NativeOverviewChrome: View {
             ? measuredTagsWidth + OverviewTagMetrics.barInset * 2 : 10000
     }
 
-    private func iconButton(_ name: String, size: CGFloat = 16, title: String, active: Bool = false,
+    private func iconButton(_ name: String, title: String,
                             settingsAnchor: OverviewSettingsAnchor? = nil,
                             onSettingsFrameChange: ((CGRect?) -> Void)? = nil,
                             action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            NativeIcon(name: name, size: size)
+            NativeIcon(name: name, size: 15)
                 .frame(width: OverviewTagMetrics.iconButtonSize, height: OverviewTagMetrics.iconButtonSize)
                 .frame(width: OverviewTagMetrics.actionDiameter, height: OverviewTagMetrics.actionDiameter)
         }
-        .buttonStyle(OverviewChromeIconStyle(active: active, settingsAnchor: settingsAnchor,
+        .buttonStyle(OverviewChromeIconStyle(settingsAnchor: settingsAnchor,
                                             onSettingsFrameChange: onSettingsFrameChange))
         .glassEffectID(name, in: actionGlass)
         .glassEffectTransition(.matchedGeometry)
         .help(title).accessibilityLabel(title)
-        .accessibilityAddTraits(active ? .isSelected : [])
     }
 
     private func presentFilters(_ updated: [NativeOverviewFilter], animated: Bool) {
@@ -339,6 +338,7 @@ public struct NativeOverviewChromeStrings: Sendable {
     public var actions = "俯瞰视图操作"
     public var filter = "按标签筛选"
     public var runningOnly = "运行中"
+    public var unreadOnly = "未读"
     public var allStatuses = "全部状态"
     public var completedOnly = "已完成"
     public var statusFilter = "按状态筛选"
@@ -394,9 +394,6 @@ public struct NativeOverviewAttentionIndicator: View {
 }
 
 enum OverviewTagMetrics {
-    static func selectionTintOpacity(contrast: ColorSchemeContrast) -> Double {
-        contrast == .increased ? 0.34 : 0.22
-    }
     static let iconButtonSize: CGFloat = 30
     static let barInset = 6 * tagScale
     static let labelInset: CGFloat = 12
@@ -466,10 +463,8 @@ struct OverviewTagButtonStyle: ButtonStyle {
 
 /// Settings and restart keep a frosted face beneath their interactive glass.
 private struct OverviewActionGlassSurface<S: Shape>: ViewModifier {
-    let active: Bool
     let shape: S
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     func body(content: Content) -> some View {
         content
@@ -482,33 +477,25 @@ private struct OverviewActionGlassSurface<S: Shape>: ViewModifier {
                 }
             }
             .contentShape(shape)
-            .glassEffect(.clear.tint(active ? selectionTint : nil).interactive(), in: shape)
-            .animation(.easeInOut(duration: 0.18), value: active)
-    }
-
-    private var selectionTint: Color {
-        NativePalette.overview.accent.swiftUI
-            .opacity(OverviewTagMetrics.selectionTintOpacity(contrast: contrast))
+            .glassEffect(.clear.interactive(), in: shape)
     }
 }
 
 private struct OverviewChromeIconStyle: ButtonStyle {
-    let active: Bool
     var settingsAnchor: OverviewSettingsAnchor?
     var onSettingsFrameChange: ((CGRect?) -> Void)?
     func makeBody(configuration: Configuration) -> some View {
-        OverviewChromeIconBody(configuration: configuration, active: active,
+        OverviewChromeIconBody(configuration: configuration,
                                settingsAnchor: settingsAnchor, onSettingsFrameChange: onSettingsFrameChange)
     }
 }
 
 private struct OverviewChromeIconBody: View {
     let configuration: ButtonStyleConfiguration
-    let active: Bool
     var settingsAnchor: OverviewSettingsAnchor?
     var onSettingsFrameChange: ((CGRect?) -> Void)?
     var body: some View {
-        configuration.label.modifier(OverviewActionGlassSurface(active: active, shape: Capsule()))
+        configuration.label.modifier(OverviewActionGlassSurface(shape: Capsule()))
             .background {
                 if let settingsAnchor {
                     OverviewSettingsFrameReader(anchor: settingsAnchor, onChange: onSettingsFrameChange)

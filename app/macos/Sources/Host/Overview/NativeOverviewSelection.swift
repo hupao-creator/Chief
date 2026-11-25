@@ -430,7 +430,7 @@ enum NativeOverviewSelection {
         // Scoped documents retain their directory and semantic filters even
         // when every source task has been archived or deleted.
         for item in collection.applications {
-            guard let scopeID = item.entry.scope?.string else { continue }
+            let scopeID = item.entry.scope?.string ?? inboxScope
             let label = item.entry.tags.directoryTags.first?.string ?? ""
             var group = scopes[scopeID] ?? ScopeGroup(label: label, members: [], tags: [:])
             if group.label.isEmpty { group.label = label }
@@ -447,18 +447,16 @@ enum NativeOverviewSelection {
         }
         var top: [NativeOverviewFilter] = []
         for (scopeID, group) in scopes {
-            let labelKey = key(group.label)
-            let children = group.tags.values.filter { scopeID == inboxScope || key($0.tag) != labelKey }.map { value in
+            let children = group.tags.values.map { value in
                 NativeOverviewFilter(tag: value.tag, displayTag: SemanticTagLabel.display(name: value.tag, emoji: value.emoji), emoji: value.emoji, scope: scopeID, count: value.members.count,
                                      isDirectory: false, selectionKey: "scope:\(scopeID):tag:\(key(value.tag))")
             }.sorted { a, b in a.count != b.count ? a.count > b.count : compare(a.tag, b.tag) == .orderedAscending }
-            let limited = Array(children.prefix(5))
-            if scopeID == inboxScope {
-                top.append(contentsOf: limited)
-            } else if !group.label.isEmpty {
+            if scopeID == inboxScope || group.label.isEmpty {
+                top.append(contentsOf: children)
+            } else {
                 top.append(NativeOverviewFilter(tag: group.label, scope: scopeID,
                                                 count: group.members.count, isDirectory: true,
-                                                selectionKey: "scope:\(scopeID):all", children: limited))
+                                                selectionKey: "scope:\(scopeID):all", children: children))
             }
         }
         return orderedFilters(top, key: key)

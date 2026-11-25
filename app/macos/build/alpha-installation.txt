@@ -11,7 +11,7 @@ Apple Silicon Mac（M 系列芯片），macOS 26 或更新版本。
    从 Assets 将 DMG、SHA256SUMS 和本说明下载到同一文件夹。
    在该文件夹的终端中运行 shasum -a 256 -c SHA256SUMS。DMG 文件名后应显示 OK。
    如果校验失败，请从同一版本重新下载 DMG 和 SHA256SUMS 后再打开。
-2. 打开 DMG，把 Chief Alpha.app 拖入 Applications 文件夹，然后弹出磁盘映像。
+2. 打开 DMG，把左侧的 Chief Alpha.app 拖入右侧的 Applications 文件夹。复制完成后弹出磁盘映像。
 3. 从“应用程序”打开 Chief Alpha。
 4. 这个 alpha 使用临时签名，未经 Apple 公证。macOS 可能提示无法验证开发者或
    无法检查恶意软件。确认你信任邀请方提供的这个包后，在“系统设置 → 隐私与安全性”
@@ -43,7 +43,8 @@ First installation
    Open Terminal in that folder and run shasum -a 256 -c SHA256SUMS. Look for
    the DMG filename followed by OK. If the check fails, download the DMG and
    checksum again from the same release before opening the image.
-2. Open the DMG, drag Chief Alpha.app to Applications, then eject the disk image.
+2. Open the DMG and drag Chief Alpha.app on the left onto Applications on the right.
+   Eject the disk image when copying finishes.
 3. Open Chief Alpha from Applications.
 4. This alpha is ad-hoc signed and has not been notarized by Apple. macOS may say
    it cannot verify the developer or check for malicious software. If you trust

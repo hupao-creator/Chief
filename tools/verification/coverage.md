@@ -8,8 +8,8 @@
 AsciiDoc、README、文本运行说明/生产 prompt、证据文本及 LICENSE，包含隐藏 `.agents/`
 和 `CLAUDE.md` 符号链接：共 **197** 个范围标识，其中 **190** 项自有/适用文档、
 **7** 项第三方原文/生成数据。范围标识数量不是当前文件数量。
-当前表覆盖 **152** 个文档候选，其中下表 **145** 项为自有/适用入口，另列 **7** 项第三方输入。
-其中 **25** 项当前入口不在固定审计输入中。**70** 个没有独立当前文件的输入标识
+当前表覆盖 **148** 个文档候选，其中下表 **141** 项为自有/适用入口，另列 **7** 项第三方输入。
+其中 **24** 项当前入口不在固定审计输入中。**73** 个没有独立当前文件的输入标识
 逐项映射到当前事实所有者；日志接口类标识明确映射到现有能力边界，不声明日志实现。
 
 第三方依赖源码、SwiftPM/Go 缓存、构建输出、图片/字体二进制、JSON/CSV 原始采样和
@@ -63,7 +63,6 @@ README/入口核对。资源来源说明属于自有文档；法律原文与生�
 | [demos/moku-gradient-material/README.md](../../demos/moku-gradient-material/README.md) | 构建输入/参数/组件归属核对；[build.py](../../demos/moku-gradient-material/build.py)、[main.swift](../../demos/moku-gradient-material/main.swift) | 未重建/启动；独立 fixture 无 Runtime/e2e 验收证明 |
 | [demos/moku-landing/README.md](../../demos/moku-landing/README.md) | 构建输入/参数/组件归属核对；[build.py](../../demos/moku-landing/build.py)、[main.swift](../../demos/moku-landing/main.swift) | 未重建/启动；独立 fixture 无 Runtime/e2e 验收证明 |
 | [demos/moku-mention-transition/README.md](../../demos/moku-mention-transition/README.md) | 构建输入/参数/组件归属核对；[build.py](../../demos/moku-mention-transition/build.py)、[main.swift](../../demos/moku-mention-transition/main.swift) | 未重建/启动；独立 fixture 无 Runtime/e2e 验收证明 |
-| [demos/moku-note-transition/README.md](../../demos/moku-note-transition/README.md) | 构建输入/参数/组件归属核对；[build.py](../../demos/moku-note-transition/build.py)、[main.swift](../../demos/moku-note-transition/main.swift) | 未重建/启动；独立 fixture 无 Runtime/e2e 验收证明 |
 | [demos/moku-panel-transition/README.md](../../demos/moku-panel-transition/README.md) | [发送回执回放](../../demos/moku-panel-transition/PendingSendReplay.swift)在生产 Dock 中输入，核对编辑器、发送内容与临时磁盘草稿 | 本地 AppKit 鼠标事件、Return、组字与同目录补全，合成回执和独立进程重开；系统输入源、全局鼠标路由及 Runtime 交付另验 |
 | [Agent entrance replay](../../demos/moku-panel-transition/README.md#agent-entrance-replay) | [原生捕获](../../demos/moku-panel-transition/AgentEntranceCapture.swift)和[逐帧判定](../../demos/moku-panel-transition/check_frames.py)检查标题起点、收起宽度、首次可见 ink 与第一响应者 | 隔离窗口短、长标题与快速反转，含生产速度焦点采样。真实 Runtime 和系统输入另验。 |
 | [demos/moku-thinking-orbit/README.md](../../demos/moku-thinking-orbit/README.md) | 构建输入/参数/组件归属核对；[build.py](../../demos/moku-thinking-orbit/build.py)、[main.swift](../../demos/moku-thinking-orbit/main.swift) | 未重建/启动；独立 fixture 无 Runtime/e2e 验收证明 |
@@ -79,7 +78,6 @@ README/入口核对。资源来源说明属于自有文档；法律原文与生�
 | [design/composer.md](../../design/composer.md) | 主路径/符号/约束静态核对；[NativeWorkspaceView.swift](../../app/macos/Sources/Host/Shell/NativeWorkspaceView.swift)、[NativeMokuSceneState.swift](../../app/macos/Sources/Host/MokuScene/NativeMokuSceneState.swift)、[NativeMokuDock.swift](../../app/macos/Sources/Host/MokuScene/NativeMokuDock.swift) | 限源码与引用；异常/竞态/环境行为未经动态认证 |
 | [design/markdown.md](../../design/markdown.md) | 主路径/符号/约束静态核对；[Package.swift](../../app/macos/Package.swift)、[NativeMarkdownView.swift](../../app/macos/Sources/Shared/PluginUI/Reading/NativeMarkdownView.swift)、[NativeMarkdownText.swift](../../app/macos/Sources/Shared/PluginUI/Reading/NativeMarkdownText.swift) | 限源码与引用；异常/竞态/环境行为未经动态认证 |
 | [design/motion.md](../../design/motion.md) | 主路径/符号/约束静态核对；[RunningThreadBadge.swift](../../app/macos/Sources/Shared/PluginUI/Cards/RunningThreadBadge.swift)、[NativeReadingPanelTransition.swift](../../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingPanelTransition.swift)、[NativeReadingPanelReturn.swift](../../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingPanelReturn.swift) | 限源码与引用；异常/竞态/环境行为未经动态认证 |
-| [design/note-exposure.md](../../design/note-exposure.md) | 主路径/符号/约束静态核对；[NativeMokuNote.swift](../../app/macos/Sources/Host/MokuScene/NativeMokuNote.swift)、[NativeMarkdownView.swift](../../app/macos/Sources/Shared/PluginUI/Reading/NativeMarkdownView.swift)、[moku.go](../../internal/core/runtime/moku.go) | 限源码与引用；异常/竞态/环境行为未经动态认证 |
 | [design/overview.md](../../design/overview.md) | 主路径/符号/约束静态核对；[NativeOverviewLayout.swift](../../app/macos/Sources/Host/Overview/NativeOverviewLayout.swift)、[NativeOverviewCamera.swift](../../app/macos/Sources/Host/Overview/NativeOverviewCamera.swift)、[ThreadCardText.swift](../../app/macos/Sources/Shared/PluginUI/Cards/ThreadCardText.swift) | 限源码与引用；异常/竞态/环境行为未经动态认证 |
 | [design/reading.md](../../design/reading.md) | 主路径/符号/约束静态核对；[ThreadConversation.swift](../../app/macos/Sources/Shared/PluginUI/Conversation/ThreadConversation.swift)、[ThreadExecutionGroups.swift](../../app/macos/Sources/Shared/PluginUI/Conversation/ThreadExecutionGroups.swift)、[NativeHarnessThreadSurface.swift](../../app/macos/Sources/Host/HarnessHost/NativeHarnessThreadSurface.swift) | 限源码与引用；异常/竞态/环境行为未经动态认证 |
 | [design/state-machines.md](../../design/state-machines.md) | 生产状态、转换与归属索引，链接到 Go 服务、原生宿主及插件实现 | 清单依据源码，各生成域与回放覆盖见[验证索引](facts.md) |
@@ -91,7 +89,7 @@ README/入口核对。资源来源说明属于自有文档；法律原文与生�
 | [docs/settings.md](../../docs/settings.md) | [入口](../../app/macos/Sources/Host/Shell/NativeWorkspaceView.swift)、[设置页](../../app/macos/Sources/Host/Settings/NativeSettingsPage.swift)、[设置保存](../../app/macos/Sources/Host/Settings/NativeSettingsDraft.swift)、[助手配置](../../app/macos/Sources/Host/ApplicationHost/NativeApplicationBackgroundEditor.swift)、[清空历史](../../internal/core/runtime/history.go) | 静态核对；未运行设置保存、恢复及清空交互 |
 | [docs/sidecards.md](../../docs/sidecards.md) | [侧卡选择与输入](../../app/macos/Sources/Plugins/Sidecards/README.md)、[浏览器及批注发送](../../app/macos/Sources/Plugins/Sidecards/Browser/NativeBrowserSidecard.swift)、[批注界面](../../app/macos/Sources/Plugins/Sidecards/Browser/BrowserSidecardPane.swift) | 静态核对；未运行网页加载或批注 |
 | [docs/task-conversations.md](../../docs/task-conversations.md) | [会话阅读](../../app/macos/Sources/Shared/PluginUI/Conversation/ThreadConversation.swift)、[任务接续](../../app/macos/Sources/Host/Shell/NativeExecutionContinuation.swift)、[发送与恢复界面](../../app/macos/Sources/Host/MokuScene/NativeMokuComposer.swift) | 静态核对；未运行任务接续、停止、附件和确认交互 |
-| [docs/working-with-moku.md](../../docs/working-with-moku.md) | [输入入口](../../app/macos/Sources/Host/Shell/NativeWorkspaceView.swift)、[笔记](../../app/macos/Sources/Host/MokuScene/NativeMokuNote.swift)、[即时提醒](../../app/macos/Sources/Host/MokuScene/NativeMokuTimerBar.swift)、[目录规则](../../internal/services/moku/context.go) | 静态核对；未运行分派、阅读导航、提醒和草稿交互 |
+| [docs/working-with-moku.md](../../docs/working-with-moku.md) | [输入入口](../../app/macos/Sources/Host/Shell/NativeWorkspaceView.swift)、[消息链接](../../app/macos/Sources/Host/MokuScene/NativeMokuTalk.swift)、[目录规则](../../internal/services/moku/context.go) | 静态核对；未运行分派、阅读导航、回复和草稿交互 |
 | [internal/README.md](../../internal/README.md) | 主路径/符号/约束静态核对；[bootstrap.go](../../internal/core/composition/bootstrap.go)、[check.go](../../internal/tooling/architecture/check.go) | 限源码与引用；异常/竞态/环境行为未经动态认证 |
 | [internal/core/model/README.md](../../internal/core/model/README.md) | 主路径/符号/约束静态核对；[commands.go](../../internal/core/model/commands.go)、[command_validation.go](../../internal/core/model/command_validation.go)、[validate.go](../../internal/core/model/validate.go) | 限源码与引用；异常/竞态/环境行为未经动态认证 |
 | [internal/core/plugin/README.md](../../internal/core/plugin/README.md) | 主路径/符号/约束静态核对；[harness.go](../../internal/core/plugin/harness.go)、[bootstrap.go](../../internal/core/composition/bootstrap.go)、[metadata.go](../../internal/core/plugin/metadata.go) | 限源码与引用；异常/竞态/环境行为未经动态认证 |
@@ -141,8 +139,6 @@ README/入口核对。资源来源说明属于自有文档；法律原文与生�
 | [tools/verification/README.md](README.md) | CLI/采集口径静态核对；[native_replay.py](native_replay.py) | 限当前参数/生产边界；不认证 live/GUI/当前性能 |
 | [tools/verification/coverage.md](coverage.md) | 文档入口、链接与数量静态核对；[facts.md](facts.md) | 限文档映射与已列证据 |
 | [tools/verification/facts.md](facts.md) | 流程/配置静态核对；[AGENTS.md](../../AGENTS.md)、[ci.yml](../../.github/workflows/ci.yml)、[Makefile](../../Makefile) | 限已配置流程；不代表远程门禁或行为覆盖通过 |
-| [tools/verification/moku-note-performance/README.md](moku-note-performance/README.md) | CLI/采集口径静态核对；[provenance.json](moku-note-performance/evidence/provenance.json)、[diagnostic-counts.json](moku-note-performance/evidence/diagnostic-counts.json)、[interaction.json](moku-note-performance/evidence/interaction.json) | 限当前参数/生产边界；不认证 live/GUI/当前性能 |
-| [tools/verification/moku-note-performance/evidence/capture.txt](moku-note-performance/evidence/capture.txt) | 测量制品/来源/限制核对；[diagnostic-counts.json](moku-note-performance/evidence/diagnostic-counts.json)、[interaction.json](moku-note-performance/evidence/interaction.json) | 仅记录的版本/制品；未重测、未重算全部统计，不认证当前源码 |
 | [tools/verification/overview-ci-performance/README.md](overview-ci-performance/README.md) | CLI/采集口径静态核对；[overview-performance.yml](../../.github/workflows/overview-performance.yml) | 限当前参数/生产边界；不认证 live/GUI/当前性能 |
 | [tools/verification/overview-ci-performance/runtime/README.md](overview-ci-performance/runtime/README.md) | CLI/采集口径静态核对；[clock.go](overview-ci-performance/runtime/clock.go)、[fixture.go](overview-ci-performance/runtime/fixture.go) | 限当前参数/生产边界；不认证 live/GUI/当前性能 |
 | [tools/verification/overview-glass/README.md](overview-glass/README.md) | CLI/采集口径静态核对；[analyze.py](overview-glass/analyze.py)、[geometry.py](overview-glass/geometry.py) | 限当前参数/生产边界；不认证 live/GUI/当前性能 |
@@ -209,10 +205,13 @@ README/入口核对。资源来源说明属于自有文档；法律原文与生�
 | `design/message-settlement-flicker.md` | [design/markdown.md](../../design/markdown.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
 | `design/moku-character-rollback.md` | [design/composer.md](../../design/composer.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
 | `design/moku-input-card-dimming.md` | [design/composer.md](../../design/composer.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
-| `design/moku-talk-note-handoff.md` | [design/composer.md](../../design/composer.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
-| `design/moku-talk-note-transition.md` | [design/composer.md](../../design/composer.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
-| `design/note-read-awareness-implementation.md` | [design/note-exposure.md](../../design/note-exposure.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
-| `design/note-read-awareness.md` | [design/note-exposure.md](../../design/note-exposure.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
+| `demos/moku-note-transition/README.md` | [Chief 消息](../../app/macos/Sources/Host/MokuScene/README.md#talk-execution-links) | 已退役范围；当前消息导航及其验证归属见链接 |
+| `tools/verification/moku-note-performance/README.md` | [Chief 消息](../../app/macos/Sources/Host/MokuScene/README.md#talk-execution-links) | 已退役范围；当前消息导航及其验证归属见链接 |
+| `tools/verification/moku-note-performance/evidence/capture.txt` | [Chief 消息](../../app/macos/Sources/Host/MokuScene/README.md#talk-execution-links) | 已退役范围；当前消息导航及其验证归属见链接 |
+| `design/moku-talk-note-handoff.md` | [Chief 消息](../../app/macos/Sources/Host/MokuScene/README.md#talk-execution-links) | 已退役范围；当前消息导航及其验证归属见链接 |
+| `design/moku-talk-note-transition.md` | [Chief 消息](../../app/macos/Sources/Host/MokuScene/README.md#talk-execution-links) | 已退役范围；当前消息导航及其验证归属见链接 |
+| `design/note-read-awareness-implementation.md` | [Chief 消息](../../app/macos/Sources/Host/MokuScene/README.md#talk-execution-links) | 已退役范围；当前消息导航及其验证归属见链接 |
+| `design/note-read-awareness.md` | [Chief 消息](../../app/macos/Sources/Host/MokuScene/README.md#talk-execution-links) | 已退役范围；当前消息导航及其验证归属见链接 |
 | `design/overview-click-refit-investigation.md` | [design/overview.md](../../design/overview.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
 | `design/overview-fitall-layout.md` | [design/overview.md](../../design/overview.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
 | `design/reader-8k-performance.md` | [design/reading.md](../../design/reading.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |

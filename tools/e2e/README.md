@@ -101,9 +101,9 @@ contains every requested ID, including blocked and unreached entries.
 | --- | --- | --- | --- |
 | `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Page changes take under 1,000ms each. The final Dock handoff takes under 1,560ms. | Fresh profile, authorized system AX driver, exclusive desktop. Each press verifies the private runtime PID/epoch, target button and focused test window. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
 | `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve tagged tasks in the selected folder in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
-| `E2E-OVERVIEW-004` | Select the folder’s Running tag, switch spaces and return. Choose Completed in a top-level Inbox tag. | Tagged project and Inbox tasks plus an untagged Inbox task in the supported suite, or tagged reports and tasks across two folders in the Collection suite. `overview-filters.json` records the Runtime scope and source references alongside the mounted pages. | Checks scoped membership, the available left buttons, the empty Running view and the remembered folder choice. The [window replay](../../demos/moku-landing/README.md) also checks live removal and assignment of the last and first tag. |
+| `E2E-OVERVIEW-004` | Select the folder’s Running tag, switch spaces and return. Choose Completed in a top-level Inbox tag. In the Collection suite, enter Studio’s first tag and click Studio again to view the whole folder. | Tagged project and Inbox tasks plus an untagged Inbox task in the supported suite, or tagged reports and tasks across two folders in the Collection suite. `overview-filters.json` records the Runtime scope and source references alongside the mounted pages. | Checks scoped membership, the available left buttons, the empty Running view and the remembered folder choice. The [untagged work replay](../../demos/moku-landing/README.md#untagged-running-work-and-tag-visibility) checks the running empty state, a live untagged card, first assignment and selection of tags with overlapping membership. |
 | `E2E-OVERVIEW-005` | Launch, select filters through mounted controls, relaunch the same isolated profile, fork tasks and classify them. | Three tagged project tasks with distinct tags, one tagged Inbox task and forks with inherited or empty tags. | Checks launch and folder defaults, preference restoration, empty-catalog and unavailable-space fallback, first-assignment selection, batch order, Settings focus and reclassification. |
-| `E2E-CHIEF-001` | Open Note and switch to Compose. The legacy command is rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
+| `E2E-CHIEF-001` | Open Compose. Retired Note and history commands are rejected and Chief records have no Overview reading targets. | Populated private profile, `chief-controls.json`. | Mounted semantic controls. Menu shortcuts, eye placement and the click target require native window observation. |
 | `E2E-READ-001` | Open the prepared Agent from Overview; observe its ready, nonempty mounted turn; deliver an external follow-up; observe its mounted successor; activate the first history entry; Back returns to the successor; Overview closes the reader | Fresh profile, real Codex directory, settled source reply; `creation.json`, scoped content, `ui-initial/current/history/return/overview.json`, `ui-events.jsonl` | Navigation callbacks, content acquisition and mounted turn identity; HTTP follow-up input, not composer submission. Semantic readiness is not proof of exact rendered pixels or text layout |
 | `E2E-SETTINGS-001` | Open Settings with Chief Agent selected and only Chief Agent, Auto-Categorization and Super Thread available; activate an unselected `routingPreset` capsule; close through the save gate; read the exact saved preset through public Runtime state; reopen on Chief Agent and observe it selected | Same isolated connected workspace; `settings-before/edited/persisted/reopened.json`, UI operations and public API receipts | Default navigation and the binding/draft/transport/persistence/reopen path for one preset; IME, keyboard, pointer hit-testing, errors/conflicts and system presentation need separate evidence |
 | `E2E-COLLECTION-001` | Switch folders, open a grouped report, return and revisit it. Archive and restore other reports while the folder stays selected. | The Library and Studio fixtures contain eight and four tagged reports respectively. Each cites a distinct completed task. Each folder also has a standalone tagged task. | Checks grouping under viewport pressure, selection on return, promotion after reading, folder unread counts, release after archive and regrouping on restore. |
@@ -125,7 +125,10 @@ certified by these scenarios.
 Use the [packaging contract](../../app/macos/build/README.md#invited-alpha-dmgs)
 and [installation guide](../../docs/getting-started.md#install-chief-alpha).
 Verify the DMG against the checksum from the same release. Mount it read-only,
-check the Applications shortcut and compare the enclosed guide with the download.
+open the volume in Finder and check that both filenames are fully visible, with
+the app on the left and the Applications shortcut on the right of the arrow.
+Confirm the shortcut resolves to `/Applications` and the separate release guide
+matches `app/macos/build/alpha-installation.txt`.
 Copy the app to a temporary install directory, eject the image, then run alpha
 smoke on the copy. Record the DMG hash, source commit and build number.
 
@@ -254,6 +257,34 @@ Record the tested revision, app artifact, fixture delay, window sizes, and
 captured frames. The [onboarding layout contract](../../app/macos/Sources/Host/Onboarding/README.md)
 applies to the separate configuration editor on both pages.
 
+### Onboarding Agent configuration form spacing
+
+In a fresh profile with ready Codex and Pi catalogs, open **Configure separately**
+on the Tag and Super Thread Agent pages. Select Codex and capture the form with
+**Advanced options** collapsed and expanded. Compare the vertical distance
+between the Model and Reasoning effort popups with that between Service tier and
+Permission mode. With equally sized rows, those distances should match.
+Collapse and reopen the disclosure to check that it reserves no space for hidden
+fields and that the previously selected values reappear. Switch to Pi and check
+that no empty disclosure or advanced rows remain. Return to Codex and confirm
+the disclosure starts collapsed and the basic fields keep their spacing.
+
+Record the revision, app and catalog fixture, disclosure states and measured
+popup frames. See the [onboarding form contract](../../app/macos/Sources/Host/Onboarding/README.md).
+
+### Harness resource notice spacing
+
+Mount the OpenCode execution form with a ready catalog in the Settings or
+onboarding form presentation, then with a fixture that shows a resource notice
+and Retry above the same fields. At the same width, compare the first popup's
+vertical offset from the top of the editor. The increase should equal the
+notice's rendered height, including its own padding. The distances between the
+Provider, Model and OpenCode model variant popups should be identical in both
+states. Repeat in wide inline and narrow stacked Settings layouts.
+
+Record the revision, catalog fixture, viewport width, and notice and popup
+frames. See the [shared form layout contract](../../app/macos/Sources/Shared/PluginUI/README.md#model-and-reasoning-selection).
+
 ### Full-surface loading mark
 
 Run the [same-window native replay](../../demos/chief-logo-loading/README.md#原生加载标记).
@@ -305,7 +336,7 @@ fixture's main thread during a second blink and read complete window frames
 on an independent capture queue.
 
 The [mounted Dock replay](../../demos/moku-panel-transition/remaining/README.md) exercises reply read state,
-permission and questionnaire controls, Timer acknowledgment and editor reversal
+permission and questionnaire controls and editor reversal
 with ordinary and reduced motion.
 
 ### OpenCode cold discovery
@@ -365,8 +396,13 @@ owns resolution, profile compatibility and window appearance.
 4. Change macOS Appearance from Light to Dark and back with Overview, a reader
    and an attachment preview open. Record effective appearance in the snapshot
    and capture each window. Repeat with the same Settings visit and the same
-   first-run form mounted. Check that the form backgrounds and controls follow
-   the new appearance without changing the active tab or setup step.
+   first-run form mounted. Check that onboarding follows the new appearance and keeps its
+   setup step. Settings should stay dark on the active tab. In each system
+   appearance, close Settings and reopen it using the Overview gear or the Settings keyboard shortcut.
+   Check the dark background, header eyes and legible form labels. Open the
+   Chief Model menu and choose an available model. Under Auto-Categorization,
+   switch between Agent off and Configure separately. Check that the selected
+   mode and visible fields match, then close Settings and inspect Overview.
 5. With an installed, enabled agent, compare the Chief map and the Tag and
    Super Thread animation backdrops in both appearances. Capture the animations
    during playback and after switching away and back. At the full Settings
@@ -425,67 +461,25 @@ observations and saved value. The [Settings preview](../../demos/settings-naviga
 can check the mounted editor with an in-memory save. Runtime persistence requires
 an isolated connected workspace. `E2E-SETTINGS-001` exercises preset persistence.
 
-### Chief Note execution link
+### Chief Talk execution links
 
-Prepare an isolated workspace with two directories. Give both ordinary Threads
-at least two completed runs with distinguishable replies longer than the viewport. Have one Super Thread
-cite a different run of the same Thread as the Note. Put links to both Threads
-near the bottom of a long Chief Note. Include enough Reports for a multipage
-Collection on All. Record the isolated window continuously and save the filter,
-carousel member, execution identities and link position alongside the recording.
+In an isolated workspace, send a Talk message with links to two different runs. Click one execution capsule in the compact bar. Check that the reader starts at the cited run’s heading, including when the task has since run again. Close the reader and right-click Chief Bar. Click the other link in the saved message and check its run independently. Repeat from another tag and from a Super Thread whose related card cites a different execution. After a fresh notification hides at one minute, follow the link from conversation history again. An invalid URL stays readable. A deleted Thread shows an unavailable notice. A missing run in an existing Thread opens the unavailable historical page.
 
-1. In the other directory, scroll the Note to the ordinary link and click it
-   with the system pointer. Check that the Note closes, Overview switches to the
-   target directory, then the reader opens.
-   The reader should open at the cited run’s heading. After the scoped body has loaded, check that its timeline
-   height exceeds its viewport, `top` is zero and `following` is false. Repeat from a filter that already contains the target and check that
-   its selection stays put. Click the reader’s **×** and verify the Note stays
-   closed on Overview. Reopen the Note and follow the historical link again.
-   Press Escape in the read-only text to return to the Note and compare the
-   link’s window position. On separate visits, use the Overview command and
-   click the reader backdrop. Both Overview exits leave the Note closed.
-2. Open the associated link from a different directory. Check the Report title
-   and the exact cited execution in its open side panel. Verify the directory
-   containing the Report was selected before its reader opened. Apply the same scroll
-   checks to that timeline. Close the expanded visit with the Report’s **×**
-   and verify Overview settles with the Note closed. Reopen the link. Use the conversation
-   contents to visit current and historical rows. Type a draft on the historical
-   run and switch away and back. **Back to related executions** should show
-   the Report’s list. Click the Report’s upper-left **×**. Wait for Overview to
-   settle and check that the Note stays closed. Press **⌘⇧N** and verify the
-   same Note text and citation are available.
-3. In All, start with another Report showing in the target Collection. Open
-   the associated link. The filter should stay on All. Check consecutive frames
-   for the Note closing, the carousel moving to the cited Report and settling,
-   then the reader expanding from that card. Compare the panel travel with a
-   direct click on the same card at the same window size and camera position.
-   Repeat the comparison for an ordinary Thread and an individual Report.
-   After a brief Report visit, type an unsent draft in its source conversation
-   and close the report. From the same window recording, check that the input
-   folds in its source column and travels back to the resting canvas center. Check the carousel page, collapsed Note and retired editor focus.
-   Reopen the Note and follow the same citation to recover the focused draft.
-   Check the separate Overview draft through its Compose shortcut. On the ordinary
-   Thread route, use Escape to check the restored Note’s scroll position.
-4. Repeat the three routes with system AXPress. Check English and Simplified
-   Chinese. Record the capture rate. Track source revision, executable identity, scoped replies,
-   input targets and returned state for each visit.
-
-The [Note link replay](../../demos/moku-landing/README.md#chief-note-execution-links) checks the click, space ordering, reader and execution target in an isolated window. The [nested workspace replay](../../demos/moku-landing/README.md#overview-note-click-at-actual-size) checks windowed and full-screen left-rail navigation, Inbox statuses, live card membership, retained tags and direct Chief Bar right-click and Control-click, upward swipe into the conversation, primary click to compose, and draft-preserving outside dismissal through posted AppKit events. Its [live conversation replay](../../demos/moku-landing/verify_conversation.py) checks native Return, public dialogue, and App and Runtime restart in one isolated profile. The semantic Note toggle exercises the Note entrance. Mounted route identity
-and window frame recordings supply separate evidence.
-[Note and link behavior](../../app/macos/Sources/Host/MokuScene/README.md)
+The [mounted two-surface replay](../../demos/moku-landing/README.md#talk-execution-links) uses window-addressed mouse events, an isolated catalog and cached execution content. The [live conversation replay](../../demos/moku-landing/verify_conversation.py) checks native Return, public dialogue and restart against a private Runtime and loopback provider.
 
 ### Chief Bar opening
 
 The [mounted opening replay](../../demos/moku-landing/README.md#chief-bar-opening)
 checks the latest message’s visible end, scrolls to the first message, visits
-the earlier page and returns through the production scroll route. It checks
+the earlier page and returns to the latest page. It opens the Bar with a
+window-addressed secondary click and dismisses it with an outside click. It checks
 the reading position across a content revision and window resize.
 Its window movie supports frame-by-frame review of
 the eyes, composer and transcript during expansion and dismissal.
 
 ### Chief navigation
 
-Start with a private profile containing a Chief conversation and a completed task. A saved selection for the current Chief or a retained Chief archive must open Overview. Open Chief Note and inspect its accessible controls and the View menu. Compose and Chief Note have their own shortcuts. A plain Command-B leaves the current route in place. Check that the former history action is rejected, then open an ordinary task and a Super Thread from Overview.
+Start with a private profile containing a Chief conversation and a completed task. A saved selection for the current Chief or a retained Chief archive must open Overview. Open **View → Compose** and inspect its accessible controls. A plain Command-B leaves the current route in place. Check that retired navigation actions are rejected, then open an ordinary task and a Super Thread from Overview.
 
 ### Live Super Thread updates
 
@@ -577,6 +571,13 @@ visit. The [production component preview](../../demos/report-thread/README.md)
 can exercise this visually with synthetic data and a window recording.
 
 ### Overview unread bookmarks
+
+The [native Unread preset replay](../../demos/moku-landing/README.md#unread-preset)
+checks the mounted left-rail entry, untagged completed-result admission, removal
+after marking the tag as read, localized zero results and
+reappearance after a new execution arrives. Switching top-row folders and tags in Unread
+must show the bookmarked members counted by each badge, including a task shared
+by two tags.
 
 The [native tag press replay](../../demos/moku-landing/README.md#mark-a-tag-as-read)
 checks bulk acknowledgment from the left rail, pointer cancellation, shared
@@ -734,7 +735,7 @@ suite starts the normal application with its private profile and automation
 socket. A prepared Runtime supplies completed tasks, with no desktop
 preferences at the first launch. It relaunches with an explicitly selected empty Running tag and with the older directory preference fields. Mounted filter buttons select the left tag,
 top folder and Inbox tag. The folder button exercises first entry, restoration,
-invalid-child fallback and return to the entire folder. Runtime archive and classification operations vary tag availability. The final relaunch leaves an older saved catalog on disk and
+invalid-child fallback and return to the entire folder. The runner also selects a semantic tag named after the project and checks its individual card. With every tagged task archived, it restores an unassigned task, holds a real Codex follow-up at the external peer, and observes the running card before and after Tag Agent assigns it. Runtime archive and classification operations vary tag availability. The final relaunch leaves an older saved catalog on disk and
 checks selection against the Runtime. The first observable
 populated Overview must already select the expected filter and project its
 exact card IDs. The settled state must also mount those cards and the selected
@@ -760,10 +761,16 @@ between the side margins, with individual cards capped at 360pt. The
 and [after](../../demos/super-thread-carousel/evidence/member-grid-after.png)
 frames use the same 17 covered reports and one report without a cover.
 
-With Reduce Transparency off, check that the gaps between cards share the
-workspace backdrop with the area outside the grid. With Reduce Transparency
-on, check that the panel has its opaque reading fill. In both cases the
-member cards retain their own surfaces and Close retains its glass style.
+With Reduce Transparency off, check that the member grid sits on a rounded
+regular Liquid Glass panel during opening, scrolling and return. With Reduce
+Transparency on, check for the opaque reading fill. In both cases the member
+cards retain their own opaque surfaces and Close retains its glass style.
+
+On Overview, compare the carousel with a standalone Super Thread card. The
+surface and border, cover gap, metadata and emoji backdrop share the ordinary
+card treatment. Hover to reveal the Liquid Glass navigation capsule, use an
+arrow to switch pages, then move the pointer off the card. Check that the
+navigation capsule disappears and the upper-right glass count remains.
 
 Resize the open window to 1192×780pt, then to 860×600pt. Scroll
 with the pointer over the grid and check that it clears Close.

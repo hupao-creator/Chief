@@ -8,7 +8,7 @@ Settings opens on **Chief Agent**, with Overview blurred behind it. Close Settin
 
 ## Choose who coordinates and who can take tasks
 
-On the **Chief Agent** tab, choose the coordinating agent in the top row and at least one agent it can assign tasks to in the bottom row. Dashed lines connect Chief to the agents it can assign work to. Use **Chief Model** to choose the coordinating agent’s model. Before switching the coordinating agent, finish work that's running, waiting for a response, or waiting to send. Switching to a different agent starts a new Chief session and keeps your note. You can still read the saved messages from the previous agent by swiping up on Chief Bar in Overview.
+On the **Chief Agent** tab, choose the coordinating agent in the top row and at least one agent it can assign tasks to in the bottom row. Dashed lines connect Chief to the agents it can assign work to. Use **Chief Model** to choose the coordinating agent’s model. Before switching the coordinating agent, finish work that's running, waiting for a response, or waiting to send. Switching to a different agent starts a new Chief session. You can still read the saved messages from the previous agent by right-clicking Chief Bar in Overview.
 
 If Chief says no agents are available, install and sign in to a supported agent on your Mac, then return to the **Chief Agent** tab and click **Retry**. [Supported agents](getting-started.md#connect-an-agent)
 
@@ -30,7 +30,7 @@ Choose **OpenCode** to see its providers, models and variants. If **Loading Agen
 
 ## Change appearance or language on your Mac
 
-To change Chief's appearance, open **System Settings → Appearance** on your Mac and choose **Light**, **Dark**, or **Auto**. You can see the change in Overview, Settings, and the first-run setup screens.
+To change Chief's appearance, open **System Settings → Appearance** on your Mac and choose **Light**, **Dark**, or **Auto**. You can see the change in Overview and the first-run setup screens. Settings, Chief Bar, and your conversation with Chief stay dark.
 
 Chief uses Simplified Chinese when Chinese is first in your Mac's preferred languages. It uses English when English or any other language is first. To change the order, go to **System Settings → General → Language & Region** and check the labels in Chief after macOS applies the change.
 

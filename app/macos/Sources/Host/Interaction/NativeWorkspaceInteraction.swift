@@ -18,7 +18,7 @@ public extension NativeWorkspacePresentation {
     }
 
     private var interactionFilters: [NativeOverviewFilter] {
-        overview.visibleFilters.flatMap { [$0] + $0.children.filter { $0.count > 0 } }
+        overview.visibleFilters.flatMap { [$0] + $0.children }
     }
 
     private var interactionThreads: [ApplicationThreadRef] {
@@ -162,7 +162,7 @@ public extension NativeWorkspacePresentation {
             overview.selectTag(filter)
         case .overviewScroll, .overviewRetry,
              .overviewActivateFilter, .overviewScrollFilter,
-             .toggleMokuInput, .toggleMokuNote:
+             .toggleMokuInput:
             try performOverviewInteraction(action)
         }
     }

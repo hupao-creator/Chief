@@ -3,7 +3,7 @@
 Opening a Report from Overview or the [Super Thread member grid](../app/macos/Sources/Host/Overview/README.md#viewed-application-collections)
 uses one native panel transition. The panel opens from the activated card and
 returns to the card in the originating surface. The reader can show its usual loading state.
-A Chief Note link closes the Note before Overview reveals its destination.
+Activating an execution link in a Chief message reveals its destination in Overview.
 If the active filter excludes the destination, Overview selects a matching
 filter. A grouped Report turns to the requested page before the reader opens.
 The settled card uses its ordinary 420ms opening, including the Agent card’s
@@ -44,7 +44,7 @@ return preparation; keyboard/focus behavior is not disabled to hide warnings.
 See [parent surface](../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingParentSurface.swift).
 
 The [mounted Dock visits](../demos/moku-panel-transition/remaining/README.md) exercise
-the reply read key, permissions, questionnaires, Timer acknowledgments and native
+the reply read key, permissions, questionnaires and native
 input. The [transition study](research/chief-bar-remaining.md) records unshipped
 candidates and the boundaries of their measurements. Physical presentation and
 whole-workspace frame pacing require separate measurements.

@@ -63,7 +63,7 @@ public struct NativeApplicationBackgroundEditor: View {
                         "Uses Chief’s configuration in this Settings draft. Both are saved when Settings closes; your separate settings are kept.") : locale.text("使用下方 Chief 当前保存的配置。修改 Chief 后，从下个任务开始采用新配置；保留已有的单独配置。",
                         "Uses Chief’s saved settings shown below. Changes to Chief apply to the next task. Your separate settings are kept.")
         case .independent:
-            locale.text("独立保存运行配置，修改从下个任务开始生效。切换到跟随 Chief 或关闭 Agent 后，仍保留此配置。",
+            locale.text("独立保存运行配置，修改从下个任务开始生效。切换到「复用 Chief 配置」或关闭 Agent 后，仍保留此配置。",
                         "Saves execution settings independently. Changes apply to the next task. These settings are kept when using Chief or turning the Agent off.")
         }
     }
@@ -116,7 +116,7 @@ public struct NativeApplicationBackgroundEditor: View {
         ForEach(AgentChoice.allCases, id: \.self) { choice in
             let title = switch choice {
             case .off: locale.text("不启用", "Agent off")
-            case .inherit: locale.text("跟随 Chief", "Use Chief")
+            case .inherit: locale.text("复用 Chief 配置", "Use Chief")
             case .independent: locale.text("单独配置", "Configure separately")
             }
             let selected = selectedChoice == choice
