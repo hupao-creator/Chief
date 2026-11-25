@@ -1,6 +1,4 @@
-<h1 align="center">
-  <img src="design/chief-logo.webp" width="115" height="115" align="middle" alt="">&nbsp;Chief
-</h1>
+<h1 align="center"><img src="design/chief-logo.webp" width="115" height="115" align="middle" hspace="6" alt="">Chief</h1>
 
 <p align="center">A native Mac workspace for coordinating AI agents.</p>
 
