@@ -42,7 +42,7 @@ private final class OpeningFrames: NSObject, SCStreamOutput, @unchecked Sendable
         frames.append(.init(time: stamp.doubleValue * Double(units.numer) / Double(units.denom) / 1e9, green: green))
     }
 
-    func analyze(input: Double, ticks: [Double], ending: String, output: URL) throws {
+    func analyze(input: Double, focused: Double, ticks: [Double], ending: String, output: URL) throws {
         guard let idle = frames.last(where: { $0.time < input }), let settled = frames.last,
               let provider = CGDataProvider(data: Data(settled.green) as CFData),
               let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: width,
@@ -97,7 +97,7 @@ private final class OpeningFrames: NSObject, SCStreamOutput, @unchecked Sendable
         let gaps = zip(ticks, ticks.dropFirst()).filter { $0.0 < readable && $0.1 >= input }.map { ($0.1 - $0.0) * 1000 }
         guard let mainGap = gaps.max() else { throw OpeningMeasurementError("Missing main run-loop samples") }
         try JSONSerialization.data(withJSONObject: ["responseMS": (response - input) * 1000,
-            "readableMS": (readable - input) * 1000, "longestVisualHoldMS": longestHold * 1000,
+            "inputReadyMS": (focused - input) * 1000, "readableMS": (readable - input) * 1000, "longestVisualHoldMS": longestHold * 1000,
             "longestMainTickMS": mainGap, "mainTickGapsMS": gaps, "frames": samples], options: [.sortedKeys])
             .write(to: output)
     }
@@ -120,8 +120,14 @@ private final class OpeningFrames: NSObject, SCStreamOutput, @unchecked Sendable
     try stream.addStreamOutput(capture, type: .screen, sampleHandlerQueue: capture.queue)
     try await stream.startCapture()
     var ticks = [Double]()
+    var focused: Double?
     let heartbeat = Timer(timeInterval: 1.0 / 120, repeats: true) { _ in
-        MainActor.assumeIsolated { ticks.append(CACurrentMediaTime()) }
+        MainActor.assumeIsolated {
+            let now = CACurrentMediaTime()
+            ticks.append(now)
+            if focused == nil, window.isKeyWindow, let editor = window.firstResponder as? NSTextView,
+               editor.isEditable, !editor.isHiddenOrHasHiddenAncestor { focused = now }
+        }
     }
     RunLoop.main.add(heartbeat, forMode: .common)
     defer { heartbeat.invalidate() }
@@ -145,7 +151,8 @@ private final class OpeningFrames: NSObject, SCStreamOutput, @unchecked Sendable
         try? await stream.stopCapture()
         throw error
     }
+    guard let focused, focused >= input else { throw OpeningMeasurementError("Missing composer focus transition") }
     try capture.queue.sync {
-        try capture.analyze(input: input, ticks: ticks, ending: ending, output: directory.appending(path: "opening-\(visit).json"))
+        try capture.analyze(input: input, focused: focused, ticks: ticks, ending: ending, output: directory.appending(path: "opening-\(visit).json"))
     }
 }
