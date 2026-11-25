@@ -15,6 +15,24 @@
 
 [![Chief Overview filtered to bug fixes, with two illustrated reports above an active task](design/overview-readme-preview.webp)](design/overview-readme.png)
 
+## Attention Is All We Need
+
+Three agents need your attention. You’re still halfway through the first reply. When you switch away from unfinished work, some of your attention can stay with it. This is called **attention residue**. [Leroy, 2009](https://doi.org/10.1016/j.obhdp.2009.04.002)
+
+<p align="center"><img src="design/attention-residue.webp" alt="Three agent sessions compete for attention while the developer is still reading." width="480"></p>
+
+### Tags keep one topic in view
+
+Chief groups each project’s conversations under **up to five tags**. Switch from *Bug fixes* to *Design*, and Overview shows the tasks for that topic.
+
+<p align="center"><img src="design/overview-tag-switch.gif" alt="The developer selects Design in the left sidebar. The bug-fix cards give way to app icon, color palette, and toolbar tasks." width="480"></p>
+
+### Super Threads bring the results together
+
+Read **one report** across related conversations. When you want to see how an agent reached a result, open its source conversation on the right.
+
+<p align="center"><img src="design/super-thread-source.gif" alt="The developer reads the installation result in the report on the left, then finds the original Codex conversation on the right." width="480"></p>
+
 ## What you get
 
 - **A fully native Mac app.** Built with **SwiftUI and AppKit**, Chief comes in a **26 MB** download.
