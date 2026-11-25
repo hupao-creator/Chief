@@ -150,7 +150,7 @@ shared strip's local managed-file URLs and independent preview/remove actions.
 No current e2e evidence is supplied for Quick Look focus or pointer behavior.
 
 The identity seat retains the last open editor position while the composer
-retires. In Agent input, directory completion stays above the same bottom-anchored native editor.
+retires. Each time the editor opens, it measures the reserved eye seat relative to its own bottom edge. The eyes stay level with the attachment button when the draft wraps or a send error appears and clears. In Agent input, directory completion stays above the same bottom-anchored native editor.
 Its measured height changes the shell without replacing the editor or its
 selection owner through entry, exit and rapid reversal. The pending-send replay
 selects the same directory in two consecutive drafts using Return.
