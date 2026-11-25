@@ -3,6 +3,7 @@ import SwiftUI
 
 struct NativeMokuConversationTimeline: View {
     let page: NativeMokuConversationPage
+    let showsTyping: Bool
     var workspace: NativeWorkspaceModel?
     let showEarlier: (JSONText) -> Void
     let showNewer: (() -> Void)?
@@ -36,6 +37,11 @@ struct NativeMokuConversationTimeline: View {
                         }
                         ForEach(page.messages.enumerated(), id: \.element.id) { index, message in
                             row(message, at: index, width: width, height: bounds.size.height)
+                        }
+                        if showsTyping {
+                            ConversationTypingBubble(chinese: chinese)
+                                .padding(.leading, 14)
+                                .padding(.top, page.messages.last.map { $0.fromUser ? 14 : 7 } ?? 0)
                         }
                         if let showNewer {
                             pageButton(chinese ? "较新消息" : "Newer messages", width: width, action: showNewer)
@@ -173,7 +179,7 @@ private struct ConversationBubble: View {
                                               endPoint: .init(x: 0.5, y: (viewportHeight - y) / height)))
                 }
             } else {
-                shape.fill(Color(red: 0.19, green: 0.19, blue: 0.20))
+                shape.fill(ConversationBalloon.incomingColor)
             }
         }
         .help(Text(message.date, format: .dateTime))
@@ -184,8 +190,45 @@ private struct ConversationBubble: View {
     }
 }
 
+private struct ConversationTypingBubble: View {
+    let chinese: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Group {
+            if reduceMotion {
+                dots(time: 0)
+            } else {
+                TimelineView(.animation(minimumInterval: 1 / 30)) { clock in
+                    dots(time: clock.date.timeIntervalSinceReferenceDate)
+                }
+            }
+        }
+        .frame(width: 49, height: 28)
+        .padding(.bottom, ConversationBalloon.tailHeight)
+        .background(ConversationBalloon(outgoing: false, tail: true).fill(ConversationBalloon.incomingColor))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(chinese ? "Chief 正在处理" : "Chief is working")
+        .accessibilityAddTraits(.isStaticText)
+        .accessibilityIdentifier("moku-conversation-typing")
+    }
+
+    private func dots(time: TimeInterval) -> some View {
+        HStack(spacing: 4) {
+            ForEach(0..<3) { index in
+                let phase = (time - Double(index) * 0.14).truncatingRemainder(dividingBy: 1.45)
+                let lift = phase > 0 && phase < 0.64 ? (1 - cos(2 * .pi * phase / 0.64)) / 2 : 0
+                Circle().fill(.white.opacity(0.58 + 0.30 * lift))
+                    .frame(width: 6, height: 6)
+                    .offset(y: -2.5 * lift)
+            }
+        }
+    }
+}
+
 /// The terminal tail turns down from inside the lower corner and stays within the balloon's width.
 private struct ConversationBalloon: Shape {
+    static let incomingColor = Color(red: 0.19, green: 0.19, blue: 0.20)
     static let tailHeight: CGFloat = 5.5
     let outgoing: Bool
     let tail: Bool

@@ -52,6 +52,7 @@ public final class NativeMokuWorkspacePresentation {
         }
         return running ? .running : .idle
     }
+    private(set) var executionRunning = false
     public private(set) var running = false
     public private(set) var sessionIdle = true
     public private(set) var landing = false
@@ -124,7 +125,8 @@ public final class NativeMokuWorkspacePresentation {
         let fallbackRunning = moku.map { thread in
             workspace.catalog.executions.contains { $0["threadId"] == .string(thread.id) }
         } ?? false
-        running = moku?.pendingInput == true || (execution.map { $0.status == .running } ?? fallbackRunning)
+        executionRunning = execution.map { $0.status == .running } ?? fallbackRunning
+        running = moku?.pendingInput == true || executionRunning
         sessionIdle = moku?.pendingInput != true && !(execution.map { $0.status == .running || $0.status == .waitingForUser } ?? fallbackRunning)
         tagAgentRunning = workspace.catalog.agentRuns.contains { run in
             guard let id = run["agentId"]?.stringValue else { return false }
