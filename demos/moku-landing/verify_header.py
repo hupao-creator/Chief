@@ -121,7 +121,7 @@ with lease() if args.conversation_performance else nullcontext(), native_lease()
         if args.keyboard:
             arguments.append("--keyboard")
         with keyboard_client(replay, args.output) if args.keyboard else nullcontext():
-            # The combined visit also runs the reminder, card fitting, status rail and Landing scenarios.
+            # The combined visit also runs card fitting, status rail and Landing scenarios.
             timeout = 75 if args.status_only or args.completed_card else 60
             status = replay.run(arguments, timeout=150 if args.note_click else timeout)
     finally:
@@ -157,7 +157,7 @@ if args.conversation_performance:
 if args.status_only:
     sys.exit(status or int(not (args.output / "overview-status.json").is_file()))
 receipts = ["overview-scroll.json", "overview-fit.json"]
-receipts += ["overview-status.json", "overview-note-click.json", "landing-note-click.json", "reminder-note-ownership.json"] if args.note_click else ["nested-header.json", "collection-fit.json"]
+receipts += ["overview-status.json", "overview-note-click.json", "landing-note-click.json"] if args.note_click else ["nested-header.json", "collection-fit.json"]
 if args.keyboard:
     receipts.append("overview-keyboard.json")
 sys.exit(status or int(not all((args.output / name).is_file() for name in receipts)))

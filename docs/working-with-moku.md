@@ -58,13 +58,9 @@ You can revisit these messages after restarting Chief in the same profile, inclu
 - **Task updates.** Watch the bar for **Dispatching task**. **Thread started** means the task is ready to open. If the handoff fails, the bar shows **Dispatch failed**. Open the task card in Overview to see how the work is going.
 - **Notes.** In Overview, right-click Chief Bar with the input box closed to open **Chief Note**. You can also press **⌘⇧N**. Click the eyes centered below the note to start a message, or click a run’s link to read it. The note closes. If the conversation or its Super Thread is outside your selected folder or tag, Overview switches to a matching view before the reader opens. If the conversation belongs to exactly one Super Thread, its card opens with the run you clicked in **Related executions**. If its collection is visible, it turns to that Super Thread’s page first. Other links open the cited run in the task conversation. In both readers, you start at the top of the run. Click the **×** at the top left of the reader or press **⌘K** to return to Overview with the note closed. To resume the note from a task conversation, press **Esc** in the run you opened. In a Super Thread, you can use **Back to related executions** to browse other runs before closing the report. To reopen the note from Overview, right-click Chief Bar again.
 
-## Stop work or acknowledge an alert
+## Stop Chief or a delegated task
 
 To stop Chief's current response, hover over its eyes at the bottom of Overview and click the square **Stop Chief** button on the right. With the input box open, **Stop Chief** appears in the same spot whenever the draft cannot be sent. If you want to stop Chief while keeping a ready draft, fold the bar with **⌘⇧B**, then hover over the eyes. To stop one or more delegated tasks, name them in a message to Chief. Chief tries each request separately. You can also stop a task yourself from its conversation. [Stop a run](task-conversations.md#respond-to-a-request-or-stop-a-run)
-
-When Chief sends an alert, read it in the compact bar at the bottom of the workspace. Scroll inside a longer message to read the rest. To open Chief Note while an alert is visible, press **⌘⇧N**. Click **Received** to confirm just that alert. If more are waiting, the bar shows how many and brings up the next one.
-
-The bell keeps ringing until you confirm the last alert. If the bell fails to play, you can still confirm the message or click **Retry bell**. An open input box keeps your draft and selection above the alert. After the final receipt, the bar returns to its current task. Quitting Chief clears pending alerts.
 
 If a message fails to send, review the error and the text in the input box before retrying. If Chief is still checking the previous send, wait for confirmation or use **Check previous receipt** if shown. Open any task card Chief already created to see what happened.
 

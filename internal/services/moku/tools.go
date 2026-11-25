@@ -314,7 +314,7 @@ func (c *Coordinator) executeTool(ctx context.Context, owner, name string, raw j
 			return nil, err
 		}
 		return encode(updated)
-	case "talk", "timer":
+	case "talk":
 		original, ok := object["text"].(string)
 		if !ok {
 			return nil, fmt.Errorf("%s 的 text 必须是纯文本字符串", name)

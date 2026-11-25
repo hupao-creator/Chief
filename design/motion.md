@@ -44,7 +44,7 @@ return preparation; keyboard/focus behavior is not disabled to hide warnings.
 See [parent surface](../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingParentSurface.swift).
 
 The [mounted Dock visits](../demos/moku-panel-transition/remaining/README.md) exercise
-the reply read key, permissions, questionnaires, Timer acknowledgments and native
+the reply read key, permissions, questionnaires and native
 input. The [transition study](research/chief-bar-remaining.md) records unshipped
 candidates and the boundaries of their measurements. Physical presentation and
 whole-workspace frame pacing require separate measurements.

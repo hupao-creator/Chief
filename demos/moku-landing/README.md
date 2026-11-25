@@ -100,7 +100,7 @@ python3 demos/moku-landing/verify_header.py --note-click --output .build/overvie
 
 This scenario keeps the workspace at 1× throughout, including its first frame.
 It checks the empty Overview with folded input as well as the populated canvas.
-The replay posts window-addressed AppKit mouse events to the mounted workspace. It checks that right-click opens Chief Note once in Overview and that Control-click opens it on Landing. A click on the canvas leaves Note closed, an outside primary click dismisses an open Note, and a primary click on Chief Bar opens Compose. Phased pixel scrolls verify that a subthreshold contact stays on the Bar, an upward swipe opens the conversation with its editor, and its momentum leaves the filter and Note alone. A draft typed in the panel reappears in the compact editor. They also exercise filter swipes, native tag and Note scrolling, camera travel, composer and Settings ownership, and inverted device deltas. The reminder fixture checks native scrolling and acknowledgment. See `overview-note-click.json`, `landing-note-click.json` and `reminder-note-ownership.json`. The posted events cover AppKit delivery to the window. Physical trackpad configuration remains a system-input check.
+The replay posts window-addressed AppKit mouse events to the mounted workspace. It checks that right-click opens Chief Note once in Overview and that Control-click opens it on Landing. A click on the canvas leaves Note closed, an outside primary click dismisses an open Note, and a primary click on Chief Bar opens Compose. Phased pixel scrolls verify that a subthreshold contact stays on the Bar, an upward swipe opens the conversation with its editor, and its momentum leaves the filter and Note alone. A draft typed in the panel reappears in the compact editor. A full canvas swipe from the whole folder selects Work, its first left-rail choice. The replay also checks native tag and Note scrolling, camera travel, composer and Settings ownership, and inverted device deltas. The replay installs a catalog containing an old completed reminder operation before exercising the mounted Bar. The Note, conversation and Compose assertions verify that the record leaves ordinary Bar input available. See `overview-note-click.json` and `landing-note-click.json`. The posted events cover AppKit delivery to the window. Physical trackpad configuration remains a system-input check.
 
 The [live conversation replay](verify_conversation.py) uses the same production window with the real Runtime, SQLite, Codex CLI and an isolated loopback model peer. Build the current artifacts and choose a new evidence directory.
 
@@ -117,7 +117,7 @@ The replay uses a 1100×800-point window and the application minimum of 860×600
 
 The Note-click scenario also opens cached conversation pages in the production Dock. It crosses midnight and a 15-minute gap, captures the three centered date headings in `conversation-periods.png` and clicks both page controls. On the longer page it scrolls up, reveals the times and verifies that releasing the gesture restores the horizontal origin. The vertical reading position must hold both through the gesture and when the window becomes shorter. These replays use window-addressed AppKit events. Physical trackpad hardware and a remote model service have separate evidence boundaries.
 
-The Note scroll check identifies the visible native viewport inside the mounted Note panel. It sends both scroll directions to the center of the capsule and checks the document offset after each event. The combined visit has a 150-second process timeout for the Note, reminder, card fitting, filter and Landing interactions.
+The Note scroll check identifies the visible native viewport inside the mounted Note panel. It sends both scroll directions to the center of the capsule and checks the document offset after each event. The combined visit has a 150-second process timeout for the Note, card fitting, filter and Landing interactions.
 
 Use `--status-only` in place of `--note-click` to run the mixed catalog scenario
 independently. It mounts the [production Overview](../../app/macos/Sources/Host/Overview/README.md)
@@ -180,8 +180,6 @@ run the status replay through both localized card comparisons:
 ```sh
 python3 demos/moku-landing/verify_header.py --completed-card --output .build/completed-card-layout
 ```
-
-A second workspace presents a long reminder outside the display with two points of the panel on screen for WindowServer composition. Its message body scrolls independently, the exposed canvas selects the Running tag, and an explicit receipt advances the reminder. See `reminder-note-ownership.json`.
 
 ### Chief Bar opening
 

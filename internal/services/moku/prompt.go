@@ -17,15 +17,6 @@ const TalkTextPolicy = "Use concise plain text, at most 160 Unicode code points 
 	"The bar shows at most four rendered lines with scrolling for overflow; character count does not guarantee four lines. The newest successful update replaces the previous message. " +
 	"The compact notification hides after 60 seconds. The user can revisit successful talk messages in the Chief Bar conversation. Use update_note for the milestone recap."
 
-// Timer is immediate communication, not a scheduler. Keep its policy separate
-// from Talk's latest-only replacement and automatic expiry.
-const TimerTextPolicy = "Use concise plain text, at most 160 Unicode code points including whitespace and newlines. " +
-	"Whitespace-only and NUL text is invalid; accepted text is preserved exactly. Over-budget text is rejected, never truncated. " +
-	"This immediately shows Chief's timer message with a looping bell and an explicit Received button. " +
-	"Messages queue until individually acknowledged in the UI; ordinary talk cannot replace them. " +
-	"The call returns without waiting for acknowledgment. Use only when the user needs an audible, acknowledged message. " +
-	"This does not schedule future delivery, accept a date or duration, or guarantee delivery while the app is closed or disconnected."
-
 // NoteTextPolicy is shared by the update_note tool and its text parameter
 // descriptions. JSON Schema maxLength counts Unicode code points.
 // The text schema deliberately carries no pattern, for the reason documented on

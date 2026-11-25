@@ -78,10 +78,9 @@ Thread renderers retain the existing null projection and retry only that identit
 under `projectionMu`. `Snapshot` returns detached state; replays attached to a live
 Runtime use that public read boundary so the background publisher retains the
 same cache ownership.
-Moku audit previews additionally retain the latest 256 successful completed
-`timer` operations across executions so coalesced publication and reconnect can
-catch up immediate communication. The Swift workspace owns their transient
-queue and acknowledgments; Runtime adds no scheduling or receipt state. Loading a reading page does not reopen a native execution process. A coordinating-Harness change retains the prior Moku record as an archived, read-only `mokuHistory` conversation, including its native state and attachment ownership. These histories cannot be unarchived, forked, reconfigured or executed; native history questions and automatic admission also reject them. An explicit Moku history reset removes them and releases their attachments. Settled execution details are fetched on disclosure; live turns retain the information needed for output and interactions.
+The Moku catalog carries a bounded audit preview of the latest execution.
+The stored transcript retains tool operations as audit history.
+Loading a reading page does not reopen a native execution process. A coordinating-Harness change retains the prior Moku record as an archived, read-only `mokuHistory` conversation, including its native state and attachment ownership. These histories cannot be unarchived, forked, reconfigured or executed; native history questions and automatic admission also reject them. An explicit Moku history reset removes them and releases their attachments. Settled execution details are fetched on disclosure; live turns retain the information needed for output and interactions.
 
 The composer's known-directory lookup takes one store snapshot and reads each
 cwd from the matching immutable Thread record in the catalog cache. A changed
@@ -155,7 +154,7 @@ interruption with no pending input or background work, using the existing
 
 The `moku-conversation` content scope belongs to the current Chief Thread. On demand, Runtime reads one profile snapshot and merges that Thread’s full coordinator transcript with its retained, read-only Chief sessions. The compact catalog preview is limited to recent operations and truncated text. The [conversation projection](moku_conversation.go) reads the stored audit rows directly.
 
-The coordinator records the original user input after admission. The reader takes complete user messages, their attachment names and completed, successful `talk` arguments. Directories retain their submitted mention text. Native Harness turns can include injected context and are ineligible as a dialogue source. Assistant reasoning, diagnostics, dispatches, timers, failed or pending Talk calls, and private tool arguments have no dialogue row.
+The coordinator records the original user input after admission. The reader takes complete user messages, their attachment names and completed, successful `talk` arguments. Directories retain their submitted mention text. Native Harness turns can include injected context and are ineligible as a dialogue source. The reader skips assistant reasoning, diagnostics, and all other tool operations, including failed or pending Talk calls.
 
 Rows use the owning Thread and audit ID for identity. For a transported user submission the audit ID is `steer:<commandId>`. Internal submissions without a transport command use a generated ID. Pages advertise this admission contract with `commandRowIds: true` and retain all stored row identities, including earlier opaque IDs. Equal text from distinct records appears twice. Pages follow audit creation time, breaking ties by saved session order and transcript position. Each page returns up to 64 messages within a 1 MiB source budget, allowing a single larger message on its own. Its optional `before` cursor identifies the earliest returned source row. A fresh subscription without a cursor follows the newest page. A history reset replaces the owner and removes retained sessions. The [SQLite store](../store/README.md#file-ownership-and-format) owns recovery across restarts, including profiles using the legacy database directory. Cleared or missing audit rows cannot be reconstructed from the catalog or from a model prompt.
 

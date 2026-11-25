@@ -1,6 +1,7 @@
 package runtime_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -91,6 +92,14 @@ func TestMokuConversationProperties(t *testing.T) {
 		}))
 		chief, err := r.ReplaceConfiguredMokuThread(ctx, old.ID, core.MokuConfiguration{HarnessID: "fixture", Cwd: dir, Unapplied: true, PreserveHistory: true})
 		check(err)
+		reminderText := "PRIVATE-REMINDER-" + rapid.StringMatching("[a-z]{1,12}").Draw(t, "historical-reminder-text")
+		reminder := raw(map[string]any{"type": "tool-operation", "id": "retired-timer", "name": "timer",
+			"executionId": "previous-run", "createdAt": 1, "completedAt": 2, "result": map[string]bool{"ok": true},
+			"arguments": map[string]string{"text": reminderText}})
+		check(r.UpdateThread(ctx, chief.ID, func(record *model.ThreadRecord) error {
+			record.Transcript = append(record.Transcript, reminder)
+			return nil
+		}))
 		archive, err := r.Thread(old.ID)
 		check(err)
 		scope := transport.ContentScope{Kind: "moku-conversation"}
@@ -101,6 +110,11 @@ func TestMokuConversationProperties(t *testing.T) {
 		input := model.AgentInput{Parts: []model.AgentInputPart{{Kind: "text", Text: prompt}}}
 		commandID := "1788000000000_" + rapid.StringMatching("[a-zA-Z0-9_-]{16,80}").Draw(t, "command-id")
 		coordinator, talk := openChiefTool(t, model.WithFollowUpCommand(ctx, commandID), r, dir, harnesses, peer, input, "talk")
+		for _, binding := range peer.tools.Bindings {
+			if binding.Name == "timer" {
+				t.Fatal("retired reminder tool is still registered")
+			}
+		}
 		want = append(want, visible{Role: "user", Text: prompt})
 		for i := 0; i < 2; i++ {
 			_, err := talk.Execute(ctx, plugin.ToolCall{CallID: fmt.Sprint(i), Arguments: raw(map[string]string{"text": "Same reply."})})
@@ -158,9 +172,25 @@ func TestMokuConversationProperties(t *testing.T) {
 			}
 		}
 		verify(r, chief.ID, want)
+		snapshot, err := r.Snapshot()
+		check(err)
+		owner := slices.IndexFunc(snapshot.Threads, func(record model.ThreadRecord) bool { return record.ID == chief.ID })
+		if owner < 0 || len(snapshot.Threads[owner].Transcript) == 0 {
+			t.Fatal("catalog lost the current Chief audit preview")
+		}
+		for _, row := range snapshot.Threads[owner].Transcript {
+			if bytes.Contains(row, []byte(`"id":"retired-timer"`)) {
+				t.Fatal("catalog replayed the reminder from another execution")
+			}
+		}
 		closeRuntime()
 		r, closeRuntime = open("first")
 		verify(r, chief.ID, want)
+		restored, err := r.Thread(chief.ID)
+		check(err)
+		if !slices.ContainsFunc(restored.Transcript, func(row json.RawMessage) bool { return bytes.Equal(row, reminder) }) {
+			t.Fatal("SQLite reopen lost the historical reminder audit row")
+		}
 		other, closeOther := open("other")
 		defer closeOther()
 		fresh, err := other.EnsureMokuThread(ctx, "fixture", nil, dir)

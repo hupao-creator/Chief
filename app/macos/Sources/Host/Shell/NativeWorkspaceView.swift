@@ -958,10 +958,6 @@ public struct NativeWorkspaceView: View {
             onDismiss: { model.dismissOperationError() }) {
             workspaceScene
         }
-        .modifier(NativeMokuTimerPlacement(timer: model.timer, scene: presentation.scene,
-            dockAvailable: { model.catalog.hasMoku && presentation.onboarding.mountDock
-                && presentation.onboarding.dockVisible && !presentation.onboarding.blocksWorkspace
-                && !presentation.browsingCollection && (presentation.collectionPanel.parentVisible || presentation.selected != nil) }))
         .environment(\.threadLocalSteers, presentation.localSteers)
         .environment(\.locale, Locale(identifier: model.locale.rawValue))
         .environment(\.nativeOfflineDraftEditing, model.hasInitialContent && !model.runtimeAvailable && !model.stopping)
@@ -1132,14 +1128,13 @@ public struct NativeWorkspaceView: View {
                         available: { presentation.overviewSwipeAvailable },
                         canFilter: { !presentation.scene.inputOpen && !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
                         openNoteFromBar: {
-                            guard presentation.overviewSwipeAvailable, !presentation.scene.inputOpen, presentation.canToggleMokuNote,
-                                  model.timer.current == nil else { return false }
+                            guard presentation.overviewSwipeAvailable, !presentation.scene.inputOpen,
+                                  presentation.canToggleMokuNote else { return false }
                             presentation.scene.openNotePanelFromUser()
                             return true
                         },
                         openConversation: {
-                            guard presentation.overviewSwipeAvailable, model.catalog.hasMoku,
-                                  model.timer.current == nil else { return }
+                            guard presentation.overviewSwipeAvailable, model.catalog.hasMoku else { return }
                             presentation.scene.openConversation()
                         },
                         stepRail: { presentation.overview.stepRail(up: $0) }))

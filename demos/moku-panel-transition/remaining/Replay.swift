@@ -136,7 +136,6 @@ extension NSView {
                 case "--tool-feedback": try await toolFeedbackVisit()
                 case "--routes", "--routes-reduced": try await routesVisit(reduced: CommandLine.arguments.last == "--routes-reduced")
                 case "--routes-offscreen": try await routesVisit(reduced: false, offscreen: true)
-                case "--timers", "--timers-reduced": try await timersVisit(reduced: CommandLine.arguments.last == "--timers-reduced")
                 default: throw ReplayFailure("Unknown visit")
                 }
                 let after = NSWorkspace.shared.frontmostApplication?.processIdentifier

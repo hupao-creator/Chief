@@ -84,8 +84,6 @@ public struct NativeMokuDock: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.nativeExecutionDockPlacement) private var executionPlacement
     @Environment(\.nativeMokuHorizontalTravel) private var travelHost
-    @Environment(\.nativeMokuDockTimer) private var timer
-    @State private var timerHeight: CGFloat = 58
     @State private var hovered = false
     @State private var hoverTask: Task<Void, Never>?
     @FocusState private var stopFocused: Bool
@@ -193,14 +191,11 @@ public struct NativeMokuDock: View {
             && interaction == nil && !navigationDisabled
     }
     private var rowControlAvailable: Bool {
-        timer?.current == nil && state.inputInteractionReady && state.dockRouteVisible && state.windowVisible && !state.dockCovered && !navigationDisabled
+        state.inputInteractionReady && state.dockRouteVisible && state.windowVisible && !state.dockCovered && !navigationDisabled
             && interaction == nil && !state.inputOpen && !state.inputLeaving
     }
 
     private var displayedMessage: NativeMokuTalkMessage? { visibleTalk }
-    private var foregroundTalkID: JSONText? {
-        return timer?.current == nil ? visibleTalk?.id : nil
-    }
     private var continuationPresenting: Bool {
         threadID != nil && sidecardComposer == nil && (awaitingContinuation || executionPlacement?.continuing == true)
     }
@@ -347,7 +342,7 @@ public struct NativeMokuDock: View {
     private var mentionsEnabled: Bool {
         agentMentions != nil && state.dockRouteVisible && state.inputOpen && !disabled && !state.dockCovered && state.windowVisible && interaction == nil
     }
-    private var showsReplyReminder: Bool {
+    private var showsUnreadReply: Bool {
         guard let replyKey, !state.readReplies.contains(replyKey) else { return false }
         return (presentation?.sessionIdle ?? !running) && mode == .idle
             && !state.inputOpen && interaction == nil && !state.dockCovered
@@ -393,7 +388,7 @@ public struct NativeMokuDock: View {
         if state.settingsOpen || state.inputOpen { return .focus }
         if interaction != nil { return .curious }
         if draft.submitting || running { return .deliberating }
-        if showsReplyReminder { return .happy }
+        if showsUnreadReply { return .happy }
         return .idle
     }
     public var body: some View {
@@ -436,8 +431,7 @@ public struct NativeMokuDock: View {
             let availableSurface = CGRect(x: frame.midX - width / 2,
                 y: state.settingsExpanded ? viewport.minY : frame.minY,
                 width: width, height: state.settingsExpanded ? viewport.height : frame.height)
-            let reminder = timer?.current
-            let surface = reminder != nil ? timerSurface(in: viewport) : NativeMokuCapsuleLayout.surface(in: availableSurface, expanded: expanded,
+            let surface = NativeMokuCapsuleLayout.surface(in: availableSurface, expanded: expanded,
                 height: state.settingsExpanded ? settingsSize.height : rowHeight + noteHeight + conversationHeight,
                 centered: landing || state.settingsExpanded)
             let arcSize = NativeMokuCapsuleLayout.idleSurface(in: viewport).size
@@ -446,7 +440,7 @@ public struct NativeMokuDock: View {
                                  width: arcSize.width, height: arcSize.height)
             // Scale the resident as one group so the eyes, orbit and thinking
             // ink retain the ordinary capsule's proportions and shared clock.
-            let residentScale = reminder == nil && landing && !expanded && frame.width > 0 && frame.height > 0
+            let residentScale = landing && !expanded && frame.width > 0 && frame.height > 0
                 ? min(NativeMokuCapsuleLayout.landingScale, frame.width / max(1, surface.width), frame.height / max(1, surface.height)) : 1
             let placement = reasoningSeatReserved
                 ? NativeMokuReasoningPlacement.fit(surface: surface, arcBody: arcBody, viewport: viewport,
@@ -461,22 +455,12 @@ public struct NativeMokuDock: View {
                 dragging: executionPlacement?.dragging == true, inactive: immediate,
                 composer: state.composerGeneration, reading: state.readingPanelVisible)
             ZStack(alignment: .topLeading) {
-                ZStack(alignment: .bottom) {
-                    if let timer, let reminder {
-                        NativeMokuTimerBar(timer: timer, message: reminder, exclusions: state.outsideClickExclusions)
-                            .frame(width: surface.width)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { timerHeight = $0 }
-                    } else {
-                        capsule(width: width, room: max(58, frame.height - 18),
-                            surface: surface, sizesRow: sizesRow, messageWidth: messageWidth, rowHeight: rowHeight, noteHeight: noteHeight,
-                            noteAvailableHeight: noteAvailableHeight, decorationPadding: placement.decorationPadding, settingsSize: settingsSize,
-                            holdsMark: state.readingPanelReturning && !immediate
-                                && (!shellIsCompact || (travelHost != nil && settledDestination != destination)))
-                            .modifier(CapsuleSurfaceFrame(size: surface.size, sizesRow: sizesRow) { shellIsCompact = $0 })
-                    }
-                }
-                    .mokuInk(value: reminder != nil)
+                capsule(width: width, room: max(58, frame.height - 18),
+                    surface: surface, sizesRow: sizesRow, messageWidth: messageWidth, rowHeight: rowHeight, noteHeight: noteHeight,
+                    noteAvailableHeight: noteAvailableHeight, decorationPadding: placement.decorationPadding, settingsSize: settingsSize,
+                    holdsMark: state.readingPanelReturning && !immediate
+                        && (!shellIsCompact || (travelHost != nil && settledDestination != destination)))
+                    .modifier(CapsuleSurfaceFrame(size: surface.size, sizesRow: sizesRow) { shellIsCompact = $0 })
                     .nativeCanvasNavigationRegion()
                     .nativeCanvasNavigationRegion(in: state.swipeRegions.bar)
                     .geometryGroup()
@@ -493,7 +477,7 @@ public struct NativeMokuDock: View {
                         : NativeSidecardTiming.foldAnimation, value: executionFrame)
                     // Text and catalog revisions only move the shell when
                     // they actually change its fitted geometry.
-                    .animation(reminder == nil ? surfaceAnimation : nil, value: placement)
+                    .animation(surfaceAnimation, value: placement)
                     .transaction { transaction in
                         if reduceMotion {
                             transaction.animation = nil
@@ -651,8 +635,8 @@ public struct NativeMokuDock: View {
         }
         .onChange(of: state.windowVisible) { _, visible in if visible { state.retryNoteExposure() } }
         .onChange(of: navigationDisabled) { _, value in if value { state.setNotePanelOpen(false) } }
-        .onChange(of: TalkPresentation(id: foregroundTalkID, covered: state.notePanelOpen || noteMounted || timer?.current != nil), initial: true) { _, value in
-            // Covering a Talk with Note or Timer is reversible. Calling
+        .onChange(of: TalkPresentation(id: visibleTalk?.id, covered: state.notePanelOpen || noteMounted), initial: true) { _, value in
+            // Covering a Talk with Note is reversible. Calling
             // setPresented(false) here would consume the notification. Existing
             // deadlines keep running; newly received Talk waits for actual return.
             if !value.covered { state.setTalkPresented(value.id != nil) }
@@ -729,23 +713,14 @@ public struct NativeMokuDock: View {
         .environment(\.colorScheme, capsuleScheme)
     }
 
-    private func timerSurface(in viewport: CGRect) -> CGRect {
-        let frame = NativeMokuCapsuleLayout.frame(in: viewport)
-        let width = min(NativeMokuTimerBar.preferredWidth, frame.width)
-        return CGRect(x: frame.midX - width / 2, y: frame.maxY - timerHeight,
-                      width: width, height: timerHeight)
-    }
-
     private func interactionMonitors(horizontalOffset: CGFloat) -> some View {
         ZStack {
             NativeMokuOutsideClickMonitor(
-                exclusions: state.outsideClickExclusions,
                 beginClick: { state.beginOutsideClick() },
-                isActive: { (state.inputOpen || (!navigationDisabled && (state.notePanelOpen || foregroundTalkID != nil))) && state.dockRouteVisible && !state.dockCovered },
-                usesExclusions: foregroundTalkID == nil || state.notePanelOpen,
+                isActive: { (state.inputOpen || (!navigationDisabled && (state.notePanelOpen || visibleTalk != nil))) && state.dockRouteVisible && !state.dockCovered },
                 preservesOwnedInteractions: state.inputOpen,
                 preservedClick: { state.preserveInputForOwnedClick() },
-                outsideWindowClick: !state.notePanelOpen && foregroundTalkID != nil ? {
+                outsideWindowClick: !state.notePanelOpen && visibleTalk != nil ? {
                     state.dismissTalk()
                 } : nil,
                 isInside: { point in
