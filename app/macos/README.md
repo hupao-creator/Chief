@@ -277,12 +277,10 @@ and [production-component demo](../../demos/report-thread/README.md).
 Super Thread browsing combines profile-local reading activity with the layout
 of the current filter in the available window. Reading a report or a uniquely associated Thread can promote
 the report. The Report renderer keeps a sliding cover, fading
-metadata and stationary Liquid Glass navigation. Collections also provide a
-continuous regular-glass backdrop and regular-glass emoji badges at the existing
-metadata seat; the Host omits only their opaque shell. The 4pt internal spacing
-shares the backdrop, preserving the card geometry without a visible seam.
-Reduce Transparency uses opaque palette fills. Single Report cards retain their
-ordinary flat material.
+metadata. The page count and hover navigation use stationary Liquid Glass
+over the cover. The collection card shares the ordinary Report card's opaque
+shell, metadata and emoji badge. Its member grid opens on a rounded regular
+Liquid Glass panel with an opaque reading fill under Reduce Transparency.
 See [Overview collection ownership](Sources/Host/Overview/README.md#viewed-application-collections)
 and the [production fixture](../../demos/super-thread-carousel/README.md).
 

@@ -751,10 +751,16 @@ between the side margins, with individual cards capped at 360pt. The
 and [after](../../demos/super-thread-carousel/evidence/member-grid-after.png)
 frames use the same 17 covered reports and one report without a cover.
 
-With Reduce Transparency off, check that the gaps between cards share the
-workspace backdrop with the area outside the grid. With Reduce Transparency
-on, check that the panel has its opaque reading fill. In both cases the
-member cards retain their own surfaces and Close retains its glass style.
+With Reduce Transparency off, check that the member grid sits on a rounded
+regular Liquid Glass panel during opening, scrolling and return. With Reduce
+Transparency on, check for the opaque reading fill. In both cases the member
+cards retain their own opaque surfaces and Close retains its glass style.
+
+On Overview, compare the carousel with a standalone Super Thread card. The
+surface and border, cover gap, metadata and emoji backdrop share the ordinary
+card treatment. Hover to reveal the Liquid Glass navigation capsule, use an
+arrow to switch pages, then move the pointer off the card. Check that the
+navigation capsule disappears and the upper-right glass count remains.
 
 Resize the open window to 1192×780pt, then to 860×600pt. Scroll
 with the pointer over the grid and check that it clears Close.
