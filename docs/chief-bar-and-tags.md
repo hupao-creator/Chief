@@ -2,6 +2,8 @@
 
 Press **⌘K** to open **Overview**. Look for the pair of eyes at the bottom of the window. That’s Chief Bar. The clips show the Simplified Chinese interface.
 
+[简体中文版](../GUIDE.zh-CN.md)
+
 ## Click Chief Bar to type a request
 
 Click Chief’s eyes once. The bar expands and the cursor appears in **Type a message…**. Type your request, then press **Return** or click the up arrow to send it. The bar folds back to the eyes.
