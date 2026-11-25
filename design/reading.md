@@ -87,14 +87,16 @@ behind the historical page. Once visited, current/history scroll ownership stays
 with that reader. Late anchors respect `userPositioned`; a new explicit request
 starts a new positioning identity.
 
-Closing retains the native return: reader ink fades over the first 80%, shell
+When a visible card supplies the return frame, reader ink fades over the first 80%, shell
 travel reaches the refreshed source at 86%, and the final 14% crossfades to card
 content. Closing before primary admission uses the opening-reversal path.
 A mounted direct-input Dock closes its input gate, folds in the reading column,
 and turns its Harness mark back to the eyes. Agent panel return prepares the
-canvas immediately and travels while the Dock folds. A Report with a mounted
-Harness mark waits for the turn before preparing its return.
-A deleted/archived source supplies no stale return target. Route/generation
+canvas immediately and travels while the Dock folds. A Report returning to a card waits for its mounted Harness mark to finish the turn.
+If the source has left the refreshed Overview, Close skips the Dock and canvas
+geometry waits. Without a visible destination, the settled panel and any Report
+sidecards fade together in place over 160ms as Overview returns. Reduce Motion
+reveals Overview immediately. Route/generation
 identity fences all preparation and completion callbacks.
 
 The reading parent uses the window's existing material, without capturing the
@@ -103,7 +105,8 @@ entry. Hiding is deferred out of `updateNSView` so AppKit focus handoff does not
 reenter SwiftUI layout. Showing is synchronous during return preparation.
 Hidden display projection/layout coalesces dirty state while the authoritative
 catalog, membership, selection, drafts and task work continue. Return installs
-current content and viewport, waits for canvas preparation, then samples its frame.
+current content and viewport. A card still in the projection needs a prepared
+canvas layout before the host samples its frame.
 
 Source: [page stack](../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingPageStack.swift),
 [parent](../app/macos/Sources/Shared/PluginUI/Conversation/NativeReadingParentSurface.swift),

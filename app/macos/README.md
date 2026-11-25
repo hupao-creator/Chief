@@ -239,7 +239,7 @@ Agent panels carry source title/emoji ink separately during deferred opening,
 show a scoped skeleton while loading, and draw the full parsed Markdown body
 once the reader is admitted. Completed turns keep their footer in the normal layout; running turns keep
 their existing latest-message positioning.
-Closing retains the 420ms native return: reader content fades over the first
+Closing to a visible card takes 420ms. Reader content fades over the first
 80%, travel reaches the source card at 86%, and the shell crossfades to the
 refreshed card over the final 14%. See the shared PluginUI and WindowNavigation
 documentation for lifecycle boundaries and the current presentation contracts.

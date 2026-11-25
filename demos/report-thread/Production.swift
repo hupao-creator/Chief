@@ -95,7 +95,7 @@ struct ProductionReportPreview: View {
     var body: some View {
         NativeReadingPageStack(open: fixture.open, identity: "report-preview", motion: fixture.motion,
             stationaryParent: true, emphasizedOpening: true, panel: true,
-            panelSource: CGRect(x: 180, y: 160, width: cardWidth, height: cardHeight),
+            panelSource: { CGRect(x: 180, y: 160, width: cardWidth, height: cardHeight) },
             panelFrontIdentity: "workspace-route-slide", reportPanelMotion: true,
             duration: slow ? 2.1 : 0.42,
             prepareParent: { await Task.yield() }, onClose: { fixture.open = false }) {

@@ -1388,7 +1388,7 @@ card/reader/plugin instances; replacement and close retire its layers. Direct re
 navigation and entries without a visible source card retain their ordinary entry.
 See the [reading admission contract](../../../../../design/reading.md).
 
-Agent closing keeps the 420ms native panel return. The complete reader fades
+Closing an Agent panel to a visible card takes 420ms. The complete reader fades
 over the first 80%; scaling and shell travel reach the source card at 86%.
 The shell stays opaque until arrival, then crossfades to the refreshed Overview
 through the final 14%. This final handoff owns transition completion so the

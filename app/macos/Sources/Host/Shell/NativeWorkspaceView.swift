@@ -386,25 +386,29 @@ public final class NativeWorkspacePresentation {
     }
 
     fileprivate func prepareOverviewReturn() async {
-        if selected?.typeID != "agent" { await scene.waitForReturningEyes() }
         guard !Task.isCancelled else { return }
+        let route = navigationRouteID, target = selected
+        func returnCardID() -> String? {
+            guard usesReadingPanel, overview.error == nil, readingPanelSourceCardID != nil,
+                  let target else { return nil }
+            return overview.visibleCardID(for: target)
+        }
+        // Reactivating Overview has already refreshed membership. A removed
+        // card has no frame to prepare, even if the retained canvas still has
+        // its old placement or another card now occupies the same position.
+        if usesReadingPanel, !readingCollectionMember, returnCardID() == nil {
+            readingPanelSource = nil
+            return
+        }
+        if target?.typeID != "agent" { await scene.waitForReturningEyes() }
+        guard !Task.isCancelled, navigationRouteID == route, selected == target else { return }
         if readingCollectionMember {
             readingPanelSource = collectionPanel.memberFrame ?? readingPanelSource
             return
         }
-        let route = navigationRouteID, target = selected
         await canvas.prepareForPresentation()
         guard !Task.isCancelled, navigationRouteID == route, selected == target else { return }
-        // A change in reading eligibility, content or space can move an open
-        // report between a collection and its individual card.
-        if let target, target.typeID != "agent", readingPanelSourceCardID != nil,
-           (try? workspace.plugins.applications.requireThread(target.typeID).overviewCollection) != nil {
-            let id = overview.sourceCardID(for: target) ?? target.threadID.string
-            readingPanelSourceCardID = overview.items.contains(where: { $0.id == id }) ? id : nil
-        }
-        if overview.error == nil, canvas.layoutError == nil, usesReadingPanel, let id = readingPanelSourceCardID {
-            readingPanelSource = canvas.visibleFrame(for: id)
-        } else { readingPanelSource = nil }
+        readingPanelSource = canvas.layoutError == nil ? returnCardID().flatMap { canvas.visibleFrame(for: $0) } : nil
     }
 
     public func finishBack() {
@@ -1059,7 +1063,7 @@ public struct NativeWorkspaceView: View {
                 identity: readingIdentity, motion: presentation.messageMotion,
                 enabled: !presentation.scene.settingsOpen,
                 focusBlur: true, stationaryParent: true, emphasizedOpening: true,
-                panel: presentation.usesReadingPanel, isolatesParent: true, panelSource: presentation.readingPanelSource,
+                panel: presentation.usesReadingPanel, isolatesParent: true, panelSource: { presentation.readingPanelSource },
                 panelIdentity: presentation.selected?.typeID == "agent" ? presentation.threadIdentityVisit : nil,
                 panelFrontIdentity: "workspace-reading-front",
                 threadPanelMotion: presentation.selected?.typeID == "agent",

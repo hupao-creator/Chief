@@ -24,7 +24,7 @@ Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find
 
 Click 🔖 **Unread** next to **Running** on the left edge of Overview. You’ll see conversations with red bookmarks across the workspace, including results that have no tag and unread Super Thread documents.
 
-Open a card and wait for the result or document to appear. When you return to **Unread**, that card is gone. A new completed result or document revision brings it back. If you’ve read everything, Overview shows **No unread conversations** and keeps **Unread** selected. Choose another filter to leave this view.
+Open a card and wait for the result or document to appear. Close the reader to return to **Unread**. It fades in place, or closes immediately with Reduce Motion on. The card you just read is gone. A new completed result or document revision brings it back. If you’ve read everything, Overview shows **No unread conversations** and keeps **Unread** selected. Choose another filter to leave this view.
 
 A red number on a folder counts conversations with an unread completed result or Super Thread document among its cards. A red number on a tag counts unread conversations in that tag. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
