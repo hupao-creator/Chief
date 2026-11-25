@@ -1284,6 +1284,8 @@ private final class WheelSample: NSEvent {
                 guard ContinuousClock.now < deadline else {
                     let nodes = conversationElements(in: window).map { ["role": $0.role, "id": $0.id, "label": $0.label, "value": $0.value, "frame": NSStringFromRect($0.frame)] }
                     try JSONEncoder().encode(nodes).write(to: directory.appending(path: "failed-controls.json"))
+                    try? presentation.readingInteractionSnapshot().encodedData().write(to: directory.appending(path: "failed-reading.json"))
+                    try? await capture(window, to: directory.appending(path: "failed-window.png"))
                     throw ReplayError("\(message), focused=\(model.facts.focused), phase=\(scene.talkReadingOrigin?.phase.rawValue ?? "none"), filter=\(model.selectedFilter?.id ?? "All"), reader=\(presentation.selected?.threadID.string ?? "none")")
                 }
                 try await Task.sleep(for: .milliseconds(5))
@@ -1304,7 +1306,18 @@ private final class WheelSample: NSEvent {
         }
         func click(_ title: String, history: Bool) async throws {
             try await focusReplayWindow(window)
-            try await wait("Missing clickable " + title + " on " + (history ? "history" : "notification")) { linkFrame(title) != nil }
+            var previousFrame: CGRect?
+            var stableSince = ContinuousClock.now
+            try await wait("Missing clickable " + title + " on " + (history ? "history" : "notification")) {
+                let frame = linkFrame(title)
+                if frame != previousFrame {
+                    previousFrame = frame
+                    stableSince = .now
+                }
+                // The initial AX frame can see the text view before the mouse
+                // and the execution glyph share a settled coordinate space.
+                return frame != nil && stableSince.duration(to: .now) >= .milliseconds(80)
+            }
             guard let frame = linkFrame(title) else { throw ReplayError("Talk link left the window before the click") }
             let point = CGPoint(x: frame.midX, y: frame.midY)
             // Queue release before AppKit starts tracking the mouse in selectable text.
@@ -1373,10 +1386,25 @@ private final class WheelSample: NSEvent {
                 "reader": reader.threadID.string, "source": opened.thread.threadID.string,
                 "execution": opened.executionID.string, "position": position.rawValue, "fromFolderRunning": fromRunning]
             if missingRun {
+                let heading = workspace.locale.text("历史执行不可用", "Historical execution unavailable")
+                let explanation = workspace.locale.text("链接指向的执行不可用。", "The linked execution is unavailable.")
                 try await wait("Missing execution did not open the unavailable page") {
-                    presentation.readingInteractionSnapshot()["controls"]?.arrayValue?.contains {
-                        $0["role"] == .text("conversation") && $0["value"]?["destination"] == .text("unavailable")
-                    } == true
+                    let snapshot = presentation.readingInteractionSnapshot()
+                    let controls = snapshot["controls"]?.arrayValue ?? []
+                    return snapshot["entranceAdmitted"] == .bool(true)
+                        && controls.contains { $0["role"] == .text("history") && $0["value"]?["rowId"] == .null }
+                        && controls.contains { $0["role"] == .text("timeline") && $0["scope"]?.stringValue?.hasSuffix(".history") == true
+                            && $0["value"]?["rowCount"] == .integer(0) && ($0["value"]?["height"]?.numberValue ?? 0) > 0 }
+                }
+                // AppKit's local AX tree can omit the separately hosted empty document.
+                // Check the rendered heading and explanation after its timeline lays out.
+                try await Task.sleep(for: .milliseconds(300))
+                let screenshot = directory.appending(path: "notification-missing-execution.png")
+                try await capture(window, to: screenshot)
+                func letters(_ text: String) -> String { String(text.filter(\.isLetter)) }
+                let lines = try recognizedLines(in: screenshot, languages: ["zh-Hans", "en-US"]).map { letters($0.text) }
+                guard lines.contains(letters(heading)), lines.contains(letters(explanation)) else {
+                    throw ReplayError("Unavailable execution text was not visible: \(lines)")
                 }
                 record["unavailable"] = true
             } else if reader == source {
@@ -1442,7 +1470,40 @@ private final class WheelSample: NSEvent {
         try JSONEncoder().encode(layout).write(to: directory.appending(path: "notification-layout.json"))
         guard (8...16).contains(gap) else { throw ReplayError("Unexpected Talk link bottom gap: \(gap) pt") }
         try await visit(from: design, to: design, reader: source, history: false, linkTitle: "修复与回放")
-        try await install(revision: 5, text: "[Missing run](chief://execution?threadId=linked-task&executionId=removed-run)")
+
+        // A successful saved reply can contain the multi-paragraph report that
+        // fills the compact surface and leaves its final capsule below the fold.
+        let savedProse = "属性测试复现并修复了设置问题。后台发现代理时，编辑已保存的设置可能发生冲突。现在可以保存推理强度和路由偏好。\n\n"
+            + String(repeating: "Codex、Claude、Pi、OpenCode 的设置页通过了随机轨迹和固定回归。Runtime 的属性检查覆盖了并发更新。探测响应由测试控制。", count: 6)
+        let savedReport = savedProse + "\n[完整记录](chief://execution?threadId=linked-task&executionId=cited-run)"
+        try await install(revision: 5, text: savedReport)
+        try await wait("Saved long Talk did not settle at the compact height limit") {
+            scene.talkPresentation.presented && scene.talkPresentation.message?.text == savedReport && scene.capsuleFrame.height == 129
+        }
+        try await Task.sleep(for: .milliseconds(550))
+        guard let savedText = descendant(MarkdownTextView.self, in: content, matching: { $0.string.contains(savedProse) }),
+              let scroll = savedText.enclosingScrollView, scroll.documentVisibleRect.minY <= 1,
+              linkFrame("完整记录") == nil else {
+            throw ReplayError("Saved Talk did not start at the top with the final link below the fold")
+        }
+        try await capture(window, to: directory.appending(path: "notification-overflow-top.png"))
+        let point = scroll.convert(CGPoint(x: scroll.bounds.midX, y: scroll.bounds.midY), to: nil)
+        try await postScroll(window, point, y: -24, phase: .began)
+        try await postScroll(window, point, y: -600, phase: .changed)
+        try await postScroll(window, point, y: 0, phase: .ended)
+        try await wait("Scrolling did not reveal the saved Talk link from \(scroll.documentVisibleRect)") {
+            guard let document = scroll.documentView, let link = linkFrame("完整记录") else { return false }
+            let visible = scroll.documentVisibleRect
+            let clip = scroll.contentView.convert(scroll.contentView.bounds, to: nil)
+            return visible.minY > 0 && abs(document.bounds.maxY - visible.maxY) <= 1 && clip.contains(link)
+        }
+        try await capture(window, to: directory.appending(path: "notification-overflow-link.png"))
+        let overflow = ["capsuleHeight": scene.capsuleFrame.height, "viewportHeight": scroll.contentView.bounds.height,
+                        "scrolledDistance": scroll.documentVisibleRect.minY, "sourceCodePoints": CGFloat(savedReport.unicodeScalars.count)]
+        try JSONEncoder().encode(overflow).write(to: directory.appending(path: "notification-overflow.json"))
+        try await visit(from: design, to: design, reader: source, history: false, linkTitle: "完整记录")
+
+        try await install(revision: 6, text: "[Missing run](chief://execution?threadId=linked-task&executionId=removed-run)")
         try await visit(from: design, to: design, reader: source, history: false, missingRun: true)
         let report = ApplicationThreadRef(threadID: "linked-report", typeID: "report.document")
         var fields = reportFixtures([report.threadID])[0].objectValue!
@@ -1457,7 +1518,7 @@ private final class WheelSample: NSEvent {
         let ignoresMouse = window.ignoresMouseEvents
         window.ignoresMouseEvents = true
         defer { window.ignoresMouseEvents = ignoresMouse }
-        try await install(revision: 6, reports: [.object(fields)])
+        try await install(revision: 7, reports: [.object(fields)])
         // A fresh operation gets one real minute. The same message remains a
         // usable navigation source in the conversation after the compact bar folds.
         try await wait("Notification did not start its lease") { scene.talkPresentation.presented && scene.talkPresentation.deadline != nil }

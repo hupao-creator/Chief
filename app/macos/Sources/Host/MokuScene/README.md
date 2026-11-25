@@ -368,12 +368,15 @@ their trace rendering.
 
 Opening Chief input marks the Dock’s reply as read.
 
-[NativeMokuTalk](NativeMokuTalk.swift) shows the latest valid `talk` or `create_thread` operation. Talk is selectable text. Each message opens at the top and grows to a 149-point text viewport (about eight lines). Scroll down to read overflow, including execution links. Its trailing control seat stays reserved for the whole message so retiring Stop does not shift centered text or change its wrapping. It does not edit the draft or grab focus. Clicking outside the capsule dismisses the presented notification without consuming the click, including clicks in another window or app; clicks and scrolling inside retain it. Only windows accepting mouse input observe outside-window presses. The cross-app mouse observer is removed when the notification is hidden or the Dock unmounts. Dismissed/presented operation identity survives refresh and remount within its scene; a notification covered before presentation waits until it can actually be shown.
+[NativeMokuTalk](NativeMokuTalk.swift) shows the latest valid `talk` or `create_thread` operation. Talk is selectable text. Each message opens at the top and grows to a 111-point text viewport (about six lines). Scroll down to read overflow, including execution links. The compact audit reader admits saved successful Talk text up to 1,024 code points for Alpha compatibility. The [submission limits](../../../../../internal/services/moku/README.md#talk) apply at the coordinator, and conversation history renders saved text in full.
+
+The trailing control seat stays reserved for the whole message so retiring Stop does not shift centered text or change its wrapping. Talk does not edit the draft or grab focus. Clicking outside the capsule dismisses the presented notification without consuming the click, including clicks in another window or app. Clicks and scrolling inside retain it. Only windows accepting mouse input observe outside-window presses. The cross-app mouse observer is removed when the notification is hidden or the Dock unmounts. Dismissed/presented operation identity survives refresh and remount within its scene. A notification covered before presentation waits until it can actually be shown.
 
 Talk uses symmetric 64-point insets around its centered selectable text viewport,
 reserving the persistent eye/control seats without shifting prose. The
 [mounted link replay](../../../../../demos/moku-landing/README.md#talk-execution-links)
-checks that the full text of a multiline Chinese notice and its final link fit.
+checks that a short multiline Chinese notice and its final link fit, and that
+scrolling a longer saved notice reveals a clickable link below the fold.
 
 The
 capsule height uses the same width; changing the scrollbar preference updates

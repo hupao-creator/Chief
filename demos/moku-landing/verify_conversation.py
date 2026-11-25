@@ -58,13 +58,19 @@ def run(binary, output, send_refresh):
         "请看一下「展开全文」的效果。图片附件能按原来的比例显示吗？我想在小窗口里也看清截图中的文字。",
         "我会把截图放进展开后的消息里，保留图片的宽高比。改完会用同一张图片分别查看普通窗口和小窗口，核对正文换行和附件的位置。",
         "精简一下状态文案，把「仅运行中」和「仅已完成」改成「运行中」和「已完成」。附件里标出了需要调整的位置。",
-        "状态标签已更新。\n\n中文界面\n左侧列表：运行中\n任务卡片：已完成\n\n"
-        "英文界面\n左侧列表：Running\n任务卡片：Completed\n\n"
-        "接下来核对两个窗口：\n在普通窗口里对照截图。\n缩小窗口，逐行查看消息。\n输入四行草稿，再读一次最新回复。",
+        "状态标签已更新。\n中文界面显示「运行中」和「已完成」，英文界面显示 Running 和 Completed。\n我会用普通窗口和最小窗口核对换行、附件和草稿。",
         "截图中标注的两处都已核对，附件仍然跟着这条消息。",
     ]
     if send_refresh:
         messages[0] += "\n" + "\n".join(f"核对项目 {n}" for n in range(1, 19))
+    else:
+        # Keep the attachment-bearing request long enough to exercise the
+        # overflowing conversation at both sizes and send a brief Talk reply.
+        messages[2] += "\n" + "\n".join(
+            f"检查{size}的{area}。"
+            for size in ("普通窗口", "最小窗口")
+            for area in ("中文标签", "英文标签", "左侧列表", "任务卡片", "气泡换行", "附件位置", "草稿输入", "阅读位置", "末行文字")
+        )
     attachment = "界面标注.png"
     try:
         replay.compile([HERE / "NestedHeaderReplay.swift", HERE / "FilterFacePixels.swift", HERE / "ConversationOpeningMeasurement.swift"])
