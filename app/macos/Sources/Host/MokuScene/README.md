@@ -77,7 +77,7 @@ status fades through clear before the next label appears in the same seat.
 
 Moku’s Dock (idle, landing, composer, conversation, Talk and dispatch) and its interaction
 panel use a dark SwiftUI environment.
-Settings and the onboarding forms use the system appearance. Settings uses the
+Settings inherits the Dock’s dark environment. Onboarding follows the system. Settings uses the
 opaque native window background, including with Reduce Transparency. The
 illustrations have their own [Liquid Glass panels](../Settings/README.md).
 The resident eyes travel into the reserved header seat during expansion and

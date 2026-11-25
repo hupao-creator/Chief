@@ -54,7 +54,7 @@ up to 640 points wide, extending up to 40 points beyond each side of the
 560-point form. The Settings scroll document reserves at least 30 points on
 each side of the panel. The illustrations have 16-point horizontal and 14-point
 vertical padding over a noninteractive regular Liquid Glass backdrop with a
-29-point corner radius. The backdrop follows the workspace appearance, with an
+29-point corner radius. The backdrop uses the panel’s dark appearance, with an
 opaque settings color and a fine outline under Reduce Transparency. At narrow
 widths, the panel fits the viewport and the illustration canvas scales
 proportionally below 500 points of inner width so the composition and its hit
@@ -121,15 +121,16 @@ and advanced options.
 Unavailable selections fall back to Chief and normalize when the available sections change or the page mounts. When disconnected, the selected tab stays in place and the form shows a connection notice until the Runtime is available.
 Thread archive data and commands remain independent of Settings.
 
-The expanded surface, page, and form controls follow the workspace's
-[system appearance](../../../README.md#system-appearance-and-language).
+The expanded Dock supplies a local dark appearance to the Settings page, its
+form controls and their menus and help popovers. Onboarding shares the form
+components and follows the [system appearance](../../../README.md#system-appearance-and-language).
 
 Settings is an Overview-only modal expansion of the resident Moku Dock. The
 same capsule grows toward a centered 780-point-wide surface, starting at a
 900-point preferred height and growing with the active form, bounded by 24-point
 viewport margins. Its expanded surface uses the opaque native
 `NSColor.windowBackgroundColor` without a tint or Liquid Glass, including with
-Reduce Transparency. The resident eyes adapt to the expanded surface as they
+Reduce Transparency. The resident eyes keep their white ink as they
 travel into the reserved leading 30-point header column, and return to the
 composer with the shell. A single
 Close button replaces the full-page traffic-light/back capsule and its 74-point
@@ -287,7 +288,7 @@ options. The compact onboarding map leaves routing guidance disabled.
 Moku rows use 12pt vertical padding instead of the default 15pt; label hierarchy,
 advanced disclosure padding and description spacing retain their existing metrics.
 The Custom editor places a transparent multiline AppKit viewport over a
-16-point rounded Regular Liquid Glass backdrop. The backdrop follows the system
+16-point rounded Regular Liquid Glass backdrop. The backdrop uses the panel’s dark
 appearance and uses an opaque, outlined background with Reduce Transparency. The
 editor shares [Chief's animated insertion point](../../Shared/PluginUI/README.md#cards-composer-and-forms),
 using the adaptive label color for its core. The text viewport uses symmetric
