@@ -128,14 +128,6 @@ struct SetupSurface: View {
                                 Text(panelStep == .moku ? "Moku" : panelStep == .tag ? "找到想找的会话" : "从文字到图示")
                                     .font(.system(size: 25, weight: .medium)).tracking(-0.5)
                                     .accessibilityAddTraits(.isHeader).accessibilityIdentifier("setup-title")
-                                    .padding(.top, 0).padding(.bottom, 8)
-                                Text(panelStep == .moku ? "One mind to orchestrate them all."
-                                     : panelStep == .tag ? "A few tags to find them all."
-                                     : "Less to read. More to understand.")
-                                    .font(.system(size: 13)).foregroundStyle(secondaryInk)
-                                    .multilineTextAlignment(.center).frame(maxWidth: .infinity)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .accessibilityIdentifier("setup-subtitle")
                                     .padding(.bottom, 16)
                                 if panelStep == .tag || panelStep == .report {
                                     SetupCapabilityAnimation(kind: panelStep == .tag ? .tag : .report)

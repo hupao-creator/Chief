@@ -29,13 +29,6 @@ enum NativeSettingsRole: String {
         case .report: locale.text("从文字到图示", "From text to pictures")
         }
     }
-    var subtitle: String {
-        switch self {
-        case .moku: "One mind to orchestrate them all."
-        case .tag: "A few tags to find them all."
-        case .report: "Less to read. More to understand."
-        }
-    }
 }
 
 /// Owned by one Settings page visit, outside the tab's replaceable view identity.
@@ -73,10 +66,7 @@ struct NativeRoleConfigurationPanel<Content: View>: View {
                 Text(role.title(locale)).font(.system(size: 25, weight: .medium)).tracking(-0.5)
                     .multilineTextAlignment(.center).frame(maxWidth: .infinity)
                     .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader).padding(.bottom, 8)
-                Text(role.subtitle).font(.system(size: 13)).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center).frame(maxWidth: .infinity)
-                    .fixedSize(horizontal: false, vertical: true).padding(.bottom, 24)
+                    .accessibilityAddTraits(.isHeader).padding(.bottom, 24)
             }
             if role != .moku {
                 if let illustrationWidth, !harnesses.isEmpty {
