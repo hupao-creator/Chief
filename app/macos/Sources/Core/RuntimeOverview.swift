@@ -75,12 +75,13 @@ extension RuntimeClient {
               let actions = value["recentActions"]?.arrayValue, actions.count <= 32 else {
             throw RuntimeError("INVALID_REQUEST", "Invalid overview context")
         }
-        var tags = Set<String>()
+        var tags = Set<[JSONText]>()
         for filter in filters {
             let keys = Set(filter.objectValue?.keys.map { $0.string } ?? [])
             guard validText(filter["tag"], limit: 4096), case .string(let tag) = filter["tag"],
                   filter["scope"] == nil || filter["scope"] == .null || validText(filter["scope"], limit: 4096),
-                  tags.insert((filter["scope"]?.stringValue ?? "") + "\u{0}" + tag.string).inserted,
+                  case .string(let kind) = filter["kind"],
+                  tags.insert([JSONText(filter["scope"]?.stringValue ?? ""), kind, tag]).inserted,
                   keys.isSuperset(of: ["tag", "kind", "aliases", "count", "threads"]), keys.isSubset(of: ["tag", "kind", "aliases", "count", "threads", "scope"]),
                   ["directory", "semantic"].contains(filter["kind"]?.stringValue ?? ""),
                   let count = filter["count"]?.intValue, count >= 0,

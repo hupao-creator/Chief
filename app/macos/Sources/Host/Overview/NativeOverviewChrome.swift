@@ -51,6 +51,7 @@ public struct NativeOverviewChrome: View {
     public var selectedScope: String
     public var selectedKind: NativeOverviewTagKind?
     public var onTagChange: (NativeOverviewFilter?) -> Void
+    public var onUntaggedRunning: (() -> Void)?
     public var onSettings: (() -> Void)?
     /// Bounds use logical points from the top-left of the zoomable client viewport.
     public var onSettingsWithOrigin: ((CGRect) -> Void)?
@@ -70,7 +71,7 @@ public struct NativeOverviewChrome: View {
     public init(filters: [NativeOverviewFilter], viewportHeight: CGFloat? = nil, selectedTag: String = "", selectedScope: String = "", selectedKind: NativeOverviewTagKind? = nil,
                 strings: NativeOverviewChromeStrings = .init(),
                 onTagChange: @escaping (NativeOverviewFilter?) -> Void,
-                onSettings: (() -> Void)? = nil, onRestart: (() -> Void)? = nil,
+                onUntaggedRunning: (() -> Void)? = nil, onSettings: (() -> Void)? = nil, onRestart: (() -> Void)? = nil,
                 onSettingsWithOrigin: ((CGRect) -> Void)? = nil,
                 onSettingsFrameChange: ((CGRect?) -> Void)? = nil,
                 interactions: NativeOverviewChromeInteractions? = nil) {
@@ -78,6 +79,7 @@ public struct NativeOverviewChrome: View {
         self.filters = filters; self.selectedTag = selectedTag; self.selectedScope = selectedScope; self.selectedKind = selectedKind
         _presentedFilters = State(initialValue: filters)
         _hasPresentedFilters = State(initialValue: !filters.isEmpty)
+        self.onUntaggedRunning = onUntaggedRunning
         self.strings = strings; self.onTagChange = onTagChange
         self.onSettings = onSettings; self.onRestart = onRestart
         self.interactions = interactions
@@ -119,7 +121,7 @@ public struct NativeOverviewChrome: View {
     }
 
     private var actionWidth: CGFloat {
-        let count = (onRestart != nil ? 1 : 0)
+        let count = (onUntaggedRunning != nil ? 1 : 0) + (onRestart != nil ? 1 : 0)
             + (onSettings != nil || onSettingsWithOrigin != nil ? 1 : 0)
         return CGFloat(count) * OverviewTagMetrics.actionDiameter + CGFloat(max(0, count - 1)) * OverviewTagMetrics.spacing
     }
@@ -129,6 +131,10 @@ public struct NativeOverviewChrome: View {
         // while retaining separate outlines at rest.
         GlassEffectContainer(spacing: OverviewTagMetrics.spacing) {
             HStack(spacing: OverviewTagMetrics.spacing) {
+                if let onUntaggedRunning {
+                    iconButton("Hourglass", title: strings.untaggedRunning, active: selectedTag.isEmpty, action: onUntaggedRunning)
+                        .accessibilityIdentifier("overview-untagged-running")
+                }
                 if let onRestart { iconButton("RotateCcw", size: 15, title: strings.restart, action: onRestart) }
                 if onSettings != nil || onSettingsWithOrigin != nil {
                     iconButton("Settings", size: 15, title: strings.settings,
@@ -338,6 +344,7 @@ public struct NativeOverviewChromeStrings: Sendable {
     public var restart = "重启开发应用"
     public var actions = "俯瞰视图操作"
     public var filter = "按标签筛选"
+    public var untaggedRunning = "未分配标签的运行中会话"
     public var runningOnly = "运行中"
     public var allStatuses = "全部状态"
     public var completedOnly = "已完成"

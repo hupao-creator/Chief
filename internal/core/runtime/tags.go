@@ -259,19 +259,6 @@ func (c tagsWriteCapability) apply(tx *store.Tx, op plugin.SemanticTagOperation)
 		}
 		return tagDefinition{}, fmt.Errorf("semantic tag does not exist: %s", name)
 	}
-	// A semantic tag that normalizes to the scope's directory label would be
-	// ambiguous with the directory chip in the Overview, so it cannot be
-	// created or renamed into.
-	labelKey := ""
-	if scope != directorytag.InboxScope {
-		labelKey = tagKey(directorytag.Name(scope))
-	}
-	rejectLabel := func(name string) error {
-		if labelKey != "" && tagKey(name) == labelKey {
-			return fmt.Errorf("tag name duplicates the directory filter: %s", name)
-		}
-		return nil
-	}
 	var result any
 	assignments := []plugin.SemanticTagAssignment{}
 	switch op.Kind {
@@ -298,9 +285,6 @@ func (c tagsWriteCapability) apply(tx *store.Tx, op plugin.SemanticTagOperation)
 			if current, ok := findTag(pool, name); ok {
 				created = append(created, current)
 				continue
-			}
-			if err := rejectLabel(name); err != nil {
-				return nil, err
 			}
 			if len(pool) >= maxScopeTags {
 				return nil, fmt.Errorf("tag pool is full: %s", tagNames(pool))
@@ -344,11 +328,6 @@ func (c tagsWriteCapability) apply(tx *store.Tx, op plugin.SemanticTagOperation)
 			name, err = normalizeTag(op.NewName, 32, false)
 			if err != nil {
 				return nil, err
-			}
-			if tagKey(name) != tagKey(current.Name) {
-				if err := rejectLabel(name); err != nil {
-					return nil, err
-				}
 			}
 		}
 		if op.Description != nil {
@@ -414,11 +393,6 @@ func (c tagsWriteCapability) apply(tx *store.Tx, op plugin.SemanticTagOperation)
 			return nil, errors.New("merge target is retired")
 		}
 		targetName = *canonical
-		if !hasTag(pool, targetName) {
-			if err := rejectLabel(targetName); err != nil {
-				return nil, err
-			}
-		}
 		sources := []tagDefinition{}
 		for _, name := range op.Names {
 			tag, err := known(name)
@@ -683,9 +657,6 @@ func canonicalThreadTags(pool []tagDefinition, redirects map[string]*string, nam
 		if !contains(result, *canonical) {
 			result = append(result, *canonical)
 		}
-	}
-	if len(result) > 1 {
-		result = result[:1]
 	}
 	return result
 }

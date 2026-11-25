@@ -24,7 +24,6 @@ final class NativeOverviewMembershipIndex {
     private var scopeDependencies: [String: Set<String>] = [:]
     private var dependentScopes: [String: Set<String>] = [:]
     private(set) var members: [String: NativeOverviewMembership] = [:]
-    private(set) var redundant = Set<String>()
 
     var filters: [NativeOverviewFilter] {
         NativeOverviewSelection.orderedFilters(scopeFilters.values.flatMap { $0 }).map { raw in
@@ -42,7 +41,7 @@ final class NativeOverviewMembershipIndex {
                application: (JSONText) -> NativeOverviewApplicationEntry?) {
         threadScopes.removeAll(); applicationScopes.removeAll(); self.threads.removeAll(); self.applications.removeAll()
         unscoped.removeAll(); directoryApplications.removeAll(); semanticApplications.removeAll()
-        scopeFilters.removeAll(); renderedFilters.removeAll(); members.removeAll(); context.removeAll(); redundant.removeAll()
+        scopeFilters.removeAll(); renderedFilters.removeAll(); members.removeAll(); context.removeAll()
         scopeDependencies.removeAll(); dependentScopes.removeAll()
         for thread in threads { index(thread: thread, id: thread.id) }
         for item in applications { index(application: item, id: item.entry.ref.threadID) }
@@ -101,9 +100,9 @@ final class NativeOverviewMembershipIndex {
             }
         }
         guard let application, !application.entry.tags.semanticTags.isEmpty else { return }
-        if let scope = application.entry.scope?.string {
-            applicationScopes[id] = scope; applications[scope, default: []].insert(id)
-        } else {
+        let scope = application.entry.scope?.string ?? NativeOverviewSelection.inboxScope
+        applicationScopes[id] = scope; applications[scope, default: []].insert(id)
+        if application.entry.scope == nil {
             let directoryTags = application.entry.tags.directoryTags
             let keys = Unscoped(directory: Set(directoryTags.map { NativeOverviewSelection.key($0.string) }),
                 semantic: application.directoryOnly ? [] : Set(application.entry.tags.semanticTags.map { NativeOverviewSelection.key($0.string) }))
@@ -118,7 +117,7 @@ final class NativeOverviewMembershipIndex {
         let old = scopeFilters[scope] ?? []
         for filter in old + old.flatMap(\.children) {
             members.removeValue(forKey: filter.selectionKey); renderedFilters.removeValue(forKey: filter.selectionKey)
-            context.removeValue(forKey: filter.selectionKey); redundant.remove(filter.selectionKey)
+            context.removeValue(forKey: filter.selectionKey)
         }
         for key in scopeDependencies.removeValue(forKey: scope) ?? [] {
             dependentScopes[key]?.remove(scope)
@@ -165,15 +164,6 @@ final class NativeOverviewMembershipIndex {
                 let selected = select(child)
                 members[child.selectionKey] = selected; child.count = selected.threads.count + selected.applications.count
                 filter.children[index] = child
-            }
-            if filter.isDirectory, filter.children.count == 1, let child = filter.children.first {
-                let names = browsing.threads.flatMap { $0.tags.map(\.string) }
-                    + browsing.applications.flatMap { $0.entry.tags.semanticTags.map(\.string) }
-                let semanticKeys = Set(names.map(normalized).filter { !$0.isEmpty })
-                let selected = members[child.selectionKey]!
-                if semanticKeys.count == 1, Set(parent.threads) == Set(selected.threads), Set(parent.applications) == Set(selected.applications) {
-                    redundant.insert(child.selectionKey)
-                }
             }
             renderedFilters[filter.selectionKey] = filter
             for value in [filter] + filter.children {

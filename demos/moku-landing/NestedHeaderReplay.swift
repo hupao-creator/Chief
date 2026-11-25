@@ -180,6 +180,12 @@ private final class WheelSample: NSEvent {
             try await conversationOpening(window, directory: directory)
             return
         }
+        if CommandLine.arguments.contains("--tag-states") {
+            window.center()
+            try await focusReplayWindow(window)
+            try await tagStates(window, directory: directory, authority: authority)
+            return
+        }
         if CommandLine.arguments.contains("--tag-read") {
             window.center()
             try await focusReplayWindow(window)
@@ -1950,6 +1956,103 @@ private final class WheelSample: NSEvent {
             .write(to: directory.appending(path: "tag-read.json"))
     }
 
+    private func tagStates(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+        let model = presentation.overview, canvas = presentation.canvas
+        workspace.updateSystemLocale(.english)
+        captureScheme = .dark
+        var revision = 2
+        var samples = [[String: Any]]()
+        func thread(_ id: JSONText, _ status: PublicExecution.Status, tags: [JSONText] = []) throws -> JSONValue {
+            let execution = try PublicExecution(executionID: "run", status: status, startedAt: 1,
+                finishedAt: status == .completed ? 2 : nil)
+            return try HarnessThread(id: id, harnessID: "codex", revision: revision, sessionState: .null,
+                observation: .init(latestExecution: execution), cwd: "/fixture", settings: .object([:]),
+                createdAt: 1, updatedAt: Double(revision), title: id, tags: tags,
+                tagEmojis: Dictionary(uniqueKeysWithValues: tags.map { ($0, "📌") }),
+                directoryTag: "Fixture", directoryScope: "/fixture").json
+        }
+        func patch(_ rows: [JSONValue]) async throws {
+            let delta: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(revision - 1),
+                "revision": .integer(revision), "threads": .object(["upserts": .array(rows), "removedIds": .array([])])])
+            let next = try RuntimeState.applying(delta, to: workspace.state!)
+            await workspace.installPrepared(next, event: .mutation(delta, state: next, authority: authority))
+            revision += 1
+        }
+        func check(_ stage: String, _ cards: Set<String>, _ selected: String?, captureFrame: Bool = false) async throws {
+            try await wait("Unexpected \(stage): selected=\(String(describing: model.selectedFilter?.id)), cards=\(canvas.mountedCardIDs), route=\(presentation.interactionPage)", timeout: .seconds(5)) {
+                !presentation.moku.landing && model.selectedFilter?.id == selected
+                    && Set(model.items.map(\.id)) == cards && canvas.mountedCardIDs == cards && !canvas.isLayingOut
+            }
+            if captureFrame {
+                // Filter entry can continue after an unchanged card has settled.
+                try await Task.sleep(for: .milliseconds(600))
+                try await capture(window, to: directory.appending(path: stage + ".png"))
+            }
+            samples.append(["stage": stage, "cards": canvas.mountedCardIDs.sorted(), "filter": selected ?? "",
+                            "status": model.statusFilter.rawValue, "rail": model.railChoices.map(\.id)])
+        }
+        func press(_ id: String) async throws {
+            try await wait("Missing " + id, timeout: .seconds(5)) { (try? filterButton(id, in: window)) != nil }
+            try await focusReplayWindow(window)
+            let frame = window.convertFromScreen(try filterButton(id, in: window).frame)
+            try click(window, at: CGPoint(x: frame.minX + frame.height / 2, y: frame.midY))
+        }
+        try await installTasks(0, revision: revision, authority: authority, extraThreads: [thread("Task", .completed)])
+        revision += 1
+        try await check("no-running", [], nil, captureFrame: true)
+        let copy = try recognizedLines(in: directory.appending(path: "no-running.png"), languages: ["en-US"],
+                                       region: CGRect(x: 0, y: 0, width: 1, height: 1))
+        guard copy.contains(where: { $0.text.contains("No running conversations") }) else {
+            throw ReplayError("Missing no-running message: " + copy.map(\.text).joined(separator: ", "))
+        }
+        try await patch([thread("Task", .running)])
+        try await check("running-without-tag", ["Task"], nil, captureFrame: true)
+        try await patch([thread("Task", .running, tags: ["Fixture"])])
+        let folderID = "directory:/fixture:fixture", tagID = "semantic:/fixture:fixture"
+        try await check("first-tag", ["Task"], tagID, captureFrame: true)
+        try await press(folderID)
+        try await check("sole-equal-child", ["Task"], folderID)
+        try await press(tagID)
+        try await check("sole-child-selected", ["Task"], tagID)
+        try await patch([thread("Other", .running)])
+        try await press("overview-untagged-running")
+        try await check("untagged-in-mixed-workspace", ["Other"], nil)
+        try await patch([thread("Other", .completed)])
+        try await check("untagged-run-ended", ["Task"], tagID)
+
+        let names: [JSONText] = ["Fixture", "Shared", "Review", "Ship", "Test", "Write"]
+        try await patch([thread("Task", .completed, tags: names), thread("Other", .completed, tags: ["Shared", "Review"])])
+        try await press(folderID)
+        try await check("folder-with-overlap", ["Task", "Other"], folderID)
+        guard let children = model.selectedDirectory?.children, children.count == names.count, Set(children.map(\.tag)) == Set(names.map(\.string)) else {
+            throw ReplayError("Distinct assigned labels were lost or duplicated")
+        }
+        for child in children {
+            try await press(child.id)
+            let ids: Set<String> = ["Shared", "Review"].contains(child.tag) ? ["Task", "Other"] : ["Task"]
+            try await check("select-" + child.tag, ids, child.id)
+        }
+        var report = reportFixtures(["Report"])[0].objectValue!
+        report["presentations"] = .array([.object(["id": .text("mokusei.overview"), "apiVersion": .integer(1),
+            "schemaVersion": .integer(1), "value": .object(["tagFilter": .text("directory"), "coversExecutions": .array([])])])])
+        try await installTasks(0, revision: revision, authority: authority, reports: [.object(report)])
+        let emptyTag = "semantic:/fixture:development"
+        try await press(emptyTag)
+        try await check("assigned-tag-with-zero-projected-cards", [], emptyTag)
+
+        report.removeValue(forKey: "scope")
+        report["presentations"] = .array([])
+        try await installTasks(0, revision: revision + 1, authority: authority, reports: [.object(report)])
+        try await check("unscoped-document-tag", ["Report"], "semantic:inbox:development")
+
+        var unnamedFolder = try thread("Task", .completed, tags: ["Topic"]).objectValue!
+        unnamedFolder["directoryTag"] = .text("")
+        try await installTasks(0, revision: revision + 2, authority: authority, extraThreads: [.object(unnamedFolder)])
+        try await check("semantic-tag-without-folder-label", ["Task"], "semantic:/fixture:topic")
+        try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
+            .write(to: directory.appending(path: "tag-states.json"))
+    }
+
     private func statusFilters(_ window: NSWindow, directory: URL, authority: UUID) async throws {
         let model = presentation.overview, canvas = presentation.canvas
         let running = ["Executing", "Permission", "Background", "Submitting"]
@@ -2401,14 +2504,16 @@ private final class WheelSample: NSEvent {
         try await activate(.semantic, inboxLabel.id)
         try await check("inbox-label", .all, ["Inbox label"], selected: inboxLabel.tag)
         try await activate(.directory, namedFolder.id)
-        try await check("directory-named-inbox", .all, [namedFolderTask], selected: namedFolder.tag)
-        guard model.railChoices.map(\.id) == ["running"] else { throw ReplayError("Expected a running-only directory rail") }
+        try await check("directory-named-inbox", .all, [namedFolderTask], selected: "Development")
+        guard let child = namedFolder.children.first, model.railChoices.map(\.id) == [child.id, "running"] else {
+            throw ReplayError("A sole semantic tag with the folder's membership was hidden")
+        }
         try await swipe(.up)
         try await check("empty-directory-running", .running, [], selected: namedFolder.tag)
-        for direction in [FingerSwipe.up, .down] {
-            try await swipe(direction)
-            try await check(direction == .up ? "single-choice-up" : "single-choice-down", .running, [], selected: namedFolder.tag)
-        }
+        try await swipe(.up)
+        try await check("running-to-sole-child", .all, [namedFolderTask], selected: child.tag)
+        try await swipe(.down)
+        try await check("sole-child-to-running", .running, [], selected: namedFolder.tag)
         try await activate(.directory, parent.id)
         try await check("directory-restores-shipping", .all, ["Delivered"], selected: shipping.tag)
         try await activate(.directory, parent.id)
@@ -2904,7 +3009,7 @@ private final class WheelSample: NSEvent {
         }
         let savedIDs = workspace.catalog.threads.map(\.id.string)
         guard model.visibleFilters.isEmpty, model.selectedFilter == nil, model.selectedTag.isEmpty,
-              model.statusFilter == .all, savedIDs.contains("Inbox tagged"), savedIDs.contains("Inbox untagged"),
+              model.statusFilter == .running, savedIDs.contains("Inbox tagged"), savedIDs.contains("Inbox untagged"),
               model.chromeInteractions.mountedIDs(in: .status).isEmpty else {
             throw ReplayError("Unexpected cards, controls or thread loss after removing the last tag")
         }
