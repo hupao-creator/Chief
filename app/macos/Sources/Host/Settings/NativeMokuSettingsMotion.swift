@@ -299,6 +299,8 @@ enum NativeMokuSettingsMotion {
                 .scaleEffect(changing ? frame.arriving.scale : 1)
                 .opacity(changing ? frame.arriving.opacity : 1)
         }
+        // Both marks sit on the black character throughout the handoff.
+        .environment(\.colorScheme, .dark)
         .frame(width: 12, height: 12)
         .allowsHitTesting(false)
         .accessibilityHidden(true)

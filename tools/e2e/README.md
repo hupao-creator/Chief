@@ -396,8 +396,9 @@ owns resolution, profile compatibility and window appearance.
 4. Change macOS Appearance from Light to Dark and back with Overview, a reader
    and an attachment preview open. Record effective appearance in the snapshot
    and capture each window. Repeat with the same Settings visit and the same
-   first-run form mounted. Check that onboarding follows the new appearance and keeps its
-   setup step. Settings should stay dark on the active tab. In each system
+   first-run form mounted. Check that onboarding stays dark and keeps its setup step. On the Chief
+   step, select Pi Agent and OpenCode in turn and check that each mark is
+   legible against the black character. Settings should stay dark on the active tab. In each system
    appearance, close Settings and reopen it using the Overview gear or the Settings keyboard shortcut.
    Check the dark background, header eyes and legible form labels. Open the
    Chief Model menu and choose an available model. Under Auto-Categorization,
