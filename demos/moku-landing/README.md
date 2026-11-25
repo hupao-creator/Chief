@@ -232,9 +232,10 @@ isolated workspace. ScreenCaptureKit timestamps the displayed window frames.
 The clock starts just before posting the right mouse-down event. The collector compares
 each frame with the resting Bar and the final line of the settled reply, which
 Vision locates after capture. It records the longest visible pause in the
-sampled area and intervals between main run-loop ticks. The first timer tick that observes a visible editable text view as the key
-window’s first responder bounds the time to input readiness. The separate
-profile samples the first visit at 1 ms intervals. The [same-machine comparison](evidence/conversation-opening/measurements.md)
+sampled area and intervals between main run-loop ticks. The first timer tick
+that observes a visible editable text view as the key window’s first responder
+bounds the time to input readiness. The separate profile samples the first
+visit at 1 ms intervals. The [secondary-click comparison](evidence/conversation-opening/secondary-click.md)
 includes the workload, per-visit results and retained samples.
 
 The header replay mounts the 46.2-point production filters at the top of a
