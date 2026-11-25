@@ -75,7 +75,6 @@ public struct NativeMokuDock: View {
     public var openExecution: ((ApplicationExecutionRef) -> Void)?
     public var loadMentionDirectories: (() async throws -> [NativeComposerDirectory])?
     @Environment(\.nativeMokuSettingsContent) private var settingsContent
-    @Environment(\.colorScheme) private var workspaceColorScheme
     @Environment(\.locale) private var locale
     @Environment(\.nativeOfflineDraftEditing) private var offlineDraftEditing
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -736,7 +735,7 @@ public struct NativeMokuDock: View {
             // Settings covers the Dock but keeps the face on screen in the page's
             // header, so its blink and expression keep their clock.
             motion: scenePhase == .active && state.windowVisible && (!state.dockCovered || state.settingsOpen),
-            dark: !state.settingsExpanded || workspaceColorScheme == .dark, immediateOrbit: threadID != nil)
+            dark: true, immediateOrbit: threadID != nil)
         return Color.clear
         .frame(width: sizesRow ? nil : surface.width, height: sizesRow ? nil : surface.height)
         .overlay(alignment: .bottom) {
@@ -830,7 +829,6 @@ public struct NativeMokuDock: View {
         .overlay(alignment: .top) {
             if state.settingsOpen {
                 settingsContent
-                    .environment(\.colorScheme, workspaceColorScheme)
                     .frame(width: settingsSize.width, height: settingsSize.height)
                     // Settle the page layout during the capsule morph without
                     // suppressing animations initiated later by its children.
@@ -922,7 +920,6 @@ public struct NativeMokuDock: View {
                     .opacity(state.settingsExpanded ? 0 : 1)
                 if state.settingsOpen {
                     NativeSettingsPanelBackground()
-                        .environment(\.colorScheme, workspaceColorScheme)
                         .opacity(state.settingsExpanded ? 1 : 0)
                 }
             }
