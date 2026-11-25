@@ -14,11 +14,15 @@ A pending marker takes priority over subsequently created history. Marker write
 failures stay visible and retryable. Completion is written only after the last
 settings flush succeeds; ordinary preference writes preserve that state.
 
-The floating panel keeps the landing background and uses a neutral window
-surface with untinted Liquid Glass controls. The panel, hosted controls, and
-Tag and Super Thread animations inherit the system appearance. During the
-noninteractive handoff, the contracting surface takes on the Dock's capsule
-color. Discovery reveals each ready Harness by logo and name. Pending Harnesses share
+The floating panel keeps the landing background and uses the same opaque dark
+surface as Settings. The panel, hosted controls, and Tag and Super Thread
+animations stay dark in either system appearance. The native workspace window
+keeps its normal default, minimum and restored sizes. The panel fits the current
+step's content, including the progress and navigation rows, up to 820 points or
+the window height minus 64 points, whichever is smaller. When content exceeds
+that limit, it scrolls between the fixed progress and navigation rows. A new
+step starts at the top. During the noninteractive handoff, the contracting
+surface takes on the Dock's capsule color. Discovery reveals each ready Harness by logo and name. Pending Harnesses share
 a single progress indicator. Each failed Harness has its own error and retry. An executable alone is not discovered:
 readiness joins the workspace's retained Moku execution and enabled independent
 background-role resources for that Harness. Inherited roles join
@@ -54,8 +58,11 @@ profile confirmed exactly as submitted can reuse its fresh catalog. The
 fields display the current draft and the catalog keeps its original expiry. Switching to a loading Agent or receiving a different saved source from
 another client gates Continue on that source's own readiness. Disabled roles
 need execution resources only when enabled.
-Plugin-owned installation guides remain available for missing Harnesses. Moku reuses the
-Settings coordination map and native Harness execution fields. Tag and Super Thread
+Plugin-owned installation guides remain available for missing Harnesses. The
+Chief heading leads into the shared Settings illustration panel, coordination
+map and native Harness execution fields. The selected host's logo appears inside
+the coordinating character and uses the same dark-surface contrast as Settings.
+Tag and Super Thread
 reuse application-owned background configuration, including inheritance and
 retained independent profiles. Provider catalogs, pending model choices and
 validation remain in their native plugins. Model, reasoning and other select
@@ -73,8 +80,8 @@ restores its own retained configuration.
 
 Opening the independent editor loads the selected Harness catalog in the role's
 workspace. During the read, the skillet and “Loading Agent configuration…”
-form one notice centered horizontally and vertically between the Agent choices
-and the bottom navigation. If the window is too short for the notice to fit,
+form one notice centered across the configuration area with balanced spacing
+between the Agent choices and the bottom navigation. If the window is too short for the notice to fit,
 the content can scroll while the navigation stays in place. The editor's
 read-only preview uses retained settings when available and Chief's saved
 profiles on first use. Returning to that role and Harness during
@@ -101,7 +108,7 @@ pending backend work are retained.
 
 The Tag SpriteKit and Report SwiftUI sequences are abstract capability examples,
 shared with Settings through `NativeRoleConfigurationPanel` and with the visual
-demo. Role titles and subtitles are shown during onboarding. Each mounted Tag
+demo. Tag and Super Thread show a title and subtitle during onboarding. Each mounted Tag
 or Super Thread page plays once with the discovered Harness logos and retains
 its completed composition. When OpenCode is available, the Tag animation uses its
 plugin logo for Improve search, Update dev docs and Explore shortcuts in both

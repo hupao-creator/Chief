@@ -86,7 +86,7 @@ import SwiftUI
             configuration.frame(maxWidth: formWidth, alignment: .leading)
         }
         .environment(\.nativeSettingsGroupBottomSpacing, 8)
-        .environment(\.nativeSettingsRowVerticalPadding, includesRoutingGuidance ? 12 : 15)
+        .environment(\.nativeSettingsRowVerticalPadding, 12)
         .background(NativeSettingsWindowVisibility { motion.setVisible($0) })
         .onDisappear { motion.setVisible(false); onCoordinatorFrame(nil, true) }
         .onAppear {
@@ -123,6 +123,7 @@ import SwiftUI
                     executionSnapshot: true, scopeID: nil, refreshSequence: 0,
                     savedValue: model.savedSettings["moku"]?["executionHarnesses"]?[host.descriptor.id.string] ?? .null,
                     value: model.harnessValueBinding(host.descriptor.id.string, execution: true)))
+                    .environment(\.nativeSettingsModelLabel, locale.text("Chief 模型", "Chief Model"))
                     .environment(\.nativeSettingsInteractionScope, "moku." + host.descriptor.id.string)
                     .environment(\.nativeSettingsBeforeAdvanced, includesRoutingGuidance ? AnyView(routingGuidance.environment(\.nativeSettingsInteractionScope, interactionScope)) : nil)
             } else if rosterReady, !rosterPending, selectedHost.flatMap({ model.installations[$0]?.status }) == .checking {

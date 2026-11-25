@@ -30,7 +30,7 @@ Choose **OpenCode** to see its providers, models and variants. If **Loading Agen
 
 ## Change appearance or language on your Mac
 
-To change Chief's appearance, open **System Settings → Appearance** on your Mac and choose **Light**, **Dark**, or **Auto**. You can see the change in Overview and the first-run setup screens. Settings, Chief Bar, and your conversation with Chief stay dark.
+To change Chief's appearance, open **System Settings → Appearance** on your Mac and choose **Light**, **Dark**, or **Auto**. You can see the change in Overview. First-run setup, Settings, Chief Bar, and your conversation with Chief stay dark.
 
 Chief uses Simplified Chinese when Chinese is first in your Mac's preferred languages. It uses English when English or any other language is first. To change the order, go to **System Settings → General → Language & Region** and check the labels in Chief after macOS applies the change.
 

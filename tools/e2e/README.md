@@ -240,22 +240,31 @@ Record any synthetic delays separately from time observed in a screen recording.
 The [first-run contract](../../app/macos/Sources/Host/Onboarding/README.md)
 defines the resource and save gates.
 
-### Onboarding Agent configuration loading layout
+### Onboarding panel layout and Agent loading
+
+Launch a fresh profile with Pi Agent ready while macOS is in Light appearance.
+On the Chief page, select Pi Agent and wait for the host transition to settle.
+Check the white Pi mark inside the coordinating character, the Chief heading
+directly above the Settings-style map, and the dark native model menu. Open
+**Advanced options** and resize the same window from its default to its minimum
+size. The panel should fit the shorter content and grow with longer content up to
+its height limit. With overflow, scroll to the last control and check that the
+progress indicator, **Back** and **Continue** stay visible. Check that changing
+steps resets the scroll position and preserves saved settings.
 
 On both Tag Agent and Super Thread Agent in a disposable first-run profile,
-choose **Configure separately** and select an Agent with a delayed
-first configuration reply. Capture the mounted window while **Loading Agent
+choose **Configure separately** and select OpenCode with a delayed first
+configuration reply. Capture the mounted window while **Loading Agent
 configuration…** is visible. Compare the center of the combined skillet and
-label with the horizontal center of the picker and the midpoint between the
-picker's bottom edge and the navigation row's top edge. Resize the window
-while the read is pending. Where the content fits, both centers should still
-match. Where it overflows, check that the notice can be reached by scrolling
-and that the navigation remains visible. Release the read and confirm the
-form replaces the notice.
+label with the horizontal center of the Harness choices. Check for balanced
+space above and below the notice when it fits. When it overflows, scroll to the
+notice and confirm that navigation stays visible. Release the read and confirm
+the form replaces the notice. Repeat the delayed read from the corresponding
+Settings tabs and compare the combined notice with the Harness row there.
 
 Record the tested revision, app artifact, fixture delay, window sizes, and
-captured frames. The [onboarding layout contract](../../app/macos/Sources/Host/Onboarding/README.md)
-applies to the separate configuration editor on both pages.
+captured frames. See the [onboarding layout contract](../../app/macos/Sources/Host/Onboarding/README.md)
+and the [shared editor contract](../../app/macos/Sources/Host/Settings/README.md).
 
 ### Onboarding Agent configuration form spacing
 
@@ -396,7 +405,7 @@ owns resolution, profile compatibility and window appearance.
 4. Change macOS Appearance from Light to Dark and back with Overview, a reader
    and an attachment preview open. Record effective appearance in the snapshot
    and capture each window. Repeat with the same Settings visit and the same
-   first-run form mounted. Check that onboarding follows the new appearance and keeps its
+   first-run form mounted. Check that onboarding stays dark and keeps its
    setup step. Settings should stay dark on the active tab. In each system
    appearance, close Settings and reopen it using the Overview gear or the Settings keyboard shortcut.
    Check the dark background, header eyes and legible form labels. Open the

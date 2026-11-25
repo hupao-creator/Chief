@@ -392,13 +392,7 @@ public struct NativeHarnessSettingsView: View {
                 content(surface)
             } else {
                 let message = text("正在读取 Agent 配置…", "Loading Agent configuration…")
-                if centersLoading {
-                    NativeSettingsNotice.loading(message, alignment: .center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    NativeSettingsNotice.loading(message)
-                }
+                NativeSettingsNotice.loading(message, alignment: centersLoading ? .center : .leading)
             }
         }
         .task(id: SettingsLoadIdentity(configuration: configuration, generation: host.settingsLifetime.generation,

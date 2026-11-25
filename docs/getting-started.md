@@ -23,11 +23,11 @@ For a new Codex setup, Chief checks whether Codex supports its default **approve
 
 ## Choose who does what
 
-1. On the **Chief** page, choose the agent that will talk to you and coordinate your work. Below it, choose at least one agent it may assign tasks to. Complete any required model choices, then click **Continue** to save them and open the Tag Agent page. If you change the reasoning effort for a ready Codex model, you can continue immediately.
+1. On the **Chief** page, choose the agent that will talk to you and coordinate your work. Its logo appears inside the Chief character. Below it, choose at least one agent it may assign tasks to. Complete any required fields under the diagram, such as **Chief Model**, then click **Continue** to save and open the Tag Agent page. If you change the reasoning effort for a ready Codex model, you can continue immediately.
 2. Choose how to run **Tag Agent**, then click **Continue**. Each role offers **Agent off**, **Use Chief**, or **Configure separately**. If you configure a role separately, select an agent. While Chief reads its settings, **Loading Agent configuration…** appears centered below the agent choices. When the form appears, complete its required fields to enable **Continue**. You can switch away and return to the same choices. [What each option does](settings.md#set-up-tag-agent-and-super-thread-agent)
 3. Choose how to run **Super Thread Agent**, then click **Start using Chief**. The setup panel shrinks into Chief's input box. If the window stays active and visible, Chief's eyes blink once as the box appears. You can start typing as soon as setup closes.
 
-If you see a load or save error, use **Retry** next to it. If you quit partway through setup, Chief returns to the agent check and keeps the choices you've already saved.
+If the setup form extends below the panel, scroll the form to reach the remaining options. The navigation buttons stay visible. If you see a load or save error, use **Retry** next to it. If you quit partway through setup, Chief returns to the agent check and keeps the choices you've already saved.
 
 ## Send your first request
 
