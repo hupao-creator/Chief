@@ -131,16 +131,16 @@ func TestMokuConversationProperties(t *testing.T) {
 		want = append(want, visible{Role: "user", Text: prompt})
 		link := fmt.Sprintf("[Review](chief://execution?threadId=%s&executionId=%s)", old.ID, chief.ID)
 		linked := strings.Repeat("界", rapid.IntRange(1, 64).Draw(t, "prose-length")) + " " + link + "\n" + link
-		for i, reply := range []string{"Same reply.", "Same reply.", linked, strings.Repeat("😀", 1024)} {
+		for i, reply := range []string{"Same reply.", "Same reply.", linked, strings.Repeat("😀", 512)} {
 			_, err := talk.Execute(ctx, plugin.ToolCall{CallID: fmt.Sprint(i), Arguments: raw(map[string]string{"text": reply})})
 			check(err)
 			want = append(want, visible{Role: "chief", Text: reply})
 		}
-		_, err = talk.Execute(ctx, plugin.ToolCall{Arguments: raw(map[string]string{"text": strings.Repeat("😀", 1025)})})
+		_, err = talk.Execute(ctx, plugin.ToolCall{Arguments: raw(map[string]string{"text": strings.Repeat("😀", 513)})})
 		if err == nil {
 			t.Fatal("invalid Talk unexpectedly succeeded")
 		}
-		limits := map[string]int{"talk": 1024}
+		limits := map[string]int{"talk": 512}
 		for _, binding := range peer.tools.Bindings {
 			if limit, ok := limits[binding.Name]; ok {
 				var schema struct {

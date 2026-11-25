@@ -234,9 +234,11 @@ history retains its original messages.
 
 ## Talk
 
-Chief uses Talk for replies, decisions, blockers and handoffs. Detailed work belongs in the ordinary Agent Thread. To point the user to a specific run, include `[short label](chief://execution?threadId=THREAD_ID&executionId=EXECUTION_ID)` in Talk. Use the exact pair from the tool result or lifecycle event and percent-encode query values when needed. A message can link to several runs.
+The coordinator prompt calls for a Talk reply to a direct request, a handoff acknowledgement before ending a dispatch turn, and a result or blocker when the requested work settles or needs help. Chief keeps internal coordination private and handles background events quietly when there is no new outcome or action for the user. A native Harness question or approval can request input through the Dock interaction panel. Chief avoids repeating that request or an update already delivered by Talk.
 
-`talk(text)` accepts up to **1024 Unicode code points** including all URLs, labels, whitespace and newlines. A blank, NUL-containing or over-budget message fails without replacing the displayed notification. The compact bar shows the newest successful message in a scrollable four-line viewport for 60 seconds. Its links also work in the persistent [Chief Bar conversation](../../core/runtime/README.md#chief-conversation). The registered tool and its text parameter share [TalkTextPolicy](prompt.go).
+Detailed work belongs in the ordinary Agent Thread. To point the user to a specific run, include `[short label](chief://execution?threadId=THREAD_ID&executionId=EXECUTION_ID)` in Talk. Use the exact pair from the tool result or lifecycle event and percent-encode query values when needed. A message can link to several runs.
+
+`talk(text)` accepts up to **512 Unicode code points** including all URLs, labels, whitespace and newlines. A blank, NUL-containing or over-budget message fails without replacing the displayed notification. The compact bar shows the newest successful message from the beginning in a scrollable viewport of up to about eight lines for 60 seconds. Its links also work in the persistent [Chief Bar conversation](../../core/runtime/README.md#chief-conversation). The registered tool and its text parameter share [TalkTextPolicy](prompt.go).
 
 
 ## Context

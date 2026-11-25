@@ -13,10 +13,7 @@ import SwiftUI
     // Reserve the eyes and mirror that inset to keep prose centered on the shell.
     static let centeredInset: CGFloat = 64
     static let lineHeight: CGFloat = 16
-    static var maximumHeight: CGFloat { lineHeight * 4 + lineSpacing * 3 }
-    /// Talk stays inside a four-line notification viewport. Live dictation has no
-    /// equivalent length bound, so it may grow to twice that before the same
-    /// internal scroller takes over; a normal sentence never shows only its tail.
+    static var maximumHeight: CGFloat { lineHeight * 8 + lineSpacing * 7 }
     static func height(_ text: String, width: CGFloat) -> CGFloat {
         // Match the rendered weight so Latin wrapping and the viewport agree.
         let font = NativePlatformFont.systemFont(ofSize: 13, weight: .semibold)
@@ -75,7 +72,6 @@ struct NativeMokuTalkContent: View {
     var scrollbarStyle: NSScroller.Style = NSScroller.preferredScrollerStyle
     var workspace: NativeWorkspaceModel?
     var linkedHeight: (CGFloat) -> Void = { _ in }
-    @State private var followsTail = true
     var body: some View {
         GeometryReader { viewport in
             NativeScrollView {
@@ -102,13 +98,9 @@ struct NativeMokuTalkContent: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(width: viewport.size.width, height: viewport.size.height)
-            .defaultScrollAnchor(.bottom)
-            // Short messages share the row center; overflow still follows its tail.
+            .defaultScrollAnchor(.top)
             .defaultScrollAnchor(.center, for: .alignment)
-            .defaultScrollAnchor(followsTail ? .bottom : .top, for: .sizeChanges)
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.containerSize.height >= geometry.contentSize.height - 1
-            } action: { _, atBottom in followsTail = atBottom }
+            .id(message.id)
             .accessibilityIdentifier("moku-talk-content")
         }
     }
