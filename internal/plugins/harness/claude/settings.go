@@ -74,6 +74,10 @@ func normalizeHarness(raw json.RawMessage) (harnessSettings, error) {
 	}
 	return value, nil
 }
+func (s Settings) requestedPermissionMode() string {
+	return nonempty(s.PermissionMode, "auto")
+}
+
 func parseSettings(raw json.RawMessage) (Settings, error) {
 	var s Settings
 	if model.IsNull(raw) {
@@ -525,7 +529,11 @@ func (a *settingsAdapter) Describe(ctx context.Context, r plugin.SettingsRequest
 		status = "empty"
 		groups = append(groups, map[string]any{"not": map[string]any{}})
 	}
-	return plugin.ModelCatalogSchema(map[string]any{"type": "object", "description": fmt.Sprintf("Creation capability status: %s; %d models have unknown thinking capabilities and cannot be selected. Native snapshot only; execution is revalidated at admission.", status, omitted), "additionalProperties": false, "required": []string{"model", "thinking"}, "properties": map[string]any{"model": map[string]any{"type": "string", "minLength": 1}, "thinking": map[string]any{"type": "object"}, "permissionMode": map[string]any{"type": "string", "enum": permissionModes}}, "oneOf": groups}, inventory, c.identity, c.sourceProof)
+	permission := map[string]any{
+		"type": "string", "enum": permissionModes, "default": selected.PermissionMode,
+		"description": fmt.Sprintf("Omit unless the user requests a specific permission mode. Omission inherits the configured Claude thread default (%s). In auto mode Claude Code evaluates permissions under its native policy. Use acceptEdits only when requested to automatically accept edits.", selected.PermissionMode),
+	}
+	return plugin.ModelCatalogSchema(map[string]any{"type": "object", "description": fmt.Sprintf("Creation capability status: %s; %d models have unknown thinking capabilities and cannot be selected. Native snapshot only; execution is revalidated at admission.", status, omitted), "additionalProperties": false, "required": []string{"model", "thinking"}, "properties": map[string]any{"model": map[string]any{"type": "string", "minLength": 1}, "thinking": map[string]any{"type": "object"}, "permissionMode": permission}, "oneOf": groups}, inventory, c.identity, c.sourceProof)
 }
 func (a *settingsAdapter) SnapshotExecution(ctx context.Context, r plugin.SettingsRequest, initial bool) (json.RawMessage, error) {
 	raw, e := a.DefaultThread(r.Settings)

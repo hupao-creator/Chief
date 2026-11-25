@@ -289,7 +289,7 @@ func (h *Handle) Send(ctx context.Context, r plugin.SendRequest) error {
 		turn.addPrompt(r.Input, r.FollowUpRowID)
 	} else {
 		turn = h.state.NewTurn(r.ExecutionID, r.Input, settings)
-		h.parsers[r.ExecutionID] = newParser()
+		h.parsers[r.ExecutionID] = newParser(settings.requestedPermissionMode())
 	}
 	index := len(turn.Prompts) - 1
 	if !followup {
@@ -481,7 +481,7 @@ func (h *Handle) onEvent(e NativeEvent) {
 			return
 		}
 		h.state = admitted
-		h.parsers[id] = newParser()
+		h.parsers[id] = newParser(settings.requestedPermissionMode())
 		h.nativeIDs[e.ExecutionID] = id
 		executionCtx, cancel := context.WithCancel(h.ctx)
 		h.executionCancel = cancel
@@ -505,7 +505,7 @@ func (h *Handle) onEvent(e NativeEvent) {
 	turn := h.state.Find(id)
 	parser := h.parsers[id]
 	if parser == nil {
-		parser = newParser()
+		parser = newParser("")
 		h.parsers[id] = parser
 	}
 	if e.Frame != nil {
@@ -959,7 +959,7 @@ func runPrompt(ctx context.Context, options TransportOptions, prompt string) (st
 func runSteerablePrompt(ctx context.Context, options TransportOptions, prompt string, steering *plugin.PromptSteering) (string, bool, error) {
 	state := NewState()
 	turn := state.NewTurn("claude-prompt", model.AgentInput{Parts: []model.AgentInputPart{}}, options.Settings)
-	parser := newParser()
+	parser := newParser(options.Settings.requestedPermissionMode())
 	done := make(chan NativeEvent, 1)
 	var structured string
 	var mu sync.Mutex

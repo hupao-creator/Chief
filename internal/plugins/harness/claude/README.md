@@ -75,8 +75,15 @@ Thread thinking choices and execution-profile effort remain distinct contracts.
 Changing a model still clears incompatible dependent choices, incomplete execution
 profiles stay local until complete, fixed-capability models need no effort, and
 unknown capabilities defer confirmation to native execution-profile capture.
-Permission values and inherited/default
-configuration semantics stay owned by the Claude adapter.
+For ordinary threads, the Claude creation schema tells Chief to omit
+`permissionMode` unless the user asks for a specific mode. Its schema default
+comes from the ordinary thread profile (initially `auto`). An explicit choice,
+including `acceptEdits`, takes precedence. The adapter saves the resolved mode
+and passes it to Claude Code as `--permission-mode`. The thread settings editor
+shows the saved request. When a native `system/init` reports another mode for
+a run requesting `auto`, the turn records a configuration error naming the
+reported mode. The native result determines the execution outcome.
+Claude Code owns permission decisions and enforcement.
 
 Execution-profile capture accepts an unadvertised or unknown-capability concrete
 model only after native `get_settings` confirms the applied model and any selected

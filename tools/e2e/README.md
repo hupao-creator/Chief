@@ -13,6 +13,71 @@ content reads establish prerequisites and independent result evidence. Runtime
 invariants belong to PBT. Benchmarks own general UX timing, resource use and
 visual-performance measurements.
 
+## Claude thread permission selection
+
+For a live headless replay, use a signed-in Pi coordinator and Claude Code on
+macOS. From the repository root, build and start the runtime with a fresh
+profile for each sample. Use your normal provider network settings.
+
+```sh
+sample=$(mktemp -d)
+./scripts/go.sh build -o "$sample/chief-runtime" ./cmd/chief-runtime
+CHIEF_HEADLESS=1 "$sample/chief-runtime" start --data-dir "$sample/profile"
+python3 - "$sample/profile" <<'PY'
+from pathlib import Path
+import sys
+from tools.benchmarks.adapter import Runtime
+
+runtime = Runtime(Path(sys.argv[1]))
+state = runtime.state()
+settings = state["settings"]
+settings["moku"]["hostHarnessPreference"] = "pi"
+settings["moku"]["targetHarnessIds"] = ["claude"]
+for entry in settings["pluginSettings"]:
+    if entry["id"] in ("report.settings", "tag.settings"):
+        entry["value"]["enabled"] = False
+settings.setdefault("pluginEnabled", {})["context:artificial-analysis"] = False
+result = runtime.invoke("app:update-settings", [{
+    "settings": settings, "expectedSettingsRevision": state["settingsRevision"]
+}])
+assert result["status"] == "saved"
+prompt = "请新建一个 Claude Code thread，只回答四月有多少天。"
+runtime.invoke("moku:submit", [{"input": {"parts": [{"kind": "text", "text": prompt}]}}])
+PY
+```
+
+While the coordinator is running, inspect the `create_thread` entry in Pi's
+`host-config-*.json` under the profile's `chief-go-state-v1/harnesses/pi`.
+Its `parameters.properties.target.properties.claude` contains the advertised
+default and required fields. For the ordinary Claude process, match
+`--session-id` and `--permission-mode` to the thread's native session. Exclude
+short-lived model catalog probes. After completion, read the coordinator's
+creation arguments and the child's saved and native-reported values.
+
+```sh
+db="$sample/profile/chief-go-state-v1/state.sqlite"
+sqlite3 -readonly "$db" "
+  SELECT json_extract(op.value,'$.arguments.target.claude') FROM records AS r,
+    json_each(body,'$.transcript') AS op
+    WHERE r.key LIKE 'thread:%' AND json_extract(op.value,'$.name')='create_thread';
+  SELECT json_extract(body,'$.id'), json_extract(body,'$.settings.permissionMode'),
+    json_extract(body,'$.sessionState.primarySessionId'),
+    json_extract(body,'$.sessionState.runtime.permissionMode'),
+    json_extract(body,'$.observation.latestExecution.status'),
+    json_extract(body,'$.sessionState.turns[0].notices')
+    FROM records WHERE key LIKE 'thread:%' AND json_extract(body,'$.harnessId')='claude';"
+"$sample/chief-runtime" stop --data-dir "$sample/profile"
+```
+
+Repeat the neutral request in independent profiles to observe model choices.
+For an explicit override, append “请将此线程的权限模式设为 acceptEdits。”
+For a native restriction, ask for `auto` in an empty temporary task directory
+whose `.claude/settings.json` contains
+`{"permissions":{"disableAutoMode":"disable"}}`. Compare the saved request,
+native initialization and turn notice. A reply-only task establishes the
+reported startup mode. Testing individual tool approval decisions requires a
+different workload. [Claude permission contract](../../internal/plugins/harness/claude/README.md#native-configuration-controls)
+
 ## Overview task card preview capacity
 
 In a native Overview replay, use a running Codex task with an unfinished plan,
