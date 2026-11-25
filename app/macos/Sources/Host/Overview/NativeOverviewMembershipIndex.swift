@@ -79,8 +79,9 @@ final class NativeOverviewMembershipIndex {
             threads[old]?.remove(id)
             if threads[old]?.isEmpty == true { threads.removeValue(forKey: old) }
         }
-        guard let thread, thread.moku != true, !thread.tags.isEmpty else { return }
+        guard let thread, thread.moku != true else { return }
         let scope = NativeOverviewSelection.scope(thread)
+        guard scope != NativeOverviewSelection.inboxScope || !thread.tags.isEmpty else { return }
         threadScopes[id] = scope; threads[scope, default: []].insert(id)
     }
 

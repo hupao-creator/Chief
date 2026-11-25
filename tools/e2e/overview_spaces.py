@@ -209,11 +209,12 @@ def journey(desktop, app, send, thread_state):
     peer = session.peer
     peer.tag_names.update(assigned)
     peer.tagged_ids.update(assigned)
+    all_threads = project | assigned.keys()
     choose(folder)
-    capture("unassignedForks", scope, "directory", project)
+    capture("unassignedForks", scope, "directory", all_threads)
     stop()
     reopen()
-    capture("beforeFirstAssignments", scope, "directory", project, first=True)
+    capture("beforeFirstAssignments", scope, "directory", all_threads, first=True)
     enable_agent(session, "tag", True)
     classified = wait_for(session.runtime.state, lambda state: {
         row["id"]: row["tags"][0] for row in state["threads"] if row["id"] in assigned and row["tags"]
@@ -232,14 +233,13 @@ def journey(desktop, app, send, thread_state):
     for thread in assigned:
         archive(thread, True)
         archive(thread, False)
-    desktop.stable(lambda state: set(state["overview"]["mountedCardIds"]) == project)
+    desktop.stable(lambda state: set(state["overview"]["mountedCardIds"]) == all_threads)
     stop()
     reopen()
-    capture("clearedTagsRelaunch", scope, "directory", project)
+    capture("clearedTagsRelaunch", scope, "directory", all_threads)
     enable_agent(session, "tag", True)
     wait_for(session.runtime.state, lambda state: assigned.keys() <= {
         row["id"] for row in state["threads"] if row["tags"]})
-    all_threads = project | assigned.keys()
     desktop.stable(lambda state: set(state["overview"]["mountedCardIds"]) == all_threads)
     capture("reclassificationKeepsFolder", scope, "directory", all_threads)
 

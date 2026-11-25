@@ -303,11 +303,13 @@ turns so metadata and cached posters can enter with the card transition.
 [Report cover contract](../../../../../internal/plugins/applications/report/README.md#cover-cards)
 and [mounted switch benchmark](../../../../../tools/verification/tag-space/README.md).
 
-The top row lists project directories and Inbox semantic tags. A Thread needs at
-least one assigned semantic tag to participate in a space. Agent membership uses
-`HarnessThread.tags`; application membership uses `tags.semanticTags`. Directory
-labels alone do not create a space or contribute cards, unread counts or activity.
-An untagged Report cannot hide a tagged source through execution coverage.
+The top row lists project directories and Inbox semantic tags. An eligible Agent
+Thread with a displayable project directory contributes its folder and card in
+the same catalog update, including when `HarnessThread.tags` is empty.
+The folder uses the Thread’s canonical directory scope and display label.
+An Inbox Thread contributes a top-row tag once it has a semantic assignment.
+Application membership requires `tags.semanticTags`. An untagged Report cannot
+hide a source through execution coverage.
 
 A live first semantic assignment selects the Agent Thread's scoped filter through
 normal selection reconciliation. A fork born with an inherited tag counts as a new
@@ -331,12 +333,12 @@ intact. An explicit choice is saved and live hydration resolves the preference
 again. The header reveals the selected chip
 when its filters first appear. With no spaces, Overview shows eligible untagged Agent Threads that match Running.
 An empty result uses the sleeping skillet and the localized running empty state.
-When tagged spaces coexist with running untagged work, the hourglass beside
+When spaces coexist with running untagged work, the hourglass beside
 Settings opens those untagged cards across scopes. This transient choice
 preserves the saved tag selection. A first assignment selects its semantic
 space. If the last untagged run ends, the saved space returns. An empty or
 unloaded catalog leaves the saved choice intact for the next nonempty catalog.
-The directory-wide selection shows its tagged members. Its top button keeps its name and folder-wide unread count when
+The directory-wide selection includes Agent Threads awaiting classification. Its top button keeps its name and folder-wide unread count when
 a child is selected. A project directory named Inbox and a semantic tag named
 Inbox have distinct identities, icons and memberships.
 
