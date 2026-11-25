@@ -88,10 +88,8 @@ identify the choices available on the current Overview. Filter activation
 invokes the registered button action. Top-row Inbox tags register as semantic
 controls alongside the current project directory’s visible child controls.
 The ordered left choices are exposed as `overview.rail`, with `selectedRailId`
-for the highlighted button. A folder has one mounted status button, Running.
-A top-level Inbox tag has Running, All statuses and Completed.
-See the [socket protocol](../../../../../tools/native-interaction/README.md) for
-action arguments and snapshot fields.
+for the highlighted button. The socket protocol lists the mounted status
+buttons for folders and Inbox tags. [Mounted Overview filters](../../../../../tools/native-interaction/README.md#mounted-overview-filters)
 Individual report observations expose `collectionEligibility`. Collections expose
 the same fields per real member in `memberEligibility`. `lastClosedAt` and
 `lastQualifiedAt` use epoch milliseconds or null. `defaultsToCollection`

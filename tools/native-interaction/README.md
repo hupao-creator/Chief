@@ -81,11 +81,11 @@ Read `overview.controls` to discover the buttons currently mounted in each group
 The `directory` group contains visible project folders.
 The `semantic` group contains the visible Inbox tags across the top. When a
 project’s left column is present, the group also includes a filter ID for each
-visible semantic child. Select the top folder in the `directory` group to show
-all its tagged cards.
+visible semantic child. Select the current top folder again to show all its
+cards, including tasks waiting for a tag.
 Use `overview.filters.scroll` to reveal an offscreen top-level folder or tag.
-The `status` group contains only `running` in a project folder. It uses
-`running`, `all` and `completed` for a top-row Inbox tag. Read `overview.rail`
+The `status` group contains `running` and `unread` in a project folder. A
+top-row Inbox tag also exposes `all` and `completed`. Read `overview.rail`
 for the displayed left-column order, and `overview.selectedRailId` for its
 highlight (null for a whole folder). Folder Running uses the folder’s
 `selectedFilterId`. Each callback performs the corresponding mounted button

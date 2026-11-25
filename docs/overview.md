@@ -14,7 +14,7 @@ Choose a folder to see every assigned tag along the left edge. Even a folder’s
 
 When you close a task conversation or Super Thread to return to Overview, the top and left filters come back into place together. Once the reader closes, you can choose another filter.
 
-A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Selected folders have a muted gold tint.
+A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Selected folders have a muted gold tint. [Watch the top and left filters switch](chief-bar-and-tags.md#switch-folders-and-tags-at-the-top)
 
 When you switch to another folder at the top, Chief restores the last tag or **Running** choice you made there. If your saved choice is unavailable or you haven't made one, Chief opens the first visible semantic tag, or the whole folder if there are none. Click the current folder at the top to see all its work.
 

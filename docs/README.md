@@ -11,6 +11,7 @@ To return to this guide from the app, choose **Help → Chief User Guide**.
 
 ## Give instructions and follow the work
 
+- See how to open Chief Bar for typing or chat and switch the cards in view. [Use Chief Bar and switch tags](chief-bar-and-tags.md)
 - Send a request to Chief, point it to a project folder, or find its replies and links to task results. [Working with Chief](working-with-moku.md)
 - Find a task, see what needs your attention, and hide work you no longer need on the canvas. [Overview](overview.md)
 - Read a result, answer a permission request, send a follow-up, or branch from an earlier run. [Agent conversations](task-conversations.md)
