@@ -689,11 +689,33 @@ private final class WheelSample: NSEvent {
             let clip = timeline.contentView
             let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
             let initial = clip.bounds.minY
-            try await postScroll(window, point, y: 240, phase: .began)
-            try await postScroll(window, point, y: 0, phase: .ended)
+            let documentHeight = clip.documentRect.height
+            for delta: Int32 in [800, 800, -600] {
+                let before = clip.bounds.minY
+                try await postScroll(window, point, y: delta, phase: .began)
+                try await postScroll(window, point, y: 0, phase: .ended)
+                // A lifted gesture can keep moving the native clip. Measure the
+                // reader's resting position before sending the next input or reply.
+                var lastOffset = clip.bounds.minY
+                var stableSince = ContinuousClock.now
+                try await wait("Conversation scroll did not settle", timeout: .seconds(4)) {
+                    if clip.bounds.minY != lastOffset {
+                        lastOffset = clip.bounds.minY
+                        stableSince = .now
+                    }
+                    return stableSince.duration(to: .now) >= .milliseconds(200)
+                }
+                let after = clip.bounds.minY
+                samples.append(["scrollDelta": delta, "beforeY": before, "afterY": after,
+                                "documentHeight": clip.documentRect.height])
+                if (before - after) * CGFloat(delta.signum()) < 40 || abs(clip.documentRect.height - documentHeight) >= 2 {
+                    failures.append("Scroll \(delta) moved \(before) to \(after), document height \(documentHeight) to \(clip.documentRect.height)")
+                }
+            }
             let reading = clip.bounds.minY
             let revised = latestPage(rows + [row(32, "A newer message arrived.")])
             try await client.publishReplayConversation(revised)
+            try await wait("Appended reply did not extend the document") { clip.documentRect.height > documentHeight + 1 }
             try await Task.sleep(for: .milliseconds(200))
             let revisedY = clip.bounds.minY
             window.setContentSize(.init(width: content.bounds.width, height: 660))

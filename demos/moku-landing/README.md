@@ -212,8 +212,9 @@ and opening history from the expanded compact editor.
 The last bubble is longer than the viewport. The replay measures the native
 clip against the document bottom and saves its window-relative bounds with
 each capture. Vision checks the final line against those bounds after recording,
-outside the input and animation sequence. A new contact scrolls back, then a
-content revision and window shrink must preserve the native vertical offset.
+outside the input and animation sequence. Scrolling up and back down within the page must keep the document height stable.
+An appended reply must extend the document while preserving the reading offset,
+and shrinking the window must also preserve that offset.
 Scrolling to the beginning must reveal the first message. The earlier and newer
 page controls must reach the preceding page and return to the newest reply.
 
