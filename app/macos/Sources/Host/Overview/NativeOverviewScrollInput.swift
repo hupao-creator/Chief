@@ -135,27 +135,26 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             return true
         }
 
-        private func verticalTarget(_ event: NSEvent, actions: NativeOverviewSwipeActions) -> NativeOverviewVerticalSwipe.Target? {
-            guard actions.available(), let window, window.isVisible, let content = window.contentView,
+        private func canStartFilter(_ event: NSEvent, actions: NativeOverviewSwipeActions) -> Bool {
+            guard actions.available(), actions.canFilter(), let window, window.isVisible, let content = window.contentView,
                   event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,
-                  NSEvent.pressedMouseButtons == 0 else { return nil }
+                  NSEvent.pressedMouseButtons == 0 else { return false }
             let point = event.locationInWindow
             let contentPoint = content.convert(point, from: nil)
             guard content.bounds.contains(contentPoint),
-                  !actions.regions.controls.contains(point, in: window) else { return nil }
+                  !actions.regions.bar.contains(point, in: window),
+                  !actions.regions.controls.contains(point, in: window) else { return false }
             // A long Talk or another vertically overflowing native viewport
             // keeps the whole contact, even when already at either end.
             let hit = content.superview?.convert(point, from: nil) ?? point
             var view = content.hitTest(hit)
             while let current = view {
-                if let editor = current as? NSTextView, editor.isEditable { return nil }
+                if let editor = current as? NSTextView, editor.isEditable { return false }
                 if let scroll = current as? NSScrollView, let document = scroll.documentView,
-                   document.bounds.height > scroll.contentView.bounds.height + 1 { return nil }
+                   document.bounds.height > scroll.contentView.bounds.height + 1 { return false }
                 view = current.superview
             }
-            if actions.regions.bar.contains(point, in: window) { return .conversation }
-            guard actions.canFilter() else { return nil }
-            return .rail
+            return true
         }
 
         /// Called by the local monitor; exposed internally for window-level replays.
@@ -163,18 +162,18 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             guard let window, event.window === window else { return event }
             if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
                 interruptGestures()
+                let secondary = event.type == .rightMouseDown ||
+                    (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
+                if secondary, let actions = swipeActions, window.isVisible,
+                   actions.regions.bar.contains(event.locationInWindow, in: window),
+                   actions.openConversation() { return nil }
                 return event
             }
             guard event.type == .scrollWheel else { return event }
             // The router may consume this contact before AppKit dispatches it to the pressed tag.
             if event.momentumPhase.isEmpty { swipeActions?.regions.pressedTag?.cancelPress() }
-            if let swipeActions, verticalSwipe.route(event, target: { verticalTarget(event, actions: swipeActions) },
-                perform: { target, up in
-                    switch target {
-                    case .conversation: swipeActions.openConversation()
-                    case .rail: swipeActions.stepRail(up)
-                    }
-                }) {
+            if let swipeActions, verticalSwipe.route(event,
+                canFilter: { canStartFilter(event, actions: swipeActions) }, perform: swipeActions.stepRail) {
                 sequence.reset()
                 return nil
             }

@@ -12,7 +12,7 @@ struct NativeOverviewSwipeActions {
     let regions: NativeOverviewSwipeRegions
     let available: @MainActor () -> Bool
     let canFilter: @MainActor () -> Bool
-    let openConversation: @MainActor () -> Void
+    let openConversation: @MainActor () -> Bool
     let stepRail: @MainActor (Bool) -> Void
 }
 
@@ -23,16 +23,13 @@ extension EnvironmentValues {
 /// Classify the starting surface before native scrolling. After recognition,
 /// keep the rest of the contact and its momentum even if the surface changes.
 struct NativeOverviewVerticalSwipe {
-    enum Target {
-        case conversation, rail
-    }
-    private enum Stage { case idle, possible(Target), claimed, awaitingMomentum(TimeInterval), momentum }
+    private enum Stage { case idle, possible, claimed, awaitingMomentum(TimeInterval), momentum }
     private var stage = Stage.idle
     private var vertical: CGFloat = 0
     private var horizontal: CGFloat = 0
 
-    @MainActor mutating func route(_ event: NSEvent, target: () -> Target?,
-                                  perform: (Target, Bool) -> Void) -> Bool {
+    @MainActor mutating func route(_ event: NSEvent, canFilter: () -> Bool,
+                                  perform: (Bool) -> Void) -> Bool {
         let phase = event.phase
         if !event.momentumPhase.isEmpty {
             if case .awaitingMomentum(let end) = stage, event.timestamp - end > 0.25 { stage = .idle }
@@ -49,13 +46,13 @@ struct NativeOverviewVerticalSwipe {
         if phase.isEmpty && !event.hasPreciseScrollingDeltas {
             stage = .idle
             let up = deltaY > 0
-            guard abs(deltaY) > abs(event.scrollingDeltaX) * 1.5, target() == .rail else { return false }
-            perform(.rail, up)
+            guard abs(deltaY) > abs(event.scrollingDeltaX) * 1.5, canFilter() else { return false }
+            perform(up)
             return true
         }
         let starting = phase.contains(.began) || phase.contains(.mayBegin)
         if starting {
-            stage = event.hasPreciseScrollingDeltas ? target().map(Stage.possible) ?? .idle : .idle
+            stage = event.hasPreciseScrollingDeltas && canFilter() ? .possible : .idle
             vertical = 0
             horizontal = 0
         }
@@ -73,7 +70,7 @@ struct NativeOverviewVerticalSwipe {
             return !phase.isEmpty && reserved
         }
         if case .claimed = stage { return true }
-        guard case .possible(let origin) = stage, target() == origin else {
+        guard case .possible = stage, canFilter() else {
             stage = .idle
             return false
         }
@@ -81,13 +78,13 @@ struct NativeOverviewVerticalSwipe {
         vertical += deltaY
         horizontal += abs(event.scrollingDeltaX)
         if vertical == 0 && horizontal == 0 { return false }
-        guard abs(vertical) > horizontal * 1.5, origin != .conversation || vertical > 0 else {
+        guard abs(vertical) > horizontal * 1.5 else {
             stage = .idle
             return false
         }
         if abs(vertical) >= 24 {
             stage = .claimed
-            perform(origin, vertical > 0)
+            perform(vertical > 0)
         }
         return true
     }

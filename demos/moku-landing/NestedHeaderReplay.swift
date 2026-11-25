@@ -240,12 +240,11 @@ private final class WheelSample: NSEvent {
             }
             let bar = presentation.scene.capsuleFrame
             let eyes = monitor.windowPoint(CGPoint(x: bar.midX, y: bar.midY))
-            try await postScroll(window, eyes, y: 40, phase: .began)
-            try await postScroll(window, eyes, y: 0, phase: .ended)
+            try await postClick(window, at: eyes, flags: .control)
             guard presentation.scene.conversationOpen, presentation.scene.inputOpen else {
-                throw ReplayError("Landing Bar swipe did not open the conversation")
+                throw ReplayError("Landing Bar Control-click did not open the conversation")
             }
-            try JSONSerialization.data(withJSONObject: ["swipeOpenedConversation": true])
+            try JSONSerialization.data(withJSONObject: ["controlClickOpenedConversation": true])
                 .write(to: directory.appending(path: "landing-bar-swipe.json"))
             return
         }
@@ -328,7 +327,7 @@ private final class WheelSample: NSEvent {
         try await wait("Live Chief did not mount") { workspace.runtimeAvailable && workspace.catalog.hasMoku && scene.capsuleFrame.width > 0 }
         try await Task.sleep(for: .milliseconds(750))
         guard let monitor = descendant(NativeOverviewScrollInput.MonitorView.self, in: content) else { throw ReplayError("Missing Bar event monitor") }
-        func swipe() async throws {
+        func openHistory() async throws {
             let eyePoint: CGPoint
             if scene.inputOpen {
                 let bar = scene.capsuleFrame
@@ -341,9 +340,8 @@ private final class WheelSample: NSEvent {
             }
             let pixel = window.convertToBacking(CGRect(origin: eyePoint, size: .zero))
             let point = window.convertFromBacking(CGRect(x: floor(pixel.minX) + 0.5, y: floor(pixel.minY) + 0.5, width: 0, height: 0)).origin
-            try await postScroll(window, point, y: 36, phase: .began)
-            try await postScroll(window, point, y: 0, phase: .ended)
-            try await wait("Swipe did not open conversation") { scene.conversationOpen && scene.inputOpen }
+            try await postClick(window, at: point, secondary: true)
+            try await wait("Right-click did not open conversation") { scene.conversationOpen && scene.inputOpen }
         }
         func spokenRows() -> [String] {
             conversationElements(in: window).filter { $0.id == "moku-conversation-message" }.map { $0.label.isEmpty ? $0.value : $0.label }
@@ -354,12 +352,12 @@ private final class WheelSample: NSEvent {
         let expected = fixture.messages.enumerated().map { index, text in
             (index == 0 || index == 2 ? workspace.locale.text("你, ", "You, ") : "Chief, ") + text + (index == 2 ? ", " + fixture.attachment : "")
         }
-        try await swipe()
+        try await openHistory()
         let initial = restart ? expected : Array(expected.prefix(2))
         try await wait("Expected \(initial.count) messages on opening, found \(labels())") { labels() == initial }
         guard let field = descendant(NSTextView.self, in: content, matching: { $0.isEditable && !$0.isHiddenOrHasHiddenAncestor })
             else { throw ReplayError("Missing native composer") }
-        try await wait("Swipe did not focus the native editor") { window.firstResponder === field }
+        try await wait("Right-click did not focus the native editor") { window.firstResponder === field }
         if let argument = CommandLine.arguments.firstIndex(of: "--send-refresh"),
            let pid = Int32(CommandLine.arguments[argument + 1]) {
             let connection = try RuntimeProfile(dataDirectory: profile).readConnection()
@@ -441,8 +439,8 @@ private final class WheelSample: NSEvent {
             guard kill(pid, SIGSTOP) == 0 else { throw ReplayError("Could not hold compact send") }
             let compactReturnTime = ProcessInfo.processInfo.systemUptime
             try await pressKey("\r", code: 36, in: window)
-            try await swipe()
-            try await wait("Compact send missing on immediate swipe", timeout: .seconds(3)) { labels() == second && draft.submitting }
+            try await openHistory()
+            try await wait("Compact send missing on immediate right-click", timeout: .seconds(3)) { labels() == second && draft.submitting }
             let compactCapture = labels()
             let compactObservedMS = (ProcessInfo.processInfo.systemUptime - compactReturnTime) * 1000
             try JSONEncoder().encode(compactCapture).write(to: evidence.appending(path: "compact-before-admission.json"))
@@ -504,7 +502,7 @@ private final class WheelSample: NSEvent {
             try await postClick(window, at: monitor.windowPoint(CGPoint(x: 45, y: 85)))
             try await wait("Outside click did not close the panel") { !scene.conversationOpen }
             try await Task.sleep(for: .milliseconds(650))
-            try await swipe()
+            try await openHistory()
             try await wait("Reopened history differs") { labels() == expected }
         }
         try await wait("Reopened composer did not restore the draft") {
@@ -633,11 +631,8 @@ private final class WheelSample: NSEvent {
         }
         func open() async throws {
             let point = barPoint()
-            try await postScroll(window, point, y: 42, phase: .began)
-            try await postScroll(window, point, y: 0, phase: .ended)
-            try await postScroll(window, point, y: 90, phase: nil, momentum: .begin)
-            try await postScroll(window, point, y: 0, phase: nil, momentum: .end)
-            guard scene.conversationOpen else { throw ReplayError("Upward contact did not open Chief Bar") }
+            try await postClick(window, at: point, secondary: true)
+            guard scene.conversationOpen else { throw ReplayError("Right-click did not open Chief Bar") }
         }
         func bottomGap(_ timeline: NSScrollView) -> CGFloat {
             timeline.contentView.documentRect.maxY - timeline.contentView.bounds.maxY
@@ -777,11 +772,10 @@ private final class WheelSample: NSEvent {
             _ = try await captureViewport("from-compose")
             try await dismiss()
 
-            // Interrupt before the transcript settles. A fresh swipe is admitted
+            // Interrupt before the transcript settles. A fresh right-click is admitted
             // as soon as Overview releases the retiring editor.
             let pointToReopen = barPoint()
-            try await postScroll(window, pointToReopen, y: 42, phase: .began)
-            try await postScroll(window, pointToReopen, y: 0, phase: .ended)
+            try await postClick(window, at: pointToReopen, secondary: true)
             guard scene.conversationOpen else { throw ReplayError("Interrupted visit did not open") }
             try await postClick(window, at: outside)
             guard !scene.conversationOpen else { throw ReplayError("Interrupted visit did not close") }
@@ -1484,9 +1478,11 @@ private final class WheelSample: NSEvent {
         try await postScroll(window, barPoint, y: 0, phase: .ended)
         try await postScroll(window, barPoint, y: 40, phase: nil, momentum: .begin)
         try await postScroll(window, barPoint, y: 0, phase: nil, momentum: .end)
+        guard !scene.conversationOpen, wholeFolderSelected else { throw ReplayError("Upward Bar swipe took action") }
+        try await postClick(window, at: barPoint, secondary: true)
         guard scene.conversationOpen, scene.inputOpen,
               wholeFolderSelected, camera.scrollOffset == startOffset else {
-            throw ReplayError("The Bar swipe did not open the conversation directly")
+            throw ReplayError("The Bar right-click did not open the conversation directly")
         }
         try await Task.sleep(for: .milliseconds(650))
         let page = conversationElements(in: window)
@@ -1584,7 +1580,7 @@ private final class WheelSample: NSEvent {
         try JSONSerialization.data(withJSONObject: ["regions": targets.map { $0.0 },
             "conversationDraftRestoredInCompose": true, "conversationPeriodCount": periods.count, "conversationPaging": true,
             "olderReadingOffsetsOnResize": readingOffsets,
-            "primaryClickOpenedCompose": true, "swipeOpenedConversation": true, "historicalToolOperationInstalled": true,
+            "primaryClickOpenedCompose": true, "rightClickOpenedConversation": true, "historicalToolOperationInstalled": true,
             "horizontalScroll": true, "composerScrollExcluded": true, "settingsScrollExcluded": true,
             "tagOffsets": [tagOffset, tags.contentView.bounds.minX],
             "naturalScrolling": true])

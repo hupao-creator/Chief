@@ -46,7 +46,7 @@ In a window or full screen, move two fingers up on a card or empty canvas to sel
 
 Resize the window to adjust how many cards you can see. Overview arranges cards across the window and centers them vertically. The folder and tag buttons at the top have a frosted glass background. The clear glass buttons on the left float over the cards. With **Reduce transparency** turned on in macOS, the filters have a solid background. Click a filter to select it, or click the visible part of a card between filters to open it. A wide task card can appear between two taller cards when there’s room for it there. Opening the Chief input box keeps the cards in place.
 
-Swipe up with two fingers over Chief’s eyes to read your conversation with Chief and reply. Scroll inside a long reply to read more. Click a run link in the compact bar or your conversation to open that result.
+Right-click Chief Bar to read your conversation with Chief and reply. Scroll inside a long reply to read more. Click a run link in the compact bar or your conversation to open that result.
 
 When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or scroll horizontally with a mouse. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. In the Inbox **Completed** view, an outline marks the task card with keyboard focus. Click a task card, or press Return on a focused task, to open it.
 

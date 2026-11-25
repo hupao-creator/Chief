@@ -293,7 +293,7 @@ On macOS, clicking the collapsed Moku row opens input; when a message is visible
 
 ### Chief Bar conversation
 
-In Overview and on Landing, a physical two-finger upward swipe over Chief Bar opens the conversation. Its regular Liquid Glass follows the workspace appearance, with an opaque Reduce Transparency fallback. The message list starts at the top of the capsule and the native composer stays at the bottom. Entry over the eyes also works with the compact editor already open. Editable text and overflowing native viewports keep their scroll input. The contact that opens the panel consumes its momentum. A new contact scrolls the messages.
+In Overview and on Landing, a secondary click (including Control-click) on Chief Bar opens the conversation. Its regular Liquid Glass follows the workspace appearance, with an opaque Reduce Transparency fallback. The message list starts at the top of the capsule and the native composer stays at the bottom. Entry over the eyes also works with the compact editor already open. Editable text and overflowing native viewports keep their scroll input.
 
 The panel fits the current page and its composer. Its maximum height is the smallest of 648 points, 96% of the visible workspace height and the space inside the Dock’s outer margins. In an 860 × 600-point Overview window, those margins reserve 24 points above the panel and 30 below, leaving 546 points for a long conversation. The composer takes its measured height first. The message list scrolls in the remaining space as a draft wraps or attachments are added. When a smaller viewport would hide the latest reply, a reader at the end stays with it. Scrolling back to earlier messages keeps that reading position through a height change.
 

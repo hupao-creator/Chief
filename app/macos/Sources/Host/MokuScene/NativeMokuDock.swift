@@ -952,8 +952,8 @@ public struct NativeMokuDock: View {
         .accessibilityElement(children: .contain).accessibilityLabel(state.settingsOpen ? localize("设置", "Settings") : "Chief")
         .accessibilityHint(state.settingsOpen || !state.inputInteractionReady ? "" :
             state.overviewVisible && rowControlAvailable
-                ? localize("点击输入，上滑查看对话",
-                           "Click to type or swipe up for messages")
+                ? localize("点击输入，右键查看聊天记录",
+                           "Click to type or right-click for messages")
                 : localize("点击打开输入框", "Click to type"))
         .accessibilityIdentifier("moku-capsule")
     }
