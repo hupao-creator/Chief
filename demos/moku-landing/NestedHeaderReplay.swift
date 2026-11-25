@@ -2102,11 +2102,6 @@ private final class WheelSample: NSEvent {
         try await check("sole-equal-child", ["Task"], folderID)
         try await press(tagID)
         try await check("sole-child-selected", ["Task"], tagID)
-        try await patch([thread("Other", .running)])
-        try await press("overview-untagged-running")
-        try await check("untagged-in-mixed-workspace", ["Other"], nil)
-        try await patch([thread("Other", .completed)])
-        try await check("untagged-run-ended", ["Task"], tagID)
 
         let names: [JSONText] = ["Fixture", "Shared", "Review", "Ship", "Test", "Write"]
         try await patch([thread("Task", .completed, tags: names), thread("Other", .completed, tags: ["Shared", "Review"])])

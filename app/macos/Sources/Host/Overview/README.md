@@ -333,11 +333,7 @@ intact. An explicit choice is saved and live hydration resolves the preference
 again. The header reveals the selected chip
 when its filters first appear. With no spaces, Overview shows eligible untagged Agent Threads that match Running.
 An empty result uses the sleeping skillet and the localized running empty state.
-When spaces coexist with running untagged work, the hourglass beside
-Settings opens those untagged cards across scopes. This transient choice
-preserves the saved tag selection. A first assignment selects its semantic
-space. If the last untagged run ends, the saved space returns. An empty or
-unloaded catalog leaves the saved choice intact for the next nonempty catalog.
+An empty or unloaded catalog leaves the saved choice intact for the next nonempty catalog.
 The directory-wide selection includes Agent Threads awaiting classification. Its top button keeps its name and folder-wide unread count when
 a child is selected. A project directory named Inbox and a semantic tag named
 Inbox have distinct identities, icons and memberships.

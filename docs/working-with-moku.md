@@ -24,7 +24,7 @@ Click **+** just to the right of Chief's eyes to open the file chooser. It start
 
 To browse the connected host, Control-click **+** and choose **Choose host files** to attach files or **Choose a host directory** to reference a folder.
 
-When you send from Overview, Chief takes the current Overview folder into account. A folder you select with **+** or **Choose a host directory** takes priority. To find a running task before it has a tag, open Overview. If other tasks already have tags, click the hourglass next to Settings. Once Tag Agent assigns the task its first tag, Overview opens that tag.
+When you send from Overview, Chief takes the current Overview folder into account. A folder you select with **+** or **Choose a host directory** takes priority. To find a running task in a project folder, select the folder in Overview and click ⏳ **Running** in the left column. Once Tag Agent assigns the task its first tag, Overview opens that tag.
 
 Click an image thumbnail to preview it, or click **×** on a file or folder to remove it. Wait for the files to finish preparing, then click **Send**. You can attach up to 20 files per message. Size limits apply, and the agent running Chief determines which attachment types it can use. If you want Chief to delegate work on a file, say which file the agent should use in your request.
 

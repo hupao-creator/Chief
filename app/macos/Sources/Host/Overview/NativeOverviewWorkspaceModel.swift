@@ -104,17 +104,7 @@ public final class NativeOverviewWorkspaceModel {
         return filters.first { $0.scope == selectedScope && $0.isDirectory }
     }
 
-    // The untagged view is transient. Keep the saved folder/tag for reentry.
-    private var browsingUntagged = false
     private var untaggedRunningIDs = Set<JSONText>()
-    var hasUntaggedRunning: Bool { !untaggedRunningIDs.isEmpty }
-
-    func showUntaggedRunning() {
-        deferredFirstTag = nil
-        browsingUnread = false
-        browsingUntagged = true
-        reconcile(captureMutation: false)
-    }
 
     public private(set) var sceneKey = "\u{0}default"
     public var items: [NativeOverviewItem] { content.items }
@@ -613,7 +603,6 @@ public final class NativeOverviewWorkspaceModel {
     private func selectTagValue(_ tag: String, scope: String = "", kind: NativeOverviewTagKind? = nil, runningTag: Bool = false) {
         deferredFirstTag = nil
         canvasState.pendingRailSwipe = nil
-        browsingUntagged = false
         browsingUnread = false
         let filter = matchingFilter(tag: tag, scope: scope, kind: kind)
         let resolvedKind = kind ?? (filter?.isDirectory == true ? .directory : .semantic)
@@ -710,8 +699,7 @@ public final class NativeOverviewWorkspaceModel {
             // wait for the next catalog transaction.
             let assigned = firstAssignedFilter(firstAssignments)
             let requested = assigned?.selection ?? tagSelection ?? workspace.preferences.overviewSelection
-            if assigned != nil || untaggedRunningIDs.isEmpty { browsingUntagged = false }
-            let nextFilter = browsingUntagged ? nil : resolveSelection(requested, refreshRedirects: refreshSelection || tagSelection == nil)
+            let nextFilter = resolveSelection(requested, refreshRedirects: refreshSelection || tagSelection == nil)
             var resolved = nextFilter?.selection
             if requested?.runningTag == true, requested?.kind == .directory,
                nextFilter?.isDirectory == true, requested?.scope == nextFilter?.scope {
