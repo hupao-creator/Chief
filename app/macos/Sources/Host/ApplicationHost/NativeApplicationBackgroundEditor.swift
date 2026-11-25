@@ -202,7 +202,7 @@ public struct NativeApplicationBackgroundEditor: View {
             let id = host.descriptor.id
             NativeHarnessSettingsView(host: workspace.harnessHost, configuration: configuration,
                 section: .thread, executionSnapshot: true, settingsFormPage: true, readOnly: inherited,
-                centersLoading: !inherited,
+                centersLoading: onboardingHarnessIDs != nil && !inherited,
                 value: Binding(get: { effective.harnesses[id] ?? .object([:]) },
                                set: { updateHarness(id, settings: $0) }))
                 .id(id).environment(\.nativeSettingsInteractionScope, settingID.string + "." + id.string)

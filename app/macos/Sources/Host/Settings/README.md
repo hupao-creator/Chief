@@ -49,7 +49,7 @@ Each Settings opening gives Tag and Super Thread independent animation visits. O
 playback starts, switching tabs and returning shows the completed composition;
 closing and reopening Settings permits both animations to play again. An
 interrupted playback settles to its final frame. Onboarding retains its own step lifetime.
-In both surfaces the Chief map and capability animations share a centered illustration panel
+The Chief map and both capability animations share a centered illustration panel
 up to 640 points wide, extending up to 40 points beyond each side of the
 560-point form. The Settings scroll document reserves at least 30 points on
 each side of the panel. The illustrations have 16-point horizontal and 14-point
@@ -59,7 +59,7 @@ opaque settings color and a fine outline under Reduce Transparency. At narrow
 widths, the panel fits the viewport and the illustration canvas scales
 proportionally below 500 points of inner width so the composition and its hit
 regions stay inside the panel. Below 320 points of panel width, the padding and
-corner radius also scale proportionally.
+corner radius also scale proportionally. Onboarding presents the animations inline.
 
 All controls keep their existing bindings, availability and pending/save/error
 gates. System menu items carry option indexes separately from titles, preserving
@@ -83,7 +83,7 @@ In Settings the two rows, character and paths use the shared illustration panel.
 Each animated dashed path takes the adaptive accent of its current target
 Harness. A Harness without a theme color uses the Settings accent.
 The coordination and dispatch accessibility group contains the individual
-buttons. Onboarding uses the same compact map and adaptive paths.
+buttons. Onboarding uses the inline compact map and the Settings accent for its paths.
 
 Settings and onboarding use the animated eye character for every
 coordinating Harness. Its vector body, idle motion, handoff and target-gaze
@@ -281,11 +281,12 @@ Moku displays its concrete saved execution profile. Background editors select in
 Performance and Custom separate capsule buttons after its basic execution fields
 and before Advanced options, including the complete Custom guidance editor.
 The production Settings entry uses `.compact, showsRoutingGuidance: true` for
-its map. Routing insertion follows that explicit opt-in as well as the full
-Settings presentation. The visible execution
+its map. Routing insertion and the compact row rhythm follow that explicit
+routing opt-in as well as the full Settings presentation. The visible execution
 field order is model, reasoning effort, Task Orchestration Preferences, then Advanced
 options. The compact onboarding map leaves routing guidance disabled.
-Chief execution rows use 12pt vertical padding in Settings and onboarding.
+Moku rows use 12pt vertical padding instead of the default 15pt; label hierarchy,
+advanced disclosure padding and description spacing retain their existing metrics.
 The Custom editor places a transparent multiline AppKit viewport over a
 16-point rounded Regular Liquid Glass backdrop. The backdrop uses the panel’s dark
 appearance and uses an opaque, outlined background with Reduce Transparency. The
@@ -346,7 +347,7 @@ delay and readiness intact. Mounting or activating a global editor reuses a
 successful matching presentation for five minutes after the read. An expired
 on-demand preview revalidates on entry or activation. Explicit retry can refresh
 immediately. A mounted global editor keeps a settled failure available for
-retry across visits. Thread editors retain their activation refresh. OpenCode execution editors await model availability filtering on the original read or an explicit retry. Ordinary Thread settings can present the early native list and reread while filtering finishes. The shared Agent configuration loading notice uses the compact skillet beside its localized text for every Harness and the Chief roster. When configuring a background role separately, the skillet and label are centered together across the form in Settings and onboarding. Reduce Motion holds the same still artwork as workspace loading.
+retry across visits. Thread editors retain their activation refresh. OpenCode execution editors await model availability filtering on the original read or an explicit retry. Ordinary Thread settings can present the early native list and reread while filtering finishes. The shared Agent configuration loading notice uses the compact skillet beside its localized text for every Harness and the Chief roster. Reduce Motion holds the same still artwork as workspace loading.
 
 AppKit owns the system select's menu tracking, keyboard navigation and cancellation.
 Settings keeps its existing page Escape handler; embedded model popovers retain
