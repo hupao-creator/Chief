@@ -289,7 +289,7 @@ A superseded layout worker cannot pause input after a newer layout has settled o
 The top row and left rail stay mounted behind Agent and Report readers. When a
 panel begins its return to Overview, both filter groups approach
 their resting positions together, traveling 16pt inward from the left and top
-on the same 420ms curve.
+over the duration of the panel return.
 They regain input and accessibility when Overview owns the route. Reopening the
 reader during return withdraws both groups from their current positions.
 Reduce Motion keeps them at their resting coordinates during the backdrop fade.
@@ -491,8 +491,8 @@ See the [reading choreography](../../../../../design/reading.md)
 for secondary Sidecard admission and cancellation.
 
 The presentation gate and prepared return apply to Agent and Report panels.
-Report returns to its document card.
-All sample their destination only after the refreshed canvas preparation completes.
+A Report can return to its document or collection card. The refreshed projection
+determines whether a card can supply a destination.
 
 The outer reading stack pauses Overview projection when opening begins. Cards
 fade completely out during travel. Once the panel settles, it hides the separate
@@ -507,9 +507,9 @@ snapshots, native controls, drafts and camera remain retained. Settings, Git
 monitoring, runtime, notifications keep their existing lifecycles.
 
 Before an animated return, the stack unhides the same host at the latest viewport,
-resumes projection and awaits a new canvas
-preparation receipt before sampling the current source frame. Removed/archived
-cards cannot supply that destination. Preparation is cancelled with its route;
+resumes projection and checks source membership. If the card remains, the stack
+awaits a canvas preparation receipt before sampling its frame. If the card has
+left the filter, the panel dismisses in place as the canvas updates. Preparation is cancelled with its route;
 replacement, focus loss, disconnect/recovery and direct returns cannot let an old
 waiter close a newer visit. A reversal during opening uses the participating parent
 immediately. Hidden and foreground structural changes both resolve to the latest

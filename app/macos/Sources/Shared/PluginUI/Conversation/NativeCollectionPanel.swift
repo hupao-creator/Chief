@@ -163,7 +163,7 @@ private struct NativeCollectionPanelHost: ViewModifier {
                 .allowsHitTesting(!open).disabled(open).accessibilityHidden(open)
             NativeReadingPageStack(open: open, identity: "collection-members", motion: presentation.motion,
                 stationaryParent: true, emphasizedOpening: true, panel: true, panelUsesGlass: true,
-                panelSource: presentation.source, threadPanelMotion: true,
+                panelSource: { presentation.source }, threadPanelMotion: true,
                 onParentPresentationChange: { presentation.parentVisible = $0 },
                 onPanelOutsideClick: { close() },
                 onClose: { presentation.retire() }) {

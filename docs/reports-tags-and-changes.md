@@ -16,7 +16,7 @@ Use the input below the source conversation to write a follow-up for the run you
 
 If the run is active, your message and its timestamp slide gently into place beside the report. With Reduce Motion on, the message appears in place. If you switch runs before sending, select the same run again to pick up your draft. Click **Back to related executions** to see the cards and their available excerpts together. If the excerpts are still loading, the list shows Chief’s skillet until the cards are ready.
 
-When you close the report with a source conversation open, the input bar folds beneath that conversation with the agent logo still visible. The compact bar stays in place while the logo flips back to Chief’s eyes. The report then closes. With Reduce Motion on, the mark changes directly. The bar returns to the center of Overview. With motion on, it moves horizontally first, then rises to its resting height. Click the report’s **×** to return to Overview.
+When you close the report with a source conversation open, the input bar folds beneath that conversation with the agent logo still visible. The compact bar stays in place while the logo flips back to Chief’s eyes. If the report card is still visible, the report then shrinks back to it. If reading the report removed it from **Unread**, the report and side panel fade together as soon as you close them. With Reduce Motion on, the mark changes directly. The bar returns to the center of Overview. With motion on, it moves horizontally first, then rises to its resting height. Click the report’s **×** to return to Overview.
 
 ## Browse Super Threads in a collection
 

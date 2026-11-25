@@ -72,8 +72,8 @@ The shell contracts around the bottom center of its reading column with the Harn
 Agent panel travel overlaps the fold. The turn runs in the stationary compact
 shell. Once the eyes settle, the bar glides horizontally at the reading height until
 centered in the workspace, then rises vertically to its Overview seat.
-A centered reader only needs the lift. A Super Thread with an execution
-selected waits for the eyes to settle before starting panel travel.
+A centered reader only needs the lift. When a Super Thread has an execution selected,
+its return to a visible card begins after the eyes settle.
 The editor reveals its input ink at its settled position during expansion.
 See the [Dock contract](../app/macos/Sources/Host/MokuScene/README.md#dock-and-composer).
 

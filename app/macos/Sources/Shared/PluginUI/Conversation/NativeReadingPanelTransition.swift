@@ -10,6 +10,7 @@ struct NativeReadingPanelTransition: Equatable {
     let emphasized: Bool
     var thread = false
     var report = false
+    var fadeInPlace = false
 }
 
 /// The compositor owns panel travel while Agent readers prepare invisibly.
@@ -213,25 +214,27 @@ final class ReadingPanelView: NSView, CAAnimationDelegate {
     private func startIfReady() {
         guard window != nil, bounds.width > 0, bounds.height > 0,
               let command, startedGeneration != command.generation, let layer = surface.layer else { return }
-        // Report's main and auxiliary surfaces return independently. The native
-        // carrier stays fixed and only owns generation-fenced completion; applying
-        // its normal full-workspace aperture would widen/crop the split reader.
-        if command.closing && command.report {
+        // A settled split Report owns its card travel inside this carrier.
+        // For a missing card the carrier fades the entire retained layout.
+        if command.closing && (command.report || command.fadeInPlace) {
             flight?.retire(); flight = nil
             startedGeneration = command.generation
             completedGeneration = nil
+            let opacity = layer.presentation()?.opacity ?? layer.opacity
             CATransaction.begin(); CATransaction.setDisableActions(true)
             layer.removeAllAnimations(); aperture.removeAllAnimations()
             layer.mask = nil
             layer.position = target.origin
             paper.isHidden = true
-            CATransaction.commit()
+            if command.fadeInPlace { layer.opacity = 0 }
             let completion = CABasicAnimation(keyPath: "opacity")
-            completion.fromValue = layer.opacity; completion.toValue = layer.opacity
+            completion.fromValue = opacity; completion.toValue = layer.opacity
             completion.duration = command.duration
             completion.setValue(command.generation, forKey: "generation")
             completion.delegate = self
-            layer.add(completion, forKey: "reading.report.return")
+            completion.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            layer.add(completion, forKey: "reading.stationary.return")
+            CATransaction.commit()
             return
         }
         if command.closing { flight?.retire(); flight = nil }

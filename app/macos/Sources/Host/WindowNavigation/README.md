@@ -93,9 +93,8 @@ data-only manifest/target-row prefetch during travel, owned by the route visit
 and target execution; cancellation cannot publish into a replacement reader.
 Data-only prefetch itself mounts no TextKit or conversation view; the separate
 Agent reader preload can prepare native content during travel. Non-panel opening
-and return keep projection active, and settled-detail return awaits refreshed
-canvas layout
-before sampling the return frame. Preparation belongs to the current route
+and return keep projection active, and settled-detail return checks the refreshed filter membership
+before requesting a card frame from the canvas. Preparation belongs to the current route
 generation: replacement or
 cancellation cannot close another visit, and focus loss/disconnect completes an
 already accepted Close even while preparation is pending. Nested stacks retain
@@ -210,7 +209,7 @@ scroll offset or theme content is rewritten by this viewport adjustment.
 Agent panel entry captures only the source title/emoji text and native window
 geometry. Its lightweight compositor ink survives deferred reader mounting and
 hands off at actual heading anchors; source-less/direct-result routes skip that
-bridge. Agent closing takes 420ms: content fades over the first 80%, scaling
+bridge. Closing an Agent panel to a visible card takes 420ms. Content fades over the first 80%, scaling
 and travel reach the source card at 86%, and the opaque shell crossfades to
 Overview over the final 14%. There is no separate closing identity travel. Other
 panel routes retain their previous fade policy. Route generations, refreshed parent
@@ -295,8 +294,8 @@ Closing a settled Report retains its current split layout from return preparatio
 through route completion. The Report main shell scales/translates directly from
 its presented width and height to the source card in Overview or the retained
 member grid. Related execution and linked Browser Sidecards fade in place on the same 420ms timeline.
-The full-workspace native carrier stays stationary for this return and owns only
-generation-fenced completion, avoiding a second crop/travel over the split panes.
+The full-workspace native carrier stays stationary. It owns completion for a
+card return and fades the entire split layout in place when the card is gone.
 Closing before primary content admission keeps the existing native opening-reversal
 path. Resize, cancellation and inactive-scene completion retain
 the reading stack's policies. See the [Report return contract](../../../../../design/reading.md)

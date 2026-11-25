@@ -57,7 +57,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     public var panel: Bool
     private let panelUsesGlass: Bool
     public var isolatesParent: Bool
-    public var panelSource: CGRect?
+    private let panelSource: (() -> CGRect?)?
     public var panelIdentity: NativeThreadIdentityVisit?
     public var panelFrontIdentity: JSONText?
     public var reportPanelMotion: Bool
@@ -75,11 +75,12 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
     private let front: Front
 
     private var animatesTravel: Bool {
-        enabled && (!requiresPanelSource || panelSource != nil)
+        enabled && (!requiresPanelSource || panelSource?() != nil)
     }
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.nativeReadingEntranceReady) private var parentEntranceReady
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var progress = 0.0
     @State private var historyTravel: HistoryPageTravel?
     @State private var panelTransition: NativeReadingPanelTransition?
@@ -96,7 +97,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
                 enabled: Bool = true, focusBlur: Bool = false, stationaryParent: Bool = false,
                 emphasizedOpening: Bool = false, panel: Bool = false,
                 panelUsesGlass: Bool = false,
-                isolatesParent: Bool = false, panelSource: CGRect? = nil,
+                isolatesParent: Bool = false, panelSource: (() -> CGRect?)? = nil,
                 panelIdentity: NativeThreadIdentityVisit? = nil, panelFrontIdentity: JSONText? = nil, threadPanelMotion: Bool = false, reportPanelMotion: Bool = false,
                 requiresPanelSource: Bool = false,
                 duration: TimeInterval = NativeReadingPageTiming.duration,
@@ -191,6 +192,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             motion.replacementDirection = value
             bindActions()
         }
+        .onChange(of: reduceMotion) { bindActions() }
         .onChange(of: enabled) { _, value in
             bindActions()
             if !value { settle() }
@@ -227,7 +229,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
                     .accessibilityHidden(true)
             }
             if open && panel {
-                NativeReadingPanelViewport(target: panelBounds, source: panelSource,
+                NativeReadingPanelViewport(target: panelBounds, source: panelSource?(),
                     usesGlass: panelUsesGlass,
                     open: panelContentReady || panelTransition != nil,
                     transition: panelTransition, contentReady: panelContentReady,
@@ -245,8 +247,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
                         .environment(\.nativeThreadIdentityVisit, panelIdentity)
                         .environment(\.nativeReadingPanelClosing, motion.phase == .closing)
                         .environment(\.nativeReportPanelReturn, reportPanelMotion && panelContentReady && motion.isReturning
-                            ? NativeReportPanelReturn(source: (panelSource ?? panelBounds.insetBy(dx: 24, dy: 24))
-                                .offsetBy(dx: -panelBounds.minX, dy: -panelBounds.minY),
+                            ? NativeReportPanelReturn(source: panelSource?()?.offsetBy(dx: -panelBounds.minX, dy: -panelBounds.minY),
                                 startedAt: reportReturnStartedAt, duration: duration) : nil))
             } else if open {
                 front.id(identity)
@@ -307,8 +308,14 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             guard !Task.isCancelled, generation == token else { return }
             await prepareParent()
             guard !Task.isCancelled, generation == token else { return }
-            if animatesTravel { animate(closing: true) }
-            else { motion.phase = .idle; onClose() }
+            // The workspace refreshed the source after this action was bound.
+            // Sample it now, while the returned projection still owns this visit.
+            let missingSource = panel && panelSource != nil && panelSource?() == nil
+            if !animatesTravel || (missingSource && reduceMotion) {
+                progress = 0
+                motion.phase = .idle
+                onClose()
+            } else { animate(closing: true, fadeInPlace: missingSource) }
         }
     }
 
@@ -387,7 +394,7 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
         }
     }
 
-    private func animate(closing: Bool) {
+    private func animate(closing: Bool, fadeInPlace: Bool = false) {
         // Freeze Overview's display projection before mounting a panel. Its
         // authoritative catalog still receives updates, and return preparation
         // refreshes the retained canvas before closing begins.
@@ -403,18 +410,20 @@ public struct NativeReadingPageStack<Parent: View, Front: View>: View {
             animationTask?.cancel(); animationTask = nil
             frames.stop()
             generation += 1
+            let travelDuration = fadeInPlace ? 0.16 : duration
             if isolatesParent {
-                motion.moveParent(returning: closing, duration: duration, emphasized: !closing && emphasizedOpening)
+                motion.moveParent(returning: closing, duration: travelDuration, emphasized: !closing && emphasizedOpening)
             }
-            reportReturnStartedAt = closing && reportPanelMotion && panelContentReady ? CACurrentMediaTime() : nil
+            reportReturnStartedAt = closing && reportPanelMotion && panelContentReady && !fadeInPlace ? CACurrentMediaTime() : nil
             if !closing { panelContentReady = false; panelReaderPreloading = false }
             panelTransition = NativeReadingPanelTransition(generation: generation, closing: closing,
-                duration: duration, emphasized: !closing && emphasizedOpening, thread: threadPanelMotion, report: reportPanelMotion && panelContentReady)
+                duration: travelDuration, emphasized: !closing && emphasizedOpening, thread: threadPanelMotion,
+                report: reportPanelMotion && panelContentReady, fadeInPlace: fadeInPlace)
             // The backdrop uses SwiftUI progress. Report surfaces share the
             // monotonic return start above and animate their native carriers;
             // native completion still owns this route generation.
             withAnimation(!closing && emphasizedOpening
-                ? .timingCurve(0.76, 0, 0.24, 1, duration: duration) : curve) {
+                ? .timingCurve(0.76, 0, 0.24, 1, duration: duration) : .timingCurve(0.42, 0, 0.58, 1, duration: travelDuration)) {
                 progress = closing ? 0 : 1
             }
             return
