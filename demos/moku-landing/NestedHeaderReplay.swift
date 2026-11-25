@@ -377,6 +377,17 @@ private final class WheelSample: NSEvent {
             func typingFrame() -> CGRect? {
                 conversationElements(in: window).first { $0.id == "moku-conversation-typing" }?.frame
             }
+            func checkEyes(_ stage: String) async throws -> CGFloat {
+                var offset = CGFloat.infinity
+                try await wait("Eyes left the input row \(stage), offset \(offset) pt", timeout: .seconds(3)) {
+                    guard let face = descendant(NativeMokuCharacterCanvas.self, in: content, matching: {
+                        $0.seat == .face && !$0.isHiddenOrHasHiddenAncestor
+                    }), let plus = try? filterButton("moku-add-attachment", in: window) else { return false }
+                    offset = window.convertToScreen(face.convert(face.bounds, to: nil)).midY - plus.frame.midY
+                    return abs(offset) <= 1
+                }
+                return offset
+            }
             let panelScroll = try await scroller()
             try await wait("Initial Chief run did not settle") {
                 workspace.catalog.moku?.observation.latestExecution?.status == .completed && typingFrame() == nil
@@ -410,6 +421,7 @@ private final class WheelSample: NSEvent {
                     && abs(endDistance(panelScroll)) <= 1
             }
             let typingEndDistance = endDistance(panelScroll)
+            let runningEyeOffset = try await checkEyes("while running")
             try await focusReplayWindow(window)
             try await recordWindow(window, to: evidence.appending(path: "conversation-typing.mp4")) {
                 try await capture(window, to: evidence.appending(path: "conversation-typing.png"))
@@ -429,6 +441,7 @@ private final class WheelSample: NSEvent {
                     draft.attachments.first?.attachment == file && labels() == first
             }
             let rejection = draft.error ?? ""
+            let rejectedEyeOffset = try await checkEyes("above the send error")
             try JSONEncoder().encode(["error": rejection, "draft": field.string]).write(to: evidence.appending(path: "rejected-send.json"))
             try FileManager.default.moveItem(at: held, to: bytes)
             try await pressKey("\u{1b}", code: 53, in: window)
@@ -490,11 +503,14 @@ private final class WheelSample: NSEvent {
             try await wait("Completed conversation did not return to its final reply") {
                 abs(endDistance(compactScroll)) <= 1 && typingFrame() == nil && labels() == finished
             }
+            let finishedEyeOffset = try await checkEyes("after retry and completion")
             try await capture(window, to: evidence.appending(path: "conversation-typing-finished.png"))
             let observations: [String: Any] = ["beforeAdmission": captured, "rejection": rejection,
                 "compactBeforeAdmission": compactCapture, "beforeTalk": beforeTalk, "afterTalk": labels(),
                 "panelReturnToObservationMS": panelObservedMS, "compactReturnToObservationMS": compactObservedMS,
                 "distanceFromEndAfterSend": followed, "distanceFromEndWhileTyping": typingEndDistance,
+                "eyeOffsetWhileRunning": runningEyeOffset, "eyeOffsetAboveError": rejectedEyeOffset,
+                "eyeOffsetAfterCompletion": finishedEyeOffset,
                 "readingY": readingY, "readingYAfterTalk": afterTalkY]
             try JSONSerialization.data(withJSONObject: observations, options: [.prettyPrinted, .sortedKeys])
                 .write(to: evidence.appending(path: "conversation-refresh.json"))

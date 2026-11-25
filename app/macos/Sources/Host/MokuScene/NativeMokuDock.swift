@@ -1010,12 +1010,7 @@ public struct NativeMokuDock: View {
             onKeyDown: mentions.map { completion in
                 { state.ownsComposer(draft) && completion.handle($0, draft: draft) }
             },
-            onEditorSeatChange: {
-                // The retiring editor remains mounted inside a shrinking capsule.
-                // Its new anchor would redirect the eyes mid-collapse; keep the
-                // last open seat until live editing resumes.
-                if state.ownsComposer(draft), state.inputOpen { editorBottomInset = $0 }
-            },
+            onEditorSeatChange: state.ownsComposer(draft) && state.inputOpen ? { editorBottomInset = $0 } : nil,
             onEscape: escapeInput, onSend: send)
     }
 
