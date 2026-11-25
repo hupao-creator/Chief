@@ -47,7 +47,7 @@ def journey(desktop, app, send, thread_state):
                 rail_id = status
             assert overview["selectedRailId"] == rail_id
             assert {card["ref"]["threadId"] for card in overview["cards"]} == expected, overview
-            status_buttons = {"running", "all", "completed"} if scope == "inbox" else {"running"}
+            status_buttons = {"running", "unread", "all", "completed"} if scope == "inbox" else {"running", "unread"}
             return (selected["id"] in overview["controls"][kind] and set(overview["controls"]["status"]) == status_buttons
                     and not overview["layingOut"]
                     and set(overview["mountedCardIds"]) == expected

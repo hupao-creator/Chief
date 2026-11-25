@@ -32,7 +32,9 @@ def measure(directory):
     if info["streams"] != [{"width": 2560, "height": 1640}]:
         raise ValueError("Expected the 1280 × 820 pt replay window at 2×")
     timestamps = [float(f["best_effort_timestamp_time"]) for f in info["frames"]]
-    left, dx = track(movie, "130:52:0:794", 130, 52, 1, (42, 94))
+    geometry = json.loads((directory / "filter-geometry.json").read_text())
+    status_y = round(geometry["statusCenterY"] * 2)
+    left, dx = track(movie, f"130:52:0:{status_y - 26}", 130, 52, 1, (42, 94))
     top, dy = track(movie, "160:126:1224:0", 160, 126, 2, (63, 95))
     if len(timestamps) != len(left) or len(left) != len(top):
         raise ValueError("Decoded frames do not match presentation timestamps")

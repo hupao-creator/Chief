@@ -30,7 +30,7 @@ struct NativeOverviewTagRail: View {
                 .fixedSize(horizontal: true, vertical: false)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(choices.contains(.status(.all)) ? strings.statusFilter : strings.filter)
+        .accessibilityLabel(choices.contains { if case .tag = $0 { true } else { false } } ? strings.filter : strings.statusFilter)
         .accessibilityHidden(choices.isEmpty)
     }
 
@@ -53,6 +53,7 @@ struct NativeOverviewTagRail: View {
                 case .status(let status):
                     let (title, emoji) = switch status {
                     case .running: (strings.runningOnly, "⏳")
+                    case .unread: (strings.unreadOnly, "🔖")
                     case .all: (strings.allStatuses, "🗂️")
                     case .completed: (strings.completedOnly, "🏁")
                     }

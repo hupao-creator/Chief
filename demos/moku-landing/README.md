@@ -74,6 +74,24 @@ reopens the receipt store from the isolated profile. A new completed execution
 must reappear in both tag counts, and a document revision must relight its own tag. `tag-read.json` records the observed counts
 and selection. `source.json` identifies the checkout and platform.
 
+### Unread preset
+
+Build the current Debug package and run the mounted workspace with a fresh profile.
+
+```sh
+python3 demos/moku-landing/verify_header.py --unread-filter --output .build/unread-filter
+```
+
+The replay uses window-local AppKit input to open Unread and find an untagged
+completed result. After a tag arrives, it holds the tag to mark the result as
+read. It checks the persisted receipt, the empty canvas with Unread still
+selected, and the accessible button name and visible empty message in English
+and Chinese. A catalog patch publishes a new completed execution of the same Thread.
+The replay also switches between folder Running, a custom tag named Unread and
+the workspace-wide preset with both Agent and Super Thread cards. The output
+contains `unread-filter.json`, the empty-state captures and `source.json`.
+This uses the production native workspace and fixture snapshots and mutations.
+
 ### Chief Note execution links
 
 After building the current Debug package, run the mounted workspace replay.

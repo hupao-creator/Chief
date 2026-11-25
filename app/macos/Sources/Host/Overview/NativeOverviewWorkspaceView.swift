@@ -76,7 +76,7 @@ public struct NativeOverviewWorkspaceView: View {
             let canvasVisible = !landing || retiringToLanding
             ZStack {
                 NativeOverviewCanvas(contentSource: model.content, sceneKey: model.sceneKey, state: model.canvasState,
-                    selectionID: model.selectedFilter?.id,
+                    selectionID: model.statusFilter == .unread ? nil : model.selectedFilter?.id,
                     toolbarBottom: viewport.toolbarBottom, bottomReservedHeight: viewport.bottomReservedHeight,
                     headerInputBottom: headerBottom,
                     visible: model.facts.overviewVisible && model.facts.documentVisible && canvasVisible,
@@ -96,7 +96,7 @@ public struct NativeOverviewWorkspaceView: View {
                     .accessibilityHidden(landing)
                 if !landing && model.content.isEmpty && model.error == nil, model.globalConversationCount != nil {
                     switch model.statusFilter {
-                    case .running, .completed:
+                    case .running, .unread, .completed:
                         NativeOverviewStatusEmptyState(title: emptyTitle)
                     case .all:
                         NativeOverviewEmptyState(title: emptyTitle, detail: locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads."))
@@ -187,6 +187,7 @@ public struct NativeOverviewWorkspaceView: View {
     private var emptyTitle: String {
         switch model.statusFilter {
         case .running: return locale.text("没有运行中的会话", "No running conversations")
+        case .unread: return locale.text("没有未读会话", "No unread conversations")
         case .completed: return locale.text("没有已完成的会话", "No completed conversations")
         case .all: break
         }
@@ -197,6 +198,7 @@ public struct NativeOverviewWorkspaceView: View {
         if locale == .english {
             strings.settings = "Settings"; strings.restart = "Restart development app"; strings.actions = "Overview actions"
             strings.runningOnly = "Running"
+            strings.unreadOnly = "Unread"
             strings.untaggedRunning = "Running without a tag"
             strings.allStatuses = "All statuses"
             strings.completedOnly = "Completed"
