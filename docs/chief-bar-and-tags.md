@@ -14,6 +14,8 @@ Click Chief’s eyes once. The bar expands and the cursor appears in **Type a me
 
 Right-click the eyes, or hold **Control** and click. Your conversation opens above the input field. Your messages appear in blue on the right and Chief’s replies appear on the left. Type a follow-up and press **Return** to keep chatting in the panel. Press **Esc** to close it.
 
+You can also choose **View → Conversation with Chief** or press **⌘⌥B** in Overview. Any unsent draft stays in the input field. To use the command from Settings or a task conversation, return to Overview first.
+
 ![Chief Bar opens into a conversation with a blue question on the right, Chief’s reply on the left, and the input below.](images/chief-bar-chat.gif)
 
 ## Switch folders and tags at the top

@@ -482,6 +482,8 @@ the eyes, composer and transcript during expansion and dismissal.
 
 Start with a private profile containing a Chief conversation and a completed task. A saved selection for the current Chief or a retained Chief archive must open Overview. Open **View → Compose** and inspect its accessible controls. A plain Command-B leaves the current route in place. Check that retired navigation actions are rejected, then open an ordinary task and a Super Thread from Overview.
 
+In the ready Overview, open **View → Conversation with Chief** and observe the existing conversation above the composer. Close it with Escape, type an unsent draft through **Compose**, and press **⌘⌥B**. Check that the same draft remains, no message is sent, and Escape closes the conversation without discarding it. Reopen by secondary click to confirm that entry still works. The menu command must be disabled while the conversation is open, in Settings and ordinary task or Super Thread detail, and while onboarding or an intervention owns the workspace. Repeat the menu and shortcut checks in English and Simplified Chinese. Record the built revision, window observations and draft before and after each entry. These native checks exercise the [Chief Bar conversation contract](../../app/macos/Sources/Host/MokuScene/README.md#chief-bar-conversation); the semantic `E2E-CHIEF-001` replay does not certify menu or keyboard behavior.
+
 ### Live Super Thread updates
 
 In an isolated app, open an existing Super Thread from its Overview card with
