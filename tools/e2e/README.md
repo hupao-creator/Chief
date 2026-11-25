@@ -463,7 +463,8 @@ The [mounted two-surface replay](../../demos/moku-landing/README.md#talk-executi
 
 The [mounted opening replay](../../demos/moku-landing/README.md#chief-bar-opening)
 checks the latest message’s visible end, scrolls to the first message, visits
-the earlier page and returns through the production scroll route. It checks
+the earlier page and returns to the latest page. It opens the Bar with a
+window-addressed secondary click and dismisses it with an outside click. It checks
 the reading position across a content revision and window resize.
 Its window movie supports frame-by-frame review of
 the eyes, composer and transcript during expansion and dismissal.

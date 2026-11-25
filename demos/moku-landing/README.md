@@ -196,9 +196,9 @@ xcrun swift build --package-path app/macos
 python3 demos/moku-landing/verify_header.py --conversation-opening --output .build/chief-bar-opening
 ```
 
-The replay opens the production Chief Bar with phased AppKit scroll events
-and momentum. It checks the first visit with cached history, reopening after
-the first nonempty page arrives late, and right-clicking the compact bar.
+The replay right-clicks the production Chief Bar. It checks the first visit
+with cached history, reopening after the first nonempty page arrives late,
+and opening history from the expanded compact editor.
 The last bubble is longer than the viewport. The replay measures the native
 clip against the document bottom and saves its window-relative bounds with
 each capture. Vision checks the final line against those bounds after recording,
@@ -210,7 +210,7 @@ page controls must reach the preceding page and return to the newest reply.
 `conversation-opening.mp4` records the opening and outside-click dismissal.
 The compact-editor visit includes a two-second reading pause before dismissal.
 Inspect consecutive frames for both eyes staying inside the bottom row as they
-blink and travel between the center and editor seats. The replay also interrupts an opening with an outside click and swipes again
+blink and travel between the center and editor seats. The replay also interrupts an opening with an outside click and right-clicks again
 as soon as the editor finishes folding. Check intermediate eye positions and a clear composer on
 each visit. The reopened viewport must show the final line.
 `source.json` binds the run to the source and `conversation-opening.json`
@@ -229,11 +229,12 @@ python3 demos/moku-landing/verify_header.py --conversation-performance --profile
 
 Each run opens a full cached page five times from the collapsed Bar in one
 isolated workspace. ScreenCaptureKit timestamps the displayed window frames.
-The clock starts before the first upward scroll event. The collector compares
+The clock starts just before posting the right mouse-down event. The collector compares
 each frame with the resting Bar and the final line of the settled reply, which
 Vision locates after capture. It records the longest visible pause in the
-sampled area and intervals between main run-loop ticks. The separate profile
-samples the first visit at 1 ms intervals. The [same-machine comparison](evidence/conversation-opening/measurements.md)
+sampled area and intervals between main run-loop ticks. The first timer tick that observes a visible editable text view as the key
+window’s first responder bounds the time to input readiness. The separate
+profile samples the first visit at 1 ms intervals. The [same-machine comparison](evidence/conversation-opening/measurements.md)
 includes the workload, per-visit results and retained samples.
 
 The header replay mounts the 46.2-point production filters at the top of a

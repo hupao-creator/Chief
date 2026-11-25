@@ -37,18 +37,17 @@ struct NativeMokuConversationTimeline: View {
                             pageButton(chinese ? "较早消息" : "Earlier messages", width: width) { showEarlier(cursor) }
                                 .accessibilityIdentifier("moku-conversation-earlier")
                         }
-                        // The trailing rows and the end target share one exact layout. A tall last
-                        // reply must not resolve to a lazy height estimate on entry or on send.
+                        // Only the last bubble must share an exact layout with the end target.
+                        // It can fill the entire viewport on its own.
                         let rows = page.messages.enumerated()
-                        let tailCount = 6
-                        if rows.count > tailCount {
+                        if rows.count > 1 {
                             LazyVStack(alignment: .leading, spacing: 0) {
-                                ForEach(rows.dropLast(tailCount), id: \.element.id) { index, message in
+                                ForEach(rows.dropLast(), id: \.element.id) { index, message in
                                     row(message, at: index, width: width, height: bounds.size.height)
                                 }
                             }
                         }
-                        ForEach(rows.suffix(tailCount), id: \.element.id) { index, message in
+                        ForEach(rows.suffix(1), id: \.element.id) { index, message in
                             row(message, at: index, width: width, height: bounds.size.height)
                         }
                         if let showNewer {
@@ -125,11 +124,15 @@ struct NativeMokuConversationTimeline: View {
                     .padding(.horizontal, 14)
                     .frame(width: width, alignment: message.fromUser ? .trailing : .leading)
                     .offset(x: message.fromUser ? 0 : revealed)
-                Text(message.date, format: .dateTime.hour().minute())
-                    .font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary)
-                    .lineLimit(1).padding(.trailing, 13)
-                    .frame(width: timeColumn, alignment: .trailing)
-                    .accessibilityHidden(true)
+                ZStack(alignment: .trailing) {
+                    if revealed > 0 {
+                        Text(message.date, format: .dateTime.hour().minute())
+                            .font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary)
+                            .lineLimit(1).padding(.trailing, 13)
+                    }
+                }
+                .frame(width: timeColumn, alignment: .trailing)
+                .accessibilityHidden(true)
             }
         }
         .padding(.top, starts ? 0 : bubbleSpacing)
