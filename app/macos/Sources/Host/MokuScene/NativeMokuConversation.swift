@@ -125,7 +125,13 @@ private struct ConversationMessages: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if showsRows, failure == nil, let page = displayedPage, !page.messages.isEmpty {
+            if !showsRows {
+                // The glass can start fitting a long cached page before text layout. The
+                // bubble insets alone provide a lower bound, which the Dock caps at its
+                // viewport. Mount the loading indicator only if the visible list needs it.
+                Color.clear.preference(key: NativeMokuConversationHeightKey.self,
+                    value: CGFloat(displayedPage?.messages.count ?? 0) * 2 * NativeMokuConversationTimeline.bubbleVerticalInset)
+            } else if failure == nil, let page = displayedPage, !page.messages.isEmpty {
                 NativeMokuConversationTimeline(page: page, workspace: presentation.workspace, showEarlier: showEarlier, showNewer: before == nil ? nil : showNewer)
             } else {
                 VStack(spacing: 0) {
