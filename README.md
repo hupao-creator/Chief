@@ -3,7 +3,14 @@
 <p align="center">Chief brings your AI agents together and gets them cooking.</p>
 
 <p align="center">
-  <strong><a href="https://github.com/hupao-creator/Chief/releases/tag/v0.1.0-alpha.3">Download Alpha 3</a></strong> · <a href="docs/getting-started.md">Get started</a> · <a href="LICENSE">Apache 2.0</a>
+  <a href="https://github.com/hupao-creator/Chief/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/hupao-creator/Chief?style=flat&amp;label=stars&amp;color=blue"></a>
+  <a href="https://github.com/hupao-creator/Chief/releases"><img alt="Latest release including prereleases" src="https://img.shields.io/github/v/release/hupao-creator/Chief?include_prereleases&amp;label=release&amp;color=orange"></a>
+  <a href="https://github.com/hupao-creator/Chief/actions/workflows/ci.yml?query=branch%3Amain"><img alt="CI status on main" src="https://github.com/hupao-creator/Chief/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/hupao-creator/Chief/releases/tag/v0.1.0-alpha.4"><img alt="Alpha 4 DMG download size, 25.5 MiB" src="https://img.shields.io/badge/download-25.5%20MiB-blue"></a>
+</p>
+
+<p align="center">
+  <strong><a href="https://github.com/hupao-creator/Chief/releases/tag/v0.1.0-alpha.4">Download Alpha 4</a></strong> · <a href="docs/getting-started.md">Get started</a> · <a href="LICENSE">Apache 2.0</a>
 </p>
 
 [![Chief Overview filtered to bug fixes, with two illustrated reports above an active task](design/overview-readme-preview.webp)](design/overview-readme.png)
