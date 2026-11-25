@@ -1,30 +1,22 @@
-# Chief
-
 <p align="center">
-  <img src="design/chief-logo.webp" width="144" height="144" alt="Chief logo: a skillet tossing three coding agents">
+  <img src="design/chief-logo.webp" width="96" height="96" alt="Chief logo: a skillet tossing three coding agents">
 </p>
 
-<p align="center">
-  <strong>A native Mac workspace for coordinating AI agents.</strong>
-</p>
+<h1 align="center">Chief</h1>
+
+<p align="center">A native Mac workspace for coordinating AI agents.</p>
 
 <p align="center">
-  <a href="#get-started">Get started</a> · <a href="LICENSE">Apache 2.0</a>
+  <strong><a href="https://github.com/hupao-creator/Chief/releases/tag/v0.1.0-alpha.3">Download Alpha 3</a></strong> · <a href="#get-started">Get started</a> · <a href="LICENSE">Apache 2.0</a>
 </p>
-
-<p align="center">
-  Apple silicon · macOS 26+ · Invited alpha · <a href="https://github.com/hupao-creator/Chief/releases/tag/v0.1.0-alpha.3">Alpha 3 download</a>
-</p>
-
----
-
-Chief brings Codex, Claude, Pi Agent, and OpenCode into one workspace.
-Talk to the **Chief** assistant to coordinate work, then open each task's conversation
-to follow the work and give it more direction.
 
 [![Chief Overview filtered to bug fixes, with two illustrated reports above an active task](design/overview-readme-preview.webp)](design/overview-readme.png)
 
 The active task shows the latest agent activity and a summary of file changes. Select the screenshot to view it at full size. [Watch the Overview demo (MP4, 6.5 sec) →](design/overview-readme-demo.mp4)
+
+Chief brings Codex, Claude, Pi Agent, and OpenCode into one workspace.
+Talk to the **Chief** assistant to coordinate work, then open each task's conversation
+to follow the work and give it more direction.
 
 - **Ask once, coordinate across agents.** Give Chief a task, attach files, and include the full path of any project folder Chief should use. Chief can answer directly or assign work to the agents you've enabled. [Working with Chief →](docs/working-with-moku.md)
 - **See what needs you.** Overview uses a bento box design to show task status, questions, and permission requests on cards of different sizes. The canvas grows with your work for the feel of infinite horizontal scrolling as you browse from the first column to the last. Filter by folder or tag, then open a conversation to step in. [Overview →](docs/overview.md)
@@ -69,7 +61,7 @@ The interface uses SwiftUI and AppKit, backed by a Go service.
 
 ## Get started
 
-[Install Chief Alpha, connect an agent, and send your first request.](docs/getting-started.md)
+Invited alpha for Apple silicon Macs running macOS 26+. [Install Chief and send your first request.](docs/getting-started.md)
 
 ## License
 
