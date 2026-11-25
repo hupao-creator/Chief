@@ -1,7 +1,7 @@
 # Resident composer ownership
 
 The [MokuScene guide](../app/macos/Sources/Host/MokuScene/README.md) owns Dock,
-Talk, Note, input and draft behavior. [Core](../app/macos/Sources/Core/README.md)
+Talk, input and draft behavior. [Core](../app/macos/Sources/Core/README.md)
 owns durable receipt and attachment handoff.
 [E2E-COMPOSER-001](../tools/e2e/README.md#composer-system-input-boundary) uses
 operator-assisted system Accessibility input with independent public persisted
@@ -91,14 +91,7 @@ Submission orbit begins on captured
 input, but grants neither Stop authority nor navigation before confirmed
 execution admission. Receipt uncertainty preserves draft/recovery state.
 
-Ordinary Talk and Note share the capsule reading seat. Talk fades before Note
-expands and returns after Note ink retires. A rapid reversal continues current
-geometry and fences old completion callbacks. Hidden retained content keeps
-native identity/scroll state while leaving hit testing and accessibility.
-Talk's existing expiration can run behind an open Note; expired text does not
-return merely because Note closes. The expanded Note uses dark Regular Liquid
-Glass; the compact Dock uses its warm clear gradient. Reduce Transparency uses
-opaque fallback. Background input suppression does not dim read-only card ink.
+The compact Talk viewport supports selection, scrolling and execution links. Its one-minute lease begins on presentation. Chief’s conversation keeps each successful Talk message after the viewport closes.
 
 Source: [Dock](../app/macos/Sources/Host/MokuScene/NativeMokuDock.swift),
 [capsule](../app/macos/Sources/Host/MokuScene/NativeMokuCapsule.swift),

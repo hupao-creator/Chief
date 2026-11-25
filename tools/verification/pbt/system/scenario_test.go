@@ -282,14 +282,14 @@ trace_exporter = "none"
 		if err = invoke("state:load", []any{}, &state); err != nil {
 			return err
 		}
-		children, done, note := 0, true, false
+		children, done, replied := 0, true, false
 		tagged, reportReady := true, false
 		reportCount := 0
 		hostDone := false
 		for _, t := range state.Threads {
 			if t.Moku {
 				hostDone = t.Observation.LatestExecution != nil && t.Observation.LatestExecution.Terminal()
-				note = t.Note != nil && t.Note.Text == "SYSTEM_CHAIN_VERIFIED"
+				replied = hasChainReply(t)
 			} else {
 				children++
 				hasTag := false
@@ -310,7 +310,7 @@ trace_exporter = "none"
 		reportReady = reportCount == scopes
 		var pending []plugin.MokuDelivery
 		deliveryErr := invoke("moku:deliveries", []any{}, &pending)
-		convergence = object{"sampledAt": time.Now().UTC(), "state": state, "children": children, "done": done, "note": note, "hostDone": hostDone, "tagged": tagged, "report": reportReady, "pendingDeliveries": pending, "deliveryError": fmt.Sprint(deliveryErr)}
+		convergence = object{"sampledAt": time.Now().UTC(), "state": state, "children": children, "done": done, "replied": replied, "hostDone": hostDone, "tagged": tagged, "report": reportReady, "pendingDeliveries": pending, "deliveryError": fmt.Sprint(deliveryErr)}
 		if deliveryErr != nil {
 			return deliveryErr
 		}
@@ -320,7 +320,7 @@ trace_exporter = "none"
 		if children > scopes {
 			return fmt.Errorf("created %d children", children)
 		}
-		if children == scopes && done && note && hostDone && tagged && reportReady && len(state.AgentRuns) == 0 {
+		if children == scopes && done && replied && hostDone && tagged && reportReady && len(state.AgentRuns) == 0 {
 			if len(pending) == 0 {
 				if err = verifyFanout(state, mock.workspaces); err != nil {
 					return err
@@ -340,7 +340,7 @@ trace_exporter = "none"
 					}
 				}
 				receipts := map[string]bool{}
-				ids := []string{"system_note", "system_stale_stop"}
+				ids := []string{"system_talk", "system_stale_stop"}
 				for i := 0; i < scopes; i++ {
 					ids = append(ids, createCallID(i))
 				}
@@ -367,7 +367,7 @@ trace_exporter = "none"
 						failures = append(failures, "missing tool receipt: "+id)
 					}
 				}
-				if len(failures) != 0 || !receipts["system_create"] || !receipts["system_note"] {
+				if len(failures) != 0 || !receipts["system_create"] || !receipts["system_talk"] {
 					return fmt.Errorf("provider audit failed: failures=%v receipts=%v", failures, receipts)
 				}
 				state, err = exerciseActions(ctx, invoke, host.(actionHost), mock, state, actions)
@@ -418,14 +418,14 @@ trace_exporter = "none"
 				if err = verifyRestored(state, restored); err != nil {
 					return err
 				}
-				fmt.Println("PASS graceful restart: task execution, note, Report, Tag and identities retained")
-				fmt.Println("PASS production HTTP -> Moku -> real Codex/mock LLM -> create_thread -> child completion -> durable notification -> native read -> update_note; scoped Report lifecycle evidence and Tag assignment")
+				fmt.Println("PASS graceful restart: task execution, Talk, Report, Tag and identities retained")
+				fmt.Println("PASS production HTTP -> Moku -> real Codex/mock LLM -> create_thread -> child completion -> durable notification -> native read -> talk; scoped Report lifecycle evidence and Tag assignment")
 				return nil
 			}
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("composition chain incomplete children=%d done=%v note=%v hostDone=%v tagged=%v report=%v agentRuns=%s pendingDeliveries=%s: %w", children, done, note, hostDone, tagged, reportReady, encoded(state.AgentRuns), encoded(pending), ctx.Err())
+			return fmt.Errorf("composition chain incomplete children=%d done=%v replied=%v hostDone=%v tagged=%v report=%v agentRuns=%s pendingDeliveries=%s: %w", children, done, replied, hostDone, tagged, reportReady, encoded(state.AgentRuns), encoded(pending), ctx.Err())
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
@@ -471,6 +471,23 @@ func invokeWithID(ctx context.Context, c *http.Client, connection profile.Connec
 	return nil
 }
 
+func hasChainReply(t model.ThreadRecord) bool {
+	for _, raw := range t.Transcript {
+		var row struct {
+			Type, Name  string
+			CompletedAt int64
+			IsError     bool
+			Result      struct{ OK bool }
+			Arguments   struct{ Text string }
+		}
+		if json.Unmarshal(raw, &row) == nil && row.Type == "tool-operation" && row.Name == "talk" &&
+			row.CompletedAt > 0 && !row.IsError && row.Result.OK && row.Arguments.Text == "SYSTEM_CHAIN_VERIFIED" {
+			return true
+		}
+	}
+	return false
+}
+
 func verifyRestored(before, after model.AppState) error {
 	if !bytes.Equal(encoded(before.Settings), encoded(after.Settings)) || before.SettingsRevision != after.SettingsRevision {
 		return errors.New("restart altered saved settings")
@@ -486,8 +503,8 @@ func verifyRestored(before, after model.AppState) error {
 				if (actual.Archived != nil && *actual.Archived) != (expected.Archived != nil && *expected.Archived) {
 					return errors.New("restart altered task archive state")
 				}
-				if string(encoded(actual.Observation.LatestExecution)) != string(encoded(expected.Observation.LatestExecution)) || string(encoded(actual.Note)) != string(encoded(expected.Note)) || string(encoded(actual.Tags)) != string(encoded(expected.Tags)) {
-					return fmt.Errorf("restart altered task/note/tag %s", actual.ID)
+				if string(encoded(actual.Observation.LatestExecution)) != string(encoded(expected.Observation.LatestExecution)) || hasChainReply(actual) != hasChainReply(expected) || string(encoded(actual.Tags)) != string(encoded(expected.Tags)) {
+					return fmt.Errorf("restart altered task/Talk/tag %s", actual.ID)
 				}
 			}
 		}

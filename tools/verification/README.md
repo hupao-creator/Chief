@@ -12,7 +12,6 @@ native packaging are available through:
 - [Foreground Release comparison](overview-ci-performance/README.md), manually dispatched.
 - [Overview internal CPU probe](overview-performance/README.md).
 - [Glass evidence analyzer and geometry probe](overview-glass/README.md).
-- [Note native preparation probe](moku-note-performance/README.md).
 - `native_replay.py` and `NativeReplayIsolation.swift`: production-object compile,
   packaging, signing and isolated presentation helpers. They do not link test objects.
 

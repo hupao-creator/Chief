@@ -293,16 +293,6 @@ func ToolSchemas(description ThreadCreationDescription) []plugin.ToolBinding {
 	talkSchema["maxLength"] = TalkTextMaxCharacters
 	talkSchema["description"] = TalkTextPolicy
 	add("talk", "Show a short answer, question, progress update, or confirmation inside Chief's bar in the Overview. "+TalkTextPolicy+" Showing a message does not end your turn or the task, or wait for a user response. Do not poll delegated Threads just to produce an update; base each update on facts already available.", mokuRaw(mokuObjectSchema(map[string]any{"text": talkSchema}, "text")))
-	// The note text has no pattern on purpose: update_note replaces the whole
-	// note, and a constrained decoder that stops at a pattern match would
-	// silently drop most of it. minLength stays absent because "" clears.
-	noteSchema := map[string]any{"type": "string", "maxLength": NoteTextMaxCharacters, "description": NoteTextPolicy}
-	basisSchema := mokuObjectSchema(map[string]any{
-		"noteId":          map[string]any{"type": "string", "pattern": `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`},
-		"revision":        map[string]any{"type": "integer", "minimum": 1, "maximum": model.MaximumSafeInteger},
-		"readingRevision": map[string]any{"type": "integer", "minimum": 0, "maximum": model.MaximumSafeInteger},
-	}, "noteId", "revision", "readingRevision")
-	add("update_note", "Replace Chief's persistent milestone note. "+NoteTextPolicy+" "+NoteContentGuidance+" Pass the exact context basis as expected (null only before first creation). Returns the committed state, or note_state_changed with the latest state; reconsider before retrying.", mokuRaw(mokuObjectSchema(map[string]any{"text": noteSchema, "expected": map[string]any{"oneOf": []any{map[string]any{"type": "null"}, basisSchema}}}, "text", "expected")))
 	return bindings
 }
 

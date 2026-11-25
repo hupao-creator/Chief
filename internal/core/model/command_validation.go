@@ -90,26 +90,6 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 		}
 	}
 	switch channel {
-	case "moku:record-note-exposure":
-		object, err := objectKeys(value, []string{"noteId", "revision", "signal"}, []string{"noteId", "revision", "signal"})
-		if err != nil {
-			return err
-		}
-		if err := uuid(object["noteId"]); err != nil {
-			return err
-		}
-		n, ok := object["revision"].(json.Number)
-		if !ok {
-			return errors.New("invalid note revision")
-		}
-		revision, err := n.Int64()
-		if err != nil || revision < 1 || revision > MaximumSafeInteger {
-			return errors.New("invalid note revision")
-		}
-		if object["signal"] != NoteExposureSignal {
-			return errors.New("invalid note exposure signal")
-		}
-		return nil
 	case "attachment:preview", "attachment:image-path":
 		if err = text(value, 128); err != nil {
 			return err

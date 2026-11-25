@@ -43,12 +43,6 @@ func (r *Runtime) Invoke(ctx context.Context, channel string, args []json.RawMes
 		return nil, err
 	}
 	switch channel {
-	case "moku:record-note-exposure":
-		var receipt NoteExposureReceipt
-		if err := model.Unmarshal(args[0], &receipt); err != nil {
-			return nil, err
-		}
-		return r.RecordNoteExposure(ctx, receipt)
 	case "moku:deliveries":
 		return r.PendingMokuDeliveries()
 	case "moku:resolve-delivery":

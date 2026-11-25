@@ -1,5 +1,7 @@
 import AppKit
 import CoreText
+import ChiefCore
+import ChiefPluginAPI
 import ChiefPluginUI
 import SwiftUI
 
@@ -38,9 +40,41 @@ import SwiftUI
         max(58, min(maximumHeight, height(text, width: width - leadingInset - (trailingInset ?? trailing) - scrollbarGutter(for: scrollbarStyle))) + verticalPadding * 2)
     }
 }
+/// Resolve only the public Threads named in this message. Their identifiers remain
+/// in the destination even when a title or Harness is unavailable.
+struct NativeMokuTalkLinks: View {
+    let content: NativeMokuTalkText
+    let workspace: NativeWorkspaceModel?
+    let compact: Bool
+    @Environment(\.locale) private var locale
+
+    var body: some View {
+        var harnesses = [JSONText: AnyHarnessPlugin]()
+        let runs: [(String, URL?)] = content.parts.map { part in
+            switch part {
+            case .text(let text):
+                return (text, nil)
+            case .link(let label, let url, let reference):
+                let id = reference.thread.threadID
+                let target = workspace?.catalog.thread(id)
+                var title = label
+                if let target, target.isOrdinaryAgent {
+                    harnesses[id] = try? workspace?.plugins.harnesses.require(target.harnessID)
+                    if title == nil, !target.title.string.isEmpty { title = target.title.string }
+                }
+                let fallback = locale.language.languageCode?.identifier == "zh" ? "执行记录" : "Execution"
+                return (title ?? fallback, url)
+            }
+        }
+        return NativeExecutionCapsuleText(runs: runs, harnesses: harnesses, compact: compact)
+    }
+}
+
 struct NativeMokuTalkContent: View {
     let message: NativeMokuTalkMessage
     var scrollbarStyle: NSScroller.Style = NSScroller.preferredScrollerStyle
+    var workspace: NativeWorkspaceModel?
+    var linkedHeight: (CGFloat) -> Void = { _ in }
     @State private var followsTail = true
     var body: some View {
         GeometryReader { viewport in
@@ -48,8 +82,15 @@ struct NativeMokuTalkContent: View {
                 // Pin the text to its natural height before the viewport clips it.
                 // Otherwise a shorter proposal can truncate wrapped transcript text
                 // instead of letting the scroller reveal it.
-                Text(message.text).font(.system(size: 13, weight: .semibold))
-                    .lineSpacing(NativeMokuTalkTypography.lineSpacing).multilineTextAlignment(.center).textSelection(.enabled)
+                Group {
+                    if message.content.hasLinks {
+                        NativeMokuTalkLinks(content: message.content, workspace: workspace, compact: true)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { linkedHeight($0) }
+                    } else {
+                        Text(verbatim: message.text).font(.system(size: 13, weight: .semibold))
+                            .lineSpacing(NativeMokuTalkTypography.lineSpacing).multilineTextAlignment(.center).textSelection(.enabled)
+                    }
+                }
                     .contentTransition(.opacity)
                     .mokuInk(value: message.id)
                     .fixedSize(horizontal: false, vertical: true)

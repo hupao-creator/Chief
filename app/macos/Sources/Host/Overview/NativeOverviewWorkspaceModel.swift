@@ -425,7 +425,7 @@ public final class NativeOverviewWorkspaceModel {
         return content.activeIDs.contains(id) ? id : nil
     }
 
-    func revealNoteDestination(_ reference: ApplicationThreadRef) {
+    func revealExecutionDestination(_ reference: ApplicationThreadRef) {
         if browsingUnread {
             if unreadVersions[reference] != nil { return }
             browsingUnread = false

@@ -139,11 +139,11 @@ func exerciseLifecycle(ctx context.Context, invoke systemInvoke, host actionHost
 			}
 		}
 		for _, t := range next.Threads {
-			if t.Note != nil {
-				return next, errors.New("clear retained Moku note")
+			if hasChainReply(t) {
+				return next, errors.New("clear retained Chief reply")
 			}
 		}
-		fmt.Println("PASS history clear: settings retained; task/report/note/outbox removed; stale reads rejected")
+		fmt.Println("PASS history clear: settings retained; task/report/dialogue/outbox removed; stale reads rejected")
 		return next, nil
 	}
 	if len(children) == 0 {

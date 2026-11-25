@@ -73,34 +73,6 @@ enum MarkdownAlignment: Hashable, Sendable { case left, center, right }
 struct MarkdownDocument: Sendable {
     let blocks: [MarkdownBlock]
     let sourceBytes: Int
-
-    /// The viewport observer can only certify documents whose content has no
-    /// nested scrolling or asynchronous media reflow.
-    var coverageEligible: Bool { blocks.allSatisfy(eligible) && blocks.contains(where: hasText) }
-
-    private func hasText(_ block: MarkdownBlock) -> Bool {
-        switch block {
-        case .paragraph(let spans), .heading(_, let spans):
-            return spans.contains { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        case .quote(let children), .footnote(_, _, let children): return children.contains(where: hasText)
-        case .list(let items): return items.contains { $0.blocks.contains(where: hasText) }
-        case .code, .table, .rule: return false
-        }
-    }
-
-    private func eligible(_ block: MarkdownBlock) -> Bool {
-        switch block {
-        case .paragraph(let spans), .heading(_, let spans):
-            return !spans.isEmpty && spans.allSatisfy { $0.image == nil &&
-                ($0.link == nil || MarkdownURLPolicy.localFileURL($0.link!) == nil) }
-        case .quote(let children), .footnote(_, _, let children):
-            return !children.isEmpty && children.allSatisfy(eligible)
-        case .list(let items):
-            return !items.isEmpty && items.allSatisfy { !$0.blocks.isEmpty && $0.blocks.allSatisfy(eligible) }
-        case .rule: return true
-        case .code, .table: return false
-        }
-    }
 }
 
 /// Matches the renderer's safeUrl policy: relative URLs and the listed schemes

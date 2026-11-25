@@ -46,7 +46,7 @@ In a window or full screen, move two fingers up on a card or empty canvas to sel
 
 Resize the window to adjust how many cards you can see. Overview arranges cards across the window and centers them vertically. The folder and tag buttons at the top have a frosted glass background. The clear glass buttons on the left float over the cards. With **Reduce transparency** turned on in macOS, the filters have a solid background. Click a filter to select it, or click the visible part of a card between filters to open it. A wide task card can appear between two taller cards when there’s room for it there. Opening the Chief input box keeps the cards in place.
 
-Swipe up with two fingers over Chief’s eyes to read your conversation with Chief and reply. With the input box closed, right-click Chief Bar to open **Chief Note**. You can also use your trackpad’s secondary click or Control-click the bar. Scroll inside an open note or a long Chief Bar message to read more.
+Swipe up with two fingers over Chief’s eyes to read your conversation with Chief and reply. Scroll inside a long reply to read more. Click a run link in the compact bar or your conversation to open that result.
 
 When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or scroll horizontally with a mouse. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. In the Inbox **Completed** view, an outline marks the task card with keyboard focus. Click a task card, or press Return on a focused task, to open it.
 
@@ -64,7 +64,7 @@ While a task is running, a band of tiny dots sweeps diagonally behind its emoji 
 
 A red bookmark on the upper-left edge of the emoji badge means there’s a completed result or Super Thread document you haven’t viewed. Open the card and let the result or document appear in the foreground. When you return to Overview, the bookmark is gone. Chief remembers this after you quit. A newly completed run or a new version of the document brings the bookmark back.
 
-Overview hides a task conversation if its latest run failed or Chief stopped it. You may still reach it from an existing link in a Chief note or Super Thread. To send a follow-up, open the conversation and use its input box.
+Overview hides a task conversation if its latest run failed or Chief stopped it. You may still reach it from a link in a reply from Chief or in a Super Thread. To send a follow-up, open the conversation and use its input box.
 
 ## Archive a conversation
 

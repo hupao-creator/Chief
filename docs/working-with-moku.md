@@ -44,7 +44,7 @@ Chief also keeps the worktree if it cannot verify the files or find a saved bran
 
 After a successful removal, the checkout folder is gone. The task conversation stays in its original project, and its saved commits and branches remain in Git. Start a new task if you want an agent to do more work there.
 
-## Find Chief's replies and notes
+## Find Chief's replies
 
 In Overview, swipe up with two fingers over Chief’s eyes to read your conversation. The conversation opens above the input. If you already have a draft open, swipe up over the eyes beside the text to see the conversation and keep typing. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see the time beside each message, swipe left in the conversation and hold. Release to tuck the times away.
 
@@ -54,9 +54,9 @@ Use the input at the bottom to reply. A draft you started in the compact bar is 
 
 You can revisit these messages after restarting Chief in the same profile, including saved exchanges with a previous coordinating agent. A message can be recovered as long as Chief still has its conversation record. Clearing the history removes those exchanges. Messages you sent directly to a task stay in that task’s conversation.
 
-- **Replies.** Chief also shows its latest reply briefly on the compact bar. You can select the text, scroll through a longer reply, or swipe up to read it again.
+- **Replies.** Chief also shows its latest reply on the compact bar for one minute. You can select the text, scroll through a longer reply, or swipe up to read it again.
 - **Task updates.** Watch the bar for **Dispatching task**. **Thread started** means the task is ready to open. If the handoff fails, the bar shows **Dispatch failed**. Open the task card in Overview to see how the work is going.
-- **Notes.** In Overview, right-click Chief Bar with the input box closed to open **Chief Note**. You can also press **⌘⇧N**. Click the eyes centered below the note to start a message, or click a run’s link to read it. The note closes. If the conversation or its Super Thread is outside your selected folder or tag, Overview switches to a matching view before the reader opens. If the conversation belongs to exactly one Super Thread, its card opens with the run you clicked in **Related executions**. If its collection is visible, it turns to that Super Thread’s page first. Other links open the cited run in the task conversation. In both readers, you start at the top of the run. Click the **×** at the top left of the reader or press **⌘K** to return to Overview with the note closed. To resume the note from a task conversation, press **Esc** in the run you opened. In a Super Thread, you can use **Back to related executions** to browse other runs before closing the report. To reopen the note from Overview, right-click Chief Bar again.
+- **Links to a run.** Click the capsule with the arrow in the compact reply or in your conversation with Chief. The capsule shows Chief’s label or the task name. Each link opens the run it names, even if the agent has since started another. If the task belongs to one Super Thread, the run opens beside that report. Otherwise it opens in the task conversation. Both readers start at the top of the run. Click **×** or press **⌘K** to return to Overview. If the run is unavailable, you can still read the original message in your conversation with Chief.
 
 ## Stop Chief or a delegated task
 

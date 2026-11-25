@@ -121,7 +121,7 @@ struct NativeMokuCapsuleEyes: Shape {
     }
 }
 
-/// Note uses dark regular glass and the conversation follows the workspace appearance.
+/// The conversation follows the workspace appearance.
 /// The compact Bar keeps its warm finish. Reduce Transparency makes the shell opaque.
 struct NativeMokuCapsuleGlass: View {
     var interactive = true
@@ -146,7 +146,7 @@ struct NativeMokuCapsuleGlass: View {
             }
         } else {
             Color.clear
-                // Keep one glass node while Note changes the capsule's size and
+                // Keep one glass node while the conversation changes the capsule's size and
                 // material. Stacking clear and regular shells duplicates sampling.
                 .glassEffect(regular ? .regular : interactive ? Glass.clear.interactive() : .clear,
                              in: .rect(cornerRadius: NativeMokuCapsuleLayout.cornerRadius))

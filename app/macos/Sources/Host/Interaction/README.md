@@ -22,14 +22,9 @@ and return both report `transitioning`; return keeps the Settings route mounted
 until the capsule finishes contracting. `settings.open` is available only on a
 loaded Overview; other routes reject it without navigation.
 
-A Chief Note execution visit exposes `overview.dock.noteExecutionPhase`. It
-moves from `dismissing` while the Note closes to `locating` while Overview
-reveals the card and any Collection page, then to `reading` when the Host
-selects the reader. The field is null outside the visit. Compare the selected
-filter, Collection member and mounted execution with the isolated window
-recording to verify ordering and card travel.
+A Talk execution visit exposes `overview.dock.talkExecutionPhase`. It reports `locating` while Overview reveals the destination and `reading` when the host selects the reader. Outside the visit it is null.
 
-Overview offers Chief Compose and Note actions. Only ordinary Agent and application references can open a reader.
+Overview offers the Chief Compose action. Only ordinary Agent and application references can open a reader.
 
 Direct Swift callers can use, on the main actor:
 
@@ -107,7 +102,7 @@ while the retained canvas is hidden.
 
 ## E2E contract
 
-E2E-CHIEF-001 exercises Note and Compose on Overview and checks coordinator identities and rejection of the retired history command.
+E2E-CHIEF-001 opens Compose on Overview and checks coordinator identities and rejection of retired navigation commands.
 
 [`E2E-READ-001`](../../../../../tools/e2e/README.md) uses these real navigation
 callbacks and mounted reading registrations. Preconditions are an isolated

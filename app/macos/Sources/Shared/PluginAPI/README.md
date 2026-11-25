@@ -18,11 +18,9 @@ interactions and a callback to open the reading page. They do not receive
 steer/send input for a selected Thread. Reading surfaces retain the full thread
 action contract; Sidecard and Runtime message capabilities are independent.
 
-Moku's `ThreadNote` projection includes a text revision, an independent `readingRevision` CAS counter and at most one server-authored `lastExposure` with the exact earlier text. The strict decoder rejects malformed or inconsistent evidence. An exposure means the UI completed eligible foreground viewport coverage; it is not user approval or proof of understanding. The Host derives its update indicator from this projection, never from a local seen file.
-
 `HarnessThread.mokuHistory` identifies a previous Chief conversation retained
 after switching Harness. It requires an archived envelope without the current
-Moku flag or note. Hosts exclude these records from reading routes. The Runtime rejects execution, settings changes and unarchive attempts.
+Moku flag. Hosts exclude these records from reading routes. The Runtime rejects execution, settings changes and unarchive attempts.
 The client recognizes stored coordinator titles in live and offline records. The original JSON, ordinary thread titles and
 conversation content keep their stored values.
 

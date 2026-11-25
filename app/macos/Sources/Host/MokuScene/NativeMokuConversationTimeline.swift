@@ -3,6 +3,7 @@ import SwiftUI
 
 struct NativeMokuConversationTimeline: View {
     let page: NativeMokuConversationPage
+    var workspace: NativeWorkspaceModel?
     let showEarlier: (JSONText) -> Void
     let showNewer: (() -> Void)?
     @Environment(\.calendar) private var calendar
@@ -118,7 +119,7 @@ struct NativeMokuConversationTimeline: View {
             }
             HStack(spacing: 0) {
                 ConversationBubble(message: message, tail: tail, viewport: viewport,
-                                   viewportHeight: height, chinese: chinese)
+                                   viewportHeight: height, chinese: chinese, workspace: workspace)
                     .frame(maxWidth: max(1, (width - 28) * 0.76),
                            alignment: message.fromUser ? .trailing : .leading)
                     .padding(.horizontal, 14)
@@ -170,6 +171,7 @@ private struct ConversationBubble: View {
     let viewport: Namespace.ID
     let viewportHeight: CGFloat
     let chinese: Bool
+    let workspace: NativeWorkspaceModel?
     @Environment(\.colorScheme) private var scheme
     @Environment(\.colorSchemeContrast) private var contrast
 
@@ -177,9 +179,13 @@ private struct ConversationBubble: View {
         let user = message.fromUser
         let shape = ConversationBalloon(outgoing: user, tail: tail)
         let speaker = user ? (chinese ? "你" : "You") : "Chief"
-        let spoken = ([speaker, message.text] + message.attachments).filter { !$0.isEmpty }.joined(separator: ", ")
+        let talk = user ? nil : NativeMokuTalkText(message.text)
+        let spoken = ([speaker, talk?.hasLinks == true ? "" : message.text] + message.attachments).filter { !$0.isEmpty }.joined(separator: ", ")
         VStack(alignment: .leading, spacing: 4) {
-            if !message.text.isEmpty { Text(verbatim: message.text).textSelection(.enabled) }
+            if !message.text.isEmpty {
+                if let talk, talk.hasLinks { NativeMokuTalkLinks(content: talk, workspace: workspace, compact: false) }
+                else { Text(verbatim: message.text).textSelection(.enabled) }
+            }
             ForEach(message.attachments.indices, id: \.self) { i in
                 Label(message.attachments[i], systemImage: "paperclip").font(.callout).lineLimit(2)
             }
@@ -206,8 +212,8 @@ private struct ConversationBubble: View {
             }
         }
         .help(Text(message.date, format: .dateTime))
-        .accessibilityElement(children: .ignore)
-        .accessibilityAddTraits(.isStaticText)
+        .accessibilityElement(children: talk?.hasLinks == true ? .contain : .ignore)
+        .accessibilityAddTraits(talk?.hasLinks == true ? [] : .isStaticText)
         .accessibilityLabel(Text("\(Text(verbatim: spoken)) — \(Text(message.date, format: .dateTime))"))
         .accessibilityIdentifier("moku-conversation-message")
     }

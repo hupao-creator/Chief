@@ -18,8 +18,7 @@ collector and executable fingerprints.
   controls. An external AX client restricted
   to the fixture's own PID presses the controls. The visits check first-key
   delivery, UTF-16 selection, marked-text commit and draft restoration across
-  reversal and retirement. A Talk visit opens Note, reverses its return, opens
-  Settings, interrupts its close and uses the restored close controls. The fixture supplies the projected requests. `routes-offscreen` runs the same normal-motion
+  reversal and retirement. A Talk visit opens Settings, interrupts its close and uses the restored close control. The fixture supplies the projected requests. `routes-offscreen` runs the same normal-motion
   interaction checks entirely beyond the desktop and records AppKit view
   bitmaps. These images document layout and do not measure composited glass.
 

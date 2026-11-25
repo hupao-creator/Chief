@@ -62,7 +62,7 @@ struct ExecutionDocument: View {
             rows: [.init(id: JSONText(executionID.string + "-reply"), kind: .content,
                 node: AnyView(NativeMarkdownView(text: answer, openExternal: { _ in },
                     documentToken: token, onDocumentApplied: { document in
-                        if document?.token == token { ready() }
+                        if document == token { ready() }
                     })), finalReply: true)],
             createdAt: latest ? 1793869620000 : 1793869200000,
             updatedAt: 1793869740000, status: completed ? "已完成" : "运行中",

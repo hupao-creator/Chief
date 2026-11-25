@@ -59,7 +59,6 @@ public final class NativeMokuWorkspacePresentation {
     public private(set) var talk: String?
     public private(set) var talkID: JSONText?
     public private(set) var talkMessage: NativeMokuTalkMessage?
-    public private(set) var note: NativeMokuNote?
     public private(set) var replyKey: JSONText?
     public private(set) var intervention: NativeMokuDockIntervention?
     public private(set) var activeOperation: NativeOverviewMokuOperation?
@@ -153,7 +152,6 @@ public final class NativeMokuWorkspacePresentation {
         }
         talkMessage = NativeMokuTalkMessage.latest(in: moku)
         talkID = talkMessage?.id; talk = talkMessage?.text
-        note = NativeMokuNote.current(in: moku)
         replyKey = moku.flatMap { thread in harnessPresentation?.reply.flatMap { value in
             let text = value.excerpt.string.replacingOccurrences(of: "[*_~`>#-]+", with: " ", options: .regularExpression)
             guard !Self.normalizeWhitespace(text).isEmpty else { return nil }

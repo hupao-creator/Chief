@@ -12,7 +12,6 @@ struct NativeOverviewSwipeActions {
     let regions: NativeOverviewSwipeRegions
     let available: @MainActor () -> Bool
     let canFilter: @MainActor () -> Bool
-    let openNoteFromBar: @MainActor () -> Bool
     let openConversation: @MainActor () -> Void
     let stepRail: @MainActor (Bool) -> Void
 }

@@ -57,7 +57,7 @@ fill missing historical titles.
 
 This is a native reader policy shared by Codex, Claude, Pi and OpenCode across
 live, loaded historical, inherited/fork and deferred execution content (including
-OpenCode child sessions). Chief's coordinator audit, Note and Dock retain
+OpenCode child sessions). Chief's coordinator audit and Dock retain
 their own projections. Adjacent execution entries stay grouped across hidden entries. Running/waiting
 executions retain settled assistant replies. Unfinished assistant messages do
 not display incrementally: each message renders its complete body only after

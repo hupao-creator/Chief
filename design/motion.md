@@ -3,7 +3,7 @@
 Opening a Report from Overview or the [Super Thread member grid](../app/macos/Sources/Host/Overview/README.md#viewed-application-collections)
 uses one native panel transition. The panel opens from the activated card and
 returns to the card in the originating surface. The reader can show its usual loading state.
-A Chief Note link closes the Note before Overview reveals its destination.
+Activating an execution link in a Chief message reveals its destination in Overview.
 If the active filter excludes the destination, Overview selects a matching
 filter. A grouped Report turns to the requested page before the reader opens.
 The settled card uses its ordinary 420ms opening, including the Agent card’s

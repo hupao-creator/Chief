@@ -76,7 +76,7 @@ func (r *Runtime) EnsureMokuThread(ctx context.Context, harnessID string, settin
 			return t, nil
 		}
 	}
-	return r.createMokuShell(ctx, "", harnessID, settings, cwd, nil, false, false)
+	return r.createMokuShell(ctx, "", harnessID, settings, cwd, nil, false)
 }
 func (r *Runtime) EnsureConfiguredMokuThread(ctx context.Context, configuration MokuConfiguration) (model.ThreadRecord, error) {
 	threads, err := r.Threads()
@@ -92,7 +92,7 @@ func (r *Runtime) EnsureConfiguredMokuThread(ctx context.Context, configuration 
 	if !configuration.Unapplied {
 		applied = &configuration
 	}
-	return r.createMokuShell(ctx, "", configuration.HarnessID, configuration.Settings, configuration.Cwd, applied, false, false)
+	return r.createMokuShell(ctx, "", configuration.HarnessID, configuration.Settings, configuration.Cwd, applied, false)
 }
 func (r *Runtime) ReplaceConfiguredMokuThread(ctx context.Context, oldID string, configuration MokuConfiguration) (model.ThreadRecord, error) {
 	if oldID != "" {
@@ -115,9 +115,9 @@ func (r *Runtime) ReplaceConfiguredMokuThread(ctx context.Context, oldID string,
 	if !configuration.Unapplied {
 		applied = &configuration
 	}
-	return r.createMokuShell(ctx, oldID, configuration.HarnessID, configuration.Settings, configuration.Cwd, applied, configuration.PreserveNote, configuration.PreserveHistory)
+	return r.createMokuShell(ctx, oldID, configuration.HarnessID, configuration.Settings, configuration.Cwd, applied, configuration.PreserveHistory)
 }
-func (r *Runtime) createMokuShell(ctx context.Context, oldID, harnessID string, settings json.RawMessage, cwd string, applied *MokuConfiguration, preserveNote, preserveHistory bool) (model.ThreadRecord, error) {
+func (r *Runtime) createMokuShell(ctx context.Context, oldID, harnessID string, settings json.RawMessage, cwd string, applied *MokuConfiguration, preserveHistory bool) (model.ThreadRecord, error) {
 	if r.config.Harnesses[harnessID] == nil {
 		return model.ThreadRecord{}, fmt.Errorf("unknown Chief harness: %s", harnessID)
 	}
@@ -155,14 +155,6 @@ func (r *Runtime) createMokuShell(ctx context.Context, oldID, harnessID string, 
 			if !ok || !old.Moku {
 				return errors.New("Chief session changed during replacement")
 			}
-			if preserveNote && old.Note != nil {
-				note := *old.Note
-				if note.LastExposure != nil {
-					exposure := *note.LastExposure
-					note.LastExposure = &exposure
-				}
-				thread.Note = &note
-			}
 			if preserveHistory {
 				// Native state can contain Moku-only instructions and tools. Keep
 				// it readable, but never turn it into an executable ordinary task.
@@ -171,7 +163,6 @@ func (r *Runtime) createMokuShell(ctx context.Context, oldID, harnessID string, 
 				archive.MokuHistory = true
 				archived := true
 				archive.Archived = &archived
-				archive.Note = nil
 				archive.Title = "Chief history · " + old.HarnessID
 				archive.UpdatedAt = now
 				archive.Revision++

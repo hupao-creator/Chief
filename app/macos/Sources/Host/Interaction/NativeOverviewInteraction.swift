@@ -109,7 +109,6 @@ extension NativeWorkspacePresentation {
             if overview.error != nil || canvas.layoutError != nil { result.append("overview.retry") }
             if overview.chromeInteractions.hasButtons { result.append("overview.filters.activate") }
             if overview.chromeInteractions.canScroll { result.append("overview.filters.scroll") }
-            if canToggleMokuNote { result.append("moku.note.toggle") }
         }
         if scene.dockRouteVisible, !scene.disabled, !scene.dockCovered { result.append("moku.input.toggle") }
         return result
@@ -182,8 +181,8 @@ extension NativeWorkspacePresentation {
             "selectedRailId": overview.selectedRailID.map(JSONValue.text) ?? .null,
             "status": .text(overview.statusFilter.rawValue),
             "dock": .object(["inputOpen": .bool(scene.inputOpen), "inputLeaving": .bool(scene.inputLeaving),
-                "noteExecutionPhase": scene.noteReadingOrigin.map { .text($0.phase.rawValue) } ?? .null,
-                "noteOpen": .bool(scene.notePanelOpen), "covered": .bool(scene.dockCovered)])
+                "talkExecutionPhase": scene.talkReadingOrigin.map { .text($0.phase.rawValue) } ?? .null,
+                "covered": .bool(scene.dockCovered)])
         ])
     }
 
@@ -194,7 +193,6 @@ extension NativeWorkspacePresentation {
         case .overviewActivateFilter(let group, let id): try overview.chromeInteractions.activate(group, id: id)
         case .overviewScrollFilter(let id): try overview.chromeInteractions.scrollTo(id)
         case .toggleMokuInput: scene.toggleInput(focusOnOpening: true)
-        case .toggleMokuNote: toggleMokuNote()
         default: throw NativeInteractionError("invalid_request", "Not an Overview action")
         }
     }

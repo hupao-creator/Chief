@@ -100,7 +100,7 @@ controls check that measurement; the SwiftUI and AppKit drag controls exercise
 the drag collector used by older artifacts. On the product Overview, a physical two-finger
 vertical swipe anywhere on the canvas steps through the choices displayed in the left column. Keep pan and tail probes horizontal. The
 wrong-axis control exercises the collector against the control app. The
-[workspace replay](../../demos/moku-landing/README.md#overview-note-click-at-actual-size)
+[workspace replay](../../demos/moku-landing/README.md#overview-bar-swipe-at-actual-size)
 covers the product gesture.
 
 ## Scenarios and metrics

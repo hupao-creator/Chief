@@ -21,7 +21,7 @@ func (b *Bootstrap) mokuConfiguration(cwd, data string) moku.Configuration {
 		Workspace: cwd, DataDir: data, Harnesses: b.harnesses,
 		HarnessEnabled: func(id string) bool { return b.disabled[id] == "" }, IsDeleting: r.IsDeleting,
 		WithSettingsAdmission: r.WithConfigurationAdmission, PrepareSettings: r.PrepareSettings,
-		GrepThreads: r.GrepThreads, Settings: r.Settings, Threads: r.Threads, Thread: r.Thread, UpdateThread: r.UpdateThread, UpdateNote: r.UpdateMokuNote,
+		GrepThreads: r.GrepThreads, Settings: r.Settings, Threads: r.Threads, Thread: r.Thread, UpdateThread: r.UpdateThread,
 		ReadSessionConfiguration: func() (moku.SessionConfiguration, error) {
 			value, err := r.ReadMokuConfiguration()
 			return moku.SessionConfiguration{Unapplied: value.Unapplied, HarnessID: value.HarnessID, Settings: value.Settings, AppliedSettings: value.AppliedSettings, SettingsRevision: value.SettingsRevision, Cwd: value.Cwd}, err
@@ -30,7 +30,7 @@ func (b *Bootstrap) mokuConfiguration(cwd, data string) moku.Configuration {
 			return r.EnsureConfiguredMokuThread(ctx, core.MokuConfiguration{Unapplied: value.Unapplied, HarnessID: value.HarnessID, Settings: value.Settings, Cwd: value.Cwd, AppliedSettings: value.AppliedSettings, SettingsRevision: value.SettingsRevision})
 		},
 		ReplaceSession: func(ctx context.Context, id string, value moku.SessionConfiguration) (model.ThreadRecord, error) {
-			return r.ReplaceConfiguredMokuThread(ctx, id, core.MokuConfiguration{Unapplied: value.Unapplied, HarnessID: value.HarnessID, Settings: value.Settings, Cwd: value.Cwd, AppliedSettings: value.AppliedSettings, SettingsRevision: value.SettingsRevision, PreserveNote: value.PreserveNote, PreserveHistory: value.PreserveHistory})
+			return r.ReplaceConfiguredMokuThread(ctx, id, core.MokuConfiguration{Unapplied: value.Unapplied, HarnessID: value.HarnessID, Settings: value.Settings, Cwd: value.Cwd, AppliedSettings: value.AppliedSettings, SettingsRevision: value.SettingsRevision, PreserveHistory: value.PreserveHistory})
 		},
 		ConfigureSession: func(ctx context.Context, id string, revision int64, value moku.SessionConfiguration) error {
 			return r.ConfigureMokuThread(ctx, id, revision, value.HarnessID, value.Settings, value.AppliedSettings, value.SettingsRevision, value.Cwd)
