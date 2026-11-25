@@ -181,3 +181,12 @@ acquisition failure still reports an error. See the current
 
 The native initialized inventory and matching complete cached snapshots supply
 routing. No bundled Moku catalog or wait-for-provenance heuristic is supplied.
+
+## Chief tool schemas
+
+Chief publishes MCP input schemas with no root `allOf`, `anyOf` or `oneOf`
+so Claude Code can advertise every Chief tool with an empty feature-flag cache.
+The `create_thread` schema uses its required `worktree` boolean to select the
+`cwd` or `worktreeName` constraint. The choice of exactly one Harness stays
+inside `target`. The bridge translates the root `oneOf` on `send_to_thread`
+to preserve its exclusive choice between a single Thread ID and a target list.

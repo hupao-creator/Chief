@@ -72,7 +72,7 @@ controls are in the [PBT guide](../../../tools/verification/pbt/README.md).
 
 Moku guidance defaults to managed `worktree:true` for tasks in a committed Git workspace, even without parallel tasks. It reserves `false` for tasks without an eligible Git workspace, explicit requests for the existing checkout, or tasks requiring its uncommitted changes or live state. Moku creates the managed worktree through `create_thread` rather than delegating worktree creation to the Agent. This is model guidance, not an enforced boolean default.
 
-Every `create_thread` call supplies `worktree` as a boolean. `false` uses an explicit existing directory or allocates a temporary workspace. `true` requires an explicit committed Git workspace. The result distinguishes base `workspace.cwd` from execution `workspace.worktreeCwd`. Optional `worktreeName` is a directory label, never the task title; [workspace rules](../workspaces/README.md) define validation, normalization, collisions and reported adjustments.
+Every `create_thread` call supplies `worktree` as a boolean. `false` uses an explicit existing directory or allocates a temporary workspace. `true` requires an explicit committed Git workspace. The result distinguishes base `workspace.cwd` from execution `workspace.worktreeCwd`. A nonblank `worktreeName` requires `worktree:true`. This optional directory label stays separate from the task title; [workspace rules](../workspaces/README.md) define validation, normalization, collisions and reported adjustments.
 
 On an explicit cleanup request, `remove_worktree` accepts only the owning ordinary
 `threadId`. Its binding uses the current Chief execution scope and records the
