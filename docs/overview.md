@@ -22,9 +22,9 @@ Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find
 
 ## Find unread conversations
 
-Click 🔖 **Unread** next to **Running** on the left edge of Overview. You’ll see conversations with red bookmarks across the workspace, including results that have no tag and unread Super Thread documents.
+Choose a folder or tag in the top row, then click 🔖 **Unread** next to **Running** on the left. You’ll see the conversations counted by that top button’s red number, including unread Super Thread documents. A folder includes all its tags and tasks still waiting for a tag. Click another top button to see its unread conversations. If there are no folders or tags in the top row, **Unread** shows all bookmarked conversations.
 
-Open a card and wait for the result or document to appear. Close the reader to return to **Unread**. It fades in place, or closes immediately with Reduce Motion on. The card you just read is gone. A new completed result or document revision brings it back. If you’ve read everything, Overview shows **No unread conversations** and keeps **Unread** selected. Choose another filter to leave this view.
+Open a card and wait for the result or document to appear. Close the reader to return to **Unread**. It fades in place, or closes immediately with Reduce Motion on. The card you just read is gone. A new completed result or document revision brings it back. If you’ve read everything in the current view, Overview shows **No unread conversations** and keeps **Unread** selected. Click **Running** to leave the unread view.
 
 A red number on a folder counts conversations with an unread completed result or Super Thread document among its cards. A red number on a tag counts unread conversations in that tag. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
@@ -36,7 +36,7 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 In a project folder, click ⏳ **Running** at the bottom of the left column. It shows running tasks from across that folder, including tasks under other tags. The hourglass stays available when the folder has no running tasks. Click another tag to see its cards, or click the folder at the top to see all its work.
 
-When you choose an Inbox tag at the top, click ⏳ **Running**, 🗂️ **All statuses**, or 🏁 **Completed** to see conversations in that tag. Each Inbox tag opens with **All statuses**. **Completed** includes successfully finished tasks with no pending input or background work and any Super Threads in that tag. 🔖 **Unread** opens the workspace-wide view.
+When you choose an Inbox tag at the top, click ⏳ **Running**, 🗂️ **All statuses**, or 🏁 **Completed** to see conversations in that tag. When you enter an Inbox tag from **Unread**, it keeps **Unread** selected. Otherwise it opens with **All statuses**. **Completed** includes successfully finished tasks with no pending input or background work and any Super Threads in that tag.
 
 **Running** includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. Cards enter and leave as the work changes. When the last running task leaves, a sleeping skillet appears above **No running conversations**.
 

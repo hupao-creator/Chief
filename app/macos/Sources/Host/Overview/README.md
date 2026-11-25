@@ -348,17 +348,16 @@ or the whole directory. The built-in is never an automatic first selection.
 
 For a top-row Inbox semantic tag the left column instead offers Running,
 Unread, All statuses and Completed in that order. An Inbox status stays with the
-selected tag during catalog updates. Choosing another Inbox tag or reopening
-the app starts that tag at All statuses. A real directory named Inbox uses
-the ordinary directory rail.
+selected tag during catalog updates. Switching top buttons in Unread keeps that
+preset active. Other Inbox tag changes and reopening the app start at All statuses.
+A real directory named Inbox uses the ordinary directory rail.
 
 If eligible conversations exist without a selected space, the left column offers
 Running and Unread, starting with the default untagged running view. Unread
-shows the workspace-wide [bookmark membership](#unread-bookmarks) and keeps its
-own canvas position. It is session-local and leaves the underlying folder or
-tag selection available. Choosing a folder, tag or another preset resumes the
-respective scope. A live first assignment can update the underlying space
-while Unread stays selected.
+uses the [bookmark membership](#unread-bookmarks) and keeps a canvas position
+for each top-row space. It is session-local. Selecting the current top button,
+a left-side tag or another preset leaves Unread. A live first assignment can
+update the underlying space while Unread stays selected.
 
 Saved choices use filter kind and canonical scope. The optional directory
 `runningTag` marks an explicit built-in selection. `overviewRunningDirectories`
@@ -587,13 +586,14 @@ per type, Thread ID and version. Revisiting that version is idempotent. A new
 revision or completed execution starts unread. The collection visit timer and
 ranking keep their independent rules.
 
-The Unread preset projects every visible, unarchived Agent or application Thread
-with a current unread version, across scopes and regardless of semantic tags.
-Report execution coverage still applies to folder and tag membership. Each
-Thread with an unread bookmark remains eligible in Unread, including an Agent
-Thread cited by a Report. Receipt and catalog changes update the preset's
-membership. When the last version is acknowledged, the selected preset shows
-the localized empty message with the sleeping skillet.
+The Unread preset intersects current unread versions with the browsing membership
+of the selected top-row folder or semantic tag. A folder includes its full
+membership even when a child tag was selected before entering Unread. Report
+coverage is resolved for that space before the unread filter. Each overlapping tag
+can include the same unread Thread. With no top-row space, all eligible unread
+versions are visible. Receipt and catalog changes update the preset’s membership.
+When the selected space has no unread versions, the preset shows the localized
+empty message with the sleeping skillet.
 
 ## Viewed application collections
 
