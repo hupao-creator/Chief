@@ -82,7 +82,7 @@ that time from foreground reading. Selecting a carousel page is not a reading ev
 
 
 Overview publishes the unread Thread count for each folder and semantic tag.
-The folder count covers its tagged members while a semantic tag is selected.
+The folder count covers its full membership while a semantic tag is selected.
 The filter tree describes the choices in the catalog. The mounted controls
 identify the choices available on the current Overview. Filter activation
 invokes the registered button action. Top-row Inbox tags register as semantic

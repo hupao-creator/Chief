@@ -2,9 +2,9 @@
 
 ## Find a task by folder or tag
 
-Press **⌘K** to open **Overview**. Chief highlights your last folder or tag and shows its cards, even after you quit and reopen the app. On your first visit, or if that choice is unavailable when you reopen Chief, Overview selects the first available folder or Inbox tag in the top row. Click a folder icon at the top to see that project’s tagged work. Folders with the same name appear separately.
+Press **⌘K** to open **Overview**. Chief highlights your last folder or tag and shows its cards, even after you quit and reopen the app. On your first visit, or if that choice is unavailable when you reopen Chief, Overview selects the first available folder or Inbox tag in the top row. When a new task has a project folder, its folder appears in the top row as soon as its card appears. Click the folder to see its tasks, including those still waiting for a tag. Folders with the same name appear separately.
 
-Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. If your conversations have no tags yet, Overview shows **No running conversations** until a task starts. Its card appears as soon as it’s running. If you already have folders or tags in Overview, click the hourglass next to Settings (**Running without a tag**) to find running tasks that are still waiting for a tag.
+Tasks without a project folder belong to Inbox. Their tags appear in the same top row, each with an emoji and a name. Click a tag there to see its matching cards. If you have only Inbox conversations and none have tags yet, Overview shows **No running conversations** until a task starts. Its card appears as soon as it’s running. If you already have folders or tags in Overview, click the hourglass next to Settings (**Running without a tag**) to find running tasks that are still waiting for a tag.
 
 When a task gets its first tag, Overview selects that tag and shows its cards. This also happens when you branch a conversation that already has a tag. If you’re reading a conversation or using Settings, you can keep working there. You’ll see the selected tag when you return to Overview. If a Super Thread collection is open, the switch waits until you close it.
 
@@ -16,7 +16,7 @@ When you close a task conversation or Super Thread to return to Overview, the to
 
 A colored button marks your selection. A tag takes its tint from its emoji, whether you choose it at the top or on the left. Selected folders have a muted gold tint.
 
-When you switch to another folder at the top, Chief restores the last tag or **Running** choice you made there. If your saved choice is unavailable or you haven't made one, Chief opens the first visible semantic tag, or the whole folder if there are none. Click the current folder at the top to see all its tagged work.
+When you switch to another folder at the top, Chief restores the last tag or **Running** choice you made there. If your saved choice is unavailable or you haven't made one, Chief opens the first visible semantic tag, or the whole folder if there are none. Click the current folder at the top to see all its work.
 
 Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find a task that’s running or waiting for your response. Choose that folder or Inbox tag, then click ⏳ on the left to see its running tasks. With **Reduce Motion** turned on in macOS, the dots stay still.
 
@@ -26,7 +26,7 @@ Click 🔖 **Unread** next to **Running** on the left edge of Overview. You’ll
 
 Open a card and wait for the result or document to appear. When you return to **Unread**, that card is gone. A new completed result or document revision brings it back. If you’ve read everything, Overview shows **No unread conversations** and keeps **Unread** selected. Choose another filter to leave this view.
 
-A red number on a folder counts conversations with an unread completed result or Super Thread document among its tagged cards. A red number on a tag counts unread conversations in that tag. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
+A red number on a folder counts conversations with an unread completed result or Super Thread document among its cards. A red number on a tag counts unread conversations in that tag. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
 To mark a tag’s conversations as read together, press and hold its button on the left for half a second, then release. You can do this while viewing another tag. The red bookmarks clear and every tag containing those conversations updates its count. A newly completed run or an updated Super Thread document can bring a bookmark back.
 
@@ -34,7 +34,7 @@ If a Super Thread in the same view cites a task's latest run, its card can stand
 
 ## Find running work
 
-In a project folder, click ⏳ **Running** at the bottom of the left column. It shows running tasks from across that folder, including tasks under other tags. The hourglass stays available when the folder has no running tasks. Click another tag to see its cards, or click the folder at the top to see all its tagged work.
+In a project folder, click ⏳ **Running** at the bottom of the left column. It shows running tasks from across that folder, including tasks under other tags. The hourglass stays available when the folder has no running tasks. Click another tag to see its cards, or click the folder at the top to see all its work.
 
 When you choose an Inbox tag at the top, click ⏳ **Running**, 🗂️ **All statuses**, or 🏁 **Completed** to see conversations in that tag. Each Inbox tag opens with **All statuses**. **Completed** includes successfully finished tasks with no pending input or background work and any Super Threads in that tag. 🔖 **Unread** opens the workspace-wide view.
 

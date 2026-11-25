@@ -1970,10 +1970,12 @@ private final class WheelSample: NSEvent {
             }
             samples.append(["step": step, "selection": selected, "cards": cards.sorted(), "rail": model.railChoices.map(\.id)])
         }
-        try await check("before selection without tags", selected: "running", cards: ["running-task"])
+        try await clickButton(runningButton)
+        try await check("folder Running before tagging", selected: "running", cards: ["running-task"])
         try await clickButton(unreadButton)
         try await check("unread without tags", selected: "unread", cards: [untagged.string])
-        guard model.visibleFilters.isEmpty, model.railChoices.map(\.id) == ["running", "unread"] else {
+        guard model.visibleFilters.map(\.id) == ["directory:/fixture:fixture"],
+              model.railChoices.map(\.id) == ["running", "unread"] else {
             throw ReplayError("Unread was unavailable without tags")
         }
         try await installTasks(0, revision: 3, authority: authority,
@@ -2029,7 +2031,7 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Missing semantic tag named Unread")
         }
         try await clickButton(runningButton)
-        try await check("folder Running", selected: "running", cards: [])
+        try await check("folder Running", selected: "running", cards: ["running-task"])
         try await clickButton(child.id)
         try await check("semantic Unread", selected: child.id, cards: ["tagged-task"])
         try await clickButton(unreadButton)
@@ -2044,14 +2046,15 @@ private final class WheelSample: NSEvent {
         captureScheme = .dark
         var revision = 2
         var samples = [[String: Any]]()
-        func thread(_ id: JSONText, _ status: PublicExecution.Status, tags: [JSONText] = []) throws -> JSONValue {
+        func thread(_ id: JSONText, _ status: PublicExecution.Status, tags: [JSONText] = [],
+                    cwd: JSONText = "/linked/task", scope: JSONText = "/fixture", label: JSONText = "Fixture") throws -> JSONValue {
             let execution = try PublicExecution(executionID: "run", status: status, startedAt: 1,
                 finishedAt: status == .completed ? 2 : nil)
             return try HarnessThread(id: id, harnessID: "codex", revision: revision, sessionState: .null,
-                observation: .init(latestExecution: execution), cwd: "/fixture", settings: .object([:]),
+                observation: .init(latestExecution: execution), cwd: cwd, settings: .object([:]),
                 createdAt: 1, updatedAt: Double(revision), title: id, tags: tags,
                 tagEmojis: Dictionary(uniqueKeysWithValues: tags.map { ($0, "📌") }),
-                directoryTag: "Fixture", directoryScope: "/fixture").json
+                directoryTag: label, directoryScope: scope).json
         }
         func patch(_ rows: [JSONValue]) async throws {
             let delta: JSONValue = .object(["type": .text("state-patched"), "baseRevision": .integer(revision - 1),
@@ -2079,7 +2082,7 @@ private final class WheelSample: NSEvent {
             let frame = window.convertFromScreen(try filterButton(id, in: window).frame)
             try click(window, at: CGPoint(x: frame.minX + frame.height / 2, y: frame.midY))
         }
-        try await installTasks(0, revision: revision, authority: authority, extraThreads: [thread("Task", .completed)])
+        try await installTasks(0, revision: revision, authority: authority, extraThreads: [thread("Inbox", .completed, cwd: "", scope: "inbox", label: "")])
         revision += 1
         try await check("no-running", [], nil, captureFrame: true)
         let copy = try recognizedLines(in: directory.appending(path: "no-running.png"), languages: ["en-US"],
@@ -2088,9 +2091,16 @@ private final class WheelSample: NSEvent {
             throw ReplayError("Missing no-running message: " + copy.map(\.text).joined(separator: ", "))
         }
         try await patch([thread("Task", .running)])
-        try await check("running-without-tag", ["Task"], nil, captureFrame: true)
-        try await patch([thread("Task", .running, tags: ["Fixture"])])
         let folderID = "directory:/fixture:fixture", tagID = "semantic:/fixture:fixture"
+        guard model.visibleFilters.map(\.id) == [folderID], model.selectedFilter?.id == folderID,
+              model.items.map(\.id) == ["Task"], model.railChoices.map(\.id) == ["running", "unread"] else {
+            throw ReplayError("First untagged project card and folder did not enter the same catalog update")
+        }
+        try await check("running-without-tag", ["Task"], folderID, captureFrame: true)
+        for id in [folderID, "overview-status-running", "overview-status-unread"] {
+            _ = try filterButton(id, in: window)
+        }
+        try await patch([thread("Task", .running, tags: ["Fixture"])])
         try await check("first-tag", ["Task"], tagID, captureFrame: true)
         try await press(folderID)
         try await check("sole-equal-child", ["Task"], folderID)
@@ -2461,7 +2471,7 @@ private final class WheelSample: NSEvent {
               let namedFolder = tags.first(where: { $0.scope == "/other/Inbox" && $0.isDirectory }) else {
             throw ReplayError("Missing scoped Shipping controls")
         }
-        let allCards = ordinary + reportIDs
+        let allCards = ordinary + ["Directory only"] + reportIDs
         let unreadCards = ["Background", "Delivered", "Inbox tagged", "Directory-only report"] + reportIDs
         try await check("all", .all, allCards)
         try await waitForFilterInput()
@@ -2609,7 +2619,7 @@ private final class WheelSample: NSEvent {
         try await activate(.directory, parent.id)
         try await check("directory-restores-shipping", .all, ["Delivered"], selected: shipping.tag)
         try await activate(.directory, parent.id)
-        try await check("directory-selected", .all, ordinary + reportIDs)
+        try await check("directory-selected", .all, allCards)
         let cardViewport = canvas.cardRegionInWindow
         guard cardViewport == CGRect(origin: .zero, size: content.bounds.size) else { throw ReplayError("A filter consumed card space") }
         let developmentFrame = try filterButton(development.id, in: window).frame
