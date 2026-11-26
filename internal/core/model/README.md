@@ -21,7 +21,10 @@ Public form preflight also produces internal typed native values, including acti
 defaults. Runtime passes those values to the Harness without reinterpreting the
 original numeric text. Client JSON cannot supply this trusted handoff. Free text
 remains literal even when it begins with an internal option-ID prefix; advertised
-choice membership is enforced separately.
+choice membership is enforced separately. Hidden answers are discarded before
+validation and never appear in `Answers`; a hidden field with an active default
+still validates and contributes its typed value, while one without a default
+contributes no value and is not subject to `required`.
 
 Source: [commands.go](commands.go), [command_validation.go](command_validation.go), [validate.go](validate.go), [records.go](records.go), [state.go](state.go). The authenticated wire version belongs to [transport](../../platform/transport/README.md).
 
