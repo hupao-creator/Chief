@@ -13,7 +13,7 @@ struct NativeOverviewSwipeActions {
     let available: @MainActor () -> Bool
     let canFilter: @MainActor () -> Bool
     let openConversation: @MainActor () -> Bool
-    let stepRail: @MainActor (Bool) -> Void
+    let stepRail: @MainActor (Bool) -> Bool
 }
 
 extension EnvironmentValues {
@@ -29,7 +29,9 @@ struct NativeOverviewVerticalSwipe {
     private var horizontal: CGFloat = 0
 
     @MainActor mutating func route(_ event: NSEvent, canFilter: () -> Bool,
-                                  perform: (Bool) -> Void) -> Bool {
+                                  perform: (Bool) -> Bool, requestFeedback: () -> Void = {
+                                      NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+                                  }) -> Bool {
         let phase = event.phase
         if !event.momentumPhase.isEmpty {
             if case .awaitingMomentum(let end) = stage, event.timestamp - end > 0.25 { stage = .idle }
@@ -47,7 +49,7 @@ struct NativeOverviewVerticalSwipe {
             stage = .idle
             let up = deltaY > 0
             guard abs(deltaY) > abs(event.scrollingDeltaX) * 1.5, canFilter() else { return false }
-            perform(up)
+            _ = perform(up)
             return true
         }
         let starting = phase.contains(.began) || phase.contains(.mayBegin)
@@ -84,7 +86,7 @@ struct NativeOverviewVerticalSwipe {
         }
         if abs(vertical) >= 24 {
             stage = .claimed
-            perform(vertical > 0)
+            if perform(vertical > 0), event.hasPreciseScrollingDeltas { requestFeedback() }
         }
         return true
     }

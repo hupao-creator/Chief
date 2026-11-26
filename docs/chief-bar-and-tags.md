@@ -28,7 +28,7 @@ From Overview, press **⇧⌘[** to move one space left or **⇧⌘]** to move o
 
 Hover over an icon on the left to see its name, then click it to filter the cards. In a project folder, you can choose one of its tags, **Running**, or **Unread**. With an Inbox tag selected at the top, the choices are **Running**, **Unread**, **All statuses**, and **Completed**.
 
-To cycle through these choices as shown below, move the pointer over a card or an empty part of the canvas. Swipe up with two fingers for the next option down the list, or down for the one above. A vertical mouse wheel also steps through the list. The selected label stays open. If nothing is running in that tag, **Running** shows **No running conversations**.
+To cycle through these choices as shown below, move the pointer over a card or an empty part of the canvas. Swipe up with two fingers for the next option down the list, or down for the one above. On a supported trackpad, you may feel a tap as the selected label changes. A vertical mouse wheel also steps through the list. The selected label stays open. If nothing is running in that tag, **Running** shows **No running conversations**.
 
 ![The left filter cycles through statuses. Task cards change, and the running view ends with a sleeping pan when no conversations are running.](images/overview-left-filters.gif)
 
