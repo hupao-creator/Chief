@@ -27,7 +27,9 @@ extension EnvironmentValues {
 /// Classify the starting surface before native scrolling. After recognition,
 /// keep the rest of the contact and its momentum even if the surface changes.
 struct NativeOverviewVerticalSwipe {
-    @MainActor static func playFeedback(_ pattern: NSHapticFeedbackManager.FeedbackPattern = .generic) {
+    static let defaultFeedbackPattern = NSHapticFeedbackManager.FeedbackPattern.generic
+
+    @MainActor static func playFeedback(_ pattern: NSHapticFeedbackManager.FeedbackPattern = defaultFeedbackPattern) {
         NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
     }
 

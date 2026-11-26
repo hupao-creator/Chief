@@ -51,7 +51,7 @@ private struct DemoError: Error, CustomStringConvertible {
     let fixture: Fixture
     @State private var swipeRequests = 0
     @State private var testRequests = 0
-    @State private var pattern = NSHapticFeedbackManager.FeedbackPattern.alignment
+    @State private var pattern = NativeOverviewVerticalSwipe.defaultFeedbackPattern
     init() {
         do { fixture = try Fixture() }
         catch { fatalError(String(describing: error)) }
