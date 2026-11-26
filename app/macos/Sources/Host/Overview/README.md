@@ -45,7 +45,8 @@ collections, use the Canvas's opaque palette surface and soft border. Reports
 share their metadata and flat 44pt emoji badge across individual cards,
 carousel pages and member cards. Carousel navigation retains native Liquid Glass.
 Running Agent Threads show a diagonal sweep of harness-colored perforations
-behind the stationary emoji. Reduce Motion holds the pattern still. Idle badges
+behind the stationary emoji. The same crest catches the neighboring card rim
+within 88pt of the corner. Reduce Motion holds both highlights still. Idle badges
 have a neutral fill and completed badges have a green completion fill and
 terminal symbol. Their accessible labels follow the projected execution status.
 The isolated `--benchmark-agent-emoji-badge liquid-glass` scenario can compare only
@@ -135,9 +136,9 @@ remounting.
 The body counter is an observation-boundary diagnostic, not a CPU/FPS
 measurement.
 
-The production card closure enables native derived scans. Both the scan and
-the running badge use Core Animation and receive viewport visibility from the
-canvas. The badge only mounts for a running status. The Release probe checks
+The production card closure enables native derived scans. The scan, running
+badge and edge reflection use Core Animation and receive viewport visibility
+from the canvas. The badge only mounts for a running status. The Release probe checks
 the mounted decorations on the production workspace path.
 See the [native decoration contract](../../Shared/PluginUI/README.md#native-overview-decorations).
 

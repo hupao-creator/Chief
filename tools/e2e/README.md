@@ -105,7 +105,9 @@ checks the active decorations in the mounted workspace against a fixture Runtime
 The [mounted filter replay](../../demos/moku-panel-transition/remaining/README.md)
 checks [folder and tag activity](../../app/macos/Sources/Host/Overview/README.md#tag-activity)
 while **Reading** is selected. The fixture includes a running task under **Work** in the same folder. The `tag-activity` and `tag-activity-reduced` cases
-inspect their dot pattern, its animation under each motion setting, and its
+first sample the 44pt badge and adjacent upper lip of the running card in **Work**,
+then verify that switching to **Reading** removes its edge. They inspect the filter
+dot pattern, its animation under each motion setting, and its
 removal when the task completes. The replay captures the production window.
 
 ## Harness Thread Markdown

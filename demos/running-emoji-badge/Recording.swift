@@ -38,8 +38,22 @@ private final class RecordingObserver: NSObject, SCRecordingOutputDelegate, Send
     let output = SCRecordingOutput(configuration: settings, delegate: observer)
     try stream.addRecordingOutput(output)
     try await stream.startCapture()
-    try await Task.sleep(for: .seconds(4))
-    if state.group == .range {
+    if state.group == .sizes {
+        let directory = URL(fileURLWithPath: "sizes", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for sample in CardSizeSample.all {
+            state.sizeID = sample.id
+            state.still = false
+            try await Task.sleep(for: .seconds(2.8))
+            state.still = true
+            try await Task.sleep(for: .milliseconds(350))
+            let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+            guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+            else { throw CocoaError(.fileWriteUnknown) }
+            try data.write(to: directory.appendingPathComponent(sample.id + ".png"))
+        }
+    } else if state.group == .range {
+        try await Task.sleep(for: .seconds(4))
         state.still = true
         try await Task.sleep(for: .seconds(1))
         let still = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
@@ -52,6 +66,7 @@ private final class RecordingObserver: NSObject, SCRecordingOutputDelegate, Send
         state.still = false
         try await Task.sleep(for: .seconds(3))
     } else {
+        try await Task.sleep(for: .seconds(4))
         state.status = .idle
         try await Task.sleep(for: .seconds(2))
         window.appearance = NSAppearance(named: .aqua)

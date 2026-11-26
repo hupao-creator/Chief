@@ -8,6 +8,7 @@ import SwiftUI
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if CommandLine.arguments.contains("--capture") { state.group = .colors }
+        if CommandLine.arguments.contains("--sizes") || CommandLine.arguments.contains("--capture-sizes") { state.group = .sizes }
         let host = NSHostingView(rootView: Comparison(state: state))
         let window = NSWindow(contentRect: NSRect(origin: .zero, size: host.fittingSize),
             styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
@@ -19,7 +20,7 @@ import SwiftUI
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(nil)
         NSApp.activate()
-        if CommandLine.arguments.contains("--capture") || CommandLine.arguments.contains("--capture-range") {
+        if CommandLine.arguments.contains(where: { $0.hasPrefix("--capture") }) {
             Task {
                 do {
                     try await recordComparison(window: window, state: state)
@@ -38,7 +39,7 @@ import SwiftUI
 @main private struct BadgeDemo {
     @MainActor static func main() throws {
         // Only the recorder writes files. Interactive launches also work after moving the app.
-        if CommandLine.arguments.contains("--capture") || CommandLine.arguments.contains("--capture-range") {
+        if CommandLine.arguments.contains(where: { $0.hasPrefix("--capture") }) {
             try prepareIsolatedNativeReplay()
         }
         let app = NSApplication.shared

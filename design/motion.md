@@ -26,9 +26,11 @@ Core Animation after admission; native main-thread layout can still delay
 preparation, mounting and callback delivery. A scheduled tick, display-link
 callback or GPU submission is not evidence of physical presentation or FPS.
 
-Running Agent Thread cards confine their status animation to the emoji badge.
-Core Animation sweeps the harness accent across fixed perforations. Reduce
-Motion holds a lit diagonal. Visibility and detachment retire the animations.
+Running Agent Thread cards carry a single upper-left to lower-right sweep across
+the emoji badge and the adjacent card edge. The edge light fades within 88pt
+of the upper-right corner, or above the badge on a wide identity-plus-extension
+layout. Core Animation moves the harness accent across the fixed rim and
+perforations. Reduce Motion holds the badge and edge on the same lit diagonal. Visibility and detachment retire the animations.
 The foreground emoji and the card body keep their positions. Active Overview
 folders and tags use the same sweep in the Overview accent behind their icon
 or emoji. [Tag activity](../app/macos/Sources/Host/Overview/README.md#tag-activity).
