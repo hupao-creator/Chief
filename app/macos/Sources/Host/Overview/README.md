@@ -248,7 +248,14 @@ Natural Scrolling is enabled, so both settings follow finger movement. From the 
 directory, up enters the first choice. Stepping past either end wraps to the
 opposite end. An empty rail or a single already-selected choice stays put. Recognition claims
 the rest of the contact and its momentum, even across controls or a change
-of selection. A vertically dominant unmodified line-wheel event steps the same list.
+of selection. When a phased, precise swipe changes the selected rail ID, the router
+asks AppKit for one generic haptic immediately. macOS chooses the feedback device
+and may ignore the request. A held contact, inertia, a step that leaves selection
+unchanged, wheel steps, clicks and keyboard navigation produce no request.
+The [native haptics demo](../../../../../demos/tag-space-haptics/README.md)
+exercises the router and selection model and provides a window for physical swipes.
+
+A vertically dominant unmodified line-wheel event steps the same list.
 
 The background, cards, carousel cover and filter controls accept these gestures.
 Horizontal starts retain their original owner through reversals. The

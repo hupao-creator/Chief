@@ -23,6 +23,7 @@
 | `tag-cloud-loading/` | 构建不可用：build.py 引用缺失的 NativeContentHost.swift；不提供验证覆盖 |
 | [tag-filter-morph](tag-filter-morph/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [tag-glass-morph](tag-glass-morph/README.md) | 独立交互/材质方案 fixture；生产行为见所属模块 |
+| [tag-space-haptics](tag-space-haptics/README.md) | 在隔离的 Overview 窗口手动体验触觉反馈；无窗口回放核对生产路由的选中项和请求次数 |
 | [tag-selection-preview](tag-selection-preview/README.md) | 独立 HTML 样式预览；不代表生产组件 |
 | [thread-card-cloud](thread-card-cloud/README.md) | 构建不可用：build.py 引用缺失的 NativeContentHost.swift；不提供验证覆盖 |
 | `thread-card-glass-timeline/` | 构建不可用：build.py 引用缺失的 NativeContentHost.swift；不提供验证覆盖 |

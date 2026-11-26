@@ -13,23 +13,33 @@ struct NativeOverviewSwipeActions {
     let available: @MainActor () -> Bool
     let canFilter: @MainActor () -> Bool
     let openConversation: @MainActor () -> Bool
-    let stepRail: @MainActor (Bool) -> Void
+    let stepRail: @MainActor (Bool) -> Bool
+    let requestFeedback: @MainActor () -> Void
 }
 
 extension EnvironmentValues {
     @Entry var overviewSwipeActions: NativeOverviewSwipeActions? = nil
+    @Entry var requestRailSwipeFeedback: @MainActor () -> Void = {
+        NativeOverviewVerticalSwipe.playFeedback()
+    }
 }
 
 /// Classify the starting surface before native scrolling. After recognition,
 /// keep the rest of the contact and its momentum even if the surface changes.
 struct NativeOverviewVerticalSwipe {
+    static let defaultFeedbackPattern = NSHapticFeedbackManager.FeedbackPattern.generic
+
+    @MainActor static func playFeedback(_ pattern: NSHapticFeedbackManager.FeedbackPattern = defaultFeedbackPattern) {
+        NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
+    }
+
     private enum Stage { case idle, possible, claimed, awaitingMomentum(TimeInterval), momentum }
     private var stage = Stage.idle
     private var vertical: CGFloat = 0
     private var horizontal: CGFloat = 0
 
     @MainActor mutating func route(_ event: NSEvent, canFilter: () -> Bool,
-                                  perform: (Bool) -> Void) -> Bool {
+                                  perform: (Bool) -> Bool, requestFeedback: () -> Void) -> Bool {
         let phase = event.phase
         if !event.momentumPhase.isEmpty {
             if case .awaitingMomentum(let end) = stage, event.timestamp - end > 0.25 { stage = .idle }
@@ -47,7 +57,7 @@ struct NativeOverviewVerticalSwipe {
             stage = .idle
             let up = deltaY > 0
             guard abs(deltaY) > abs(event.scrollingDeltaX) * 1.5, canFilter() else { return false }
-            perform(up)
+            _ = perform(up)
             return true
         }
         let starting = phase.contains(.began) || phase.contains(.mayBegin)
@@ -84,7 +94,7 @@ struct NativeOverviewVerticalSwipe {
         }
         if abs(vertical) >= 24 {
             stage = .claimed
-            perform(vertical > 0)
+            if perform(vertical > 0), event.hasPreciseScrollingDeltas { requestFeedback() }
         }
         return true
     }

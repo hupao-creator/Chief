@@ -367,14 +367,15 @@ public final class NativeOverviewWorkspaceModel {
                        kind: filter.map { $0.isDirectory ? .directory : .semantic }, unread: unread)
     }
 
-    func stepRail(up: Bool) {
+    func stepRail(up: Bool) -> Bool {
         let choices = railChoices
+        let previousID = selectedRailID
         let target: NativeOverviewRailChoice
-        if let selectedRailID {
-            guard choices.count > 1, let index = choices.firstIndex(where: { $0.id == selectedRailID }) else { return }
+        if let previousID {
+            guard choices.count > 1, let index = choices.firstIndex(where: { $0.id == previousID }) else { return false }
             target = choices[(index + (up ? 1 : choices.count - 1)) % choices.count]
         } else {
-            guard up, let first = choices.first else { return }
+            guard up, let first = choices.first else { return false }
             target = first
         }
         let previousScene = sceneKey, previousRevision = content.structureRevision
@@ -382,6 +383,7 @@ public final class NativeOverviewWorkspaceModel {
         if sceneKey != previousScene || content.structureRevision != previousRevision {
             canvasState.pendingRailSwipe = (sceneKey, content.structureRevision, up)
         }
+        return selectedRailID != previousID
     }
 
     func selectRailChoice(_ choice: NativeOverviewRailChoice) {
