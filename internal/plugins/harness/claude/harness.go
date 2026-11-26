@@ -251,9 +251,6 @@ func (h *Handle) Send(ctx context.Context, r plugin.SendRequest) error {
 		if settings.Thinking.Mode == "effort" && settings.Effort != settings.Thinking.Effort || settings.Thinking.Mode == "fixed" && settings.Effort != "" {
 			return errors.New("Claude thinking and native effort do not agree")
 		}
-		if e = h.harness.settings.validate(sendCtx, settings, record.Cwd); e != nil {
-			return e
-		}
 	}
 	h.mu.Lock()
 	current := h.state.Current()
@@ -1026,19 +1023,14 @@ func (h *Harness) ModelCatalog(ctx context.Context, r plugin.SettingsRequest) (j
 	if e != nil {
 		return nil, e
 	}
+	return catalogReferences(catalog)
+}
+func catalogReferences(c catalog) (json.RawMessage, error) {
 	models := []any{}
-	if str(catalog.CLI["status"]) == "available" {
-		_, env, e := h.resolve(ctx, r.Cwd, "")
-		if e != nil {
-			return nil, e
-		}
-		nativeAccount, e := usesNativeAccount(ctx, r.Cwd, env, "")
-		if e != nil {
-			return nil, e
-		}
-		for _, m := range catalog.Models {
+	if str(c.CLI["status"]) == "available" {
+		for _, m := range c.Models {
 			kind := "unknown"
-			if nativeAccount {
+			if c.nativeAccount {
 				kind = "native"
 			}
 			provenance := map[string]any{"kind": kind}

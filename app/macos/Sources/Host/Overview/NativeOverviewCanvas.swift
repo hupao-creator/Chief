@@ -787,7 +787,6 @@ private struct OverviewCardSemantic<Content: View>: View, Equatable {
                 .environment(\.threadCardUsesFlatMaterials, true)
                 .onAppear { onAppear(item.id) }
                 .onDisappear { onDisappear(item.id) }
-                .clipShape(.rect(cornerRadius: 22))
                 .allowsHitTesting(!isLayingOut)
                 .focusedValue(\.overviewFocusedCard, item.id)
                 .accessibilityHidden(!isActive)
@@ -811,7 +810,10 @@ private struct OverviewSwiftUICard<Content: View>: View, Equatable {
     @State private var animationVisibility = ThreadCardAnimationVisibility(isVisible: false)
     var body: some View {
         let coordinateSpace = coordinateSpace, viewport = viewport
-        content(item).environment(\.threadCardAnimationVisibility, animationVisibility)
+        content(item)
+            .clipShape(.rect(cornerRadius: NativeGeometry.overviewCardRadius))
+            .threadCardRunningEdge()
+            .environment(\.threadCardAnimationVisibility, animationVisibility)
             .onGeometryChange(for: Bool.self) { proxy in
                 proxy.frame(in: .named(coordinateSpace)).intersects(CGRect(origin: .zero, size: viewport))
             } action: { value in inViewport = value; animationVisibility.isVisible = visible && value }

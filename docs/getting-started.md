@@ -9,7 +9,7 @@ You'll need a Mac with Apple silicon running macOS 26 or later.
 3. Open the disk image. In the **Install Chief Alpha** window, drag **Chief Alpha.app** on the left onto **Applications** on the right. When copying finishes, eject the disk image. Open Chief Alpha from **Applications**.
 4. If macOS says it can't verify the developer or check the app for malicious software, confirm that you trust this copy. In **System Settings → Privacy & Security**, find the message for Chief Alpha and click **Open Anyway**. If macOS reports malware or damage, or the app still won't open, stop and contact your inviter with the warning text and release version.
 
-While Chief connects, you may see its skillet toss three agent icons. With Reduce Motion on, the three icons rest in the pan while you wait. If Chief says it can't connect to its background service, click **Reconnect**. When the connection succeeds, Chief shows setup or your workspace. If the message returns, include it and the release version when you contact your inviter. Remove account details and private paths before sharing a screenshot.
+While Chief connects, you may see its skillet toss three agent icons. If Overview opens on **No running conversations**, the icons settle into the pan and the message appears beneath it. With Reduce Motion on, the skillet stays still while you wait and the message appears immediately when Overview opens. If Chief says it can't connect to its background service, click **Reconnect**. When the connection succeeds, Chief shows setup or your workspace. If the message returns, include it and the release version when you contact your inviter. Remove account details and private paths before sharing a screenshot.
 
 ## Connect an agent
 
@@ -24,8 +24,10 @@ For a new Codex setup, Chief checks whether Codex supports its default **approve
 ## Choose who does what
 
 1. On the **Chief** page, choose the agent that will talk to you and coordinate your work. Below it, choose at least one agent it may assign tasks to. Complete any required model choices, then click **Continue** to save them and open the Tag Agent page. If you change the reasoning effort for a ready Codex model, you can continue immediately.
-2. On **Find your conversations**, choose how to run **Tag Agent**, then click **Continue**. Each role offers **Agent off**, **Use Chief**, or **Configure separately**. If you configure a role separately, select an agent. While Chief reads its settings, **Loading Agent configuration…** appears centered below the agent choices. When the form appears, complete its required fields to enable **Continue**. You can switch away and return to the same choices. [What each option does](settings.md#set-up-tag-agent-and-super-thread-agent)
+2. On **Find your conversations**, choose how to run **Tag Agent**. Each role offers **Agent off**, **Use Chief**, or **Configure separately**. Choose **Configure separately** to edit the model already on screen. On your first visit, it starts with Chief’s choices. On later visits, it shows the choices you saved for that role. Available options update in place. Complete the required fields, then click **Continue**. You can switch away and return to the same choices. [What each option does](settings.md#set-up-tag-agent-and-super-thread-agent)
 3. On **From text to pictures**, choose how to run **Super Thread Agent**, then click **Start using Chief**. The setup panel shrinks into Chief's input box. If the window stays active and visible, Chief's eyes blink once as the box appears. You can start typing as soon as setup closes.
+
+If you choose **Configure separately** and select **OpenCode** for either role, use **OpenCode model variant** (**思考强度** in Simplified Chinese) to choose the model’s variant.
 
 If you see a load or save error, use **Retry** next to it. If you quit partway through setup, Chief returns to the agent check and keeps the choices you've already saved.
 

@@ -186,7 +186,10 @@ and panels. The Help menu opens the English product guide. While the startup sur
 skillet tosses three agent marks over the workspace background in a 2.8-second loop.
 Its bowl and handle span about 191 pt, matching the sleeping skillet on Overview.
 Reduce Motion shows the agents resting in the pan.
-The first live catalog replaces the mark as soon as content is ready. If
+The workspace opens as soon as the catalog is admitted. When it opens directly
+on an empty status filter, the tossing agents settle and the same-sized pan
+moves into place above the status title. Reduce Motion shows the resting empty
+state immediately. Other destinations use their ordinary presentation. If
 startup has a saved catalog, the mark stays up while Chief attempts the
 initial connection. A failure allows browsing the saved catalog when available.
 If no catalog is available, the startup screen identifies Chief's background

@@ -205,6 +205,13 @@ public final class NativeHarnessHost {
         return surface
     }
 
+    func receivePublishedSettings(_ id: JSONText) {
+        for surface in globalSettingsSurfaces.values where surface.configuration.harnessID == id && surface.configuration.scope == .global() {
+            if surface.prefetchID != nil { surface.pendingPublication = true }
+            else { Task { try? await surface.readStoredPublication() } }
+        }
+    }
+
     func cachedSettingsSurface(configuration: NativeHarnessSettingsConfiguration) -> NativeHarnessSettingsSurface? {
         guard settingsLifetime.available,
               let surface = globalSettingsSurfaces[configuration.editorIdentity],
@@ -247,20 +254,34 @@ public final class NativeHarnessHost {
     }
 
     /// Each saved scope owns its retry budget independently of other discoveries.
-    func prefetchSettings(_ configuration: NativeHarnessSettingsConfiguration, reload: Bool = false, refresh: Bool = false) async {
+    func prefetchSettings(_ configuration: NativeHarnessSettingsConfiguration, reload: Bool = false, refresh: Bool = false,
+                          restorePublished: Bool = false) async {
         guard case .global = configuration.scope, !Task.isCancelled,
               let surface = try? makeSettingsSurface(configuration: configuration) else { return }
         if !reload && !refresh && surface.hasFreshPresentation { return }
+        if restorePublished, configuration.scope == .global(), !surface.hasPublishedPresentation, surface.prefetchID == nil {
+            // Restore this profile's persisted catalog before the separate native refresh.
+            try? await surface.readStoredPublication()
+            guard !Task.isCancelled, !surface.isReleased, surface.configuration == configuration else { return }
+        }
         let prefetchID = UUID()
         surface.prefetchID = prefetchID
-        defer { if surface.prefetchID == prefetchID { surface.prefetchID = nil } }
+        defer {
+            if surface.prefetchID == prefetchID {
+                surface.prefetchID = nil
+                if surface.pendingPublication {
+                    surface.pendingPublication = false
+                    Task { try? await surface.readStoredPublication() }
+                }
+            }
+        }
         for delay in [0, 1, 3] {
             do {
                 if delay > 0 { try await Task.sleep(for: .seconds(delay)) }
                 try Task.checkCancellation()
                 guard !surface.isReleased, surface.configuration == configuration,
                       surface.prefetchID == prefetchID else { return }
-                if (reload || refresh) && delay == 0 { try await surface.reload(refresh: refresh) }
+                if delay == 0 { try await surface.reload(refresh: refresh) }
                 else { try await surface.loadIfNeeded() }
                 if surface.preparationError == nil { return }
             } catch is CancellationError { return }

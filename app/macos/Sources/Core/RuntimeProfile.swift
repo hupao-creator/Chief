@@ -69,6 +69,20 @@ public struct RuntimeProfile: Sendable, Equatable {
         return canonicalPath(parent).appendingPathComponent(normalized.lastPathComponent, isDirectory: true)
     }
 
+    private var factoryResetMarker: URL { dataDirectory.appendingPathComponent("chief-factory-reset.json") }
+
+    public func hasPendingFactoryReset() throws -> Bool {
+        var info = stat()
+        if lstat(factoryResetMarker.path, &info) == 0 { return true }
+        if errno == ENOENT { return false }
+        throw Self.profileIOError("inspect the pending factory reset")
+    }
+
+    public func requestFactoryReset(epoch: String) throws {
+        let data = try JSONSerialization.data(withJSONObject: ["version": 1, "dataDir": dataDirectory.path, "epoch": epoch])
+        try RuntimePrivateFile.write(data, to: dataDirectory.appendingPathComponent("chief-factory-reset-request.json"))
+    }
+
     public func prepare() throws {
         try FileManager.default.createDirectory(at: dataDirectory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         let directory = discoveryURL.deletingLastPathComponent()

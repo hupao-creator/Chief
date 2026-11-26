@@ -104,6 +104,9 @@ def finish(directory, report):
             if r["kind"] == "confirmation":
                 ms = (late.get(r["step"], r["observedNS"]) - r["startNS"]) / 1_000_000
                 lines.append(f"| {r['step']} | {r['destination']} | {ms:.6f} | {r['status']} |")
+            elif r["kind"] == "role" and "startNS" in r:
+                ms = (r["observedNS"] - r["startNS"]) / 1_000_000
+                lines.append(f"| {r['id']} separate | Model field | {ms:.6f} | {r['status']} |")
         phases_file = directory / "onboarding-handoff.json"
         final = next((r for r in trace if r.get("step") == "report" and r["kind"] == "confirmation"), None)
         if phases_file.exists() and final and (final["status"] == "passed" or "report" in late):
@@ -227,6 +230,14 @@ def verify_onboarding(directory):
     if [(row["id"], row["selection"]) for row in trace if row["kind"] == "role"] != [
             ("tag.settings", "independent"), ("report.settings", "independent")]:
         raise ValueError("onboarding evidence lacks separate role selections")
+    requested = next((r["harness"] for r in trace if r["kind"] == "host"), None)
+    for row in (r for r in trace if r["kind"] == "role"):
+        if (row.get("status") != "passed" or not row.get("expectedModel") or row["expectedModel"] != row.get("model")
+                or (requested and row["field"] != f"{row['id']}.{requested}.model")
+                or not row["field"].startswith(row["id"] + ".") or not row["field"].endswith(".model")
+                or not row["startNS"] <= row["dispatchReturnedNS"] <= row["observedNS"]
+                or not 0 < row["observedNS"] - row["startNS"] < 1_000_000_000):
+            raise ValueError("separate role model field lacks a timely observation with its inherited value")
     persisted = json.loads((directory / "onboarding-persisted.json").read_text())
     if persisted["onboardingCompleted"] is not True or persisted["roles"] != roles:
         raise ValueError("passing onboarding evidence lacks saved settings")

@@ -7,7 +7,7 @@ var commandReadOnly = map[string]bool{
 	"attachment:preview": true, "attachment:image-path": true, "attachment:discard": false,
 	"moku:deliveries": true, "moku:resolve-delivery": false,
 	"moku:submit": false, "moku:clear": false, "moku:stage-attachments": false, "moku:cancel": false,
-	"history:clear": false, "thread:follow-up": false, "thread:interrupt": false,
+	"history:clear": false, "history:prepare-reset": false, "thread:follow-up": false, "thread:interrupt": false,
 	"thread:interaction-respond": false, "thread:read": true, "thread:fork": false,
 	"thread:update-settings": false, "app:update-settings": false,
 	"harness:detect-installations": false, "harness:detect-installation": true, "workspace:list-known-directories": true,

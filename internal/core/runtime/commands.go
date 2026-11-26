@@ -23,7 +23,7 @@ func (r *Runtime) Invoke(ctx context.Context, channel string, args []json.RawMes
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if channel != "history:clear" {
+	if channel != "history:clear" && channel != "history:prepare-reset" {
 		if err := r.begin(); err != nil {
 			return nil, err
 		}
@@ -31,7 +31,7 @@ func (r *Runtime) Invoke(ctx context.Context, channel string, args []json.RawMes
 	}
 	arity := 1
 	switch channel {
-	case "state:load", "history:clear", "moku:clear", "moku:deliveries", "harness:detect-installations", "workspace:list-known-directories":
+	case "state:load", "history:clear", "history:prepare-reset", "moku:clear", "moku:deliveries", "harness:detect-installations", "workspace:list-known-directories":
 		arity = 0
 	case "attachment:preview", "attachment:image-path", "thread:set-archived", "application:archive":
 		arity = 2
@@ -95,6 +95,8 @@ func (r *Runtime) Invoke(ctx context.Context, channel string, args []json.RawMes
 			return nil, errors.New("Chief participant unavailable")
 		}
 		return moku.Invoke(ctx, channel, args)
+	case "history:prepare-reset":
+		return nil, r.prepareFactoryReset(ctx)
 	case "history:clear":
 		return nil, r.ClearHistory(ctx)
 	case "thread:follow-up":

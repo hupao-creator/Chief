@@ -30,11 +30,10 @@ native failures cannot authorize replay or clear an uncertain outbox attempt.
 
 ## Tools and creation
 
-[tool_schema.go](tool_schema.go) composes tool schemas from Harness declarations. `create_thread` takes a `target` object with exactly one Harness key containing its native settings. Each Harness has its own named property, so model-facing fields and catalog descriptions retain their ownership even when a host discards root composition keywords. Inclusive property hints expose model/thinking choices only within that Harness; native fields are never merged across targets. The target's union selects a key without validating other Harnesses' options, keeping bounded error output focused on the supplied target. [schema_validation.go](schema_validation.go) and each Harness validate the actual request before execution; the parser decodes the one key into the existing internal Harness/options pair. Before validation, [schema_validation.go](schema_validation.go) repairs one narrow serialization fault: a container that a Harness stringified where the schema declares object/array is decoded, while declared strings, invalid JSON and values hidden behind `$ref`/`$defs` or conditional keywords pass through unchanged so the original schema error still surfaces. The same repair runs again against the native settings schema when `create_thread` resolves its target.
+[tool_schema.go](tool_schema.go) composes tool schemas from Harness declarations. `create_thread` takes a `target` object with exactly one Harness key containing its native settings. Each Harness has its own named property, so model-facing fields and catalog descriptions retain their ownership even when a host discards root composition keywords. Inclusive property hints expose model/thinking choices only within that Harness; native fields are never merged across targets. The target's union selects a key without validating other Harnesses' options, keeping bounded error output focused on the supplied target. [schema_validation.go](schema_validation.go) and each Harness validate the actual request before execution; the parser decodes the one key into the existing internal Harness/options pair. Before validation, [schema_validation.go](schema_validation.go) repairs one narrow serialization fault: a container that a Harness stringified where the schema declares object/array is decoded, while declared strings, invalid JSON and values hidden behind `$ref`/`$defs` or conditional keywords pass through unchanged so the original schema error still surfaces.
 
 Fixed tool schemas compile once per installed binding and are reused for that
-configuration generation. Dynamic target schemas remain freshly discovered and
-validated at creation admission.
+configuration generation. Published option changes are delivered through context and preserve the installed bindings.
 
 The Codex Harness additionally places the original injected input schemas in
 native developer instructions, so its model can read the complete creation
@@ -42,7 +41,7 @@ contract even when native tool-schema conversion drops composition details.
 Moku retains the same named-target schema and authoritative validation; Pi,
 OpenCode and Claude continue receiving their existing definitions.
 
-[tools.go](tools.go) implements `list_threads`, `create_thread`, `remove_worktree`, `describe_native_harness`, `get_thread_status`, `send_to_thread`, `interrupt_thread`, `ask_thread` and `talk`. Tool calls and results are audited under the owning Moku execution; cancellation follows the captured owner. Creation success means the target input was admitted, not that its work has completed. Listing and queries retain bounded, explicit public access. `ask_thread` makes a model request against an ordinary Agent Thread history fork or captured snapshot; it does not return raw history, send a message to the source, or change source state. The snapshot can be stale and is not a live status query. Terminal events arrive automatically; do not poll for progress or readiness.
+[tools.go](tools.go) implements `list_threads`, `create_thread`, `remove_worktree`, `get_thread_status`, `send_to_thread`, `interrupt_thread`, `ask_thread` and `talk`. Tool calls and results are audited under the owning Moku execution; cancellation follows the captured owner. Creation success means the target input was admitted, not that its work has completed. Listing and queries retain bounded, explicit public access. `ask_thread` makes a model request against an ordinary Agent Thread history fork or captured snapshot; it does not return raw history, send a message to the source, or change source state. The snapshot can be stale and is not a live status query. Terminal events arrive automatically; do not poll for progress or readiness.
 
 Tool scopes follow the current Moku Thread's monotonic record revision, not the
 arrival order of commit callbacks. A delayed metadata notification cannot
@@ -81,25 +80,24 @@ the confirmed `absentRoot`. A partial removal reports the retained path or pendi
 and directory tag. Its former execution directory is available as
 `workspace.removedWorktreeCwd`. See the [removal checks](../workspaces/README.md#explicit-removal).
 
-Ordinary tasks require the target Harness's explicit model/thinking choices. Codex also requires service tier. All built-in targets expose their native options in the initial creation schema; Moku does not need an on-demand discovery call to compare Harnesses. Cached discovery is not admission authority. Moku's own concrete execution profile is independent of ordinary task defaults.
-
-Moku uses each selected Harness's nonempty native response inventory for routing.
-[Model catalog metadata](../../core/plugin/model_catalog.go) separates completed
-enumeration from source completeness: native caches/fallbacks remain usable;
-unproven remote completeness remains false. Configuration identity fences reuse,
-and actual creation validates native options again. This does not attest remote
-source completeness or current execution availability.
-
-See [native catalog evidence and limits](catalog-evidence.md).
+Ordinary task creation uses the destination adapter's static argument contract.
+The model, provider, thinking controls and service tiers visible to Chief come
+from [published dispatch configuration](../dispatchconfig/README.md). A model
+directory can be absent, partial or unavailable when a task begins. The
+coordinator reads the selected providers' latest publication on natural input.
+A new publication can steer a running execution whose host supports atomic
+follow-up-only delivery. Other hosts receive the latest state on the next input.
+Idle publication cannot open a session or start work. Failed native dispatch
+preserves a known created Thread ID so Chief can inspect it before trying again.
 
 Every new execution crosses Runtime's common `admitMokuExecution` boundary:
 initial Send, renewal after exact unconsumed `ErrExecutionEnded`, and native
 Accept. Typed and relay submissions share Send. The immutable injection captures
-the prepared catalog/settings and installs its authority callback before native
+the applied settings and installs its authority callback before native
 Open. The callback is not serialized to tools or instructions. Native new work
 during Open is refused until preparation is published, avoiding reentrant lock
 acquisition. Background work cannot exempt new foreground executions from saved
-configuration or catalog checks. Steering an already admitted execution keeps
+configuration checks. Steering an already admitted execution keeps
 its original configuration.
 
 The coordinator's idle checks are preparation optimizations, not authority.
@@ -112,41 +110,16 @@ release their unconsumed attempt without treating wrapped/uncertain native error
 as replay permission. With pending configuration and live background work, input
 remains blocked until the old work drains instead of reopening underneath it.
 
-`x-chief-model-catalog` carries enumeration and source evidence separately.
-Routing accepts a successful nonempty native response inventory for every selected
-Harness. Source proof is informational; native cache/fallback is usable without
-being called remotely complete. Full inventories remain in the initial standard
-tool-schema description; unknown thinking controls restrict creation branches
-without hiding identities. Schemas over the 1 MiB budget fail rather than truncate.
+**PBT-DISPATCH-ADMISSION** drives the injected creation tool with OpenCode
+discovery offline. A generated native peer accepts or rejects an unpublished
+model. The property checks the exact selector, one send, one durable Thread,
+and its ID in the acknowledgement or rejection.
 
-A matching successful snapshot returns immediately even when expired or during
-refresh. Failed, empty or superseded refreshes do not replace it. Background
-failure is retained and exposed as a snapshot note; cold failure reports an error.
-Caches are Harness-owned, memory-only and drained on Close. Same-process handle
-replacement retains them; application restart reacquires native catalogs.
-
-Routing identity includes the captured launch/environment and observable native
-configuration/account inputs. Bounded dependency scanning strengthens the key;
-if scanning fails it falls back to root-file generations with a degraded marker.
-Cancellation still rejects and a detected source change fences publication.
-Arbitrary imports, custom credential helpers and remote/MDM policy are not thereby
-proven; unknown provenance does not prevent native inventory routing.
-Settings changes still participate in final Runtime admission. No system-prompt
-or tool-use instruction is added by discovery; directory data stays in schemas.
-
-Creation resolves the actual destination workspace, discovers its schema again,
-validates exact options and performs Harness-native admission. Keychain, remote
-account and untracked include-file changes may remain invisible until TTL expiry,
-background/manual native-settings refresh or live admission. Cached directories
-are explicitly described as potentially outdated, not current availability.
-These limitations do not turn
-an unknown/empty directory into a complete one.
-
-A successful matching cache hit does not wait for a native catalog fetch. A miss discovers the native inventory rather than rejecting unknown provenance. Host
-execution-profile preparation and local launch/dependency resolution remain
-separate costs. Native enumeration still has its existing bounds (OpenCode:
-30-second native timer and 55-second full probe, plus joined cleanup). Resolving local binaries and checking dependency fingerprints is separate work;
-unchanged Codex binary-version facts remain cached independently of catalog TTL.
+**PBT-DISPATCH-LIFECYCLE** generates publication, natural input, capability,
+execution identity and status changes. It checks inactive and waiting sessions,
+coalescing, previous delivery and native rejection at the coordinator port.
+The runtime also pins the expected execution and enforces follow-up-only
+delivery at native admission.
 
 Both creation/follow-up prompt schemas carry target-routing guidance: explicit
 user choices take precedence over general routing guidance and belong under the single Harness key in `create_thread.target`. Moku addresses the receiving Agent
@@ -214,8 +187,8 @@ The provider also receives configuration, context and tool definitions.
   user configuration after the built-in prompt and has no sentence cap within its existing settings
   limits; it neither replaces the base nor overrides explicit
   user routing choices.
-- Existing tool descriptions and schemas retain their full contracts: exact
-  native options and catalog status, routing, worktree naming, Talk
+- Existing tool descriptions and schemas retain their full contracts: explicit
+  native argument shapes, routing, worktree naming, Talk
   limits, execution links and bounded Thread queries.
 - `ContextEntries` contain session-start workspace context and before-send directory, telemetry, evaluation and notification context, including runtime
   interpretation/safety guidance and variable user or native text; they have
@@ -391,7 +364,7 @@ retained manual text or Moku's own execution model. Economy prioritizes
 cost-effective models; balanced adds no routing guidance. Performance prioritizes frontier capabilities even
 for routine tasks. These are general priorities, with
 no fixed model mapping, candidate groups or preset-specific admission restrictions.
-Native creation schemas and admission still own available model choices.
+Published configurations describe model choices. Native execution reports the dispatch outcome.
 
 [routing_preferences.go](routing_preferences.go) generates the guidance solely from
 settings. The coordinator appends nonempty guidance after the base prompt with the

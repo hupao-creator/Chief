@@ -22,6 +22,26 @@ python3 demos/moku-landing/verify_header.py --tag-states --output .build/tag-sta
 
 The replay reads the empty Inbox message from a window capture, adds an untagged project run and checks that the first card and its folder arrive together. It then assigns the folder’s name as a semantic tag. It clicks the folder and its sole child, then selects six tags with equal and nested member sets. The evidence directory contains the three state screenshots and `tag-states.json`.
 
+## Top-row Tag Space shortcuts
+
+Build the current Debug package and run the mounted workspace replay in a
+macOS graphical session with an input source that provides both brackets on
+the Command layer.
+
+```sh
+xcrun swift build --package-path app/macos -Xswiftc -enable-testing
+python3 demos/moku-landing/verify_header.py --tag-space-keys --output .build/tag-space-keys
+```
+
+An isolated catalog presents project folders, a remembered folder tag and
+an initially offscreen Inbox tag. The replay posts window-local AppKit
+key events and checks both directions, both ends, visibility of the selected
+Inbox chip, mounted cards, remembered folder selection, modifier matching,
+native field-editor and Settings priority, and single or empty rows.
+`source.json` identifies the revision and `tag-space-keys.json` records the
+key codes and checked steps. Physical input, other input sources and IME
+composition require separate verification.
+
 ## Nested workspace header replay
 
 Build the current Debug package and use a new output directory. The optional
@@ -194,13 +214,14 @@ Window captures show [Running below five folder tags](evidence/overview-left-fil
 
 The Inbox portion checks both empty illustrations, their text, and the 195 × 85 pt
 image bounds and bowl alignment. It compares the completed card's model, excerpt,
-duration, usage, completion badge and vertical spacing in All statuses and
+time since completion, usage, completion badge and vertical spacing in All statuses and
 Completed in English and Chinese. The fixtures use the production workspace with
 an isolated catalog. Physical trackpad hardware and model services are outside
 this replay.
 
 To exercise the completed card layout and write `overview-completed-card.json`,
-run the status replay through both localized card comparisons:
+run the status replay through both localized card comparisons. It also keeps a
+completed card visible across the minute, hour and day thresholds:
 
 ```sh
 python3 demos/moku-landing/verify_header.py --completed-card --output .build/completed-card-layout
@@ -255,6 +276,14 @@ that observes a visible editable text view as the key window’s first responder
 bounds the time to input readiness. The separate profile samples the first
 visit at 1 ms intervals. The [secondary-click comparison](evidence/conversation-opening/secondary-click.md)
 includes the workload, per-visit results and retained samples.
+
+Add `--linked-page` to either opening scenario to place a labeled execution link
+in each Chief reply preceding the oversized final reply. The 64-message timing
+page has 31 inline capsules. The interaction replay records the number of
+mounted controls at entry and checks that scrolling to the first linked reply
+brings its native button fully into view before inspecting accessibility. See the
+[linked-page comparison](evidence/conversation-opening/linked-page.md) for the
+recorded pauses, per-visit timings and replay receipts.
 
 The header replay mounts the 46.2-point production filters at the top of a
 real window in Aqua and Dark Aqua. The initial selection is the Chief folder

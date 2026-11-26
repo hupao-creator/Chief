@@ -222,6 +222,9 @@ func (a *Adapter) ModelCatalog(ctx context.Context, input plugin.SettingsRequest
 	if err != nil {
 		return nil, err
 	}
+	return catalogReferences(observed)
+}
+func catalogReferences(observed observation) (json.RawMessage, error) {
 	models := []model.Object{}
 	if observed.State.Model != nil {
 		for _, m := range observed.Models {

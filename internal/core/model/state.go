@@ -48,16 +48,17 @@ type AgentRun struct {
 	StartedAt   int64  `json:"startedAt"`
 }
 type AppState struct {
-	Revision           int64               `json:"revision"`
-	DefaultCwd         string              `json:"defaultCwd"`
-	Threads            []ThreadRecord      `json:"threads"`
-	Executions         []MokuExecution     `json:"executions"`
-	AgentRuns          []AgentRun          `json:"agentRuns,omitempty"`
-	ApplicationThreads []ApplicationThread `json:"applicationThreads"`
-	TagRedirects       map[string]*string  `json:"tagRedirects,omitempty"`
-	Settings           Settings            `json:"settings"`
-	SettingsRevision   int64               `json:"settingsRevision"`
-	Plugins            []RuntimePlugin     `json:"plugins,omitempty"`
+	DispatchPresentationVersions map[string]string   `json:"dispatchPresentationVersions,omitempty"`
+	Revision                     int64               `json:"revision"`
+	DefaultCwd                   string              `json:"defaultCwd"`
+	Threads                      []ThreadRecord      `json:"threads"`
+	Executions                   []MokuExecution     `json:"executions"`
+	AgentRuns                    []AgentRun          `json:"agentRuns,omitempty"`
+	ApplicationThreads           []ApplicationThread `json:"applicationThreads"`
+	TagRedirects                 map[string]*string  `json:"tagRedirects,omitempty"`
+	Settings                     Settings            `json:"settings"`
+	SettingsRevision             int64               `json:"settingsRevision"`
+	Plugins                      []RuntimePlugin     `json:"plugins,omitempty"`
 }
 type CollectionPatch[T any] struct {
 	Upserts    []T       `json:"upserts"`
@@ -73,19 +74,20 @@ type RuntimeActivity struct {
 // Pointer replacement fields distinguish an omitted field from an empty array
 // or map, which clears that part of the client's previous state.
 type StateMutation struct {
-	Type               string                              `json:"type"`
-	BaseRevision       int64                               `json:"baseRevision"`
-	Revision           int64                               `json:"revision"`
-	Threads            *CollectionPatch[ThreadRecord]      `json:"threads,omitempty"`
-	ApplicationThreads *CollectionPatch[ApplicationThread] `json:"applicationThreads,omitempty"`
-	DefaultCwd         *string                             `json:"defaultCwd,omitempty"`
-	Executions         *[]MokuExecution                    `json:"executions,omitempty"`
-	AgentRuns          *[]AgentRun                         `json:"agentRuns,omitempty"`
-	TagRedirects       *map[string]*string                 `json:"tagRedirects,omitempty"`
-	Settings           *Settings                           `json:"settings,omitempty"`
-	SettingsRevision   *int64                              `json:"settingsRevision,omitempty"`
-	Plugins            *[]RuntimePlugin                    `json:"plugins,omitempty"`
-	Activities         []RuntimeActivity                   `json:"activities,omitempty"`
+	DispatchPresentationVersions *map[string]string                  `json:"dispatchPresentationVersions,omitempty"`
+	Type                         string                              `json:"type"`
+	BaseRevision                 int64                               `json:"baseRevision"`
+	Revision                     int64                               `json:"revision"`
+	Threads                      *CollectionPatch[ThreadRecord]      `json:"threads,omitempty"`
+	ApplicationThreads           *CollectionPatch[ApplicationThread] `json:"applicationThreads,omitempty"`
+	DefaultCwd                   *string                             `json:"defaultCwd,omitempty"`
+	Executions                   *[]MokuExecution                    `json:"executions,omitempty"`
+	AgentRuns                    *[]AgentRun                         `json:"agentRuns,omitempty"`
+	TagRedirects                 *map[string]*string                 `json:"tagRedirects,omitempty"`
+	Settings                     *Settings                           `json:"settings,omitempty"`
+	SettingsRevision             *int64                              `json:"settingsRevision,omitempty"`
+	Plugins                      *[]RuntimePlugin                    `json:"plugins,omitempty"`
+	Activities                   []RuntimeActivity                   `json:"activities,omitempty"`
 }
 type RendererScope struct {
 	Kind string `json:"kind"`

@@ -21,6 +21,7 @@ import (
 	"github.com/hupao-creator/Chief/internal/platform/transport"
 	"github.com/hupao-creator/Chief/internal/platform/workpool"
 	"github.com/hupao-creator/Chief/internal/services/attachments"
+	"github.com/hupao-creator/Chief/internal/services/dispatchconfig"
 	"github.com/hupao-creator/Chief/internal/services/workspaces"
 )
 
@@ -66,6 +67,7 @@ type Config struct {
 	OutputLocale       func(context.Context) (string, error)
 }
 type Runtime struct {
+	dispatch                  *dispatchconfig.Configurations
 	mokuDeliveryMu            sync.Mutex
 	mokuDeliveryEpoch         string
 	serviceMu                 sync.Mutex
@@ -89,6 +91,7 @@ type Runtime struct {
 	configurationGate         chan struct{}
 	closed                    bool
 	resetting                 bool
+	factoryResetPrepared      bool // guarded by lifecycleMu
 	generation                uint64
 	handles                   map[string]*threadHandle
 	locks                     map[string]*threadCommandLock
@@ -141,7 +144,7 @@ func New(ctx context.Context, config Config) (*Runtime, error) {
 		return nil, err
 	}
 	lifetime, cancel := context.WithCancel(ctx)
-	r := &Runtime{config: config, ctx: lifetime, cancel: cancel, handles: map[string]*threadHandle{}, locks: map[string]*threadCommandLock{}, listeners: map[uint64]func(json.RawMessage){}, publisherDone: make(chan struct{})}
+	r := &Runtime{dispatch: dispatchconfig.New(config.Store, config.DefaultCwd), config: config, ctx: lifetime, cancel: cancel, handles: map[string]*threadHandle{}, locks: map[string]*threadCommandLock{}, listeners: map[uint64]func(json.RawMessage){}, publisherDone: make(chan struct{})}
 	r.configurationGate = make(chan struct{}, 1)
 	r.lifecycle = &lifecycleCapability{runtime: r, consumers: map[string]*lifecycleConsumer{}}
 	r.threadListeners = map[uint64]func(model.ThreadRecord){}

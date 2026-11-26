@@ -218,8 +218,15 @@ extension RuntimeClient {
         let settingsKey: String?
         switch channel {
         case "harness:settings-presentation":
-            settingsKey = (args.first?["harnessId"]?.stringValue).map { "harness:\($0)" }
-                ?? "thread:\(args.first?["threadId"]?.stringValue ?? "unknown")"
+            let request = args.first
+            if request?["readPublished"] == .bool(true), request?["scope"] == .text("global"),
+               request?["applicationSettings"] == nil, request?["executionOwner"] == nil, request?["refresh"] != .bool(true) {
+                // A store snapshot never opens the CLI or consumes a discovery slot.
+                settingsKey = nil
+            } else {
+                settingsKey = (request?["harnessId"]?.stringValue).map { "harness:\($0)" }
+                    ?? "thread:\(request?["threadId"]?.stringValue ?? "unknown")"
+            }
         case "harness:detect-installation": settingsKey = "harness:\(args.first?.stringValue ?? "unknown")"
         default: settingsKey = nil
         }

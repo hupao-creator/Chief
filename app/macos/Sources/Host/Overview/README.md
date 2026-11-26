@@ -45,7 +45,8 @@ collections, use the Canvas's opaque palette surface and soft border. Reports
 share their metadata and flat 44pt emoji badge across individual cards,
 carousel pages and member cards. Carousel navigation retains native Liquid Glass.
 Running Agent Threads show a diagonal sweep of harness-colored perforations
-behind the stationary emoji. Reduce Motion holds the pattern still. Idle badges
+behind the stationary emoji. The same crest catches the neighboring card rim
+within 88pt of the corner. Reduce Motion holds both highlights still. Idle badges
 have a neutral fill and completed badges have a green completion fill and
 terminal symbol. Their accessible labels follow the projected execution status.
 The isolated `--benchmark-agent-emoji-badge liquid-glass` scenario can compare only
@@ -135,9 +136,9 @@ remounting.
 The body counter is an observation-boundary diagnostic, not a CPU/FPS
 measurement.
 
-The production card closure enables native derived scans. Both the scan and
-the running badge use Core Animation and receive viewport visibility from the
-canvas. The badge only mounts for a running status. The Release probe checks
+The production card closure enables native derived scans. The scan, running
+badge and edge reflection use Core Animation and receive viewport visibility
+from the canvas. The badge only mounts for a running status. The Release probe checks
 the mounted decorations on the production workspace path.
 See the [native decoration contract](../../Shared/PluginUI/README.md#native-overview-decorations).
 
@@ -247,7 +248,14 @@ Natural Scrolling is enabled, so both settings follow finger movement. From the 
 directory, up enters the first choice. Stepping past either end wraps to the
 opposite end. An empty rail or a single already-selected choice stays put. Recognition claims
 the rest of the contact and its momentum, even across controls or a change
-of selection. A vertically dominant unmodified line-wheel event steps the same list.
+of selection. When a phased, precise swipe changes the selected rail ID, the router
+asks AppKit for one generic haptic immediately. macOS chooses the feedback device
+and may ignore the request. A held contact, inertia, a step that leaves selection
+unchanged, wheel steps, clicks and keyboard navigation produce no request.
+The [native haptics demo](../../../../../demos/tag-space-haptics/README.md)
+exercises the router and selection model and provides a window for physical swipes.
+
+A vertically dominant unmodified line-wheel event steps the same list.
 
 The background, cards, carousel cover and filter controls accept these gestures.
 Horizontal starts retain their original owner through reversals. The
@@ -257,21 +265,35 @@ interventions, onboarding, Settings, readers and collection panels keep their in
 
 The directory Running tag filters the whole directory. Running, All statuses and Completed in Inbox filter the selected top-level semantic tag. These scoped views use eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and interrupted tasks with no ongoing work remain visible in ordinary directory and semantic selections and in the Inbox's All statuses view. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, counts, activity indicators and current tag selection use the full eligible catalog.
 
-The [Running and Completed empty states](NativeOverviewStatusPresentation.swift) center the
+The [Running, Unread and Completed empty states](NativeOverviewStatusPresentation.swift) center the
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
 with its bowl on the title and viewport centerline and its handle extending fully
-to the right. Both display the illustration at up to 195 × 85 pt directly on the
+to the right. They display the illustration at up to 195 × 85 pt directly on the
 canvas above the localized status title, with no panel or scroll hint. The
 skillet gently bobs while three lowercase z’s drift above it. Reduce Motion
 holds both still. Each title is exposed to accessibility and the empty
-presentation passes input through to Overview. An empty ordinary selection shows a localized title and tag-switch hint on an opaque surface.
+presentation passes input through to Overview.
+
+On direct admission from full-window loading, the empty status view takes the
+current toss pose and aligns the pan bottom with the sleeping artwork in the
+measured title layout. Throughout the 800 ms entrance the same opaque bowl and
+handle travel together. The rim hides the landing agents as the sleeping faces
+rise behind it. The filters and Dock fade in during travel. The title and z’s
+appear with the sleeping faces and the skillet joins its idle bob.
+Reduce Motion presents the static destination immediately. Cards, landing,
+onboarding, restored readers, Settings and errors use their own presentations.
+Later filter changes do not replay startup. The [native window replay](../../../../../demos/chief-logo-loading/README.md#原生加载标记)
+mounts the workspace with isolated catalogs.
+
+An empty ordinary selection shows a localized title and tag-switch hint on an opaque surface.
 The [status replay](../../../../../demos/moku-landing/README.md#overview-bar-swipe-at-actual-size)
 exercises empty and populated states and both input types.
 
 The selected left button stays expanded when its result is empty. Card borders stay the same on pointer hover. In the Inbox **Completed** view, keyboard
 focus adds a 2pt accent outline to Agent cards. A completed Agent card uses the
 completion badge and the same metadata layout in All and Completed. The model
-row is followed by the available duration and usage, with the excerpt below.
+row is followed by time since the latest execution finished and available usage,
+with the excerpt below. Pending input and background work retain the duration display.
 Super Threads retain their document update time and collection selection.
 
 A trackpad contributes its horizontal delta, including native momentum. For
@@ -334,6 +356,18 @@ again. The header reveals the selected chip
 when its filters first appear. With no spaces, Overview shows eligible untagged Agent Threads that match Running.
 An empty result uses the sleeping skillet and the localized running empty state.
 An empty or unloaded catalog leaves the saved choice intact for the next nonempty catalog.
+
+Shift-Command-[ and Shift-Command-] move one top-row space left or right in
+display order and stop at the ends. The selected directory supplies the starting
+position when one of its left filters is active. A keyboard step uses the same
+selection path as clicking the destination chip. The overflowing row reveals
+the new selection. The key window handles the shortcuts while Overview is
+active and the Chief Bar input and conversation are closed. Native text
+editors, marked text and modal windows retain their input. The keyboard input
+source supplies the bracket character, using the Command layer without Shift
+when the shifted character is a brace. Option and Control are excluded.
+See the [mounted key replay](../../../../../demos/moku-landing/README.md#top-row-tag-space-shortcuts).
+
 The directory-wide selection includes Agent Threads awaiting classification. Its top button keeps its name and folder-wide unread count when
 a child is selected. A project directory named Inbox and a semantic tag named
 Inbox have distinct identities, icons and memberships.

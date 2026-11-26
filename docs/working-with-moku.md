@@ -10,6 +10,8 @@ In a task conversation, the same input box shows the agent's icon and sends to t
 
 The button at the right of the input box shows **Send** when your message is ready, even while Chief is working. Click it or press **Return** to send. When you send from the compact input, the bar folds back around Chief’s eyes. It expands again when Chief shows a reply or task update. When Chief is idle, an empty or whitespace-only draft leaves **Send** disabled. A ready file or a selected folder can be sent on its own.
 
+You can send your request while a task agent’s model list is unavailable. Chief can use the choices that agent last reported. If the agent rejects a model when the task starts, Chief receives the error and can choose how to continue.
+
 When Chief's input is at the bottom of Overview, click outside it or press **Esc** to close it. Your unsent draft is there when you reopen the box. [Watch Chief Bar open for typing and chat](chief-bar-and-tags.md)
 
 When the bar is folded, watch the three dots beneath it while Chief thinks or uses a tool. They brighten in turn, lift off and circle the bar once as Chief’s eyes follow. The dots settle back into a row and Chief briefly squints before the sequence repeats. Switching tools keeps the rhythm. The dots fade out when the work ends. If Chief needs your permission or an answer, a request appears above the bar.
@@ -46,7 +48,7 @@ After a successful removal, the checkout folder is gone. The task conversation s
 
 ## Find Chief's replies
 
-In Overview, right-click Chief Bar to open your conversation above the input. The panel stays dark even when your Mac uses Light. You can also Control-click or use your trackpad’s secondary click. If you already have a draft open, right-click the bar beside the text to see the conversation and keep typing. Your messages appear in blue on the right and Chief’s replies in gray on the left. A date and time above a group mark the start of an exchange. To see when an individual message was sent, hold the pointer over its bubble.
+In Overview, right-click Chief Bar to open your conversation above the input. The panel stays dark even when your Mac uses Light. You can also Control-click or use your trackpad’s secondary click. If you already have a draft open, right-click the bar beside the text to see the conversation and keep typing. Your messages appear in blue on the right and Chief’s replies in gray on the left. Look for the date and time in a small dark label above each exchange. To see when an individual message was sent, hold the pointer over its bubble.
 
 While Chief is working, a small gray bubble with three dots appears on the left below the latest message. The dots rise in turn, or stay still if Reduce Motion is on. The bubble disappears when Chief finishes, stops, or encounters an error.
 

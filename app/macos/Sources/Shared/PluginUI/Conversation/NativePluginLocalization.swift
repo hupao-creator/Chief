@@ -31,7 +31,7 @@ public enum NativePluginLocalization {
         "展开全文": "Show full text", "收起全文": "Collapse text",
         "显示更早的 {count} 条消息": "Show {count} earlier messages", "回到最新": "Jump to latest",
         "运行中": "Running", "对话轮次": "Conversation turn", "未知模型": "Unknown model", "未记录": "Not recorded",
-        "完成时间：": "Completed:", "已运行 {duration}": "Ran for {duration}",
+        "刚刚": "now", "完成时间：": "Completed:", "已运行 {duration}": "Ran for {duration}",
         "输入": "Input", "输出": "Output", "缓存读取": "Cache read", "缓存写入": "Cache write", "推理": "Reasoning",
         "执行过程": "Execution details", "1 段思考": "1 reasoning segment", "{count} 段思考": "{count} reasoning segments",
         "1 次工具调用": "1 tool call", "{count} 次工具调用": "{count} tool calls",

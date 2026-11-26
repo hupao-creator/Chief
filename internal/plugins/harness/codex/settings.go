@@ -683,6 +683,10 @@ func (s *SettingsAPI) ResolveThread(ctx context.Context, request plugin.ResolveS
 	if err != nil {
 		return nil, err
 	}
+	// The destination session checks auto-review permission before native execution.
+	if request.Dispatch {
+		return json.Marshal(next)
+	}
 	if err = s.validate(ctx, next, request.Cwd, "resolved settings", false); err != nil {
 		return nil, err
 	}
@@ -743,7 +747,7 @@ func (s *SettingsAPI) Presentation(ctx context.Context, request plugin.SettingsP
 		}
 		configured = csString(thread["executablePath"])
 	}
-	presentation, err := s.catalog.LoadPresentation(ctx, request.Cwd, configured, request.Refresh)
+	presentation, err := s.catalog.LoadPresentation(ctx, request.Cwd, configured, request.Refresh, request.ModelReferences)
 	if err != nil {
 		return nil, err
 	}
@@ -900,4 +904,8 @@ func (s *SettingsAPI) validate(ctx context.Context, settings Map, cwd, label str
 		return err
 	}
 	return nil
+}
+
+func (*SettingsAPI) DispatchSchema() json.RawMessage {
+	return plugin.DispatchSchema([]string{"model", "thinking", "serviceTier"}, nil, permissionModes)
 }

@@ -20,10 +20,11 @@ import (
 )
 
 type CatalogVariant struct {
-	ID                         string `json:"id"`
-	Settings                   Object `json:"settings,omitempty"`
-	Body                       Object `json:"body,omitempty"`
-	ExclusiveUnavailableReason string `json:"exclusiveUnavailableReason,omitempty"`
+	Control                    *model.ThinkingChoice `json:"control,omitempty"`
+	ID                         string                `json:"id"`
+	Settings                   Object                `json:"settings,omitempty"`
+	Body                       Object                `json:"body,omitempty"`
+	ExclusiveUnavailableReason string                `json:"exclusiveUnavailableReason,omitempty"`
 }
 type CatalogModel struct {
 	Provider                   string                    `json:"provider"`
@@ -145,7 +146,20 @@ func readCatalog(ctx context.Context, host plugin.HostContext, runtime *Runtime,
 				requestCtx, cancel = context.WithTimeout(ctx, 3*time.Second)
 				defer cancel()
 			}
-			errorsByRequest[i] = runtime.Request(requestCtx, "GET", path, nil, out)
+			err := runtime.Request(requestCtx, http.MethodGet, path, nil, out)
+			var requestErr *RequestError
+			if path != "/api/plugin" && errors.As(err, &requestErr) {
+				switch requestErr.Status {
+				case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+					select {
+					case <-requestCtx.Done():
+						err = requestCtx.Err()
+					case <-time.After(100 * time.Millisecond):
+						err = runtime.Request(requestCtx, http.MethodGet, path, nil, out)
+					}
+				}
+			}
+			errorsByRequest[i] = err
 		}(i, request.path, request.output)
 	}
 	pending.Wait()
@@ -156,6 +170,9 @@ func readCatalog(ctx context.Context, host plugin.HostContext, runtime *Runtime,
 		if index != 0 && err != nil {
 			return nil, err
 		}
+	}
+	if models == nil {
+		return nil, errors.New("invalid OpenCode model catalog")
 	}
 	// Plugin inventory is diagnostic, not proof of remote model completeness.
 	// A working native model response remains usable when this optional list is

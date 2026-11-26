@@ -57,9 +57,9 @@ commands; native pipes use write deadlines to distinguish those outcomes.
 
 The shared [generated metadata policy](../../../core/plugin/README.md#generated-metadata) supplies durable title/emoji updates independently of execution state.
 
-Moku target schemas use the configured executable and native catalog independently
-of the selected default model. Without a matching complete cache, catalog failures and empty catalogs block preparation;
-models with unknown thinking controls remain identified in the schema. Catalog snapshots remain subject to native admission and cache TTL.
+Claude publishes the model and effort choices from its settings presentation.
+Ordinary dispatch sends explicit model and thinking choices to Claude, including
+a custom model absent from the latest publication.
 
 ## Native configuration controls
 
@@ -92,7 +92,8 @@ without assigning a thinking capability to the catalog. Known effort lists and
 explicit `supportsEffort=false` remain authoritative; disabled models, invalid
 applied efforts, native mismatches and catalog acquisition failures reject the
 capture. The editor's unknown-capability notice remains visible. Ordinary Thread
-creation continues to require advertised thinking controls.
+creation passes the supplied model and thinking choice to Claude Code. For
+example, Claude can resolve a model alias to a concrete model identifier.
 
 The thread directory uses the latest settled, non-error assistant message.
 Text tool results and native failures remain on the activity for their call ID.
@@ -163,31 +164,19 @@ reasoning and tool-payload admission is unchanged; no latest-execution fallback
 is used for historical references.
 
 Discovery rejects results when tracked native configuration files change during
-the probe, so an in-flight read cannot publish a known-obsolete snapshot.
+the probe. After the native process closes successfully, a reader can acquire
+the current configuration and executable once more. A second change fails the
+read. A matching cached inventory can satisfy the new acquisition.
 
-Moku requires the full nonempty native model inventory before task admission.
-Unknown thinking capabilities remain named in that inventory but cannot authorize
-creation. Moku routing returns complete same-configuration cached directories
-immediately, even after expiry or during refresh. Expired entries start bounded
-background refreshes; failures/empty replacements retain the last complete
-snapshot, with a 30-second warm-retry cooldown. Only a cache miss waits and blocks
-on failure. Configuration identities fence publication and native admission;
-execution/default resolution retains strict reads. Caches are Harness-owned,
-memory-only and drained on Close, not persisted across application restarts.
+The [configuration module](../../../services/dispatchconfig/README.md) publishes
+this adapter's ordinary settings options. The provider can use native discovery
+caches internally. A missing inventory does not prevent Chief from starting.
 
 Shared `readCatalog` does not query/reject gateway completeness. Initialization
 models are usable for routing and ordinary selection; a gateway timeout or a
 stable list is not promoted into proof of remote completeness.
 
-Moku routing accepts successful nonempty native inventories, including native
-cached/fallback data, without requiring remote source-completion proof. Source
-completeness remains unknown in the schema. A matching old snapshot returns
-immediately; failed refreshes retain it and add a retained-snapshot note. Cold
-acquisition failure still reports an error. See the current
-[admission and evidence contract](../../../services/moku/catalog-evidence.md).
-
-The native initialized inventory and matching complete cached snapshots supply
-routing. No bundled Moku catalog or wait-for-provenance heuristic is supplied.
+Native enumeration evidence is described in the [catalog guide](../../../services/moku/catalog-evidence.md).
 
 ## Chief tool schemas
 

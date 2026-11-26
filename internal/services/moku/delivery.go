@@ -77,7 +77,10 @@ func (c *Coordinator) deliverNotification(ctx context.Context, delivery plugin.M
 		c.mu.Lock()
 		injection := c.injection
 		c.mu.Unlock()
-		_, err = c.config.SendDelivery(ctx, delivery.ID, record.ID, input, injection, entries)
+		result, err := c.config.SendDelivery(ctx, delivery.ID, record.ID, input, injection, entries)
+		if err == nil {
+			c.rememberDispatch(result.ExecutionID, entries)
+		}
 		return err
 	})
 }

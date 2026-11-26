@@ -203,8 +203,11 @@ public struct NativeApplicationBackgroundEditor: View {
             NativeHarnessSettingsView(host: workspace.harnessHost, configuration: configuration,
                 section: .thread, executionSnapshot: true, settingsFormPage: true, readOnly: inherited,
                 centersLoading: onboardingHarnessIDs != nil && !inherited,
+                chiefPresentation: inherited ? nil : chiefConfiguration(id),
                 value: Binding(get: { effective.harnesses[id] ?? .object([:]) },
                                set: { updateHarness(id, settings: $0) }))
+                .environment(\.nativeSettingsOpenCodeVariantLabel,
+                             onboardingHarnessIDs != nil && !inherited ? locale.text("思考强度", "OpenCode model variant") : nil)
                 .id(id).environment(\.nativeSettingsInteractionScope, settingID.string + "." + id.string)
         case .failure(let error):
             NativeSettingsNotice(message: error.localizedDescription, kind: .error)
@@ -214,15 +217,16 @@ public struct NativeApplicationBackgroundEditor: View {
 
     private func settingsConfiguration(_ id: JSONText) throws
         -> NativeHarnessSettingsConfiguration {
-        let cwd = JSONText(settingsModel.defaultCwd)
-        let chiefSource = settingsModel.savedSettings["moku"]?["executionHarnesses"]?[id.string] ?? .null
-        if inherited {
-            // Follow the saved Moku resource even while an application's mode
-            // change is still saving; its old independent catalog is unrelated.
-            return .init(harnessID: id, cwd: cwd, source: chiefSource, scope: .global(executionOwner: .moku))
-        }
-        return .background(harnessID: id, cwd: cwd, settingID: settingID,
-                           saved: try savedApplicationSettings(), chiefSource: chiefSource)
+        let chief = chiefConfiguration(id)
+        if inherited { return chief }
+        return .background(harnessID: id, cwd: chief.cwd, settingID: settingID,
+                           saved: try savedApplicationSettings(), chiefSource: chief.source)
+    }
+
+    private func chiefConfiguration(_ id: JSONText) -> NativeHarnessSettingsConfiguration {
+        .init(harnessID: id, cwd: JSONText(settingsModel.defaultCwd),
+              source: settingsModel.savedSettings["moku"]?["executionHarnesses"]?[id.string] ?? .null,
+              scope: .global(executionOwner: .moku))
     }
 
     private func effectiveSettings(_ settings: ApplicationBackgroundExecutionSettings) throws

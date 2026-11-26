@@ -78,7 +78,7 @@ public struct NativeHarnessSettingsConfiguration: Hashable, Sendable {
         guard case .global(let application, let owner) = scope else { return false }
         return application != nil || owner != nil
     }
-    func request(refresh: Bool) -> JSONValue {
+    func request(refresh: Bool, readPublished: Bool = false) -> JSONValue {
         var object: [JSONText: JSONValue]
         switch scope {
         case .thread(let id): object = ["scope": .text("thread"), "threadId": .string(id)]
@@ -90,6 +90,7 @@ public struct NativeHarnessSettingsConfiguration: Hashable, Sendable {
                 object["previewIndependent"] = .bool(true)
             }
         }
+        if readPublished, case .global(applicationSettings: nil, executionOwner: nil) = scope { object["readPublished"] = .bool(true) }
         if refresh { object["refresh"] = .bool(true) }
         return .object(object)
     }
@@ -111,10 +112,13 @@ public final class NativeHarnessSettingsSurface {
     @ObservationIgnored private var sequence = 0
     static let revalidationInterval: Duration = .seconds(300)
     @ObservationIgnored private var lastLoad: ContinuousClock.Instant?
+    @ObservationIgnored private var publicationRead = 0
+    var pendingPublication = false
     var prefetchID: UUID?
     private var loadingSequence: Int?
 
     public var isReady: Bool { !isReleased && session.isReady }
+    var hasPublishedPresentation: Bool { !isReleased && session.hasPublishedPresentation }
     public var loadState: NativeHarnessSettingsLoadState {
         guard !isReleased, host.settingsLifetime.available else { return .loading }
         guard prefetchID == nil, loadingSequence == nil, lastLoad != nil else { return .loading }
@@ -142,14 +146,19 @@ public final class NativeHarnessSettingsSurface {
         catalogIndependentOfProfile = plugin.executionCatalogIndependentOfProfile
         self.host = host; self.configuration = configuration
         baselineThreadSettings = ThreadSettingsSnapshot(configuration)
-        session = plugin.makeSettingsSession(load: { [weak self] refresh in
+        let global = switch configuration.scope { case .global: true; case .thread: false }
+        session = plugin.makeSettingsSession(publishPresentations: global, load: { [weak self] refresh in
             guard let self else { throw CancellationError() }; return try await load(refresh: refresh)
         }, onError: { [weak host] error in host?.callbacks.onError(error) })
     }
 
     public func reload(refresh: Bool = false) async throws {
         try checkAuthority()
-        try await session.reload(refresh)
+        if configuration.scope == .global(), prefetchID == nil, !refresh {
+            try await readStoredPublication()
+        } else {
+            try await session.reload(refresh)
+        }
     }
 
     var revalidationDeadline: ContinuousClock.Instant? {
@@ -174,6 +183,7 @@ public final class NativeHarnessSettingsSurface {
 
     public func loadIfNeeded() async throws {
         try checkAuthority()
+        if configuration.scope == .global(), prefetchID == nil, hasPublishedPresentation { return }
         if !presentationIsCurrent || !session.isReady || preparationError != nil { try await reload() }
     }
 
@@ -193,7 +203,7 @@ public final class NativeHarnessSettingsSurface {
             configuration = next
             return
         }
-        configuration = next; sequence += 1; lastLoad = nil
+        configuration = next; sequence += 1; publicationRead += 1; lastLoad = nil
         prefetchID = nil; loadingSequence = nil; executionSnapshotError = nil
         session.sourceChanged()
     }
@@ -224,6 +234,21 @@ public final class NativeHarnessSettingsSurface {
         }
     }
 
+    // Read independently of native discovery. A newer notification or a source
+    // change fences a delayed response; the provider's retry state stays intact.
+    func readStoredPublication() async throws {
+        let owner = configuration
+        guard owner.scope == .global(), !isReleased else { return }
+        publicationRead += 1
+        let read = publicationRead
+        let reply = try await host.client.invoke("harness:settings-presentation", args: [owner.request(refresh: false, readPublished: true)])
+        guard !Task.isCancelled, !isReleased, configuration == owner, publicationRead == read else { throw CancellationError() }
+        guard reply["scope"] == .text("global"), reply["harnessId"] == .string(owner.harnessID), let value = reply["value"] else {
+            throw PluginContractError("Published settings returned a mismatched scope or Harness")
+        }
+        try session.publishStored(value)
+    }
+
     private func load(refresh: Bool) async throws -> JSONValue {
         try checkAuthority()
         sequence += 1
@@ -233,7 +258,7 @@ public final class NativeHarnessSettingsSurface {
             if sequence == requestSequence { lastLoad = .now }
             if loadingSequence == requestSequence { loadingSequence = nil }
         }
-        let result = try await host.client.invoke("harness:settings-presentation", args: [configuration.request(refresh: refresh)])
+        let result = try await host.client.invoke("harness:settings-presentation", args: [configuration.request(refresh: refresh, readPublished: prefetchID == nil && !refresh)])
         try checkAuthority()
         guard requestSequence == sequence else { throw CancellationError() }
         let expectedScope: JSONValue
@@ -298,7 +323,7 @@ public final class NativeHarnessSettingsSurface {
     }
 
     public func harnessSettings(section: HarnessSettingsSection, executionSnapshot: Bool = false,
-                                settingsFormPage: Bool = false, value: JSONValue,
+                                settingsFormPage: Bool = false, refreshPublished: ((Bool) async throws -> Void)? = nil, value: JSONValue,
                                 change: @escaping (JSONValue) throws -> Void) throws -> AnyView {
         try checkAuthority()
         let harnessID = configuration.harnessID
@@ -314,7 +339,7 @@ public final class NativeHarnessSettingsSurface {
                 try await host.callbacks.openExternal(url)
             })
         return try session.harnessSettings(section: section, executionSnapshot: executionSnapshot,
-            settingsFormPage: settingsFormPage, value: value, host: settingsHost, change: { [weak self] value in
+            settingsFormPage: settingsFormPage, refreshPublished: refreshPublished, value: value, host: settingsHost, change: { [weak self] value in
                 guard let self else { throw CancellationError() }; try checkAuthority(); try change(value)
             })
     }
@@ -340,6 +365,7 @@ public struct NativeHarnessSettingsView: View {
     private let executionSnapshot: Bool
     private let settingsFormPage: Bool
     private let readOnly: Bool
+    private let chiefPresentation: NativeHarnessSettingsConfiguration?
     private let centersLoading: Bool
     private let refreshSequence: Int
     @Binding private var value: JSONValue
@@ -356,11 +382,11 @@ public struct NativeHarnessSettingsView: View {
     public init(host: NativeHarnessHost, configuration: NativeHarnessSettingsConfiguration,
                 section: HarnessSettingsSection, executionSnapshot: Bool = false,
                 settingsFormPage: Bool = false, readOnly: Bool = false, refreshSequence: Int = 0,
-                centersLoading: Bool = false, value: Binding<JSONValue>) {
+                centersLoading: Bool = false, chiefPresentation: NativeHarnessSettingsConfiguration? = nil, value: Binding<JSONValue>) {
         self.host = host; self.configuration = configuration; self.section = section
         self.executionSnapshot = executionSnapshot; self.settingsFormPage = settingsFormPage; _value = value
         self.readOnly = readOnly
-        self.centersLoading = centersLoading
+        self.centersLoading = centersLoading; self.chiefPresentation = chiefPresentation
         self.refreshSequence = refreshSequence
     }
 
@@ -369,19 +395,30 @@ public struct NativeHarnessSettingsView: View {
         // readiness; neither may overwrite the other's current value.
         let cached = host.cachedSettingsSurface(configuration: configuration)
         let displayed = cached ?? surface
-        let resourceReady = host.settingsLifetime.available && !opening && failure == nil
+        // Only the options come from the preview. The form always edits the role binding.
+        let available: NativeHarnessSettingsSurface? = {
+            guard case .global = configuration.scope else { return nil }
+            if displayed?.configuration == configuration, displayed?.hasPublishedPresentation == true { return displayed }
+            guard let chief = chiefPresentation else { return nil }
+            guard let seed = host.cachedSettingsSurface(configuration: chief), seed.hasPublishedPresentation else { return nil }
+            return seed
+        }()
+        let acquired = !opening && failure == nil
             && displayed?.configuration == configuration
             && displayed?.isReleased == false && displayed?.loadState == .ready
-            && (!executionSnapshot || (displayed?.executionSnapshotError == nil && value != .null && value != .object([:])))
+            && (!executionSnapshot || displayed?.executionSnapshotError == nil)
+        let previewReady = available != nil && (chiefPresentation != nil || !executionSnapshot)
+        let resourceReady = host.settingsLifetime.available && (previewReady || acquired)
+            && (!executionSnapshot || (value != .null && value != .object([:])))
         VStack(alignment: .leading, spacing: 8) {
             if !host.settingsLifetime.available {
                 NativeSettingsNotice(message: text("连接后台服务后可读取 Agent 配置。", "Connect to the runtime service to load Agent configuration."))
-            } else if let failure, !opening {
+            } else if let failure, !opening, available == nil {
                 NativeSettingsNotice(message: text("读取设置失败：", "Unable to load settings: ") + failure, kind: .error,
                                      action: AnyView(retry))
-            } else if let surface = displayed, surface.configuration.editorIdentity == configuration.editorIdentity, !surface.isReleased,
-                      surface.isReady || surface.loadState != .loading {
-                if case .failed(let error) = surface.loadState {
+            } else if let surface = available ?? displayed, !surface.isReleased,
+                      available != nil || (surface.configuration.editorIdentity == configuration.editorIdentity && (surface.isReady || surface.loadState != .loading)) {
+                if case .failed(let error) = displayed?.loadState {
                     NativeSettingsNotice(message: text("读取配置失败：", "Unable to load configuration: ") + error,
                                          kind: .error, action: AnyView(retry))
                 }
@@ -389,7 +426,7 @@ public struct NativeHarnessSettingsView: View {
                     NativeHarnessStatusView(message: "运行配置尚未固定。请明确填写以下配置后保存。",
                                             english: "Execution settings are not pinned yet. Fill in the configuration below and save.")
                 }
-                content(surface)
+                content(surface, published: available != nil && (configuration.scope == .global() || surface !== displayed || surface.loadState != .ready))
             } else {
                 let message = text("正在读取 Agent 配置…", "Loading Agent configuration…")
                 if centersLoading {
@@ -411,9 +448,13 @@ public struct NativeHarnessSettingsView: View {
         .onDisappear { openID = UUID(); opening = false; failure = nil; surface?.unmount(); surface = nil }
     }
 
-    @ViewBuilder private func content(_ surface: NativeHarnessSettingsSurface) -> some View {
+    @ViewBuilder private func content(_ surface: NativeHarnessSettingsSurface, published: Bool = false) -> some View {
+        // A refresh initiated by a preview belongs to the editor's destination.
+        let refreshPublished: ((Bool) async throws -> Void)? = published ? { force in
+            try await host.makeSettingsSurface(configuration: configuration).reload(refresh: force)
+        } : nil
         switch Result(catching: { try surface.harnessSettings(section: section, executionSnapshot: executionSnapshot,
-            settingsFormPage: settingsFormPage, value: value, change: { if !readOnly { value = $0 } }) }) {
+            settingsFormPage: settingsFormPage, refreshPublished: refreshPublished, value: value, change: { if !readOnly { value = $0 } }) }) {
         // Keep resource retry outside the disabled configuration controls.
         case .success(let content): content.environment(\.nativeSettingsReadOnly, readOnly)
         case .failure(let error): NativeHarnessStatusView(message: "此 Harness 的设置暂时不可用。", english: "This Harness settings view is unavailable.", detail: error.localizedDescription)

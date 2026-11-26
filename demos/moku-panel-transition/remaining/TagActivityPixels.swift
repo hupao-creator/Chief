@@ -3,7 +3,7 @@ import ScreenCaptureKit
 
 /// Sample an entire sweep at the two glyphs. Preserve window pixels before
 /// testing them so a hidden layer or a compositing regression can be inspected.
-@MainActor func captureTagActivity(in panel: Panel, regions: [String: CGRect], reduced: Bool) async throws -> [String: Int] {
+@MainActor func captureActivity(in panel: Panel, regions: [String: CGRect], reduced: Bool, card: Bool = false) async throws -> [String: Int] {
     let filter = try await panel.filter()
     let config = panel.configuration()
     config.ignoreGlobalClipSingleWindow = true
@@ -11,7 +11,7 @@ import ScreenCaptureKit
     var minima = [String: [UInt8]](), maxima = [String: [UInt8]]()
     for index in 0..<14 {
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
-        if index == 0 { try savePNG(image, "running-filter-activity.png") }
+        if index == 0 { try savePNG(image, card ? "running-card-edge.png" : "running-filter-activity.png") }
         for (name, frame) in regions {
             let rect = CGRect(x: frame.minX * scale, y: (panel.frame.height - frame.maxY) * scale,
                               width: frame.width * scale, height: frame.height * scale).integral
@@ -45,8 +45,8 @@ import ScreenCaptureKit
         }.count
         counts[name] = changed
     }
-    try save(counts, "pixel-spans.json")
+    try save(counts, card ? "card-pixel-spans.json" : "pixel-spans.json")
     try check(counts.count == 2 && counts.values.allSatisfy { reduced ? $0 <= 1 : $0 > 1 },
-              "Filter pixel motion disagrees with Reduce Motion (\(reduced)): \(counts)")
+              "Perforation motion disagrees with Reduce Motion (\(reduced)): \(counts)")
     return counts
 }

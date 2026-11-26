@@ -46,6 +46,25 @@ public final class RuntimeProfileClientLease: @unchecked Sendable {
         }
     }
 
+    /// Exclude other clients before interrupting their shared Runtime. flock
+    /// conversions can drop the shared lock on failure. Restore it while the
+    /// admission lock still excludes maintenance and late arrivals.
+    public func reserveForFactoryReset() throws {
+        let directory = try Self.openLeaseDirectory()
+        defer { Darwin.close(directory.descriptor) }
+        let admission = try Self.lockFile(directory: directory.descriptor, name: "admission.lock", mode: LOCK_EX)
+        defer { Darwin.close(admission) }
+        try Self.validateDirectory(directory)
+        let name = RuntimePrivateFile.key(Data(profile.dataDirectory.path.utf8)) + ".lock"
+        _ = try Self.validateFile(descriptor, directory: directory.descriptor, name: name)
+        let acquire: (Int32, Int32) -> Int32 = flock
+        if acquire(descriptor, LOCK_EX | LOCK_NB) == 0 { return }
+        while acquire(descriptor, LOCK_SH) != 0 {
+            if errno != EINTR { throw Self.ioFailure("restore the profile lease") }
+        }
+        throw RuntimeError("PROFILE_IN_USE", "Close the other Chief window using this profile and try again.")
+    }
+
     private struct LeaseDirectory { let descriptor: Int32; let path: String }
 
     private static func openLeaseDirectory() throws -> LeaseDirectory {

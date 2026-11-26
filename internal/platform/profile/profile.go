@@ -394,6 +394,9 @@ func Acquire(p Profile) (*Ownership, error) {
 			guard.Close()
 		}
 	}()
+	if _, err := os.Lstat(filepath.Join(p.DataDir, resetMarker)); !errors.Is(err, os.ErrNotExist) {
+		return nil, model.NewError("PROFILE_MAINTENANCE", "Reopen Chief to finish the pending factory reset")
+	}
 	if err = Prepare(p); err != nil {
 		return nil, err
 	}

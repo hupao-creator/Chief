@@ -7,7 +7,8 @@ import (
 	"os"
 )
 
-func ownedByCurrentUser(os.FileInfo) bool { return false }
+func sameResetVolume(os.FileInfo, os.FileInfo) bool { return false }
+func ownedByCurrentUser(os.FileInfo) bool           { return false }
 func verifyPrivatePlatform(string, bool) error {
 	return model.NewError("UNSUPPORTED_PLATFORM", "Chief runtime currently supports Unix profile ownership; Windows ACL protection is not implemented")
 }

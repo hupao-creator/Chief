@@ -50,7 +50,7 @@ enum NativeOverviewStatusFilter: String {
         case .all: true
         case .unread: unread
         case .running: thread.pendingInput || thread.observation.isExecutionActive || thread.observation.backgroundWork != nil
-        case .completed: !thread.pendingInput && thread.observation.backgroundWork == nil && thread.observation.latestExecution?.status == .completed
+        case .completed: thread.completedExecutionFinishedAt != nil
         }
     }
 }
@@ -74,6 +74,10 @@ public final class NativeOverviewWorkspaceModel {
         if selectedFilter == nil || tagSelection?.runningTag == true { return .running }
         return isTopSemanticSelected ? topTagStatus : .all
     }
+    var showsEmptyState: Bool {
+        content.isEmpty && globalConversationCount != nil && error == nil && canvasState.layoutError == nil
+    }
+    var showsStatusEmptyState: Bool { showsEmptyState && statusFilter != .all }
     var railChoices: [NativeOverviewRailChoice] {
         let presets: [NativeOverviewRailChoice] = [.status(.running), .status(.unread)]
         guard selectedFilter != nil else {
@@ -346,6 +350,14 @@ public final class NativeOverviewWorkspaceModel {
         selectTag(child ?? children.first ?? directory, unread: keepUnread)
     }
 
+    func stepTopFilter(forward: Bool) -> Bool {
+        guard let selectedTopFilter,
+              let current = filters.firstIndex(where: { $0.id == selectedTopFilter.id }) else { return false }
+        let next = current + (forward ? 1 : -1)
+        if filters.indices.contains(next) { selectTopFilter(filters[next]) }
+        return true
+    }
+
     public func selectTag(_ filter: NativeOverviewFilter?) { selectTag(filter, unread: false) }
 
     private func selectTag(_ filter: NativeOverviewFilter?, unread: Bool) {
@@ -355,14 +367,15 @@ public final class NativeOverviewWorkspaceModel {
                        kind: filter.map { $0.isDirectory ? .directory : .semantic }, unread: unread)
     }
 
-    func stepRail(up: Bool) {
+    func stepRail(up: Bool) -> Bool {
         let choices = railChoices
+        let previousID = selectedRailID
         let target: NativeOverviewRailChoice
-        if let selectedRailID {
-            guard choices.count > 1, let index = choices.firstIndex(where: { $0.id == selectedRailID }) else { return }
+        if let previousID {
+            guard choices.count > 1, let index = choices.firstIndex(where: { $0.id == previousID }) else { return false }
             target = choices[(index + (up ? 1 : choices.count - 1)) % choices.count]
         } else {
-            guard up, let first = choices.first else { return }
+            guard up, let first = choices.first else { return false }
             target = first
         }
         let previousScene = sceneKey, previousRevision = content.structureRevision
@@ -370,6 +383,7 @@ public final class NativeOverviewWorkspaceModel {
         if sceneKey != previousScene || content.structureRevision != previousRevision {
             canvasState.pendingRailSwipe = (sceneKey, content.structureRevision, up)
         }
+        return selectedRailID != previousID
     }
 
     func selectRailChoice(_ choice: NativeOverviewRailChoice) {

@@ -131,7 +131,7 @@ func (h *Harness) MokuMessageTelemetry(ctx context.Context, request plugin.Setti
 	if err != nil {
 		return "", err
 	}
-	source, err := h.settings.resolveCatalogSource(ctx, settings, request.Cwd, discovery.SourceIdentity)
+	source, err := h.settings.resolveCatalogSource(ctx, settings, request.Cwd, discovery.SourceIdentity, false)
 	if err != nil {
 		if ctx.Err() != nil {
 			return "", ctx.Err()
@@ -150,7 +150,7 @@ func (h *Harness) MokuMessageTelemetry(ctx context.Context, request plugin.Setti
 			snapshot, err := h.readTelemetry(life, opts)
 			// Opening OpenCode can itself refresh credentials. Never label the
 			// resulting observation with a different launch/account generation.
-			current, checkErr := h.settings.resolveCatalogSource(life, settings, request.Cwd, discovery.SourceIdentity)
+			current, checkErr := h.settings.resolveCatalogSource(life, settings, request.Cwd, discovery.SourceIdentity, false)
 			if checkErr == nil && current.key != source.key {
 				return
 			}

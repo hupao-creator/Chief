@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/sqlite"
 	"github.com/hupao-creator/Chief/tools/verification/pbt/rapidcheck"
 	"pgregory.net/rapid"
 )
@@ -110,4 +114,79 @@ func flashCatalogReply(req *http.Request, state string) (*http.Response, error) 
 	default:
 		return quotaReply(404, nil)
 	}
+}
+
+// Exercise the routing entry point with two independent SQLite connections.
+// The account can commit a switch or roll it back while discovery is waiting.
+func TestRoutingCatalogRecoveryProperties(t *testing.T) {
+	rapidcheck.Check(t, func(rt *rapid.T) {
+		root := t.TempDir()
+		path := filepath.Join(root, "opencode.db")
+		db, err := sqlite.Open(path, false)
+		if err != nil {
+			rt.Fatal(err)
+		}
+		defer db.Close()
+		exec := func(sql string) {
+			if err := db.Exec(sql); err != nil {
+				rt.Fatal(err)
+			}
+		}
+		exec("CREATE TABLE credential(id TEXT, integration_id TEXT, active INTEGER, connector_id TEXT, method_id TEXT, time_updated INTEGER)")
+		exec("INSERT INTO credential VALUES('A','provider',1,'native','key',1)")
+		commit := rapid.Bool().Draw(rt, "commit switch")
+		drift := rapid.IntRange(0, 2).Draw(rt, "source changes during acquisition")
+		status := rapid.SampledFrom([]int{502, 503, 504}).Draw(rt, "temporary model response")
+		var launches, reads atomic.Int32
+		env := map[string]string{"HOME": root, "OPENCODE_DB": path}
+		api := NewSettings(plugin.HostContext{Environment: func(context.Context) (map[string]string, error) {
+			return env, nil
+		}}, func(ctx context.Context, _ Settings, _ string) (*Runtime, error) {
+			if int(launches.Add(1)) <= drift {
+				if err := db.Exec("UPDATE credential SET time_updated = time_updated + 1"); err != nil {
+					return nil, err
+				}
+			}
+			owner, cancel := context.WithCancel(ctx)
+			return &Runtime{ctx: owner, cancel: cancel, URL: "http://native",
+				client: &http.Client{Transport: quotaTransport(func(req *http.Request) (*http.Response, error) {
+					if req.URL.Path == "/api/model" && reads.Add(1) == 1 {
+						return quotaReply(status, nil)
+					}
+					return flashCatalogReply(req, "available")
+				})}}, nil
+		})
+		defer api.Close()
+		request := plugin.SettingsRequest{Cwd: root, RoutingCatalog: true}
+		before, err := api.Describe(t.Context(), request)
+		if drift == 2 {
+			if !errors.Is(err, errCatalogSourceChanged) || launches.Load() != 2 {
+				rt.Fatalf("persistent account change: %v, %d probes", err, launches.Load())
+			}
+			return
+		}
+		if err != nil || int(launches.Load()) != 1+drift || int(reads.Load()) != 2+drift {
+			rt.Fatalf("cold admission: %v, %d probes, %d model reads", err, launches.Load(), reads.Load())
+		}
+		exec("BEGIN EXCLUSIVE; UPDATE credential SET id='B', time_updated=time_updated+1")
+		limited, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+		_, err = api.Describe(limited, request)
+		cancel()
+		if !errors.Is(err, context.DeadlineExceeded) {
+			rt.Fatalf("admission under a held lock: %v", err)
+		}
+		end := "ROLLBACK"
+		if commit {
+			end = "COMMIT"
+		}
+		released := make(chan error, 1)
+		time.AfterFunc(40*time.Millisecond, func() { released <- db.Exec(end) })
+		after, err := api.Describe(t.Context(), request)
+		if releaseErr := <-released; releaseErr != nil {
+			rt.Fatal(releaseErr)
+		}
+		if err != nil || (string(before) != string(after)) != commit {
+			rt.Fatalf("catalog identity after %s: %v, identity changed %t", end, err, string(before) != string(after))
+		}
+	})
 }

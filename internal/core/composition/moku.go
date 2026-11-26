@@ -18,6 +18,7 @@ import (
 func (b *Bootstrap) mokuConfiguration(cwd, data string) moku.Configuration {
 	r := b.runtime
 	config := moku.Configuration{
+		DispatchOptions: r.DispatchOptions, SubscribeDispatchOptions: r.SubscribeDispatchOptions, SteerDispatchOptions: r.SteerDispatchOptions,
 		Workspace: cwd, DataDir: data, Harnesses: b.harnesses,
 		HarnessEnabled: func(id string) bool { return b.disabled[id] == "" }, IsDeleting: r.IsDeleting,
 		WithSettingsAdmission: r.WithConfigurationAdmission, PrepareSettings: r.PrepareSettings,
@@ -61,20 +62,7 @@ func (b *Bootstrap) mokuConfiguration(cwd, data string) moku.Configuration {
 				if b.disabled[id] != "" {
 					continue
 				}
-				source, ok := h.(plugin.ModelCatalogSource)
-				if !ok {
-					continue
-				}
-				raw := settings.Harnesses[id]
-				if len(raw) == 0 {
-					raw = h.DefaultSettings()
-				}
-				catalogs = append(catalogs, plugin.BoundModelCatalog{ID: id, DisplayName: h.Descriptor().DisplayName, Load: func(ctx context.Context) (json.RawMessage, error) {
-					if cached, ok := h.(plugin.CachedModelCatalogSource); ok {
-						return cached.CachedModelCatalog(ctx, plugin.SettingsRequest{Settings: raw, Cwd: cwd})
-					}
-					return source.ModelCatalog(ctx, plugin.SettingsRequest{Settings: raw, Cwd: cwd})
-				}})
+				catalogs = append(catalogs, plugin.BoundModelCatalog{ID: id, DisplayName: h.Descriptor().DisplayName, Load: func(ctx context.Context) (json.RawMessage, error) { return r.DispatchBenchmarks(id), ctx.Err() }})
 			}
 			return b.contexts.CollectMokuContexts(ctx, phase, catalogs)
 		},

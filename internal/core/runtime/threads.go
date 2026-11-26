@@ -836,10 +836,19 @@ func (r *Runtime) CreateThread(ctx context.Context, request CreateThreadRequest)
 	lock := r.threadLock(id)
 	lock.Lock()
 	result, err := r.sendLocked(ctx, id, request.Input, request.Injection)
-	lock.Unlock()
 	if err != nil {
-		return created(record, SendResult{}, nil), err
+		// While this creation owns the command lock, any committed execution belongs
+		// to its initial dispatch. Expose its identity even if the native reply failed.
+		if current, readErr := r.Thread(id); readErr == nil {
+			record = current
+			if e := current.Observation.LatestExecution; e != nil {
+				result.ExecutionID = e.ExecutionID
+			}
+		}
+		lock.Unlock()
+		return created(record, result, nil), err
 	}
+	lock.Unlock()
 	record, err = r.Thread(id)
 	ack, _ := json.Marshal(map[string]any{"threadId": id, "harnessId": request.HarnessID, "title": record.Title, "executionId": result.ExecutionID})
 	return created(record, result, ack), err

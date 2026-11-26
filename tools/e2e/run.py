@@ -186,7 +186,7 @@ def run(args):
             session.prepare()
             session.start()
             report["validity"] = "valid"
-            execute("E2E-ONBOARDING-001", lambda: onboarding.journey(session, app))
+            execute("E2E-ONBOARDING-001", lambda: onboarding.journey(session, app, args.onboarding_host))
         else:
             session.prepare()
             session.start()
@@ -345,6 +345,7 @@ def main():
     execute.add_argument("--app", type=Path)
     execute.add_argument("--desktop-lease", type=Path, help="shared atomic lock directory")
     execute.add_argument("--desktop-owner", help="coordinator thread ID or CI run identity")
+    execute.add_argument("--onboarding-host", help="select this installed Harness on the Chief page for a provider-specific replay")
     execute.add_argument("--operator-composer", action="store_true", help="wait for actual external AX input and operator receipts")
     args = parser.parse_args()
     if args.command == "list":
@@ -352,6 +353,8 @@ def main():
         return 0
     if args.command == "verify":
         return verify(args.directory)
+    if args.onboarding_host and args.suite != "onboarding":
+        parser.error("--onboarding-host requires --suite onboarding")
     if args.timeout is None:
         args.timeout = 600 if args.suite in ("collection", "all") else 240
     if not 1 <= args.timeout <= 900:

@@ -2,6 +2,7 @@ import ChiefCore
 import SwiftUI
 
 struct NativeMokuConversationTimeline: View {
+    static let bubbleVerticalInset: CGFloat = 7
     let page: NativeMokuConversationPage
     let showsTyping: Bool
     var workspace: NativeWorkspaceModel?
@@ -122,7 +123,12 @@ struct NativeMokuConversationTimeline: View {
         TimelineView(.everyMinute) { clock in
             let day = dayLabel(for: date, relativeTo: clock.date)
             Text("\(day.fontWeight(.semibold)) \(Text(date, format: .dateTime.hour().minute()))")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .font(.system(size: 12))
+                .foregroundStyle(Color(white: 0.88))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                // Regular glass samples the workspace. Give small text a stable contrast pair.
+                .background(Color(white: 0.18), in: .capsule)
                 .accessibilityIdentifier("moku-conversation-period")
         }
     }
@@ -164,7 +170,7 @@ private struct ConversationBubble: View {
         }
         .font(.system(size: 15))
         .foregroundStyle(Color.white)
-        .padding(.horizontal, 13).padding(.vertical, 7)
+        .padding(.horizontal, 13).padding(.vertical, NativeMokuConversationTimeline.bubbleVerticalInset)
         .padding(.bottom, tail ? ConversationBalloon.tailHeight : 0)
         .background {
             if user {

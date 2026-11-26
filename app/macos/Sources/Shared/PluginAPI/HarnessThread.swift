@@ -33,6 +33,12 @@ public struct HarnessThread: Hashable, Sendable {
     public let mokuHistory: Bool
     public let transcript: JSONValue?
 
+    public var completedExecutionFinishedAt: Double? {
+        guard !pendingInput, observation.backgroundWork == nil,
+              let execution = observation.latestExecution, execution.status == .completed else { return nil }
+        return execution.finishedAt
+    }
+
     public init(json: JSONValue) throws {
         // Also rejects non-finite numbers or excessive depth in opaque payloads.
         try PluginJSONValidation.validate(json)

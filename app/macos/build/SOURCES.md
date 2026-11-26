@@ -16,7 +16,9 @@ The loading skillet uses five transparent PNG layers extracted from the same
 1024 × 1024 logo. The pan, Codex, Claude, Pi and the pair of motion strokes
 retain their source-resolution paint and have a fine warm outline. The
 [native loading view](../Sources/Shared/PluginUI/Design/NativeSurfaceLoading.swift)
-composes and animates those layers at the view's display scale.
+composes and animates those layers at the view's display scale. Workspace
+startup draws the bowl and handle from the Overview idle illustration. Its rim
+separates the tossing and sleeping agents during admission.
 
 [`generate-app-icon.swift`](generate-app-icon.swift) resizes this artwork with
 ImageIO and packages the representations with the macOS `iconutil` tool.

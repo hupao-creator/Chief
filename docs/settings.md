@@ -24,11 +24,19 @@ Use **Auto-Categorization** to set up Tag Agent and **Super Thread** to set up S
 
 - **Agent off** stops automatic work for that role and keeps its existing tags or Super Threads and saved choices. Pending work resumes when you turn the agent back on.
 - **Use Chief** uses Chief's agent and model settings for future work.
-- **Configure separately** lets you choose an agent and model for the role. If its configuration fails to load, use **Retry** in the form. Chief keeps those choices if you later switch to **Use Chief** or **Agent off**.
+- **Configure separately** opens with the role’s saved choices, or Chief’s choices the first time. You can edit them while the list of models updates. If a refresh fails, use **Retry** in the form. Chief keeps those choices if you later switch to **Use Chief** or **Agent off**.
 
 Choose **OpenCode** to see its providers, models and variants. If **Loading Agent configuration…** appears, wait for the options to open, then make your selections. If your saved model is marked **Unavailable in catalog**, check the provider in OpenCode or choose another listed model.
 
 [Find tags and Super Threads](reports-tags-and-changes.md)
+
+## Reset Chief and start setup again
+
+Open **Settings** from Overview. Press and hold the eyes at the left end of the Settings header for three seconds, until the confirmation appears. Release early or drag away to abandon the hold. Choose **Cancel** to keep working with your current settings and history.
+
+**Erase and Restart** permanently clears the current Chief profile. This includes conversations, Super Threads, tags, agent settings, unsent drafts, Chief’s attachment and transfer copies, saved agent sessions, usage records, reading and command history, and local caches such as the Codex plugin catalog stored by Chief. Chief stops active work. Your project files, task folders, Git worktrees, and external agents’ accounts, credentials and history stay on disk.
+
+After Chief restarts, the first setup page opens. If Chief reports that another window is using this profile, quit the other copy and try again. If reset stops with an error, keep the error message and reopen Chief. It finishes a pending erase before opening the workspace.
 
 ## Change appearance or language on your Mac
 

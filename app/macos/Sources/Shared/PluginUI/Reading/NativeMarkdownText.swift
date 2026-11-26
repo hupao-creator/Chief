@@ -21,6 +21,7 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
     var images: [String: NativePlatformImage] = [:]
     var helpText: String? = nil
     var executionLinkHarnesses: [JSONText: AnyHarnessPlugin]? = nil
+    var showsExecutionControls = true
     var openLink: (URL) -> Void
     @Environment(\.locale) private var locale
 
@@ -68,6 +69,7 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
     }
 
     func updateTextView(_ view: MarkdownTextView) {
+        if showsExecutionControls { view.admitExecutionControls() }
         view.executionLocale = locale
         // Image failures use the existing native element, without adding a
         // separate SwiftUI help responder around every ordinary text block.
@@ -263,6 +265,13 @@ final class MarkdownTextView: MarkdownPlatformTextView {
 
     var ownedTextStorage: NSTextStorage?
     var executionSurfaces: [Int: MarkdownExecutionHost] = [:]
+    private(set) var showsExecutionControls = false
+
+    func admitExecutionControls() {
+        guard !showsExecutionControls else { return }
+        showsExecutionControls = true
+        needsLayout = true
+    }
     var executionLocale = Locale.current {
         didSet { if executionLocale != oldValue { updateExecutionSurfaces() } }
     }
@@ -275,7 +284,12 @@ final class MarkdownTextView: MarkdownPlatformTextView {
     override func accessibilityChildren() -> [Any]? {
         // NSTextView publishes its own links but omits embedded native views.
         // Publish the live capsule controls to the actual system AX tree too.
-        (super.accessibilityChildren() ?? []) + executionSurfaces.sorted { $0.key < $1.key }.flatMap {
+        if !showsExecutionControls {
+            // Assistive navigation may request the real button before scrolling the row into view.
+            admitExecutionControls()
+            updateExecutionSurfaces()
+        }
+        return (super.accessibilityChildren() ?? []) + executionSurfaces.sorted { $0.key < $1.key }.flatMap {
             NSAccessibility.unignoredChildren(from: [$0.value])
         }
     }

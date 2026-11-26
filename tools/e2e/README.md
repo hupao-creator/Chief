@@ -105,7 +105,9 @@ checks the active decorations in the mounted workspace against a fixture Runtime
 The [mounted filter replay](../../demos/moku-panel-transition/remaining/README.md)
 checks [folder and tag activity](../../app/macos/Sources/Host/Overview/README.md#tag-activity)
 while **Reading** is selected. The fixture includes a running task under **Work** in the same folder. The `tag-activity` and `tag-activity-reduced` cases
-inspect their dot pattern, its animation under each motion setting, and its
+first sample the 44pt badge and adjacent upper lip of the running card in **Work**,
+then verify that switching to **Reading** removes its edge. They inspect the filter
+dot pattern, its animation under each motion setting, and its
 removal when the task completes. The replay captures the production window.
 
 ## Harness Thread Markdown
@@ -164,7 +166,7 @@ contains every requested ID, including blocked and unreached entries.
 
 | ID | Implemented interaction and criterion | Prerequisite / evidence | Coverage boundary |
 | --- | --- | --- | --- |
-| `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. Page changes take under 1,000ms each. The final Dock handoff takes under 1,560ms. | Fresh profile, authorized system AX driver, exclusive desktop. Each press verifies the private runtime PID/epoch, target button and focused test window. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
+| `E2E-ONBOARDING-001` | Confirm discovery, Chief, Tag and Super Thread in order. Select **Configure separately** for both background roles. The enabled model popup must display the inherited selection within 1,000ms of each press. Page changes take under 1,000ms each. The final Dock handoff takes under 1,560ms. | Fresh profile, authorized system AX driver, exclusive desktop. Each press verifies the private runtime PID/epoch, target button and focused test window. `onboarding-ax.jsonl` records inputs and timings. `onboarding-persisted.json` records the saved roles and completion. | Real macOS AXPress, native discovery and Runtime persistence. The final endpoint is the focused, editable Chief composer. Individual rendered frames and live model service behavior require separate evidence. |
 | `E2E-OVERVIEW-002` | Check the leading and trailing horizontal limits, open Settings at the trailing edge and return to the same position. | Twelve tagged tasks in the selected folder in the default suite, or mixed cards in the Collection suite. Leading, trailing, uncovered and start snapshots record the poses. | Mounted semantic controls and placement geometry. The [window replay](../../demos/moku-landing/README.md#nested-workspace-header-replay) also exercises native input routing and pointer hits. |
 | `E2E-OVERVIEW-004` | Select the folder’s Running tag, switch spaces and return. Choose Completed in a top-level Inbox tag. In the Collection suite, enter Studio’s first tag and click Studio again to view the whole folder. | Tagged project and Inbox tasks plus an untagged Inbox task in the supported suite, or tagged reports and tasks across two folders in the Collection suite. `overview-filters.json` records the Runtime scope and source references alongside the mounted pages. | Checks scoped membership, the available left buttons, the empty Running view and the remembered folder choice. The [untagged work replay](../../demos/moku-landing/README.md#untagged-running-work-and-tag-visibility) checks the running empty state, a live untagged card, first assignment and selection of tags with overlapping membership. |
 | `E2E-OVERVIEW-005` | Launch, select filters through mounted controls, relaunch the same isolated profile, fork tasks and classify them. | Three tagged project tasks with distinct tags, one tagged Inbox task and forks with inherited or empty tags. | Checks launch and folder defaults, preference restoration, empty-catalog and unavailable-space fallback, first-assignment selection, batch order, Settings focus and reclassification. |
@@ -228,6 +230,13 @@ fresh isolated profile and passes no Overview preparation flags. It performs
 no settings writes during preparation. Native discovery uses the installed
 Harnesses found in the isolated environment. The external peer and private
 native homes follow the same isolation policy as the other desktop scenarios.
+
+For a provider-specific replay, add `--onboarding-host opencode` to the run command.
+Discovery waits for that Harness and the driver selects it on the Chief page.
+For each role, the driver reads the inherited model, presses **Configure separately**
+and hit-tests the enabled model popup in the focused window. The field must show
+the same selected title within 1,000ms. The trace records the field ID, both values
+and the press and observation timestamps.
 
 The clock starts immediately before each AXPress. The next page must expose its
 own enabled confirmation after the normal page animation. After **Start using
@@ -488,6 +497,27 @@ mode and before/after observations with each run. A process-local simulation
 covers only its injected inputs. It cannot certify macOS notifications or all
 window pixels.
 
+### Settings factory reset
+
+Run `python3 tools/e2e/factory_reset.py /private/tmp/chief-reset-evidence-UNIQUE`
+on macOS with a graphical session. The [replay](FactoryResetReplay.swift) mounts
+the production workspace and routes AppKit mouse events through its own window.
+It checks early release, dragging outside, a single confirmation during a
+continued hold, cancellation with saved settings intact, and explicit erasure.
+A fresh process must mount onboarding, restore default Runtime settings and
+replace the old Chief conversation. The runner uses temporary app and agent
+homes, a legacy SQLite profile and a real detached Git worktree. It checks a
+removed draft and Codex plugin catalog clone and preserved external files.
+Offline maintenance exercises a current profile with a one-shot Codex home.
+It rejects a linked worktree at the catalog path, a catalog backing an external
+worktree and an unexpected nested checkout before allowing a standalone clone
+to be removed. It also rejects
+a missing or mismatched confirmation, an occupied ownership port, a
+symlinked cache directory and unexpected transfer files. It retries after
+the obstruction is cleared. The output records the revision, local
+observations and isolated profile. System-wide AX and physical input
+are separate boundaries.
+
 ### Settings over a populated Overview
 
 In an isolated workspace, scroll horizontally until an Agent and a Super Thread are in view.
@@ -683,6 +713,15 @@ and long states must have the same centered column and wrap the same sample text
 identically. Check a narrow pane at or below 540pt and a pane wide enough to
 reach the 744pt column limit. Open an earlier run from the margin and return
 to verify the same geometry in both documents.
+
+### Agent card input focus
+
+Run `python3 demos/moku-panel-transition/workspace/composer_focus.py /private/tmp/chief-agent-focus` with a new output directory on macOS.
+The replay builds the current workspace and holds two private Codex tasks in their first execution with a loopback provider.
+It clicks the visible cards and Close controls in a mounted workspace, types through the window's first responder, clicks back into the editor, revisits the first draft and opens Compose on Overview.
+A second offscreen panel receives a key while the workspace is hidden and its scene is inactive. On return the next key must reach the original Agent draft.
+The panels use window-local AppKit events and stay outside system key-window arbitration. System activation and physical input methods require separate evidence.
+The output includes the build receipts, observed drafts in `focus.txt` and owned-process cleanup. [Composer focus ownership](../../design/composer.md#route-input-and-focus)
 
 ### Agent history composer
 

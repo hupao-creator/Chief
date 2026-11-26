@@ -183,13 +183,13 @@ func requireExplicit(settings ThreadSettings, resolved bool) error {
 	}
 	return nil
 }
-func normalizeCreate(raw json.RawMessage) (ThreadSettings, error) {
+func normalizeCreate(raw json.RawMessage, dispatch bool) (ThreadSettings, error) {
 	values, err := model.DecodeObject(raw)
 	if err != nil {
 		return ThreadSettings{}, err
 	}
 	for key := range values {
-		if key != "provider" && key != "model" && key != "thinking" {
+		if key != "provider" && key != "model" && key != "thinking" && !(dispatch && key == "thinkingLevel") {
 			return ThreadSettings{}, fmt.Errorf("unknown Pi Thread create field: %s", key)
 		}
 	}
@@ -481,9 +481,6 @@ func (s *settingsAPI) readObservation(ctx context.Context, settings ThreadSettin
 		go func() { defer reads.Done(); value.Models, modelsErr = rpc.Models(ctx) }()
 		go func() { defer reads.Done(); value.Levels, levelsErr = rpc.ThinkingLevels(ctx) }()
 		reads.Wait()
-		if modelsErr == nil && len(value.Models) == 0 {
-			modelsErr = errors.New("Pi native model catalog is empty")
-		}
 		err = errors.Join(modelsErr, levelsErr)
 		if err != nil {
 			if ctx.Err() != nil {
@@ -613,6 +610,12 @@ func assertRuntimeSettings(ctx context.Context, rpc *Session, settings ThreadSet
 	if state.Model == nil || state.Model.Provider != resolved.Provider || state.Model.ID != resolved.Model {
 		return errors.New("Pi did not select configured provider/model")
 	}
+	if explicitRequired {
+		if state.ThinkingLevel != resolved.ThinkingLevel {
+			return errors.New("Pi did not apply configured thinking level")
+		}
+		return nil
+	}
 	levels, err := rpc.ThinkingLevels(ctx)
 	if err != nil {
 		return err
@@ -679,7 +682,7 @@ func (s *settingsAPI) ResolveThread(ctx context.Context, input plugin.ResolveSet
 		next.ExecutablePath = existing.ExecutablePath
 	}
 	if !model.IsNull(input.Requested) {
-		request, err := normalizeCreate(input.Requested)
+		request, err := normalizeCreate(input.Requested, input.Dispatch)
 		if err != nil {
 			return nil, err
 		}
@@ -688,6 +691,22 @@ func (s *settingsAPI) ResolveThread(ctx context.Context, input plugin.ResolveSet
 	}
 	if hasContent && existing.ExecutablePath != "" && next.ExecutablePath != existing.ExecutablePath {
 		return nil, errors.New("Pi executable cannot change after history exists")
+	}
+	if input.Dispatch {
+		if next.Thinking == nil {
+			return nil, errors.New("Pi dispatch requires explicit thinking")
+		}
+		if next.ThinkingLevel == "" {
+			switch next.Thinking.Mode {
+			case "effort":
+				next.ThinkingLevel = next.Thinking.Effort
+			case "fixed", "off":
+				next.ThinkingLevel = "off"
+			default:
+				return nil, errors.New("Pi thinking on requires an explicit native thinkingLevel")
+			}
+		}
+		return json.Marshal(next)
 	}
 	next, err = s.resolve(ctx, next, input.Cwd, false)
 	if err != nil {
@@ -795,6 +814,13 @@ func (s *settingsAPI) Presentation(ctx context.Context, input plugin.SettingsPre
 		}
 		return json.Marshal(model.Object{"cli": model.Object{"status": "unavailable", "message": message}, "models": []any{}})
 	}
+	if input.ModelReferences != nil {
+		refs, err := catalogReferences(observed)
+		if err != nil {
+			return nil, err
+		}
+		input.ModelReferences(refs)
+	}
 	models := []model.Object{}
 	for _, m := range observed.Models {
 		levels := NativeThinkingLevels(m)
@@ -806,6 +832,11 @@ func (s *settingsAPI) Presentation(ctx context.Context, input plugin.SettingsPre
 		entry, _ := model.DecodeObject(data)
 		delete(entry, "baseUrl")
 		entry["thinkingLevels"] = levels
+		mappings := []map[string]string{}
+		for _, level := range levels {
+			mappings = append(mappings, map[string]string{"thinkingLevel": level, "effort": mappedLevel(m, level)})
+		}
+		entry["dispatchThinking"] = mappings
 		entry["thinking"] = ThinkingCapability(m, levels)
 		models = append(models, entry)
 	}
@@ -926,4 +957,8 @@ func (s *settingsAPI) recordInstallation(cwd, path string) {
 	if known && previous != path {
 		s.invalidate()
 	}
+}
+
+func (*settingsAPI) DispatchSchema() json.RawMessage {
+	return plugin.DispatchSchema([]string{"provider", "model", "thinking"}, []string{"thinkingLevel"}, nil)
 }

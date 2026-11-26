@@ -40,7 +40,7 @@ When you choose an Inbox tag at the top, click ⏳ **Running**, 🗂️ **All st
 
 **Running** includes tasks preparing submitted input, executing, waiting for your response, or still working in the background. Cards enter and leave as the work changes. When the last running task leaves, a sleeping skillet appears above **No running conversations**.
 
-In a window or full screen, move two fingers up on a card or empty canvas to select the choice below the current one in the left column. From the last choice, swipe up to reach the first. Swipe down to select the choice above, wrapping from the first choice to the last. These directions work with Natural Scrolling on or off. Each gesture moves one choice. If the column has only one choice, it stays selected. From the whole folder, swipe up to enter the first choice. A vertical mouse-wheel step follows the same order.
+In a window or full screen, move two fingers up on a card or empty canvas to select the choice below the current one in the left column. From the last choice, swipe up to reach the first. Swipe down to select the choice above, wrapping from the first choice to the last. These directions work with Natural Scrolling on or off. Each gesture moves one choice. On a supported trackpad, you may feel a single tap when the selection changes. If the column has only one choice, it stays selected. From the whole folder, swipe up to enter the first choice. A vertical mouse-wheel step follows the same order.
 
 ## Move around the canvas
 
@@ -58,9 +58,11 @@ If the cards in your current view would extend past the window, Overview can gro
 
 Click a task card to open its conversation. Cards show statuses such as **Running**, **Completed**, and **Interrupted**. If a card shows a question or permission request, respond on the card or open the conversation for context. **Background work is still running** means work continues after the agent has replied.
 
+A completed task card shows how long ago its latest run finished. It shows **now** for the first minute, then whole minutes, hours, or days. The time updates while you’re viewing the card.
+
 When the main part of a task card spans two rows, you can see up to two recent message previews and, for agents that show tool activity on cards, up to five recent tool calls. A single-row main area shows one message preview when available. Open the conversation for the full context.
 
-While a task is running, a band of tiny dots sweeps diagonally behind its emoji in the harness color. With **Reduce Motion** turned on in macOS, the dots stay still. When the task completes, a check mark appears on the badge.
+While a task is running, look for tiny dots sweeping from upper left to lower right behind its emoji. A soft highlight in the same harness color catches the card edge nearest the badge as the dots pass. With **Reduce Motion** turned on in macOS, both the dots and the edge light stay still. When the task completes, a check mark appears on the badge.
 
 A red bookmark on the upper-left edge of the emoji badge means there’s a completed result or Super Thread document you haven’t viewed. Open the card and let the result or document appear in the foreground. When you return to Overview, the bookmark is gone. Chief remembers this after you quit. A newly completed run or a new version of the document brings the bookmark back.
 

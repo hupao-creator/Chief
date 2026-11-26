@@ -20,13 +20,15 @@ Right-click the eyes, or hold **Control** and click. Your conversation opens abo
 
 Click a project folder or an Inbox tag in the top row. The button you choose lights up and the cards below change. In the clip, clicking **股票行情** (stock prices) brings up a stock quote task. Clicking **天气预报** (weather forecast) brings back the weekend forecast.
 
+From Overview, press **⇧⌘[** to move one space left or **⇧⌘]** to move one space right. The top row scrolls to show your selection, and the shortcuts stop at either end. Close Chief Bar’s input or return from a reader or Settings before using these shortcuts. If your keyboard layout requires **Option** to type brackets, click the folder or tag at the top.
+
 ![The pointer clicks the stock prices tag and then the weather forecast tag. The card changes to match each selection.](images/overview-top-tags.gif)
 
 ## Switch tags and filters on the left
 
 Hover over an icon on the left to see its name, then click it to filter the cards. In a project folder, you can choose one of its tags, **Running**, or **Unread**. With an Inbox tag selected at the top, the choices are **Running**, **Unread**, **All statuses**, and **Completed**.
 
-To cycle through these choices as shown below, move the pointer over a card or an empty part of the canvas. Swipe up with two fingers for the next option down the list, or down for the one above. A vertical mouse wheel also steps through the list. The selected label stays open. If nothing is running in that tag, **Running** shows **No running conversations**.
+To cycle through these choices as shown below, move the pointer over a card or an empty part of the canvas. Swipe up with two fingers for the next option down the list, or down for the one above. On a supported trackpad, you may feel a tap as the selected label changes. A vertical mouse wheel also steps through the list. The selected label stays open. If nothing is running in that tag, **Running** shows **No running conversations**.
 
 ![The left filter cycles through statuses. Task cards change, and the running view ends with a sleeping pan when no conversations are running.](images/overview-left-filters.gif)
 

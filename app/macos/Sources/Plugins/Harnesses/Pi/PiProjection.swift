@@ -152,7 +152,8 @@ struct PiOverviewCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HarnessThreadCard(identity: identity, presentation: projection.presentation,
-                status: threadCardStatus(input.thread.observation), emoji: nativeGeneratedThreadEmoji(metadata: input.thread.metadataState),
+                status: threadCardStatus(input.thread.observation), completedAt: input.thread.completedExecutionFinishedAt,
+                emoji: nativeGeneratedThreadEmoji(metadata: input.thread.metadataState),
                 harnessLogo: AnyView(PiLogo(size: 12)),
                 onInterventionResponse: respond, onOpenThread: openThread)
                 .environment(\.threadCardProviderColor, PiLogo.themeColor)

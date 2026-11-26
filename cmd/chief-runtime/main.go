@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -75,6 +76,8 @@ func run(args []string, input io.Reader, output io.Writer) error {
 	defer stopSignals()
 	env := environment.Current()
 	switch command {
+	case "finish-factory-reset":
+		return profile.FinishFactoryReset(p)
 	case "serve":
 		overview := transport.NewOverviewBroker(10 * time.Second)
 		defer overview.Close()
@@ -123,6 +126,10 @@ func run(args []string, input io.Reader, output io.Writer) error {
 func parseCommand(args []string) (command, dataDir string, err error) {
 	command = args[0]
 	switch command {
+	case "finish-factory-reset":
+		if len(args) != 3 || args[1] != "--data-dir" || !filepath.IsAbs(args[2]) {
+			return "", "", errors.New("finishing a confirmed reset requires an explicit absolute profile")
+		}
 	case "start", "status", "stop", "serve":
 	default:
 		return "", "", errors.New("unknown runtime command")

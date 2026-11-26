@@ -62,15 +62,30 @@ public final class HarnessContentResource {
 public final class HarnessSettingsResource<Value> {
     public private(set) var state: PluginResourceState<Value>
     @ObservationIgnored private let reloadAction: (_ refresh: Bool) async throws -> Value
+    // A published presentation keeps displaying its validated value while refreshes
+    // go to the owning session. Authority and discovery readiness stay with the owner.
+    private(set) var published: Value?
+    @ObservationIgnored private var refreshPublished: ((Bool) async throws -> Void)?
+    private let publishIf: ((Value) -> Bool)?
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var pending: Task<Void, Error>?
 
-    public init(state: PluginResourceState<Value> = .loading,
+    public init(state: PluginResourceState<Value> = .loading, publishIf: ((Value) -> Bool)? = nil,
                 reload: @escaping (_ refresh: Bool) async throws -> Value) {
-        self.state = state; reloadAction = reload
+        self.state = state; self.publishIf = publishIf; reloadAction = reload
+    }
+    func publish(_ value: Value) {
+        if publishIf?(value) == true { published = value }
+    }
+    func presentingPublished(refresh: @escaping (Bool) async throws -> Void) -> HarnessSettingsResource<Value> {
+        guard let published else { return self }
+        let snapshot = HarnessSettingsResource(state: .ready(published), reload: reloadAction)
+        snapshot.refreshPublished = refresh
+        return snapshot
     }
     /// Calls made while loading coalesce; an explicit refresh supersedes older reads.
     public func reload(refresh: Bool = false) async throws {
+        if let refreshPublished { return try await refreshPublished(refresh) }
         if let pending, !refresh { return try await pending.value }
         generation += 1
         let current = generation
@@ -81,7 +96,10 @@ public final class HarnessSettingsResource<Value> {
                 try Task.checkCancellation()
                 let value = try await reloadAction(refresh)
                 try Task.checkCancellation()
-                if generation == current { state = .ready(value) }
+                if generation == current {
+                    state = .ready(value)
+                    publish(value)
+                }
             } catch {
                 if generation == current { state = .error(error.localizedDescription) }
                 throw error
@@ -98,7 +116,7 @@ public final class HarnessSettingsResource<Value> {
     }
     public func invalidate(keepingValue: Bool = false) {
         generation += 1; pending?.cancel(); pending = nil
-        if !keepingValue { state = .loading }
+        if !keepingValue { state = .loading; published = nil }
     }
 }
 

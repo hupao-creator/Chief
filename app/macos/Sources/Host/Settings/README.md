@@ -1,5 +1,12 @@
 # Native settings
 
+Ordinary Agent settings attach to the workspace's [published provider configuration](../../../../../internal/services/dispatchconfig/README.md).
+Onboarding and workspace prefetch request discovery. An open ordinary editor
+reads the stored presentation on reconnect before native discovery, and consumes new presentations when the runtime publishes a changed version. A failed
+refresh retains the provider's previous choices across restarts. Thread and
+execution-profile editors use their own settings scopes.
+
+
 Settings form controls use system SwiftUI/AppKit controls on the existing macOS
 26 minimum. The page's `nativeSettingsFormPage` environment selects system
 popups, rounded text/secure fields, switches, bordered action buttons and AppKit
@@ -139,6 +146,15 @@ safe area; the main window retains its own native controls. When the page has le
 also scrolls so its chrome cannot make form controls unreachable. The resident
 eyes scroll with the header so they stay with their seat above the form.
 
+The header face slot owns a three-second primary-button hold. Reaching the
+threshold presents one native confirmation sheet. Early release, drag outside,
+window resignation, cancellation or unmount retires the hold. Cancel keeps the
+Settings visit. Erase and Restart requires a connected Runtime and reserves the
+native client lease before stopping work. The [profile maintenance
+contract](../../../../../internal/platform/profile/README.md#factory-reset)
+defines the erase scope and recovery. [The mounted reset replay](../../../../../tools/e2e/README.md#settings-factory-reset)
+drives the header and both sheet buttons.
+
 The scene blurs Overview and blocks pointer, keyboard and accessibility access
 until the capsule finishes returning. Super Thread covers and card text keep
 their normal contrast beneath the animated workspace blur and shade, including
@@ -215,8 +231,7 @@ background-configuration application scopes load through the Core client's bound
 one per Harness). Inherited roles use Moku's exact saved resource, including
 while an independent-mode draft is waiting to save its source change. They do
 not introduce separate application presentation reads or retry loops. Independent
-roles still own distinct resources/workspaces even when their profile JSON is
-equal. Each Harness queues execution resources before ordinary Thread defaults
+roles own distinct resources/workspaces. Settings and onboarding can render the current role draft using the latest usable role catalog or the same Harness’s Chief catalog while the independent read runs. A failed update preserves the fields and offers retry. Each Harness queues execution resources before ordinary Thread defaults
 in the same bounded batch. Defaults do not wait for every execution scope to
 finish its retries; each scope keeps its own bounded retry lifetime. Onboarding
 joins only the execution resources it actually mounts (or the ordinary resource for a
@@ -406,7 +421,7 @@ and carousel selection are session presentation state. See the
 
 ## Mounted Harness settings property
 
-[PBT-HARNESS-SETTINGS](../../../../../tools/verification/pbt/README.md) mounts
+A generated failed refresh retains the typed publication while the acquiring session reports the failure. [PBT-HARNESS-SETTINGS](../../../../../tools/verification/pbt/README.md) mounts
 the Chief Agent page and its four plugin editors. Generated visits select hosts,
 models and reasoning efforts or variants through the mounted control registry.
 They open fresh profiles, saved profiles and an isolated

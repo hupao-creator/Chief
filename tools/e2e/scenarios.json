@@ -4,7 +4,7 @@
     {
       "id": "E2E-ONBOARDING-001",
       "implementation": "system-accessibility",
-      "title": "Confirm each first-run page within its deadline and reach an editable Chief composer",
+      "title": "See the editable model on both role switches, confirm each first-run page and reach the Chief composer",
       "doc": "app/macos/Sources/Host/Onboarding/README.md#confirmation-e2e",
       "evidence": ["onboarding-bundle.json", "onboarding-environment.json", "onboarding-ax.jsonl",
                    "onboarding-handoff.json", "onboarding-persisted.json"]

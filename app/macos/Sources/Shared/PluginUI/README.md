@@ -74,7 +74,7 @@ Browser and suppressed states. The Host converts that geometry through the same
 passive native marker as Agent Sidecards and owns the composer and send routing.
 
 `ThreadConversationInputTargetKey` publishes the main reader's actual selection,
-entry request and motion readiness. Ordinary current documents follow latest;
+entry request and motion readiness. The heading placeholder used during card entry clears this preference at its boundary. Only the task reader supplies a target for typing. Ordinary current documents follow latest;
 explicit TOC/history/result visits retain their exact execution, including an
 entry temporarily excluded into the active Sidecard. Row-only renders and
 execution Sidecards do not publish another input owner. Unavailable or aggregate
@@ -260,7 +260,10 @@ bowl of the skillet above its optional localized caption. A 250 × 152 pt
 transparent canvas fits proportionally in smaller viewports. At full size the
 pan paints about 191 pt across, matching the visible width of the Running
 empty-state skillet. Three agents leave the rim in sequence and settle into
-the pan as it rebounds. Reduce Motion holds that resting pose. Agent configuration notices use the same mark at 32 pt, with the adjacent localized text providing their accessible status. The reading placeholder
+the pan as it rebounds. The workspace loader shares its bowl and handle with
+the [Overview empty status](../../Host/Overview/README.md). Both presentations
+sample the same toss clock while the catalog opens. Reduce Motion holds the
+agents still. Agent configuration notices use the same mark at 32 pt, with the adjacent localized text providing their accessible status. The reading placeholder
 shows it after a cancellable 180ms grace period without taking focus or pointer input. Its layout is reserved during the delay,
 and it is absent from accessibility until visible. Unmounting cancels the delay
 and resets visibility; errors and retry controls appear immediately. The shared
@@ -990,7 +993,10 @@ The native overview retains offscreen cards and the overview behind a reading
 page. `ThreadCardAnimationVisibility` reports their actual viewport/page visibility
 independently of the cloud-animation switch. A running duration suspends its
 one-second task while that visibility is false or the scene is in the background;
-on return it immediately samples wall time. Completed durations stay fixed.
+on return it immediately samples wall time. Completed Agent cards use the same
+visibility gate for a relative time label. The label uses the latest execution’s
+finish timestamp once pending input and background work are clear. It wakes at
+the next elapsed minute, hour or day boundary, with days as the largest unit.
 Disabled cloud effects do not stop a visible duration. Outside
 the overview, omitting the visibility environment keeps the ordinary visible
 behavior; an inactive but still visible window can continue showing elapsed time.
@@ -1039,10 +1045,13 @@ Window visibility, detachment, cancellation and explicit pause are separate life
 The running Agent badge uses a 9 × 9 grid with 2pt perforations on a 5.25pt
 pitch. Four axial holes touch the 44pt circular rim. Core Animation varies the
 opacity of the harness accent over neutral holes grouped by diagonal. The sweep
-travels for 2.25s in a 2.8s cycle. The emoji, unread mark and card surface stay
-still. The view removes its animations when the workspace pauses decorations,
+travels for 2.25s in a 2.8s cycle. The [edge reflection](Cards/RunningThreadEdge.swift)
+continues the same crest across the upper-right rim and the 3–12pt inset lip.
+The card shell resolves the mounted badge center to align both grids. The
+reflection fades over an 88pt radius. A badge separated from the outer corner
+by extension cells lights the top edge above it. The emoji and unread mark stay still. The view removes its animations when the workspace pauses decorations,
 the card leaves the viewport, the window hides or is occluded, or the view
-detaches. Reduce Motion uses a fixed lit diagonal. Visible badges share a phase
+detaches. Reduce Motion uses a fixed lit diagonal. Visible badges and edges share a phase
 and require no per-frame SwiftUI updates. See the [mounted badge comparison](../../../../../demos/running-emoji-badge/README.md).
 
 Overview reuses the perforation renderer behind active folder icons and
@@ -1130,6 +1139,10 @@ successor is running. This eligibility is separate from output following so fina
 content layout and result-anchor positioning keep their existing behavior.
 Internal execution URLs are admitted by the shared Markdown parser but dispatched
 only through an explicitly supplied typed execution callback. Chief Talk uses the same [TextKit execution capsule](Reading/NativeMarkdownExecutionLink.swift) for labeled and bare links in both the conversation and compact bar. TextKit owns inline layout, selection and pointer tracking. The capsule exposes its Harness logo, title and arrow as a single accessible button.
+In Chief conversation history, TextKit measures the inline seat with the full
+page. Each message creates its native glass controls when it comes within one
+viewport of the reader or accessibility requests its children. Admitted controls
+remain with the mounted message, including during selection and scrolling.
 
 Timeline anchors retain document coordinates through nested rows. If a requested
 position is initially clamped because Markdown has not finished layout, content

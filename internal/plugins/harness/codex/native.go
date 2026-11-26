@@ -1126,7 +1126,26 @@ func (n *NativeSession) validateSettings(ctx context.Context, o *NativeOptions) 
 	if o.RequireExplicitSettings && str(o.Settings["serviceTier"]) == "" {
 		return errors.New("Codex ordinary Thread requires an explicit serviceTier: default for standard speed (Fast off), or an advertised native tier")
 	}
-	if o.RequireExplicitSettings || o.Settings["thinking"] != nil || (o.Settings["model"] != nil && o.Settings["serviceTier"] != nil && o.Settings["permissionMode"] != nil) {
+	if o.RequireExplicitSettings {
+		if str(o.Settings["model"]) == "" {
+			return errors.New("Codex ordinary Thread requires an explicit model")
+		}
+		// Persisted execution profiles can already contain the native effort.
+		if o.Settings["thinking"] == nil {
+			return nil
+		}
+		effort, err := ThinkingEffort(o.Settings["thinking"])
+		if err != nil {
+			return err
+		}
+		delete(o.Settings, "thinking")
+		delete(o.Settings, "effort")
+		if effort != "" {
+			o.Settings["effort"] = effort
+		}
+		return nil
+	}
+	if o.Settings["thinking"] != nil || (o.Settings["model"] != nil && o.Settings["serviceTier"] != nil && o.Settings["permissionMode"] != nil) {
 		models, e := ListModels(ctx, n.server)
 		if e != nil {
 			return e

@@ -24,7 +24,7 @@ if CommandLine.arguments.dropFirst() == ["--probe"] {
     exit(trusted ? 0 : 2)
 }
 
-guard CommandLine.arguments.count == 6, let pid = Int32(CommandLine.arguments[1]), let runtimePID = Int32(CommandLine.arguments[4]),
+guard (6...7).contains(CommandLine.arguments.count), let pid = Int32(CommandLine.arguments[1]), let runtimePID = Int32(CommandLine.arguments[4]),
       let application = NSRunningApplication(processIdentifier: pid),
       let bundle = application.bundleURL?.resolvingSymlinksInPath(),
       bundle == URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true).resolvingSymlinksInPath(),
@@ -45,24 +45,56 @@ func element(_ owner: AXUIElement, _ key: String) -> AXUIElement? {
     return (value as! AXUIElement)
 }
 
-func control(in window: AXUIElement, matching: (String) -> Bool) -> AXUIElement? {
+func findControl(in window: AXUIElement, matching: (AXUIElement, String) -> Bool) -> AXUIElement? {
     var queue = [window]
     var index = 0
     let deadline = now() + 150_000_000
     while index < queue.count, index < 500, now() < deadline {
         let node = queue[index]
         index += 1
-        if let id = attribute(node, kAXIdentifierAttribute) as? String, matching(id) {
-            guard attribute(node, kAXEnabledAttribute) as? Bool == true else { return nil }
-            var actions: CFArray?
-            if AXUIElementCopyActionNames(node, &actions) == .success,
-               (actions as? [String])?.contains(kAXPressAction) == true {
-                return node
-            }
-        }
+        if let id = attribute(node, kAXIdentifierAttribute) as? String, matching(node, id) { return node }
         queue += attribute(node, kAXChildrenAttribute) as? [AXUIElement] ?? []
     }
     return nil
+}
+
+func control(in window: AXUIElement, matching: (String) -> Bool) -> AXUIElement? {
+    findControl(in: window) { node, id in
+        guard matching(id), attribute(node, kAXEnabledAttribute) as? Bool == true else { return false }
+        var actions: CFArray?
+        return AXUIElementCopyActionNames(node, &actions) == .success
+            && (actions as? [String])?.contains(kAXPressAction) == true
+    }
+}
+
+func frame(of node: AXUIElement) -> CGRect? {
+    guard let position = attribute(node, kAXPositionAttribute), let size = attribute(node, kAXSizeAttribute),
+          CFGetTypeID(position) == AXValueGetTypeID(), CFGetTypeID(size) == AXValueGetTypeID() else { return nil }
+    var point = CGPoint.zero
+    var extent = CGSize.zero
+    guard AXValueGetValue(position as! AXValue, .cgPoint, &point), AXValueGetValue(size as! AXValue, .cgSize, &extent),
+          extent.width > 0, extent.height > 0 else { return nil }
+    return CGRect(origin: point, size: extent)
+}
+
+func hitAtCenter(_ frame: CGRect) -> AXUIElement? {
+    var hit: AXUIElement?
+    guard AXUIElementCopyElementAtPosition(app, Float(frame.midX), Float(frame.midY), &hit) == .success else { return nil }
+    return hit
+}
+
+// Observe the real popup and its selected title, scoped to this role. The
+// inherited popup is disabled; only the independent editor enables it.
+func modelField(_ scope: String, in window: AXUIElement, editable: Bool) -> (id: String, value: String)? {
+    guard let popup = findControl(in: window, matching: { node, id in
+        id.hasPrefix(scope + ".") && id.hasSuffix(".model")
+            && attribute(node, kAXRoleAttribute) as? String == kAXPopUpButtonRole
+            && attribute(node, kAXEnabledAttribute) as? Bool == editable
+    }), let id = attribute(popup, kAXIdentifierAttribute) as? String,
+        let value = attribute(popup, kAXValueAttribute) as? String, !value.isEmpty,
+        let parent = element(popup, kAXWindowAttribute), CFEqual(parent, window),
+        let rect = frame(of: popup), let hit = hitAtCenter(rect), CFEqual(hit, popup) else { return nil }
+    return (id, value)
 }
 
 func foreground() -> Bool { NSWorkspace.shared.frontmostApplication?.processIdentifier == pid }
@@ -120,25 +152,59 @@ guard let window = waitFor(until: now() + preparation, {
 }) else { stop("Isolated Chief never had a foreground window", status: 2) }
 record(["kind": "window", "pid": pid, "bundleID": application.bundleIdentifier ?? ""])
 
+let requestedHost = CommandLine.arguments.count == 7 ? CommandLine.arguments[6] : nil
 let steps = ["discovery", "moku", "tag", "report"]
 var failedBudget = false
 for (index, step) in steps.enumerated() {
     let confirm = "onboarding-confirm-" + step
+    if let requestedHost, step == "discovery" {
+        guard waitFor(until: now() + preparation, {
+            findControl(in: window) { _, id in id == "onboarding-ready-" + requestedHost }
+        }) != nil else { stop("Requested Harness never became ready: \(requestedHost)", status: 2) }
+    }
+    if let requestedHost, step == "moku" {
+        guard let button = waitFor(until: now() + preparation, { ready("moku-host-" + requestedHost, in: window) }) else {
+            stop("Requested Chief host could not be selected")
+        }
+        requirePressTarget(button, in: window)
+        guard AXUIElementPerformAction(button, kAXPressAction as CFString) == .success else { stop("Chief host press failed") }
+        record(["kind": "host", "harness": requestedHost])
+    }
     if step == "tag" || step == "report" {
         let scope = step + ".settings"
         let choice = scope + "-mode-independent"
         guard let button = waitFor(until: now() + preparation, { ready(choice, in: window) }) else {
             stop("Configure separately is unavailable on \(step)")
         }
+        guard let inherited = waitFor(until: now() + preparation, {
+            modelField(scope, in: window, editable: false)
+        }) else { stop("The inherited model field is missing on \(step)") }
         requirePressTarget(button, in: window)
+        let start = now()
         guard AXUIElementPerformAction(button, kAXPressAction as CFString) == .success else {
             stop("AXPress failed for Configure separately on \(step)")
         }
-        // The always-editable Harness selector only mounts for an independent role.
-        guard waitFor(until: now() + preparation, {
-            control(in: window) { $0.hasPrefix(scope + "-harness-") }
-        }) != nil else { stop("The separate \(step) editor never mounted") }
-        record(["kind": "role", "id": scope, "selection": "independent"])
+        let dispatched = now()
+        let field = waitFor(until: start + 1_000_000_000) {
+            foreground() ? modelField(scope, in: window, editable: true) : nil
+        }
+        let observed = now()
+        let expectedField = requestedHost.map { scope + "." + $0 + ".model" } ?? inherited.id
+        let passed = field?.id == inherited.id && inherited.id == expectedField && field?.value == inherited.value && observed - start < 1_000_000_000
+        record(["kind": "role", "id": scope, "selection": "independent", "startNS": start,
+                "dispatchReturnedNS": dispatched, "observedNS": observed, "field": field?.id ?? "",
+                "expectedModel": inherited.value, "model": field?.value ?? "", "status": passed ? "passed" : "failed"])
+        if !passed {
+            failedBudget = true
+            if let node = findControl(in: window, matching: { _, id in id == inherited.id }), let rect = frame(of: node) {
+                let hit = hitAtCenter(rect)
+                record(["kind": "field-diagnostic", "scope": scope, "frame": NSStringFromRect(rect),
+                        "value": attribute(node, kAXValueAttribute) as? String ?? "",
+                        "enabled": attribute(node, kAXEnabledAttribute) as? Bool ?? false,
+                        "hit": hit.flatMap { attribute($0, kAXRoleAttribute) as? String } ?? "",
+                        "hitID": hit.flatMap { attribute($0, kAXIdentifierAttribute) as? String } ?? ""])
+            }
+        }
     }
 
     guard let button = waitFor(until: now() + preparation, { ready(confirm, in: window) }) else {

@@ -212,7 +212,8 @@ public struct ClaudeOverviewCard: View {
             interventionActionLabel: { action in
                 guard let publicAction = projection.pendingPublicInteraction?.actions.first(where: { $0.id == action.id }) else { return action.label }
                 return claudeLocalized(claudeActionLabel(publicAction, kind: "question"), locale: locale)
-            }, status: threadCardStatus(input.thread.observation), emoji: claudeEmoji(input.thread), harnessLogo: AnyView(ClaudeLogo(size: 12)))
+            }, status: threadCardStatus(input.thread.observation), completedAt: input.thread.completedExecutionFinishedAt,
+                emoji: claudeEmoji(input.thread), harnessLogo: AnyView(ClaudeLogo(size: 12)))
             .environment(\.threadCardProviderColor, ClaudeLogo.themeColor)
     }
     private var workflowSlots: [String: AnyView] {

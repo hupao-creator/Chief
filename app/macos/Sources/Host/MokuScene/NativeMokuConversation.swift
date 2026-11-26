@@ -78,18 +78,26 @@ struct NativeMokuConversation: View {
     let presentation: NativeMokuWorkspacePresentation
     let owner: JSONText
     let readingSize: CGSize
+    @State private var shellWidened = false
     @State private var cursors: [JSONText] = []
     @Environment(\.locale) private var locale
 
     var body: some View {
         Color.clear.overlay(alignment: .bottom) {
             VStack(spacing: 0) {
-                ConversationMessages(presentation: presentation, owner: owner, before: cursors.last, chinese: chinese,
+                ConversationMessages(presentation: presentation, owner: owner, before: cursors.last, chinese: chinese, shellWidened: shellWidened,
                                      showEarlier: { cursors.append($0) }, showNewer: { _ = cursors.popLast() })
                     .id(cursors.last)
                 Divider().reportMokuConversationHeight()
             }
             .frame(width: readingSize.width, height: readingSize.height)
+        }
+        // A cached page can arrive before the first frame of the glass expansion.
+        // Keep the subscription live and let the shell move before mounting the text views.
+        .onGeometryChange(for: Bool.self) { geometry in
+            geometry.size.width >= min(readingSize.width, NativeMokuCapsuleLayout.idleSize.width + 24)
+        } action: { widened in
+            if widened { shellWidened = true }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(chinese ? "与 Chief 的对话" : "Conversation with Chief")
@@ -105,6 +113,7 @@ private struct ConversationMessages: View {
     let owner: JSONText
     let before: JSONText?
     let chinese: Bool
+    let shellWidened: Bool
     let showEarlier: (JSONText) -> Void
     let showNewer: () -> Void
     @State private var page: NativeMokuConversationPage?
@@ -117,7 +126,11 @@ private struct ConversationMessages: View {
     var body: some View {
         let showsTyping = before == nil && presentation.workspace.runtimeAvailable && presentation.executionRunning
         VStack(spacing: 0) {
-            if failure == nil, let page = displayedPage, !page.messages.isEmpty || showsTyping {
+            if !shellWidened, failure == nil, let page = displayedPage, !page.messages.isEmpty {
+                // Even without text, the bubble insets alone can fill a capped viewport.
+                Color.clear.preference(key: NativeMokuConversationHeightKey.self,
+                    value: CGFloat(page.messages.count) * 2 * NativeMokuConversationTimeline.bubbleVerticalInset)
+            } else if failure == nil, let page = displayedPage, !page.messages.isEmpty || showsTyping {
                 NativeMokuConversationTimeline(page: page, showsTyping: showsTyping, workspace: presentation.workspace,
                                                showEarlier: showEarlier, showNewer: before == nil ? nil : showNewer)
             } else {

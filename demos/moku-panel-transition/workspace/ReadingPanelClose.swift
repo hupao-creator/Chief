@@ -11,6 +11,10 @@ import ChiefPluginAPI
     let bounds = panel.convert(panel.bounds, to: nil)
     let inset = NativeReadingPanelCloseButton.edgeInset + NativeReadingPanelCloseButton.diameter / 2
     let point = NSPoint(x: bounds.minX + inset, y: bounds.maxY - inset)
+    clickReplayWindow(window, at: point)
+}
+
+@MainActor func clickReplayWindow(_ window: NSWindow, at point: NSPoint) {
     func mouse(_ type: NSEvent.EventType) -> NSEvent {
         NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
             windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!

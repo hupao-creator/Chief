@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"encoding/json"
+
 	"slices"
 	"sort"
 	"strings"
@@ -169,6 +170,13 @@ func (r *Runtime) projectMutation(snapshot store.Snapshot) (model.AppState, mode
 		if !same(r.baseline.Settings, next.Settings) {
 			mutation.Settings = &next.Settings
 		}
+	}
+	if changedRecord(snapshot, previous, r.dispatch.VersionsKey()) {
+		next.DispatchPresentationVersions = map[string]string{}
+		if _, err := snapshot.Get(r.dispatch.VersionsKey(), &next.DispatchPresentationVersions); err != nil {
+			return fail(err)
+		}
+		mutation.DispatchPresentationVersions = &next.DispatchPresentationVersions
 	}
 	if changedRecord(snapshot, previous, "settings-revision") {
 		next.SettingsRevision = 0

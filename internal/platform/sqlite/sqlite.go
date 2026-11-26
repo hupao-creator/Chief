@@ -39,6 +39,12 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("SQLite %s (%d): %s", e.Operation, e.Code, e.Message)
 }
 
+// Contended includes extended result codes such as SQLITE_BUSY_RECOVERY.
+func (e *Error) Contended() bool {
+	code := e.Code & 0xff
+	return code == C.SQLITE_BUSY || code == C.SQLITE_LOCKED
+}
+
 // Open uses SQLITE_OPEN_READONLY for readers, which cannot create a missing
 // file. Writers create only the file; the caller prepares its parent directory.
 func Open(path string, readOnly bool) (*DB, error) {

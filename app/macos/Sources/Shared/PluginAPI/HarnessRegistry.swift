@@ -36,16 +36,19 @@ public final class HarnessSettingsSession {
     public let sourceChanged: () -> Void
     private let ready: () -> Bool
     public var isReady: Bool { ready() }
+    public let publishStored: (JSONValue) throws -> Void
+    private let published: () -> Bool
+    public var hasPublishedPresentation: Bool { published() }
     private let issue: () -> String?
     public var preparationError: String? { issue() }
     private let threadBody: (HarnessThreadInput, @escaping (JSONValue) async throws -> Void) throws -> AnyView
-    private let harnessBody: (HarnessSettingsSection, Bool, Bool, JSONValue, HarnessSettingsHost?, @escaping (JSONValue) throws -> Void) throws -> AnyView
+    private let harnessBody: (HarnessSettingsSection, Bool, Bool, ((Bool) async throws -> Void)?, JSONValue, HarnessSettingsHost?, @escaping (JSONValue) throws -> Void) throws -> AnyView
     fileprivate init(reload: @escaping (Bool) async throws -> Void, invalidate: @escaping () -> Void, sourceChanged: @escaping () -> Void,
-                     isReady: @escaping () -> Bool, preparationError: @escaping () -> String?,
+                     isReady: @escaping () -> Bool, published: @escaping () -> Bool, publishStored: @escaping (JSONValue) throws -> Void, preparationError: @escaping () -> String?,
                      threadBody: @escaping (HarnessThreadInput, @escaping (JSONValue) async throws -> Void) throws -> AnyView,
-                     harnessBody: @escaping (HarnessSettingsSection, Bool, Bool, JSONValue, HarnessSettingsHost?, @escaping (JSONValue) throws -> Void) throws -> AnyView) {
+                     harnessBody: @escaping (HarnessSettingsSection, Bool, Bool, ((Bool) async throws -> Void)?, JSONValue, HarnessSettingsHost?, @escaping (JSONValue) throws -> Void) throws -> AnyView) {
         self.reload = reload; self.invalidate = invalidate; ready = isReady
-        issue = preparationError
+        self.published = published; self.publishStored = publishStored; issue = preparationError
         self.sourceChanged = sourceChanged
         self.threadBody = threadBody; self.harnessBody = harnessBody
     }
@@ -53,9 +56,9 @@ public final class HarnessSettingsSession {
         try threadBody(input, update)
     }
     public func harnessSettings(section: HarnessSettingsSection, executionSnapshot: Bool = false,
-                                settingsFormPage: Bool = false, value: JSONValue, host: HarnessSettingsHost?,
+                                settingsFormPage: Bool = false, refreshPublished: ((Bool) async throws -> Void)? = nil, value: JSONValue, host: HarnessSettingsHost?,
                                 change: @escaping (JSONValue) throws -> Void) throws -> AnyView {
-        try harnessBody(section, executionSnapshot, settingsFormPage, value, host, change)
+        try harnessBody(section, executionSnapshot, settingsFormPage, refreshPublished, value, host, change)
     }
 }
 
@@ -107,7 +110,7 @@ public final class AnyHarnessPlugin {
     private let moku: (HarnessThreadInput) throws -> HarnessMokuPresentation?
     private let preview: (HarnessThread, JSONText) throws -> HarnessExecutionPreview?
     private let usage: (HarnessThread, JSONText) throws -> HarnessExecutionTokenUsage?
-    private let settings: (@escaping (Bool) async throws -> JSONValue, @escaping (Error) -> Void) -> HarnessSettingsSession
+    private let settings: (Bool, @escaping (Bool) async throws -> JSONValue, @escaping (Error) -> Void) -> HarnessSettingsSession
     public let readingPrefetchScopes: (HarnessThreadInput) -> [HarnessContentScope]
     public let clearProjectionCache: () -> Void
 
@@ -126,13 +129,16 @@ public final class AnyHarnessPlugin {
         preview = { try plugin.executionPreview(thread: $0, executionID: $1) }
         usage = { try plugin.executionTokenUsage(thread: $0, executionID: $1) }
         clearProjectionCache = { cache.clear() }
-        settings = { load, onError in
-            let resource = HarnessSettingsResource<P.SettingsPresentation> { refresh in
+        settings = { publishPresentations, load, onError in
+            let usable: ((P.SettingsPresentation) -> Bool)? = publishPresentations ? { plugin.settingsPresentationIssue($0) == nil } : nil
+            let resource = HarnessSettingsResource<P.SettingsPresentation>(publishIf: usable) { refresh in
                 try plugin.settingsPresentationCodec.decode(try await load(refresh))
             }
             return HarnessSettingsSession(reload: { try await resource.reload(refresh: $0) }, invalidate: { resource.invalidate() },
                 sourceChanged: { resource.invalidate(keepingValue: true) },
                 isReady: { if case .ready = resource.state { return true }; return false },
+                published: { resource.published != nil },
+                publishStored: { resource.publish(try plugin.settingsPresentationCodec.decode($0)) },
                 preparationError: {
                     switch resource.state {
                     case .loading: nil
@@ -145,10 +151,11 @@ public final class AnyHarnessPlugin {
                     return AnyView(plugin.threadSettings(input: input, resource: resource) { value in
                         try await update(plugin.threadSettingsCodec.encode(value))
                     })
-                }, harnessBody: { section, snapshot, page, value, host, change in
+                }, harnessBody: { section, snapshot, page, refreshPublished, value, host, change in
                     let typed = try plugin.harnessSettingsCodec.decode(value)
                     return AnyView(plugin.harnessSettings(props: HarnessSettingsProps(section: section,
-                        executionSnapshot: snapshot, settingsFormPage: page, value: typed, resource: resource, host: host,
+                        executionSnapshot: snapshot, settingsFormPage: page, value: typed,
+                        resource: refreshPublished.map(resource.presentingPublished) ?? resource, host: host,
                         change: { newValue in
                             do { try change(plugin.harnessSettingsCodec.encode(newValue)) }
                             catch { onError(error) }
@@ -177,9 +184,9 @@ public final class AnyHarnessPlugin {
     public func executionPreview(thread: HarnessThread, executionID: JSONText) throws -> HarnessExecutionPreview? {
         try validate(thread); return try preview(thread, executionID)
     }
-    public func makeSettingsSession(load: @escaping (Bool) async throws -> JSONValue,
+    public func makeSettingsSession(publishPresentations: Bool = false, load: @escaping (Bool) async throws -> JSONValue,
                                     onError: @escaping (Error) -> Void) -> HarnessSettingsSession {
-        settings(load, onError)
+        settings(publishPresentations, load, onError)
     }
 }
 

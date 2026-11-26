@@ -45,7 +45,7 @@ public enum RuntimeState {
 
     public static func hasStateChanges(_ mutation: JSONValue) -> Bool {
         ["threads", "applicationThreads", "tagRedirects", "defaultCwd", "executions", "agentRuns",
-         "settings", "settingsRevision", "plugins"].contains { mutation[$0] != nil }
+         "settings", "settingsRevision", "dispatchPresentationVersions", "plugins"].contains { mutation[$0] != nil }
     }
 
     public static func applying(_ mutation: JSONValue, to current: JSONValue) throws -> JSONValue {
@@ -63,7 +63,7 @@ public enum RuntimeState {
                     : .applicationThread)
             }
         }
-        for field in ["tagRedirects", "defaultCwd", "executions", "agentRuns", "settings", "settingsRevision", "plugins"] {
+        for field in ["tagRedirects", "defaultCwd", "executions", "agentRuns", "settings", "settingsRevision", "dispatchPresentationVersions", "plugins"] {
             if let value = mutation[field] { next[JSONText(field)] = value }
         }
         next[JSONText("revision")] = .integer(revision)

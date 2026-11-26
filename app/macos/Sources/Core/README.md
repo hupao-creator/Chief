@@ -32,7 +32,7 @@ and single-Harness installation reads before they open HTTP connections. At most
 four discovery reads run per client, with one per global Harness (or Thread
 editor) and FIFO admission among eligible keys. Cold defaults/Moku/application
 prefetch therefore leaves room in the host's unchanged 16-request pool for ordinary commands.
-Cancelled queued reads never reach HTTP; active reads cancel their HTTP request.
+Reads of an already-published ordinary presentation use the store directly and bypass native discovery admission. Cancelled queued reads never reach HTTP; active reads cancel their HTTP request.
 Single-Harness detection is read-only and retains no uncertain write receipt.
 
 A failed content release retires its owning stream so server demand cannot leak;

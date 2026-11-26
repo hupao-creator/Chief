@@ -163,3 +163,63 @@ public struct ThreadCardRuntime: View {
         let isVisible: Bool
     }
 }
+
+struct ThreadCardCompletionAge: View {
+    let finishedAt: Double
+    @Environment(\.locale) private var locale
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.threadCardAnimationVisibility) private var visibility
+    @State private var now = Date.now
+
+    private var visible: Bool { scenePhase != .background && (visibility?.isVisible ?? true) }
+
+    var body: some View {
+        let age = CompletionAge(finishedAt: finishedAt, now: now)
+        let label = age.label(locale: locale)
+        Text(label)
+            .font(NativeTypography.inter(size: 11))
+            .foregroundStyle(NativePalette.overview.muted.swiftUI)
+            .fixedSize()
+            .focusable()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(label)
+            .task(id: visible ? finishedAt : nil) {
+                guard visible else { return }
+                while !Task.isCancelled {
+                    let current = Date.now
+                    now = current
+                    let age = CompletionAge(finishedAt: finishedAt, now: current)
+                    do { try await Task.sleep(for: .seconds(age.nextUpdate)) } catch { return }
+                }
+            }
+    }
+}
+
+private struct CompletionAge {
+    private let elapsed: TimeInterval
+    private let unit: Calendar.Component
+    private let interval: TimeInterval
+
+    init(finishedAt: Double, now: Date) {
+        elapsed = now.timeIntervalSince1970 - finishedAt / 1_000
+        if elapsed < 3_600 {
+            (unit, interval) = (.minute, 60)
+        } else if elapsed < 86_400 {
+            (unit, interval) = (.hour, 3_600)
+        } else {
+            (unit, interval) = (.day, 86_400)
+        }
+    }
+
+    var nextUpdate: TimeInterval { interval - elapsed.truncatingRemainder(dividingBy: interval) }
+
+    func label(locale: Locale) -> String {
+        guard elapsed >= 60 else { return cardLocalized("刚刚", locale) }
+        var components = DateComponents()
+        components.setValue(-Int(elapsed / interval), for: unit)
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = locale
+        formatter.unitsStyle = .full
+        return formatter.localizedString(from: components)
+    }
+}

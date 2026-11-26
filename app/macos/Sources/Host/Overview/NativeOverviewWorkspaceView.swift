@@ -94,7 +94,7 @@ public struct NativeOverviewWorkspaceView: View {
                     .opacity(canvasVisible ? 1 : 0)
                     .allowsHitTesting(!landing)
                     .accessibilityHidden(landing)
-                if !landing && model.content.isEmpty && model.error == nil, model.globalConversationCount != nil {
+                if !landing && model.showsEmptyState {
                     switch model.statusFilter {
                     case .running, .unread, .completed:
                         NativeOverviewStatusEmptyState(title: emptyTitle)
@@ -134,6 +134,7 @@ public struct NativeOverviewWorkspaceView: View {
                         interactions: model.chromeInteractions)
                         .padding(.leading, railEdgeInset)
                         .modifier(chromePresentation(edge: .leading))
+                        .modifier(StartupSkilletChrome())
                 }
             }
             .overlay {
@@ -152,6 +153,7 @@ public struct NativeOverviewWorkspaceView: View {
                     onSettingsFrameChange: callbacks.onSettingsFrameChange,
                     interactions: model.chromeInteractions)
                     .modifier(chromePresentation(edge: .top))
+                    .modifier(StartupSkilletChrome())
             }
             .onChange(of: geometry.size, initial: true) { _, size in model.setCollectionWindowSize(size) }
         }

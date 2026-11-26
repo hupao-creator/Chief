@@ -8,6 +8,9 @@ import (
 	"syscall"
 )
 
+func sameResetVolume(a, b os.FileInfo) bool {
+	return a.Sys().(*syscall.Stat_t).Dev == b.Sys().(*syscall.Stat_t).Dev
+}
 func ownedByCurrentUser(info os.FileInfo) bool {
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	return ok && stat.Uid == uint32(os.Getuid())

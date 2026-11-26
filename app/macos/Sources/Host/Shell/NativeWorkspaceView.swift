@@ -833,7 +833,7 @@ public final class NativeWorkspacePresentation {
         }
     }
 
-    fileprivate var overviewSwipeAvailable: Bool {
+    fileprivate var overviewNavigationAvailable: Bool {
         started && scene.overviewVisible && !workspace.stopping && !scene.dockCovered
             && !onboarding.blocksWorkspace && scene.windowVisible && scene.inputInteractionReady
             && !scene.conversationOpen && !scene.inputLeaving
@@ -906,6 +906,7 @@ public final class NativeWorkspacePresentation {
 @MainActor
 public struct NativeWorkspaceView: View {
     public let model: NativeWorkspaceModel
+    @Environment(\.requestRailSwipeFeedback) private var requestRailSwipeFeedback
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.controlActiveState) private var controlActiveState
@@ -924,12 +925,20 @@ public struct NativeWorkspaceView: View {
             || presentation.moku.interaction != nil
     }
 
+    private var visibleRuntimeSurface: RuntimeSurfacePhase? {
+        if presentation.scene.settingsOpen || (presentation.onboarding.blocksWorkspace && model.hasInitialContent) { return nil }
+        return model.runtimeSurface
+    }
+
     public var body: some View {
         NativeOperationNotice(error: model.localizedOperationError,
             suppressed: presentation.scene.settingsOpen,
             onScroll: { presentation.scene.setShellScrollOffset($0) },
             onDismiss: { model.dismissOperationError() }) {
-            workspaceScene
+            workspaceScene.modifier(RuntimeSkilletAdmission(phase: visibleRuntimeSurface) {
+                !presentation.moku.landing && presentation.selected == nil
+                    && !presentation.browsingCollection && presentation.overview.showsStatusEmptyState
+            })
         }
         .environment(\.threadLocalSteers, presentation.localSteers)
         .environment(\.locale, Locale(identifier: model.locale.rawValue))
@@ -1028,6 +1037,7 @@ public struct NativeWorkspaceView: View {
                     })
                     .opacity(presentation.collectionPanel.parentVisible || presentation.selected != nil ? 1 : 0)
                     .animation(NativeReadingPageTiming.openingAnimation, value: presentation.collectionPanel.parentVisible)
+                    .modifier(StartupSkilletChrome())
                     .opacity(presentation.onboarding.dockVisible ? 1 : 0)
                     .animation(nil, value: presentation.onboarding.dockVisible)
                     .disabled(presentation.browsingCollection)
@@ -1094,16 +1104,24 @@ public struct NativeWorkspaceView: View {
                     landing: presentation.moku.landing,
                     chromeVisible: presentation.selected == nil,
                     readingMotion: presentation.messageMotion)
+                    .background {
+                        NativeOverviewTagSpaceKeys { forward in
+                            guard presentation.overviewNavigationAvailable, !presentation.scene.interactionPaused,
+                                  !presentation.moku.landing else { return false }
+                            return presentation.overview.stepTopFilter(forward: forward)
+                        }
+                    }
                     .environment(\.overviewSwipeActions, NativeOverviewSwipeActions(
                         regions: presentation.scene.swipeRegions,
-                        available: { presentation.overviewSwipeAvailable },
+                        available: { presentation.overviewNavigationAvailable },
                         canFilter: { !presentation.scene.inputOpen && !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
                         openConversation: {
-                            guard presentation.overviewSwipeAvailable, model.catalog.hasMoku else { return false }
+                            guard presentation.overviewNavigationAvailable, model.catalog.hasMoku else { return false }
                             presentation.scene.openConversation()
                             return presentation.scene.conversationOpen
                         },
-                        stepRail: { presentation.overview.stepRail(up: $0) }))
+                        stepRail: { presentation.overview.stepRail(up: $0) },
+                        requestFeedback: requestRailSwipeFeedback))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen
                         && !presentation.onboarding.blocksWorkspace),
                         presentation: presentation.collectionPanel)

@@ -59,10 +59,13 @@ type Harness interface {
 	Open(context.Context, OpenContext) (Handle, error)
 }
 type HostContext struct {
-	ResolveExecutable      func(ctx context.Context, command, cwd, configuredPath string) (string, error)
-	Environment            func(context.Context) (map[string]string, error)
-	HarnessDataRoot        string
-	TemporaryWorkspaceRoot string
+	// Adapters signal changes after asynchronous discovery settles. This only
+	// schedules acquisition of this adapter's ordinary settings scope.
+	DispatchConfigurationChanged func()
+	ResolveExecutable            func(ctx context.Context, command, cwd, configuredPath string) (string, error)
+	Environment                  func(context.Context) (map[string]string, error)
+	HarnessDataRoot              string
+	TemporaryWorkspaceRoot       string
 }
 
 type SessionStore interface {
@@ -270,6 +273,7 @@ type SettingsRequest struct {
 	Cwd            string
 }
 type ResolveSettingsRequest struct {
+	Dispatch bool // Convert explicit tool arguments for native admission without looking up the model inventory.
 	// Merged contains projected thread defaults from DefaultThread, never the
 	// enclosing harness settings (useDefaultThreadSettings/threadSettings).
 	Merged       json.RawMessage
@@ -286,6 +290,8 @@ type UpdateSettingsRequest struct {
 	Cwd        string
 }
 type SettingsPresentationRequest struct {
+	// The provider can attach advisory model references from this same observation.
+	ModelReferences  func(json.RawMessage)
 	ExecutionProfile bool // Chief or background-role execution settings, including independent previews
 	Settings         json.RawMessage
 	Cwd              string
@@ -364,13 +370,6 @@ type CachedModelCatalogSource interface {
 	CachedModelCatalog(context.Context, SettingsRequest) (json.RawMessage, error)
 }
 
-// MokuTargetDiscoverer discovers target options independently of the configured
-// default model. An available target must return its creation schema before
-// routing; nil is incomplete, not deferred discovery. Execution still performs
-// full native admission.
-type MokuTargetDiscoverer interface {
-	DiscoverMokuTarget(context.Context, SettingsRequest) (json.RawMessage, Availability, error)
-}
 type MokuContextContributor interface {
 	MokuContext(context.Context, string, SettingsRequest, TelemetryLedger) (string, error)
 }

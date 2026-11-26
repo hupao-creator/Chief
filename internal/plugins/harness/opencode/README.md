@@ -133,13 +133,18 @@ OAuth refresh stays in the native server. Model services and credentials are
 configured by OpenCode. Account telemetry helpers live within this Harness.
 Credential material is excluded from durable session/UI state.
 
-Moku target discovery reuses complete same-configuration catalogs and exposes
-exact options in its initial creation tool schema. An installation-only deferred target is not an admitted discovery result. A cold configuration waits for account
-filtering; complete cached directories return immediately regardless of age.
+OpenCode publishes provider, model, thinking and native variant choices to the
+[dispatch configuration module](../../../services/dispatchconfig/README.md).
+
 Catalog identity treats a missing global OpenCode configuration directory and an
 empty one as equivalent. Native startup can create that directory on the first
 read. Populated directories, symlink targets, explicit configuration files, and
-account revisions still participate in discovery invalidation.
+account revisions still participate in discovery invalidation. A required catalog
+read retries SQLite lock contention for up to two seconds, subject to caller
+cancellation. Each attempt checks the schema and credential revisions in one
+read transaction. Advisory cache and quota lookups do a single nonwaiting
+read. Persistent contention reports a busy account database. Other SQLite
+failures report their numeric code without exposing credential data.
 [Cold discovery replay](../../../../tools/e2e/README.md#opencode-cold-discovery)
 covers the first catalog read with the installed CLI.
 Expired entries trigger an owned background refresh with a 30-second failure
@@ -147,23 +152,11 @@ cooldown. Concurrent refreshes do not block routing through the last complete
 snapshot. The native phase has
 a 30-second cancellation timer and the whole flight a 55-second budget, with
 process cleanup joined. Ordinary Thread settings can show the earlier native projection
-with `accountCheckPending`; Moku routing does not use that partial projection.
+with `accountCheckPending`. Completion of the account check can request a new
+publication. Ordinary dispatch checks the requested fields and sends the native
+provider/model/variant. A reported model or variant substitution is an error.
+Exclusive hosts retain their live native admission checks.
 
-The full native model inventory accompanies creation options, including disabled,
-unsupported and account-excluded models. Unknown capabilities may block a model's
-creation branch, but never remove its identity from Moku's routing inventory.
-Missing/empty catalogs and read errors block Moku preparation only when no
-complete matching snapshot exists. Configuration
-identity is checked both at native publication and after account filtering.
-Freshness expires after five minutes; routing returns the complete old snapshot
-while refreshing. Failed, empty and malformed refreshes never replace it.
-Creation and execution still require strict settings reads and native checks. Advisory catalog reads also report cold or
-expired state explicitly. Keychain, remote and untracked include-file changes
-still rely on TTL/manual refresh or live admission. Workspace context does not
-fetch accounts; creation and live model admission retain their native checks.
-
-Ordinary threads require exact provider/model/thinking choices. Native variants are
-validated from their effective request encoding, including at model admission.
 Chief always selects the native `build` primary agent. Settings normalization,
 execution snapshots, effective model presentation, restored Thread settings,
 isolated prompts all use build, including previously saved
@@ -296,18 +289,16 @@ reading secrets or invalidating on unrelated session writes. Neither activation
 nor repeated stable model lists attest every remote provider completed discovery;
 see [evidence limits](../../../services/moku/catalog-evidence.md).
 
-Moku routing accepts successful nonempty native inventories, including native
-cached/fallback data, without requiring remote source-completion proof. Source
-completeness remains unknown in the schema. A matching old snapshot returns
-immediately; failed refreshes retain it and add a retained-snapshot note. Cold
-acquisition failure still reports an error. See the current
-[admission and evidence contract](../../../services/moku/catalog-evidence.md).
+Native enumeration evidence is described in the [catalog guide](../../../services/moku/catalog-evidence.md).
 
 Production discovery captures its absolute executable and environment through the
 same `captureLaunch` helper as ordinary startup. It passes those captured values
 directly to the runtime, rather than invoking a closure that resolves them again.
 Before publication and after discovery, the source resolver is checked again;
-changed launch/configuration/account identities reject the observation.
+changed launch/configuration/account identities discard the observation. The
+reader can acquire the new source once. A second change fails the read. Each
+required native catalog GET can repeat once after 100 ms on HTTP 502, 503 or
+504. The optional plugin inventory uses its own single advisory read.
 
 Editor, complete, advisory and routing reads use the same detailed observed
 source key, including project namespaces and referenced configuration files.

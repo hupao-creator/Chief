@@ -238,13 +238,13 @@ type catalogSource struct {
 }
 
 func (s *SettingsAPI) catalogKey(ctx context.Context, settings Settings, cwd string) (string, error) {
-	source, err := s.resolveCatalogSource(ctx, settings, cwd, discovery.ObservedIdentity)
+	source, err := s.resolveCatalogSource(ctx, settings, cwd, discovery.ObservedIdentity, true)
 	return source.key, err
 }
 
 type sourceFingerprint func(context.Context, map[string]string, string, string, string, ...string) (string, error)
 
-func (s *SettingsAPI) resolveCatalogSource(ctx context.Context, settings Settings, cwd string, fingerprint sourceFingerprint) (catalogSource, error) {
+func (s *SettingsAPI) resolveCatalogSource(ctx context.Context, settings Settings, cwd string, fingerprint sourceFingerprint, waitForAccount bool) (catalogSource, error) {
 	var env map[string]string
 	var err error
 	executable := settings.ExecutablePath
@@ -272,7 +272,7 @@ func (s *SettingsAPI) resolveCatalogSource(ctx context.Context, settings Setting
 	if source == "" {
 		source = cwd
 	}
-	accountIdentity, err := catalogAccountIdentity(ctx, env)
+	accountIdentity, err := catalogAccountIdentity(ctx, env, waitForAccount)
 	if err != nil {
 		return catalogSource{}, err
 	}
@@ -313,23 +313,33 @@ func (s *SettingsAPI) observe(ctx context.Context, settings Settings, cwd string
 	if len(modes) > 0 {
 		mode = modes[0]
 	}
-	source, err := s.resolveCatalogSource(ctx, settings, cwd, discovery.ObservedIdentity)
+	value, err := s.observeOnce(ctx, settings, cwd, refresh, mode)
+	if ctx.Err() == nil && errors.Is(err, errCatalogSourceChanged) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		return s.observeOnce(ctx, settings, cwd, false, mode)
+	}
+	return value, err
+}
+
+var errCatalogSourceChanged = errors.New("OpenCode native configuration changed during discovery")
+
+func (s *SettingsAPI) observeOnce(ctx context.Context, settings Settings, cwd string, refresh bool, mode catalogReadMode) (*CatalogSnapshot, error) {
+	source, err := s.resolveCatalogSource(ctx, settings, cwd, discovery.ObservedIdentity, true)
 	if err != nil {
 		return nil, err
 	}
 	key := source.key
 	if mode == routingCatalogRead {
 		snapshot, readErr := s.routingCatalogs.GetStale(ctx, key, 5*time.Minute, 55*time.Second, func(probeCtx context.Context) (*CatalogSnapshot, error) {
-			value, err := s.observe(probeCtx, settings, cwd, false, completeCatalogRead)
+			value, err := s.observeOnce(probeCtx, settings, cwd, false, completeCatalogRead)
 			if err != nil {
 				return value, err
 			}
-			current, err := s.resolveCatalogSource(probeCtx, settings, cwd, discovery.ObservedIdentity)
+			current, err := s.resolveCatalogSource(probeCtx, settings, cwd, discovery.ObservedIdentity, true)
 			if err != nil {
 				return nil, err
 			}
 			if current.key != key {
-				return nil, errors.New("OpenCode routing source changed during discovery")
+				return nil, errCatalogSourceChanged
 			}
 			if value == nil || value.identity != key {
 				return nil, errors.New("OpenCode catalog snapshot does not match its captured source")
@@ -397,7 +407,7 @@ func (s *SettingsAPI) observe(ctx context.Context, settings Settings, cwd string
 						return sourceErr
 					}
 					if current != key {
-						return errors.New("OpenCode native configuration changed during discovery")
+						return errCatalogSourceChanged
 					}
 					deadline.Stop()
 					s.mu.Lock()
@@ -414,14 +424,16 @@ func (s *SettingsAPI) observe(ctx context.Context, settings Settings, cwd string
 					if sourceErr != nil {
 						err = sourceErr
 					} else if current != key {
-						err = errors.New("OpenCode native configuration changed during discovery")
+						err = errCatalogSourceChanged
 					}
 				}
 				if err == nil {
 					flight.value.identity = key
 					// Reject empty/malformed inventories before replacing a complete
 					// cache entry, including refreshes initiated by the settings UI.
-					_, err = describeCatalog(settings, flight.value)
+					if len(flight.value.NativeModels) > 0 {
+						_, err = describeCatalog(settings, flight.value)
+					}
 				}
 				cleanupErr = runtime.Close()
 				err = errors.Join(err, cleanupErr)
@@ -435,6 +447,9 @@ func (s *SettingsAPI) observe(ctx context.Context, settings Settings, cwd string
 			}
 			if err == nil && probe.Err() == nil && !s.closed && generation == s.generation && s.publishers[key] == flight {
 				s.cache[key] = catalogCacheEntry{at: time.Now(), value: flight.value}
+				if flight.nativeValue != nil && flight.nativeValue.AccountCheckPending && s.host.DispatchConfigurationChanged != nil {
+					s.host.DispatchConfigurationChanged()
+				}
 			}
 			if s.publishers[key] == flight {
 				delete(s.publishers, key)
@@ -668,7 +683,11 @@ func (s *SettingsAPI) ResolveThread(ctx context.Context, input plugin.ResolveSet
 		if err != nil {
 			return nil, err
 		}
-		requested, err := normalizeCreateSettings(value, ordinarySettingsKeys)
+		allowed := ordinarySettingsKeys
+		if input.Dispatch {
+			allowed = append(append([]string{}, allowed...), "variant")
+		}
+		requested, err := normalizeCreateSettings(value, allowed)
 		if err != nil {
 			return nil, err
 		}
@@ -685,6 +704,25 @@ func (s *SettingsAPI) ResolveThread(ctx context.Context, input plugin.ResolveSet
 		if err = assertSettingsExecutable(existing, next); err != nil {
 			return nil, err
 		}
+	}
+	if input.Dispatch {
+		if next.Thinking == nil {
+			return nil, errors.New("OpenCode dispatch requires explicit thinking")
+		}
+		if next.Variant == "" && next.Thinking.Mode != "fixed" {
+			next.Variant = next.Thinking.Mode
+			if next.Thinking.Mode == "effort" {
+				next.Variant = next.Thinking.Effort
+			}
+		}
+		if next.Thinking.Mode == "fixed" && next.Variant != "" {
+			return nil, errors.New("fixed thinking requires the base variant")
+		}
+		if err := AssertExplicitSettings(next); err != nil {
+			return nil, err
+		}
+		next.ConfigurationCWD = input.Cwd
+		return json.Marshal(next)
 	}
 	next, err = s.resolve(ctx, next, input.Cwd)
 	if err != nil {
@@ -896,7 +934,28 @@ func (s *SettingsAPI) Presentation(ctx context.Context, input plugin.SettingsPre
 	if restriction != "" {
 		cli["message"] = restriction
 	}
-	result := Object{"cli": cli, "models": observed.Models, "agents": observed.Agents, "accountCheckPending": observed.AccountCheckPending}
+	models := append([]CatalogModel{}, observed.Models...)
+	for i, m := range models {
+		variants := append([]CatalogVariant{}, m.Variants...)
+		for j, v := range variants {
+			variants[j].Control = variantControl(m, v)
+		}
+		models[i].Variants = variants
+		capability := ThinkingCapability(m)
+		models[i].Thinking = &capability
+	}
+	agents := append([]CatalogAgent{}, observed.Agents...)
+	for i, agent := range agents {
+		agents[i].HasRequestOverrides = agent.HasRequestOverrides || hasThinkingOrModelOverrides(agent.Body)
+	}
+	if input.ModelReferences != nil {
+		refs, err := catalogProjection(observed)
+		if err != nil {
+			return nil, err
+		}
+		input.ModelReferences(refs)
+	}
+	result := Object{"cli": cli, "models": models, "agents": agents, "accountCheckPending": observed.AccountCheckPending}
 	if choice, err := SelectModel(observed, selected); err == nil {
 		effective := Object{"provider": choice.Model.Provider, "model": choice.Model.ID}
 		if choice.Variant != "" {
@@ -1071,8 +1130,10 @@ func ValidateRuntimeSettings(ctx context.Context, runtime *Runtime, settings Set
 			selected.Provider, selected.Model, selected.Variant = actual.ProviderID, actual.ID, actual.Variant
 		}
 	}
+	if requireExplicit && toolMode != "exclusive" {
+		return nil
+	}
 	if selected.Provider == "" || selected.Model == "" {
-
 		return nil
 	}
 	var models []CatalogNativeModel
@@ -1192,10 +1253,11 @@ func (h *Harness) cachedCatalog(ctx context.Context, input plugin.SettingsReques
 	if err != nil {
 		return nil, current, err
 	}
-	key, err := h.settings.catalogKey(ctx, current, input.Cwd)
+	source, err := h.settings.resolveCatalogSource(ctx, current, input.Cwd, discovery.ObservedIdentity, false)
 	if err != nil {
 		return nil, current, err
 	}
+	key := source.key
 	h.settings.mu.Lock()
 	cached, ok := h.settings.cache[key]
 	closed := h.settings.closed
@@ -1229,4 +1291,8 @@ func (h *Harness) DiscoverMokuTarget(ctx context.Context, input plugin.SettingsR
 		return nil, plugin.Availability{}, err
 	}
 	return schema, plugin.Availability{Available: true}, nil
+}
+
+func (*SettingsAPI) DispatchSchema() json.RawMessage {
+	return plugin.DispatchSchema([]string{"provider", "model", "thinking"}, []string{"variant"}, []string{"auto", "default"})
 }

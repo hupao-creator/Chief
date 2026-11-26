@@ -41,6 +41,9 @@ public struct ThreadCardProviderStatus: View {
         .background {
             if running {
                 RunningThreadBadge(transparentFace: emojiUsesLiquidGlass && emoji?.isEmpty == false)
+                    .anchorPreference(key: RunningBadgeAnchorKey.self, value: .center) {
+                        RunningBadgeAnchor(center: $0, tint: providerColor)
+                    }
                     .accessibilityHidden(true).allowsHitTesting(false)
             }
         }

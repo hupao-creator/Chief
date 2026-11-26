@@ -36,7 +36,7 @@ its empty-workspace input leaves the editor available for a click or Tab. The
 Chief capsule and Compose command explicitly focus it. Initial Agent input and
 explicit Browser annotation retain autofocus. The Dock requests automatic focus as the
 current editor's text becomes visible. Explicit focus can acquire the admitted
-editor earlier. Incoming-reader publication cannot be cleared by its outgoing owner.
+editor earlier. The card's opening heading supplies layout only. The mounted task reader owns input publication, including during a first running execution. Incoming-reader publication cannot be cleared by its outgoing owner.
 
 In Overview, right-clicking Chief Bar opens its conversation around the same
 editor. Opening from the collapsed Bar requests keyboard focus. The panel keeps

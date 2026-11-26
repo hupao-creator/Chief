@@ -9,9 +9,11 @@ def activate(session):
     # App.init binds the control socket before LaunchServices can deliver the
     # reopen event that presents this run's isolated window.
     def ready():
-        info = subprocess.run(["/usr/bin/lsappinfo", "info", "-only", "isready", str(session.app.pid)],
+        script = ('ObjC.import("AppKit"); $.NSRunningApplication.runningApplicationWithProcessIdentifier('
+                  + str(session.app.pid) + ').finishedLaunching')
+        info = subprocess.run(["/usr/bin/osascript", "-l", "JavaScript", "-e", script],
                               capture_output=True, text=True, timeout=5)
-        return info.stdout.strip().endswith("=true")
+        return info.returncode == 0 and info.stdout.strip() == "true"
 
     wait_for(ready, bool, 20)
     bundle = session.app.args[0].rsplit("/Contents/", 1)[0]

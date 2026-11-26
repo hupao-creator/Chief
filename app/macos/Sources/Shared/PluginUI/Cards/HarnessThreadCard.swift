@@ -10,6 +10,7 @@ public struct HarnessThreadCard: View {
     private let interventionDetails: AnyView?
     private let interventionActionLabel: ((ThreadCardDecisionAction) -> String)?
     private let status: ThreadCardStatusProjection?
+    private let completedAt: Double?
     private let emoji: String?
     private let providerStatus: AnyView?
     private let state: AnyView?
@@ -21,13 +22,13 @@ public struct HarnessThreadCard: View {
                 slots: [String: AnyView] = [:],
                 interventionDetails: AnyView? = nil,
                 interventionActionLabel: ((ThreadCardDecisionAction) -> String)? = nil,
-                status: ThreadCardStatusProjection? = nil, emoji: String? = nil,
+                status: ThreadCardStatusProjection? = nil, completedAt: Double? = nil, emoji: String? = nil,
                 providerStatus: AnyView? = nil, state: AnyView? = nil, harnessLogo: AnyView? = nil,
                 onInterventionResponse: ThreadCardInterventionHandler? = nil, onOpenThread: (() -> Void)? = nil) {
         self.identity = identity; self.presentation = presentation; self.onRespond = onInterventionResponse ?? onRespond
         self.onOpen = onOpenThread ?? onOpen; self.slots = slots
         self.interventionDetails = interventionDetails; self.interventionActionLabel = interventionActionLabel
-        self.status = status; self.emoji = emoji; self.providerStatus = providerStatus; self.state = state
+        self.status = status; self.completedAt = completedAt; self.emoji = emoji; self.providerStatus = providerStatus; self.state = state
         self.harnessLogo = harnessLogo
     }
 
@@ -42,7 +43,7 @@ public struct HarnessThreadCard: View {
                 let expandedStandard: Bool = if case .standard = presentation.composition { expanded } else { false }
                 ThreadCardIdentity(identity: identity, projection: presentation.projection.identity,
                                    expanded: expanded, expandedStandard: expandedStandard,
-                                   status: status, emoji: emoji, providerStatus: providerStatus, state: state,
+                                   status: status, completedAt: completedAt, emoji: emoji, providerStatus: providerStatus, state: state,
                                    harnessLogo: harnessLogo, hovered: hovered)
                     .frame(width: span(presentation.composition.identitySize.cols, cell.width),
                            height: span(presentation.composition.identitySize.rows, cell.height), alignment: .topLeading)
@@ -105,6 +106,7 @@ private struct ThreadCardIdentity: View {
     let expanded: Bool
     let expandedStandard: Bool
     let status: ThreadCardStatusProjection?
+    let completedAt: Double?
     let emoji: String?
     let providerStatus: AnyView?
     let state: AnyView?
@@ -146,11 +148,16 @@ private struct ThreadCardIdentity: View {
                 .font(NativeTypography.inter(size: 11)).foregroundStyle(NativePalette.overview.faint.swiftUI)
                 .padding(.top, 5).padding(.trailing, cornerClearance)
             }
-            if identity.runtime != nil || projection?.usage?.parts.isEmpty == false {
+            let showsTime = completedAt != nil || identity.runtime != nil
+            if showsTime || projection?.usage?.parts.isEmpty == false {
                 HStack(alignment: .center, spacing: 10) {
-                    if let runtime = identity.runtime { ThreadCardRuntime(startedAt: runtime.startedAt, endedAt: runtime.endedAt) }
+                    if let completedAt {
+                        ThreadCardCompletionAge(finishedAt: completedAt)
+                    } else if let runtime = identity.runtime {
+                        ThreadCardRuntime(startedAt: runtime.startedAt, endedAt: runtime.endedAt)
+                    }
                     if let usage = projection?.usage, !usage.parts.isEmpty {
-                        if identity.runtime != nil { Rectangle().fill(NativePalette.overview.muted.swiftUI.opacity(0.35)).frame(width: 1, height: 10) }
+                        if showsTime { Rectangle().fill(NativePalette.overview.muted.swiftUI.opacity(0.35)).frame(width: 1, height: 10) }
                         ThreadCardUsage(usage: usage)
                     }
                 }.padding(.top, 5)

@@ -228,6 +228,7 @@ import SwiftUI
                         let supported = harness.descriptor.threadCapabilities.canHostMoku
                         NativeHarnessSettingsIcon(harness: harness, state: model.installationState(id), transparent: true,
                                                   hostSlot: true, hideLogo: selected) { selectHost(harness) }
+                            .accessibilityIdentifier("moku-host-" + id)
                             .nativeSettingsAction("host." + id, label: harness.descriptor.displayName.string, selected: selected) { selectHost(harness) }
                             .scaleEffect(selected ? 1.7 : 0.88).position(x: x, y: 71)
                             .animation(.timingCurve(0.4, 0, 0.2, 1, duration: 0.48), value: selected)

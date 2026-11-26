@@ -42,6 +42,9 @@ type SessionConfiguration struct {
 	PreserveHistory bool
 }
 type Configuration struct {
+	DispatchOptions          func([]string) json.RawMessage
+	SubscribeDispatchOptions func() (<-chan struct{}, func())
+	SteerDispatchOptions     func(context.Context, string, string, *plugin.Injection, plugin.ContextEntry) error
 	GrepThreads              func(context.Context, json.RawMessage) (any, error)
 	HarnessEnabled           func(string) bool
 	IsDeleting               func(string) bool

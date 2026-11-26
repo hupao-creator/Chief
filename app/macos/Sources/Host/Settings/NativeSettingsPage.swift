@@ -54,6 +54,7 @@ struct NativeSettingsPreferredHeightKey: PreferenceKey {
     public let onClose: (CGRect) -> Void
     public var mokuController: MokuCharacterController?
     public var onCoordinatorFrame: (CGRect?, Bool) -> Void
+    @Environment(\.requestFactoryReset) private var requestFactoryReset
     @State private var navigation: NativeSettingsNavigation
     @FocusState private var focusedTab: String?
     @FocusState private var focusedBack: Bool
@@ -195,8 +196,8 @@ struct NativeSettingsPreferredHeightKey: PreferenceKey {
     private var header: some View {
         HStack(spacing: 0) {
             // The Dock moves its resident eyes into this reserved header seat.
-            Color.clear.frame(width: NativeSettingsHeaderLayout.faceSlot.width, height: NativeSettingsHeaderLayout.faceSlot.height)
-                .accessibilityHidden(true)
+            NativeSettingsResetEye(label: locale.text("Chief 的眼睛", "Chief eyes")) { requestFactoryReset?() }
+                .frame(width: NativeSettingsHeaderLayout.faceSlot.width, height: NativeSettingsHeaderLayout.faceSlot.height)
             GeometryReader { geometry in
                 ScrollViewReader { reader in
                     ScrollView(.horizontal) {

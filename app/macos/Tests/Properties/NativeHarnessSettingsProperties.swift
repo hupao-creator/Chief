@@ -282,15 +282,18 @@ extension SettingsTrace {
     }
 
     @MainActor private func checkCatalogRetry(_ agent: Agent, field: String, visit: SettingsVisit, profile: HarnessSettingsProfile) async throws {
+        let session = visit.sessions[agent]!
+        guard session.hasPublishedPresentation else { throw PropertyFailure("loaded options were never published") }
         profile.failedCatalog = agent.rawValue
         do {
-            try await visit.sessions[agent]!.reload(true)
+            try await session.reload(true)
             throw PropertyFailure("failed catalog reported success")
         } catch is RuntimeError {
             try await visit.wait("catalog failure notice") { visit.errors.contains { $0.contains("fixture catalog unavailable") } }
         }
+        guard session.hasPublishedPresentation, !session.isReady else { throw PropertyFailure("failed refresh lost the last usable presentation or reported ready") }
         profile.failedCatalog = nil
-        try await visit.sessions[agent]!.reload(true)
+        try await session.reload(true)
         try await visit.wait("catalog retry") { visit.errors.isEmpty && visit.control(field)?["enabled"] == .bool(true) }
     }
 

@@ -38,7 +38,7 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 	}()
 	arity := 1
 	switch channel {
-	case "state:load", "history:clear", "moku:clear", "moku:deliveries", "harness:detect-installations", "workspace:list-known-directories":
+	case "state:load", "history:clear", "history:prepare-reset", "moku:clear", "moku:deliveries", "harness:detect-installations", "workspace:list-known-directories":
 		arity = 0
 	case "attachment:preview", "attachment:image-path", "thread:set-archived", "application:archive":
 		arity = 2
@@ -227,7 +227,7 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 		}
 		switch object["scope"] {
 		case "global":
-			allowed = []string{"scope", "harnessId", "refresh", "executionOwner", "applicationSettings", "previewIndependent"}
+			allowed = []string{"scope", "harnessId", "refresh", "executionOwner", "applicationSettings", "previewIndependent", "readPublished"}
 			required = []string{"scope", "harnessId"}
 		case "thread":
 			allowed = []string{"scope", "threadId", "refresh"}
@@ -282,6 +282,14 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 	if refresh, exists := object["refresh"]; exists {
 		if err = checkBoolean(refresh); err != nil {
 			return err
+		}
+	}
+	if read, exists := object["readPublished"]; exists {
+		if err = checkBoolean(read); err != nil {
+			return err
+		}
+		if read == true && (object["applicationSettings"] != nil || object["executionOwner"] != nil || object["refresh"] == true) {
+			return errors.New("published read requires ordinary global settings")
 		}
 	}
 	if preview, exists := object["previewIndependent"]; exists {

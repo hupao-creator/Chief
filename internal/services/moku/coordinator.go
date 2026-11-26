@@ -45,7 +45,8 @@ type Coordinator struct {
 	generation             uint64
 	id                     string
 	applied                *SessionConfiguration
-	description            *ThreadCreationDescription
+	dispatchExecution      string
+	dispatchContent        string
 	injection              *plugin.Injection
 	cleanupFailure         error
 	admissions             map[*userAdmission]bool
@@ -99,7 +100,6 @@ func (c *Coordinator) Start(ctx context.Context, start plugin.RuntimeStartContex
 	c.observed = make(map[string]string)
 	c.applied = nil
 	c.injection = nil
-	c.description = nil
 	c.runContext = nil
 	c.runContextGeneration = c.generation
 	c.mu.Unlock()
@@ -204,6 +204,9 @@ func (c *Coordinator) Start(ctx context.Context, start plugin.RuntimeStartContex
 	if c.config.PendingDeliveries != nil && c.config.SendDelivery != nil {
 		c.launch(c.deliveryLoop)
 	}
+	if c.config.SubscribeDispatchOptions != nil && c.config.SteerDispatchOptions != nil {
+		c.launch(c.watchDispatchOptions)
+	}
 	c.launch(func(ctx context.Context) { c.refreshLoop(ctx) })
 	if start.Reason == "startup" {
 		c.launch(func(ctx context.Context) {
@@ -273,7 +276,6 @@ func (c *Coordinator) Stop(ctx context.Context) error {
 	}
 	c.mu.Lock()
 	c.injection = nil
-	c.description = nil
 	c.stopping = false
 	c.cleanupFailure = errors.Join(c.cleanupFailure, closeErr)
 	c.mu.Unlock()
@@ -429,7 +431,7 @@ func (c *Coordinator) Submit(ctx context.Context, request SubmitRequest) error {
 			admission.entered = true
 			injection := c.injection
 			c.mu.Unlock()
-			_, err = c.config.SendSession(admissionCtx, record.ID, request.Input, injection, entries, func(result SendResult) error {
+			result, err := c.config.SendSession(admissionCtx, record.ID, request.Input, injection, entries, func(result SendResult) error {
 				current, readErr := c.current()
 				if readErr != nil {
 					return readErr
@@ -444,6 +446,9 @@ func (c *Coordinator) Submit(ctx context.Context, request SubmitRequest) error {
 				}
 				return c.appendTranscript(context.WithoutCancel(admissionCtx), record.ID, userMessage(request.Input, rowID, time.Now().UnixMilli()))
 			})
+			if err == nil {
+				c.rememberDispatch(result.ExecutionID, entries)
+			}
 			return err
 		})
 	})
@@ -690,42 +695,9 @@ func (c *Coordinator) ensurePrepared(ctx context.Context) (model.ThreadRecord, e
 	}
 	c.mu.Lock()
 	injection := c.injection
-	previousDescription := c.description
 	c.mu.Unlock()
-	var prepared *ThreadCreationDescription
-	if injection != nil && !live(current) {
-		description, describeErr := c.describeTargets(ctx, applied.AppliedSettings)
-		if describeErr != nil {
-			return current, describeErr
-		}
-		if !reflect.DeepEqual(previousDescription, &description) {
-			latest, readErr := c.config.Thread(current.ID)
-			if readErr != nil {
-				return current, readErr
-			}
-			if live(latest) {
-				return latest, errors.New("Chief native work began during catalog refresh; retry after that work settles")
-			}
-
-			if err = c.config.CloseSession(ctx, current.ID); err != nil {
-				c.mu.Lock()
-				c.cleanupFailure = err
-				c.mu.Unlock()
-				return current, err
-			}
-			c.installConfiguration(latest, *applied)
-			prepared = &description
-			injection = nil
-		}
-	}
 	if injection == nil {
-		description := ThreadCreationDescription{}
-		var describeErr error
-		if prepared != nil {
-			description = *prepared
-		} else {
-			description, describeErr = c.describeTargets(ctx, applied.AppliedSettings)
-		}
+		description, describeErr := c.describeTargets(ctx, applied.AppliedSettings)
 		if describeErr != nil {
 			return current, describeErr
 		}
@@ -740,9 +712,9 @@ func (c *Coordinator) ensurePrepared(ctx context.Context) (model.ThreadRecord, e
 			instructions = append(instructions, "Model routing guidance:\n"+guidance)
 		}
 		tools := c.tools(current.ID, description)
-		ownerID, capturedSettings, capturedDescription := current.ID, applied.AppliedSettings, description
+		ownerID, capturedSettings := current.ID, applied.AppliedSettings
 		injection = &plugin.Injection{AdmitNewExecution: func(ctx context.Context) error {
-			return c.validateTargetAdmission(ctx, ownerID, capturedSettings, capturedDescription)
+			return c.validateTargetAdmission(ctx, ownerID, capturedSettings)
 		}, Instructions: instructions, ContextEntries: entries, Tools: &plugin.ToolInjection{Mode: "exclusive", Bindings: tools}}
 		if err = c.config.OpenSession(ctx, current.ID, injection); err != nil {
 			return current, err
@@ -753,7 +725,6 @@ func (c *Coordinator) ensurePrepared(ctx context.Context) (model.ThreadRecord, e
 			return current, errors.Join(err, cleanupErr)
 		}
 		c.mu.Lock()
-		c.description = &description
 		c.injection = injection
 		c.mu.Unlock()
 	}
@@ -773,7 +744,6 @@ func (c *Coordinator) installConfiguration(record model.ThreadRecord, configurat
 	c.id = record.ID
 	c.applied = &configuration
 	c.injection = nil
-	c.description = nil
 	c.generation++
 	c.runContext = nil
 	c.runContextGeneration = c.generation
