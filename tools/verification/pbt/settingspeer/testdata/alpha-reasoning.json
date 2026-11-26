@@ -1,0 +1,17 @@
+{
+  "edits": [
+    {
+      "agent": "codex",
+      "choice": "high"
+    }
+  ],
+  "seed": 20261125,
+  "discovery": [
+    "codex",
+    "claude",
+    "pi",
+    "opencode"
+  ],
+  "late": false,
+  "start": "alphaThinking"
+}

@@ -274,6 +274,12 @@ or unmounting one editor releases only that editor's composition; unrelated
 text-field notifications cannot clear another editor's close/save gate.
 
 Saves carry expected settings revision. Success adopts the normalized response as the new base while retaining later local edits. Conflicts reconcile against the returned latest state; an obsolete failed save does not discard or block a newer ready draft. Current failures remain visible.
+While editing, a publication that only fills missing Chief execution profiles can
+join the open draft, including the initial resolution of an automatic host.
+Settings also checks for this change on a stale save receipt. Independent choices
+survive and remain staged until close. A competing change to the same profile
+keeps the conflict and retry controls.
+
 During [first-run setup](../Onboarding/README.md), a stale draft can reconcile
 automatically when applying the local and remote changes in either order gives
 the same settings. Overlapping edits use the ordinary conflict controls.
@@ -397,6 +403,26 @@ qualified visit and default collection preference in the local profile. Selectio
 and onboarding writes preserve these records. Current space membership
 and carousel selection are session presentation state. See the
 [reading contract](../Overview/README.md#viewed-application-collections).
+
+## Mounted Harness settings property
+
+[PBT-HARNESS-SETTINGS](../../../../../tools/verification/pbt/README.md) mounts
+the Chief Agent page and its four plugin editors. Generated visits select hosts,
+models and reasoning efforts or variants through the mounted control registry.
+They open fresh profiles, saved profiles and an isolated
+[Alpha settings record](../../../../../tools/verification/pbt/settingspeer/alpha-settings.json)
+with a Codex thinking choice. The oracle checks the displayed selection, notices,
+close gate, closed-page errors, full settings and revision after a cold read.
+A delayed initial profile can arrive on the settings stream or first appear on
+the save receipt. An overlapping external edit requires explicit retry.
+Installation and catalog failures have visible feedback that clears on recovery.
+
+The [command peer](../../../../../tools/verification/pbt/settingspeer/main.go)
+reopens SQLite and calls the real Runtime and four Harness normalizers. It
+supplies deterministic installation, catalog and import replies. The test controls
+delivery to the native settings model and typed sessions. Workspace transport,
+automatic prefetch timing, native CLI authentication and physical input have
+separate verification boundaries.
 
 ## E2E contract
 

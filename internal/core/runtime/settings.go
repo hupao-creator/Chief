@@ -425,7 +425,7 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 		if e != nil {
 			return nil, e
 		}
-		if !same(profile, harnessSettings) || workspace != cwd {
+		if !sameExecutionProfile(profile, harnessSettings) || workspace != cwd {
 			return nil, errors.New("settings source changed during presentation")
 		}
 	}

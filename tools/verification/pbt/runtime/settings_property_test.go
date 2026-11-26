@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ import (
 	core "github.com/hupao-creator/Chief/internal/core/runtime"
 	"github.com/hupao-creator/Chief/internal/core/store"
 	"github.com/hupao-creator/Chief/internal/plugins/applications/background"
+	"github.com/hupao-creator/Chief/internal/plugins/harness/claude"
 	"github.com/hupao-creator/Chief/tools/verification/pbt/rapidcheck"
 	"pgregory.net/rapid"
 )
@@ -40,12 +42,14 @@ func (calls settingsCall) await(ctx context.Context) error {
 }
 
 type delayedSettings struct {
-	settings
+	plugin.HarnessSettings
 	reads settingsCall
 }
 
-func (s delayedSettings) SnapshotExecution(_ context.Context, r plugin.SettingsRequest, _ bool) (json.RawMessage, error) {
-	return r.Settings, nil
+func (s delayedSettings) SnapshotExecution(context.Context, plugin.SettingsRequest, bool) (json.RawMessage, error) {
+	// Claude imports a map but normalizes a saved profile through a typed
+	// struct. Both representations describe the same user choices.
+	return raw(map[string]any{"threadSettings": map[string]string{"model": "imported", "permissionMode": "auto"}, "useDefaultThreadSettings": false}), nil
 }
 
 func (s delayedSettings) Presentation(ctx context.Context, r plugin.SettingsPresentationRequest) (json.RawMessage, error) {
@@ -53,16 +57,11 @@ func (s delayedSettings) Presentation(ctx context.Context, r plugin.SettingsPres
 }
 
 type settingsHarness struct {
-	harness
+	plugin.Harness
 	native delayedSettings
 }
 
 func (h settingsHarness) Settings() plugin.HarnessSettings { return h.native }
-func (settingsHarness) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ID: "fixture", ThreadCapabilities: plugin.ThreadCapabilities{
-		Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"exclusive"},
-	}}
-}
 
 func TestSettingsPresentationProperties(t *testing.T) {
 	rapidcheck.Check(t, func(t *rapid.T) {
@@ -76,17 +75,19 @@ func TestSettingsPresentationProperties(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer db.Close()
-		native := delayedSettings{reads: make(settingsCall)}
+		adapter := claude.New(plugin.HostContext{HarnessDataRoot: root, TemporaryWorkspaceRoot: root})
+		defer adapter.Close()
+		native := delayedSettings{HarnessSettings: adapter.Settings(), reads: make(settingsCall)}
 		r, err := core.New(context.Background(), core.Config{Store: db, DataDir: root, DefaultCwd: root,
-			Harnesses: map[string]plugin.Harness{"fixture": &settingsHarness{native: native}}})
+			Harnesses: map[string]plugin.Harness{"claude": &settingsHarness{Harness: adapter, native: native}}})
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer r.Close(context.Background())
 		ctx, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
-		first, err := r.EnsureExecutionSettings(ctx, "fixture", "")
-		if err != nil || first.Moku.HostHarnessPreference != "fixture" || first.Moku.ExecutionHarnesses["fixture"] == nil {
+		first, err := r.EnsureExecutionSettings(ctx, "claude", "")
+		if err != nil || first.Moku.HostHarnessPreference != "claude" || first.Moku.ExecutionHarnesses["claude"] == nil {
 			t.Fatalf("missing profile or automatic preference was not initialized: %v", err)
 		}
 		arrival := func(calls settingsCall) chan struct{} {
@@ -106,17 +107,23 @@ func TestSettingsPresentationProperties(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			request := map[string]string{"scope": "global", "harnessId": "fixture"}
-			want := next.Harnesses["fixture"]
+			request := map[string]string{"scope": "global", "harnessId": "claude"}
+			want := next.Harnesses["claude"]
 			if execution {
 				request["executionOwner"] = "moku"
-				want = next.Moku.ExecutionHarnesses["fixture"]
+				want = next.Moku.ExecutionHarnesses["claude"]
 			}
-			next.Moku.ExecutionHarnesses["fixture"] = raw(map[string]int{"version": i + 1})
+			editProfile := rapid.Bool().Draw(t, "edit-profile")
+			// A routing-only edit also consumes a revision.
+			guidance := fmt.Sprintf("route %d", i)
+			next.Moku.RoutingGuidance = &guidance
+			if editProfile {
+				next.Moku.ExecutionHarnesses["claude"] = raw(map[string]any{"useDefaultThreadSettings": false, "threadSettings": map[string]string{"model": fmt.Sprintf("model-%d", i), "permissionMode": "auto"}})
+			}
 			save := func() {
-				result, err := r.UpdateSettings(ctx, revision, next)
-				if err != nil || result.Status != "saved" {
-					t.Fatalf("save conflicted with read: %v (%s)", err, result.Status)
+				result, err := r.Invoke(ctx, "app:update-settings", []json.RawMessage{raw(map[string]any{"settings": next, "expectedSettingsRevision": revision})})
+				if err != nil || result.(core.SettingsResult).Status != "saved" {
+					t.Fatalf("save conflicted with read: %v (%v)", err, result)
 				}
 			}
 			readCtx, cancel := context.WithCancel(ctx)
@@ -144,7 +151,7 @@ func TestSettingsPresentationProperties(t *testing.T) {
 				if !errors.Is(err, context.Canceled) {
 					t.Fatalf("cancelled read: %v", err)
 				}
-			case order == "after-save" && execution:
+			case order == "after-save" && execution && editProfile:
 				if err == nil || err.Error() != "settings source changed during presentation" {
 					t.Fatalf("stale source: %v", err)
 				}
@@ -157,11 +164,17 @@ func TestSettingsPresentationProperties(t *testing.T) {
 				save()
 			}
 			current, rev, err := r.Settings()
-			if err != nil || rev != revision+1 || string(current.Moku.ExecutionHarnesses["fixture"]) != string(next.Moku.ExecutionHarnesses["fixture"]) {
+			if err != nil || rev != revision+1 || current.Moku.RoutingGuidance == nil || *current.Moku.RoutingGuidance != guidance ||
+				!sameProfileChoices(current.Moku.ExecutionHarnesses["claude"], next.Moku.ExecutionHarnesses["claude"]) {
 				t.Fatalf("read changed saved settings/revision: %v", err)
 			}
 		}
 	})
+}
+
+func sameProfileChoices(a, b json.RawMessage) bool {
+	var left, right map[string]any
+	return json.Unmarshal(a, &left) == nil && json.Unmarshal(b, &right) == nil && reflect.DeepEqual(left, right)
 }
 
 type roleSettingsHarness struct {
@@ -171,10 +184,11 @@ type roleSettingsHarness struct {
 }
 
 func (h roleSettingsHarness) Descriptor() plugin.HarnessDescriptor {
-	descriptor := (settingsHarness{}).Descriptor()
-	descriptor.ID = h.id
-	return descriptor
+	return plugin.HarnessDescriptor{ID: h.id, ThreadCapabilities: plugin.ThreadCapabilities{
+		Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"exclusive"},
+	}}
 }
+
 func (h roleSettingsHarness) Settings() plugin.HarnessSettings { return h.native }
 
 type roleSettingsNative struct {

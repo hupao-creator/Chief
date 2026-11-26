@@ -1,0 +1,17 @@
+{
+  "edits": [
+    {
+      "choice": "medium",
+      "agent": "pi"
+    }
+  ],
+  "start": "fresh",
+  "seed": 20261125,
+  "late": true,
+  "discovery": [
+    "codex",
+    "claude",
+    "pi",
+    "opencode"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "late": true,
+  "discovery": [
+    "codex",
+    "claude",
+    "pi",
+    "opencode"
+  ],
+  "seed": 20261125,
+  "edits": [
+    {
+      "choice": "medium",
+      "agent": "pi"
+    },
+    {
+      "choice": "high",
+      "agent": "opencode"
+    }
+  ],
+  "start": "fresh",
+  "failedProbe": "claude"
+}

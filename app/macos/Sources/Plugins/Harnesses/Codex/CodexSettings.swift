@@ -28,9 +28,21 @@ public struct CodexThreadSettings: Hashable, Sendable {
     ]
 
     public subscript(_ key: String) -> JSONValue? { raw[key] }
-    fileprivate func text(_ key: String) -> JSONText? { raw[key]?.codexSettingsText }
+    fileprivate func text(_ key: String) -> JSONText? {
+        if key == "effort", let thinking = raw["thinking"] {
+            switch thinking["mode"] {
+            case .text("effort"): return thinking["effort"]?.codexSettingsText
+            case .text("off"): return "none"
+            default: break
+            }
+        }
+        return raw[key]?.codexSettingsText
+    }
     fileprivate func replacing(_ key: String, with value: JSONValue?) -> Self {
         var fields = raw.objectValue ?? [:]
+        // These are alternative wire representations of the same choice.
+        if key == "effort" { fields["thinking"] = nil }
+        if key == "thinking", value != nil { fields["effort"] = nil }
         fields[JSONText(key)] = value
         return Self(.object(fields))
     }
@@ -525,7 +537,7 @@ private struct CodexProfileFields: View {
         if explicitThinking && model != value["model"] { next = next.replacing("thinking", with: nil) }
         if let option = models.first(where: { $0.value == text }) {
             let efforts = executionSnapshot ? option.effectiveEfforts : option.efforts.map(\.value)
-            if !efforts.contains(next.text("effort") ?? "") {
+            if !explicitThinking, !efforts.contains(next.text("effort") ?? "") {
                 let fallback = executionSnapshot ? option.defaultEffort.flatMap { efforts.contains($0) ? $0 : nil } : nil
                 next = next.replacing("effort", with: fallback.map(JSONValue.string))
             }

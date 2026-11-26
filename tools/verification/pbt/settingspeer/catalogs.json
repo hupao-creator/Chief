@@ -1,0 +1,31 @@
+{
+  "codex": {
+    "cli": {"available": true},
+    "models": [
+      {"value":"chat","displayName":"Chat","thinking":{"kind":"effort","efforts":["low","medium","high"]},"supportedReasoningEfforts":[{"value":"low"},{"value":"medium"},{"value":"high"}],"serviceTiers":[],"defaultServiceTier":null},
+      {"value":"review","displayName":"Review","thinking":{"kind":"effort","efforts":["low","medium","high"]},"supportedReasoningEfforts":[{"value":"low"},{"value":"medium"},{"value":"high"}],"serviceTiers":[],"defaultServiceTier":null}
+    ]
+  },
+  "claude": {
+    "cli": {"status":"available","executablePath":"claude"},
+    "models": [
+      {"value":"chat","displayName":"Chat","supportedEfforts":["low","medium","high"],"thinking":{"kind":"effort","efforts":["low","medium","high"]}},
+      {"value":"review","displayName":"Review","supportedEfforts":["low","medium","high"],"thinking":{"kind":"effort","efforts":["low","medium","high"]}}
+    ]
+  },
+  "pi": {
+    "cli": {"status":"ready"},
+    "models": [
+      {"provider":"local","id":"chat","name":"Chat","thinkingLevels":["low","medium","high"]},
+      {"provider":"local","id":"review","name":"Review","thinkingLevels":["low","medium","high"]}
+    ]
+  },
+  "opencode": {
+    "cli": {"status":"ready"},
+    "agents": [{"id":"build","name":"Build","mode":"primary"}],
+    "models": [
+      {"provider":"local","id":"chat","name":"Chat","variants":[{"id":"medium"},{"id":"high"}],"input":["text"],"output":["text"]},
+      {"provider":"local","id":"review","name":"Review","variants":[{"id":"medium"},{"id":"high"}],"input":["text"],"output":["text"]}
+    ]
+  }
+}

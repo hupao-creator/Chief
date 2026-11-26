@@ -24,7 +24,8 @@ specific concern. `make check` combines routine checks; do not run an equivalent
 local full suite merely to repeat required hosted validation.
 
 `make pbt-native-state` requires a graphical macOS session and checks mounted
-state convergence. `make pbt-system` is headless and requires macOS, an installed native
+Overview convergence and Harness settings across generated edits, probe replies
+and SQLite reopen. `make pbt-system` is headless and requires macOS, an installed native
 Codex CLI and loopback/sandbox capability; it checks generated provider faults
 and durable cross-component effects. These are opt-in because their required
 environment is not supplied by routine CI. Missing capability fails, not skips.

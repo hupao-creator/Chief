@@ -1,0 +1,29 @@
+{
+  "moku": {
+    "hostHarnessPreference": "codex",
+    "executionHarnesses": {
+      "codex": {
+        "useDefaultThreadSettings": false,
+        "threadSettings": {
+          "model": "chat",
+          "thinking": {"mode": "effort", "effort": "low"},
+          "serviceTier": "default",
+          "permissionMode": "ask-for-approval",
+          "summary": "concise"
+        }
+      }
+    },
+    "targetHarnessIds": ["codex", "pi"],
+    "routingGuidance": null
+  },
+  "harnesses": {
+    "codex": {"useDefaultThreadSettings": false, "threadSettings": {"model": "other", "effort": "high"}},
+    "pi": {"threadSettings": {}},
+    "claude": {"threadSettings": {}},
+    "opencode": {"threadSettings": {}}
+  },
+  "pluginSettings": [
+    {"id": "tag.settings", "schemaVersion": 1, "value": {"mode": "inherit"}},
+    {"id": "report.settings", "schemaVersion": 1, "value": {"mode": "inherit"}}
+  ]
+}
