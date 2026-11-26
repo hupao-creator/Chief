@@ -145,7 +145,20 @@ func readCatalog(ctx context.Context, host plugin.HostContext, runtime *Runtime,
 				requestCtx, cancel = context.WithTimeout(ctx, 3*time.Second)
 				defer cancel()
 			}
-			errorsByRequest[i] = runtime.Request(requestCtx, "GET", path, nil, out)
+			err := runtime.Request(requestCtx, http.MethodGet, path, nil, out)
+			var requestErr *RequestError
+			if path != "/api/plugin" && errors.As(err, &requestErr) {
+				switch requestErr.Status {
+				case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+					select {
+					case <-requestCtx.Done():
+						err = requestCtx.Err()
+					case <-time.After(100 * time.Millisecond):
+						err = runtime.Request(requestCtx, http.MethodGet, path, nil, out)
+					}
+				}
+			}
+			errorsByRequest[i] = err
 		}(i, request.path, request.output)
 	}
 	pending.Wait()

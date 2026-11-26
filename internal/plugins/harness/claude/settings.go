@@ -317,6 +317,12 @@ func (a *settingsAdapter) ApplyThreadUpdate(ctx context.Context, r plugin.Update
 	return json.Marshal(s)
 }
 func (a *settingsAdapter) load(ctx context.Context, configured, cwd string, refresh bool, routing ...bool) (catalog, error) {
+	return a.loadCatalog(ctx, configured, cwd, refresh, len(routing) > 0 && routing[0], true)
+}
+
+var errCatalogSourceChanged = errors.New("Claude native configuration changed during discovery")
+
+func (a *settingsAdapter) loadCatalog(ctx context.Context, configured, cwd string, refresh, isRouting, retrySourceChange bool) (catalog, error) {
 	path, env, err := a.harness.resolve(ctx, cwd, configured)
 	if err != nil {
 		if ctx.Err() != nil {
@@ -332,7 +338,6 @@ func (a *settingsAdapter) load(ctx context.Context, configured, cwd string, refr
 		filepath.Join(env["HOME"], "Library", "Keychains", "login.keychain-db"),
 		filepath.Join(cwd, ".claude", "settings.json"), filepath.Join(cwd, ".claude", "settings.local.json")}
 	identity := discovery.Identity(env, identityPaths...)
-	isRouting := len(routing) > 0 && routing[0]
 	if isRouting {
 		identity, err = discovery.ObservedIdentity(ctx, env, path, cwd, ".claude", identityPaths...)
 		if err != nil {
@@ -348,7 +353,7 @@ func (a *settingsAdapter) load(ctx context.Context, configured, cwd string, refr
 				return catalog{}, sourceErr
 			}
 			if currentPath != path {
-				return catalog{}, errors.New("Claude executable changed during discovery")
+				return catalog{}, errCatalogSourceChanged
 			}
 			current := discovery.Identity(currentEnv, identityPaths...)
 			if isRouting {
@@ -358,7 +363,7 @@ func (a *settingsAdapter) load(ctx context.Context, configured, cwd string, refr
 				return catalog{}, sourceErr
 			}
 			if current != identity {
-				return catalog{}, errors.New("Claude native configuration changed during discovery")
+				return catalog{}, errCatalogSourceChanged
 			}
 		}
 		value.identity = key
@@ -378,6 +383,9 @@ func (a *settingsAdapter) load(ctx context.Context, configured, cwd string, refr
 	}
 	if isRouting && err == nil && a.routingCatalogs.RefreshFailed(key) {
 		result.sourceProof.Basis += "; last refresh failed, retaining an earlier native snapshot"
+	}
+	if retrySourceChange && ctx.Err() == nil && errors.Is(err, errCatalogSourceChanged) && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
+		return a.loadCatalog(ctx, configured, cwd, false, isRouting, false)
 	}
 	if err != nil && ctx.Err() == nil {
 		return catalog{CLI: map[string]any{"status": "unavailable", "executablePath": path, "message": err.Error()}, Models: []modelPresentation{}}, nil

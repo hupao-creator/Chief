@@ -163,7 +163,9 @@ reasoning and tool-payload admission is unchanged; no latest-execution fallback
 is used for historical references.
 
 Discovery rejects results when tracked native configuration files change during
-the probe, so an in-flight read cannot publish a known-obsolete snapshot.
+the probe. After the native process closes successfully, a reader can acquire
+the current configuration and executable once more. A second change fails the
+read. A matching cached inventory can satisfy the new acquisition.
 
 Moku requires the full nonempty native model inventory before task admission.
 Unknown thinking capabilities remain named in that inventory but cannot authorize

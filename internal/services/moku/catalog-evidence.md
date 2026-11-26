@@ -36,7 +36,14 @@ execution admission. Cached catalog presence is not current availability.
 | [OpenCode](../../plugins/harness/opencode/README.md) | Native catalog with account filtering, captured source checked before publication | Advisory plugin inventory has a 3s budget; working response does not prove every remote provider finished |
 | [Pi](../../plugins/harness/pi/README.md) | Successful completed nonempty RPC observation, offline native discovery | RPC does not expose every SDK load error/publication receipt; a usable list is not formal source proof |
 
-Owned probe work budgets are Codex 60s, Claude 45s, OpenCode 55s (30s native
+A cold reader can recapture a changed native source once in all four Harnesses.
+OpenCode also retries brief SQLite contention while identifying a required
+account source and transient gateway/service failures on required catalog GETs.
+The [OpenCode routing property](../../../tools/verification/pbt/README.md)
+covers its account-switch and retry boundaries with a real SQLite writer and
+scripted native replies.
+
+Owned probe work budgets per acquisition are Codex 60s, Claude 45s, OpenCode 55s (30s native
 cancellation timer), Pi 30s, plus joined cleanup. These are code budgets, not
 measured startup times. Ordinary defaults/settings use strict reads; Moku routing
 alone uses stale complete snapshots. Codex strict reads also expire a completed

@@ -10,6 +10,8 @@ In a task conversation, the same input box shows the agent's icon and sends to t
 
 The button at the right of the input box shows **Send** when your message is ready, even while Chief is working. Click it or press **Return** to send. When you send from the compact input, the bar folds back around Chief’s eyes. It expands again when Chief shows a reply or task update. When Chief is idle, an empty or whitespace-only draft leaves **Send** disabled. A ready file or a selected folder can be sent on its own.
 
+If OpenCode is one of your task agents, Chief briefly retries when OpenCode is busy checking your account or loading its model list. If Chief reports that the OpenCode account database is still busy, wait a moment and send your request again.
+
 When Chief's input is at the bottom of Overview, click outside it or press **Esc** to close it. Your unsent draft is there when you reopen the box. [Watch Chief Bar open for typing and chat](chief-bar-and-tags.md)
 
 When the bar is folded, watch the three dots beneath it while Chief thinks or uses a tool. They brighten in turn, lift off and circle the bar once as Chief’s eyes follow. The dots settle back into a row and Chief briefly squints before the sequence repeats. Switching tools keeps the rhythm. The dots fade out when the work ends. If Chief needs your permission or an answer, a request appears above the bar.

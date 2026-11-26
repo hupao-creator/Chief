@@ -238,13 +238,13 @@ type catalogSource struct {
 }
 
 func (s *SettingsAPI) catalogKey(ctx context.Context, settings Settings, cwd string) (string, error) {
-	source, err := s.resolveCatalogSource(ctx, settings, cwd, discovery.ObservedIdentity)
+	source, err := s.resolveCatalogSource(ctx, settings, cwd, discovery.ObservedIdentity, true)
 	return source.key, err
 }
 
 type sourceFingerprint func(context.Context, map[string]string, string, string, string, ...string) (string, error)
 
-func (s *SettingsAPI) resolveCatalogSource(ctx context.Context, settings Settings, cwd string, fingerprint sourceFingerprint) (catalogSource, error) {
+func (s *SettingsAPI) resolveCatalogSource(ctx context.Context, settings Settings, cwd string, fingerprint sourceFingerprint, waitForAccount bool) (catalogSource, error) {
 	var env map[string]string
 	var err error
 	executable := settings.ExecutablePath
@@ -272,7 +272,7 @@ func (s *SettingsAPI) resolveCatalogSource(ctx context.Context, settings Setting
 	if source == "" {
 		source = cwd
 	}
-	accountIdentity, err := catalogAccountIdentity(ctx, env)
+	accountIdentity, err := catalogAccountIdentity(ctx, env, waitForAccount)
 	if err != nil {
 		return catalogSource{}, err
 	}
@@ -313,23 +313,33 @@ func (s *SettingsAPI) observe(ctx context.Context, settings Settings, cwd string
 	if len(modes) > 0 {
 		mode = modes[0]
 	}
-	source, err := s.resolveCatalogSource(ctx, settings, cwd, discovery.ObservedIdentity)
+	value, err := s.observeOnce(ctx, settings, cwd, refresh, mode)
+	if ctx.Err() == nil && errors.Is(err, errCatalogSourceChanged) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		return s.observeOnce(ctx, settings, cwd, false, mode)
+	}
+	return value, err
+}
+
+var errCatalogSourceChanged = errors.New("OpenCode native configuration changed during discovery")
+
+func (s *SettingsAPI) observeOnce(ctx context.Context, settings Settings, cwd string, refresh bool, mode catalogReadMode) (*CatalogSnapshot, error) {
+	source, err := s.resolveCatalogSource(ctx, settings, cwd, discovery.ObservedIdentity, true)
 	if err != nil {
 		return nil, err
 	}
 	key := source.key
 	if mode == routingCatalogRead {
 		snapshot, readErr := s.routingCatalogs.GetStale(ctx, key, 5*time.Minute, 55*time.Second, func(probeCtx context.Context) (*CatalogSnapshot, error) {
-			value, err := s.observe(probeCtx, settings, cwd, false, completeCatalogRead)
+			value, err := s.observeOnce(probeCtx, settings, cwd, false, completeCatalogRead)
 			if err != nil {
 				return value, err
 			}
-			current, err := s.resolveCatalogSource(probeCtx, settings, cwd, discovery.ObservedIdentity)
+			current, err := s.resolveCatalogSource(probeCtx, settings, cwd, discovery.ObservedIdentity, true)
 			if err != nil {
 				return nil, err
 			}
 			if current.key != key {
-				return nil, errors.New("OpenCode routing source changed during discovery")
+				return nil, errCatalogSourceChanged
 			}
 			if value == nil || value.identity != key {
 				return nil, errors.New("OpenCode catalog snapshot does not match its captured source")
@@ -397,7 +407,7 @@ func (s *SettingsAPI) observe(ctx context.Context, settings Settings, cwd string
 						return sourceErr
 					}
 					if current != key {
-						return errors.New("OpenCode native configuration changed during discovery")
+						return errCatalogSourceChanged
 					}
 					deadline.Stop()
 					s.mu.Lock()
@@ -414,7 +424,7 @@ func (s *SettingsAPI) observe(ctx context.Context, settings Settings, cwd string
 					if sourceErr != nil {
 						err = sourceErr
 					} else if current != key {
-						err = errors.New("OpenCode native configuration changed during discovery")
+						err = errCatalogSourceChanged
 					}
 				}
 				if err == nil {
@@ -1192,10 +1202,11 @@ func (h *Harness) cachedCatalog(ctx context.Context, input plugin.SettingsReques
 	if err != nil {
 		return nil, current, err
 	}
-	key, err := h.settings.catalogKey(ctx, current, input.Cwd)
+	source, err := h.settings.resolveCatalogSource(ctx, current, input.Cwd, discovery.ObservedIdentity, false)
 	if err != nil {
 		return nil, current, err
 	}
+	key := source.key
 	h.settings.mu.Lock()
 	cached, ok := h.settings.cache[key]
 	closed := h.settings.closed

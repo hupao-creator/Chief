@@ -139,7 +139,12 @@ filtering; complete cached directories return immediately regardless of age.
 Catalog identity treats a missing global OpenCode configuration directory and an
 empty one as equivalent. Native startup can create that directory on the first
 read. Populated directories, symlink targets, explicit configuration files, and
-account revisions still participate in discovery invalidation.
+account revisions still participate in discovery invalidation. A required catalog
+read retries SQLite lock contention for up to two seconds, subject to caller
+cancellation. Each attempt checks the schema and credential revisions in one
+read transaction. Advisory cache and quota lookups do a single nonwaiting
+read. Persistent contention reports a busy account database. Other SQLite
+failures report their numeric code without exposing credential data.
 [Cold discovery replay](../../../../tools/e2e/README.md#opencode-cold-discovery)
 covers the first catalog read with the installed CLI.
 Expired entries trigger an owned background refresh with a 30-second failure
@@ -307,7 +312,10 @@ Production discovery captures its absolute executable and environment through th
 same `captureLaunch` helper as ordinary startup. It passes those captured values
 directly to the runtime, rather than invoking a closure that resolves them again.
 Before publication and after discovery, the source resolver is checked again;
-changed launch/configuration/account identities reject the observation.
+changed launch/configuration/account identities discard the observation. The
+reader can acquire the new source once. A second change fails the read. Each
+required native catalog GET can repeat once after 100 ms on HTTP 502, 503 or
+504. The optional plugin inventory uses its own single advisory read.
 
 Editor, complete, advisory and routing reads use the same detailed observed
 source key, including project namespaces and referenced configuration files.
