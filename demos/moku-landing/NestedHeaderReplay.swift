@@ -661,8 +661,11 @@ private final class WheelSample: NSEvent {
         let paragraph = "The current checklist includes the release notes, a review of the changes, and the remaining checks."
         let measuring = CommandLine.arguments.contains("--conversation-performance")
         let last = measuring ? 63 : 31
+        let linkedPage = CommandLine.arguments.contains("--linked-page")
         let rows = (0..<last).map { i in
-            row(i, "Message \(i)\n" + Array(repeating: paragraph, count: 1 + (i % 5)).joined(separator: "\n"))
+            let link = linkedPage && !i.isMultiple(of: 2)
+                ? "\n[执行记录](chief://execution?threadId=task-0&executionId=run-\(i))" : ""
+            return row(i, "Message \(i)\n" + Array(repeating: paragraph, count: 1 + (i % 5)).joined(separator: "\n") + link)
         } + [row(last, Array(repeating: paragraph, count: 15).joined(separator: "\n") + "\n" + ending)]
         func latestPage(_ messages: [JSONValue]) -> JSONValue {
             var fields: [JSONText: JSONValue] = ["messages": .array(messages)]
@@ -718,7 +721,7 @@ private final class WheelSample: NSEvent {
             guard !scene.conversationOpen, !scene.inputOpen else { throw ReplayError("Outside click did not dismiss Chief Bar") }
         }
         if measuring {
-            let configuration: [String: Any] = ["messages": rows.count, "pageBytes": try page.encodedData().count,
+            let configuration: [String: Any] = ["messages": rows.count, "linkedPage": linkedPage, "pageBytes": try page.encodedData().count,
                 "windowWidth": window.frame.width, "windowHeight": window.frame.height, "appearance": "dark",
                 "displayScale": window.backingScaleFactor, "displayMaximumFPS": window.screen?.maximumFramesPerSecond ?? 0,
                 "reduceMotion": NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
