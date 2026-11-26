@@ -71,9 +71,10 @@ final class NativeWorkspaceSettingsPrefetch {
         configurations = next; availablePreviews = previews; refreshSequences = sequences; authority = workspace.snapshotAuthority
         host.retainGlobalSettings(configurations: next, availablePreviews: previews, submittedChiefProfiles: submittedChiefProfiles)
         for configuration in next where tasks[configuration] == nil {
+            let hasPublication = workspace.state?["dispatchPresentationVersions"]?[configuration.harnessID.string] != nil
             tasks[configuration] = Task { [host] in
                 while !Task.isCancelled {
-                    await host.prefetchSettings(configuration)
+                    await host.prefetchSettings(configuration, restorePublished: hasPublication)
                     let deadline = host.cachedSettingsSurface(configuration: configuration)?.revalidationDeadline
                     let now = ContinuousClock.now
                     // Failed admission can leave no current load timestamp.

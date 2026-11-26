@@ -24,7 +24,7 @@ Use **Auto-Categorization** to set up Tag Agent and **Super Thread** to set up S
 
 - **Agent off** stops automatic work for that role and keeps its existing tags or Super Threads and saved choices. Pending work resumes when you turn the agent back on.
 - **Use Chief** uses Chief's agent and model settings for future work.
-- **Configure separately** lets you choose an agent and model for the role. If its configuration fails to load, use **Retry** in the form. Chief keeps those choices if you later switch to **Use Chief** or **Agent off**.
+- **Configure separately** opens with the role’s saved choices, or Chief’s choices the first time. You can edit them while the list of models updates. If a refresh fails, use **Retry** in the form. Chief keeps those choices if you later switch to **Use Chief** or **Agent off**.
 
 Choose **OpenCode** to see its providers, models and variants. If **Loading Agent configuration…** appears, wait for the options to open, then make your selections. If your saved model is marked **Unavailable in catalog**, check the provider in OpenCode or choose another listed model.
 

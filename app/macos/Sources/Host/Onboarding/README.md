@@ -71,19 +71,16 @@ and resource status. It waits for resource readiness rather than treating the
 presence of a saved profile as sufficient. Switching back to independent mode
 restores its own retained configuration.
 
-Opening the independent editor loads the selected Harness catalog in the role's
-workspace. During the read, the skillet and “Loading Agent configuration…”
-form one notice centered horizontally and vertically between the Agent choices
-and the bottom navigation. If the window is too short for the notice to fit,
-the content can scroll while the navigation stays in place. The editor's
-read-only preview uses retained settings when available and Chief's saved
-profiles on first use. Returning to that role and Harness during
-a read joins it. Once ready, the editor can reuse that role's presentation for
-five minutes across Back, mode changes, Harness switches and app activation.
-A changed saved profile, workspace, installation or connection requires its
-own current resource. Tag and Super Thread have distinct workspaces, so each
-can have a cold first read for the same Harness. Inherited discovery still
-joins Chief's resource. Confirming waits for the revision-checked save of the complete draft.
+Selecting **Configure separately** immediately mounts editable fields with the role's
+retained choices, or Chief's saved choices on first use. The form scrolls just enough to reveal the newly editable model when the picker sits below the viewport. For each Harness the editor
+uses the role's latest usable options, falling back to Chief's published execution
+options for that Harness. The independent workspace read continues in the background.
+A successful publication updates the options in place and preserves the role draft.
+A failed read keeps the fields available with a retry. Continue accepts a complete
+draft while discovery is pending. A cold Harness with no usable options shows
+“Loading Agent configuration…” until it has a presentation. Refresh and save
+actions stay bound to the role. Disconnect, removal or workspace replacement
+revokes the old surfaces. Confirming waits for the revision-checked save.
 The save does not reacquire native snapshots for the copied profiles or recheck
 the selected Harness's native catalog.
 
@@ -161,6 +158,11 @@ and disables scene restoration for that explicit scenario. This removes saved
 window geometry as a startup variable; the OS bounds remain externally verified.
 
 ## Confirmation e2e
+
+For both roles the AX replay times **Configure separately** from the press to the
+enabled model popup displaying the inherited selection. It hit-tests the popup in
+the isolated window. Each transition must take less than 1,000ms. An explicit
+Harness selection exercises the same path with that installed provider.
 
 [E2E-ONBOARDING-001](../../../../../tools/e2e/README.md#onboarding-confirmations)
 launches first-run setup with a fresh profile and uses macOS AXPress on each

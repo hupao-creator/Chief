@@ -25,7 +25,7 @@ an OpenCode preliminary result can expose models before its account check settle
 
 Subscribers receive an initial wake and coalesced change notifications. Only
 changes to projected routing choices wake Chief. Settings clients observe the
-presentation digest on the normal Runtime state stream. Both read current data
+presentation digest on the normal Runtime state stream. A desktop with a stored digest restores that presentation before background discovery. Published reads use a store snapshot and bypass the native discovery queue. A publication received during prefetch is consumed when that read finishes. Both read current data
 on receipt. A stable projection has no write or notification. Model ordering is preserved in Settings and normalized by provider and model ID for routing. Native discovery
 keys and retry policy are private to each adapter.
 

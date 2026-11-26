@@ -94,7 +94,7 @@ import ChiefPluginAPI
     }
 
     func session(_ plugin: AnyHarnessPlugin, model: NativeSettingsModel) -> HarnessSettingsSession {
-        plugin.makeSettingsSession(load: { refresh in
+        plugin.makeSettingsSession(publishPresentations: true, load: { refresh in
             let response = try self.invoke("harness:settings-presentation", [.object([
                 "scope": .text("global"), "harnessId": .string(plugin.descriptor.id),
                 "executionOwner": .text("moku"), "refresh": .bool(refresh)

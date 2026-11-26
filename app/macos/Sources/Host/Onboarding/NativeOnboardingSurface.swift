@@ -93,9 +93,15 @@ struct NativeOnboardingSurface: View {
                 .accessibilityLabel(locale.text("第 \(panelStep.rawValue + 1) 步，共 5 步", "Step \(panelStep.rawValue + 1) of 5"))
             GeometryReader { viewport in
                 // Balance the space below the picker with the insets above the buttons.
-                scrollContent(minHeight: isBackgroundRole ? viewport.size.height : nil,
-                              bottomInset: isBackgroundRole
-                                ? NativeApplicationBackgroundEditor.agentPickerBottomInset - navigationTopInset : 20)
+                ScrollViewReader { scroll in
+                    scrollContent(minHeight: isBackgroundRole ? viewport.size.height : nil,
+                                  bottomInset: isBackgroundRole
+                                    ? NativeApplicationBackgroundEditor.agentPickerBottomInset - navigationTopInset : 20)
+                        .onPreferenceChange(NativeSettingsEditableModelAnchor.self) { id in
+                            guard let id, let role = panelStep.settingID, id.hasPrefix(role + ".") else { return }
+                            scroll.scrollTo(id)
+                        }
+                }
             }
             HStack {
                 if panelStep != .discovery {
@@ -204,6 +210,7 @@ struct NativeOnboardingSurface: View {
                         }.frame(maxWidth: .infinity, minHeight: 168)
                             .accessibilityElement(children: .combine)
                             .accessibilityValue(locale.text("已就绪", "Ready"))
+                            .accessibilityIdentifier("onboarding-ready-" + harness.descriptor.id.string)
                             .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: 18)))
                     }
                 }.frame(height: 190)

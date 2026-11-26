@@ -13,7 +13,7 @@ from report import check_handoff, handoff_intervals, save, sha256
 DRIVER = Path(__file__).with_suffix(".swift")
 
 
-def journey(session, app):
+def journey(session, app, host=None):
     output = session.output
     driver = session.root / "onboarding-ax"
     build = ["xcrun", "swiftc", "-warnings-as-errors", "-module-cache-path", str(session.root / "ax-cache"),
@@ -46,7 +46,7 @@ def journey(session, app):
     trace = output / "onboarding-ax.jsonl"
     with trace.open("wb") as stream:
         result = subprocess.run([driver, str(session.app.pid), app.parents[2], session.nonce,
-                                 str(session.process.pid), connection["epoch"]],
+                                 str(session.process.pid), connection["epoch"], *([host] if host else [])],
                                 stdout=stream, check=False, timeout=205)
     rows = [json.loads(line) for line in trace.read_text().splitlines()]
     confirmations = [r for r in rows if r["kind"] == "confirmation"]
@@ -55,6 +55,12 @@ def journey(session, app):
     for row in confirmations:
         elapsed = (late.get(row["step"], row["observedNS"]) - row["startNS"]) / 1_000_000
         message = f"{row['step']} → {row['destination']}: {elapsed:.6f} ms ({row['status']})"
+        print(message, flush=True)
+        if row["status"] != "passed":
+            overruns.append(message)
+    for row in (r for r in rows if r["kind"] == "role"):
+        elapsed = (row["observedNS"] - row["startNS"]) / 1_000_000
+        message = f"{row['id']} → editable model: {elapsed:.3f} ms ({row['status']})"
         print(message, flush=True)
         if row["status"] != "passed":
             overruns.append(message)

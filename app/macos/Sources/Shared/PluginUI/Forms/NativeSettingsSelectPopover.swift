@@ -2,6 +2,12 @@ import AppKit
 import ChiefCore
 import SwiftUI
 
+/// The onboarding scroll view can reveal a newly editable model in a short viewport.
+public struct NativeSettingsEditableModelAnchor: PreferenceKey {
+    public static let defaultValue: String? = nil
+    public static func reduce(value: inout String?, nextValue: () -> String?) { value = nextValue() ?? value }
+}
+
 /// Settings and onboarding use the system popup; embedded editors retain their layout.
 public struct NativeSettingsSelectPopover: View {
     @Binding private var selection: JSONText
@@ -11,12 +17,23 @@ public struct NativeSettingsSelectPopover: View {
     private let invalid: Bool
     @Environment(\.nativeSettingsFormPage) private var formPage
     @Environment(\.nativeSettingsCompactPresentation) private var compactPresentation
+    @Environment(\.nativeSettingsInteractionScope) private var scope
+    @Environment(\.nativeSettingsControlID) private var controlID
+    @Environment(\.nativeSettingsReadOnly) private var readOnly
     public init(selection: Binding<JSONText>, options: [NativeSettingsOption], accessibilityLabel: String,
                 accessibilityDescription: String? = nil, invalid: Bool = false) {
         _selection = selection; self.options = options; self.accessibilityLabel = accessibilityLabel
         self.accessibilityDescription = accessibilityDescription; self.invalid = invalid
     }
     public var body: some View {
+        if compactPresentation, !readOnly, controlID == "model" {
+            let anchor = scope + ".model"
+            select.id(anchor).preference(key: NativeSettingsEditableModelAnchor.self, value: anchor)
+        } else {
+            select
+        }
+    }
+    private var select: some View {
         Group {
             if formPage || compactPresentation {
                 NativeSettingsPopup(selection: $selection, options: options, label: accessibilityLabel,
@@ -48,6 +65,9 @@ private struct NativeSettingsPopup: NSViewRepresentable {
     @Environment(\.isEnabled) private var enabled
     @Environment(\.nativeSettingsField) private var field
 
+    @Environment(\.nativeSettingsInteractionScope) private var scope
+    @Environment(\.nativeSettingsControlID) private var controlID
+
     func makeNSView(context: Context) -> Popup {
         let view = Popup(frame: .zero, pullsDown: false)
         view.menu?.autoenablesItems = false
@@ -72,6 +92,7 @@ private struct NativeSettingsPopup: NSViewRepresentable {
             view.menu?.insertItem(item, at: 0); view.selectItem(at: 0)
         }
         view.isEnabled = enabled && options.contains { !$0.disabled }
+        view.setAccessibilityIdentifier(controlID.map { scope.isEmpty ? $0 : scope + "." + $0 })
         view.setAccessibilityLabel(label); view.setAccessibilityHelp(description)
         view.choose = { index in
             guard options.indices.contains(index), !options[index].disabled else { return }

@@ -101,7 +101,7 @@ a matching local Chief profile save. Thread settings sessions still belong to
 their mounted editor.
 `settingsPresentationIssue` lets each Harness identify a decoded but unusable
 presentation without mounting an editor: CLI/catalog errors and unfinished model
-availability are distinct from transport completion. The host uses that result
+availability are distinct from transport completion. A usable decoded value can also be published as a display snapshot for global forms. Reads on a snapshot are routed to the destination editor. A later failure leaves the previous display snapshot available while the owning session reports its acquisition status. The host uses that result
 alongside execution-snapshot readiness for onboarding admission and bounded
 background retries. Empty catalogs remain plugin-specific (Claude permits custom
 identifiers).
