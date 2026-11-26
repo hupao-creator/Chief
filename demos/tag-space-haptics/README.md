@@ -15,7 +15,10 @@ when it wraps. Keep your fingers down after the switch, then lift them. The
 rest of that gesture stays on the same choice. Try a mouse-wheel step or
 click a left label to change the selection silently.
 
-The bottom bar counts swipe feedback requests after the system performer
+Select **通用** (generic), **对齐** (alignment) or **档位** (level change) in the
+bottom bar to compare Apple's patterns with the same swipe. The demo starts
+with alignment. AppKit provides no numeric strength control for these patterns.
+The bar counts swipe feedback requests after the system performer
 returns. For a comparison while stationary, rest one finger on the trackpad
 and press Command-T with your other hand. The test button shows a separate
 count for these manual requests. AppKit provides no hardware delivery receipt.

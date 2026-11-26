@@ -20,13 +20,17 @@ struct NativeOverviewSwipeActions {
 extension EnvironmentValues {
     @Entry var overviewSwipeActions: NativeOverviewSwipeActions? = nil
     @Entry var requestRailSwipeFeedback: @MainActor () -> Void = {
-        NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+        NativeOverviewVerticalSwipe.playFeedback()
     }
 }
 
 /// Classify the starting surface before native scrolling. After recognition,
 /// keep the rest of the contact and its momentum even if the surface changes.
 struct NativeOverviewVerticalSwipe {
+    @MainActor static func playFeedback(_ pattern: NSHapticFeedbackManager.FeedbackPattern = .generic) {
+        NSHapticFeedbackManager.defaultPerformer.perform(pattern, performanceTime: .now)
+    }
+
     private enum Stage { case idle, possible, claimed, awaitingMomentum(TimeInterval), momentum }
     private var stage = Stage.idle
     private var vertical: CGFloat = 0

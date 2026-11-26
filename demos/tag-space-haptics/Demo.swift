@@ -51,7 +51,7 @@ private struct DemoError: Error, CustomStringConvertible {
     let fixture: Fixture
     @State private var swipeRequests = 0
     @State private var testRequests = 0
-    private let systemFeedback = EnvironmentValues().requestRailSwipeFeedback
+    @State private var pattern = NSHapticFeedbackManager.FeedbackPattern.alignment
     init() {
         do { fixture = try Fixture() }
         catch { fatalError(String(describing: error)) }
@@ -61,17 +61,24 @@ private struct DemoError: Error, CustomStringConvertible {
         Window("Tag Space Haptics", id: "tag-space-haptics") {
             NativeWorkspaceView(model: fixture.workspace, presentation: fixture.presentation)
                 .environment(\.requestRailSwipeFeedback, {
-                    systemFeedback()
+                    NativeOverviewVerticalSwipe.playFeedback(pattern)
                     swipeRequests += 1
                 })
                 .modifier(NativeWorkspaceWindowSurface())
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     HStack {
+                        Picker("反馈模式", selection: $pattern) {
+                            Text("通用").tag(NSHapticFeedbackManager.FeedbackPattern.generic)
+                            Text("对齐").tag(NSHapticFeedbackManager.FeedbackPattern.alignment)
+                            Text("档位").tag(NSHapticFeedbackManager.FeedbackPattern.levelChange)
+                        }
+                        .pickerStyle(.segmented)
+                        .fixedSize()
                         Text("滑动请求 \(swipeRequests)").monospacedDigit()
                         Spacer()
                         Text("一指贴住触控板，按 ⌘T").foregroundStyle(.secondary)
                         Button("测试轻触（\(testRequests)）") {
-                            systemFeedback()
+                            NativeOverviewVerticalSwipe.playFeedback(pattern)
                             testRequests += 1
                         }
                         .keyboardShortcut("t", modifiers: .command)
