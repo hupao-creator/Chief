@@ -156,17 +156,13 @@ func create(r *core.Runtime) (core.CreatedThread, error) {
 	return r.CreateThread(context.Background(), core.CreateThreadRequest{HarnessID: "fixture", Input: model.AgentInput{Parts: []model.AgentInputPart{{Kind: "text", Text: "hello"}}}})
 }
 
-// The peer only supplies a model catalog and captures the tools actually
+// The peer captures the tools actually
 // injected at Open. Tool selection, authorization, and persistence run in production code.
 type injectedToolPeer struct {
 	harness
 	tools *plugin.ToolInjection
 }
 
-func (h *injectedToolPeer) DiscoverMokuTarget(context.Context, plugin.SettingsRequest) (json.RawMessage, plugin.Availability, error) {
-	schema, err := plugin.ModelCatalogSchema(map[string]any{"type": "object"}, []plugin.ModelCatalogEntry{{ID: "fixture"}}, "fixture", plugin.CatalogSourceEvidence{})
-	return schema, plugin.Availability{Available: true}, err
-}
 func (h *injectedToolPeer) Open(ctx context.Context, o plugin.OpenContext) (plugin.Handle, error) {
 	if o.Injection != nil {
 		h.tools = o.Injection.Tools
@@ -177,7 +173,15 @@ func (h *injectedToolPeer) Open(ctx context.Context, o plugin.OpenContext) (plug
 func openChiefTool(t *rapid.T, ctx context.Context, r *core.Runtime, chiefCwd string, harnesses map[string]plugin.Harness, peer *injectedToolPeer, input model.AgentInput, toolName string) (*moku.Coordinator, plugin.ToolBinding) {
 	t.Helper()
 	coordinator, err := moku.New(moku.Configuration{
+		DispatchOptions: r.DispatchOptions,
+		CreateThread: func(ctx context.Context, req moku.CreateThreadRequest) (moku.CreatedThread, error) {
+			v, err := r.CreateThread(ctx, core.CreateThreadRequest{HarnessID: req.HarnessID, Input: req.Input, Cwd: req.Cwd, Worktree: req.Worktree, ResolveSettings: req.ResolveSettings})
+			return moku.CreatedThread{Record: v.Record, Execution: v.Execution, Acknowledgement: v.Acknowledgement}, err
+		},
 		Workspace: chiefCwd, Harnesses: harnesses, Settings: r.Settings, Threads: r.Threads, Thread: r.Thread, UpdateThread: r.UpdateThread,
+		ConfigureSession: func(ctx context.Context, id string, revision int64, c moku.SessionConfiguration) error {
+			return r.ConfigureMokuThread(ctx, id, revision, c.HarnessID, c.Settings, c.AppliedSettings, c.SettingsRevision, c.Cwd)
+		},
 		OpenSession: r.OpenMokuThread, CloseSession: r.CloseMokuThread, SendSession: r.SendMokuThread, SubscribeCommitted: r.OnThreadCommitted,
 		RemoveWorktree: r.RemoveWorktree, SendThread: r.SendThread, PendingDeliveries: r.ReadyMokuDeliveries, SendDelivery: r.SendMokuDelivery,
 		EnsureSession: func(ctx context.Context, c moku.SessionConfiguration) (model.ThreadRecord, error) {

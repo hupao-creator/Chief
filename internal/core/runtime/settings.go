@@ -268,6 +268,7 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 		Scope               string `json:"scope"`
 		HarnessID           string `json:"harnessId,omitempty"`
 		ThreadID            string `json:"threadId,omitempty"`
+		ReadPublished       bool   `json:"readPublished,omitempty"`
 		Refresh             bool   `json:"refresh,omitempty"`
 		ExecutionOwner      string `json:"executionOwner,omitempty"`
 		ApplicationSettings string `json:"applicationSettings,omitempty"`
@@ -396,10 +397,22 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 			return nil, err
 		}
 	}
-	value, err := h.Settings().Presentation(ctx, plugin.SettingsPresentationRequest{
-		Settings: harnessSettings, Cwd: cwd, ThreadSettings: threadSettings,
-		Refresh: request.Refresh, ExecutionProfile: executionProfile,
-	})
+	var value json.RawMessage
+	if request.Scope == "global" && !executionProfile {
+		if request.ReadPublished && !request.Refresh {
+			value = r.dispatch.Read(request.HarnessID).Presentation
+			if len(value) == 0 {
+				return nil, errors.New("provider settings have not been published yet")
+			}
+		} else {
+			value, err = r.RequestDispatchUpdate(ctx, request.HarnessID, request.Refresh)
+		}
+	} else {
+		value, err = h.Settings().Presentation(ctx, plugin.SettingsPresentationRequest{
+			Settings: harnessSettings, Cwd: cwd, ThreadSettings: threadSettings,
+			Refresh: request.Refresh, ExecutionProfile: executionProfile,
+		})
+	}
 	if err != nil {
 		return nil, err
 	}

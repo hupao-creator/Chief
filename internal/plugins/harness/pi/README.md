@@ -23,7 +23,7 @@ separate JavaScript build for this adapter.
 
 The adapter implements `plugin.Harness`, `Forker`, `PromptCompleter`,
 `AvailabilityProbe`, `WorkspaceDiscoverer`, `ModelCatalogSource`,
-and `MokuTargetDiscoverer`. Installation of the external
+and static dispatch options. Installation of the external
 Pi CLI is manual through the native client's installation guide; this adapter
 does not implement `plugin.Installer` or launch an installation subprocess.
 
@@ -43,10 +43,9 @@ Delta-only updates accumulate by content index before using that same decoder,
 so chunk boundaries add no separators and completed/history snapshots retain
 the same text. Independent assistant messages remain separate rows.
 
-Failed or empty initial Pi catalogs block Moku task preparation. Unknown thinking
-capabilities restrict creation branches without omitting model identities. Discovery
-does not require the configured default model to be usable. Native admission
-remains authoritative beyond configuration-keyed, TTL-bounded snapshots.
+Pi publishes provider, model and thinking-level choices. Ordinary dispatch
+encodes the requested native level and checks the model and level actually
+reported by the destination RPC session.
 
 ## Native ownership
 
@@ -227,27 +226,16 @@ observation stable across its own read is cached. A routing cache miss or refres
 always acquires a fresh native observation, because an ordinary observation's
 root-file identity cannot certify the routing cache's transitive dependencies.
 
-Moku requires the full nonempty native model inventory before task admission.
-Unknown thinking capabilities remain named in that inventory but cannot authorize
-creation. Moku routing returns complete same-configuration cached directories
-immediately, even after expiry or during refresh. Expired entries start bounded
-background refreshes; failures/empty replacements retain the last complete
-snapshot, with a 30-second warm-retry cooldown. Only a cache miss waits and blocks
-on failure. Configuration identities fence publication and native admission;
-execution/default resolution retains strict reads. Caches are Harness-owned,
-memory-only and drained on Close, not persisted across application restarts.
+The [configuration module](../../../services/dispatchconfig/README.md) publishes
+this adapter's ordinary settings options. The provider can use native discovery
+caches internally. A missing inventory does not prevent Chief from starting.
 
 Pi's `get_available_models` returns a snapshot of the registry, but the RPC reply
 omits its load-error/completion state. Offline startup and disabling extensions
 do not prove model-source completeness. Moku therefore keeps this evidence
 unknown; it does not infer trust from a valid response.
 
-Moku routing accepts successful nonempty native inventories, including native
-cached/fallback data, without requiring remote source-completion proof. Source
-completeness remains unknown in the schema. A matching old snapshot returns
-immediately; failed refreshes retain it and add a retained-snapshot note. Cold
-acquisition failure still reports an error. See the current
-[admission and evidence contract](../../../services/moku/catalog-evidence.md).
+Native enumeration evidence is described in the [catalog guide](../../../services/moku/catalog-evidence.md).
 
 Pi does not expose formal per-provider source/publication receipts through its
 RPC inventory. Successful offline inventory does not establish complete remote

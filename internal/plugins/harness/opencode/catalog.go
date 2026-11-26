@@ -20,10 +20,11 @@ import (
 )
 
 type CatalogVariant struct {
-	ID                         string `json:"id"`
-	Settings                   Object `json:"settings,omitempty"`
-	Body                       Object `json:"body,omitempty"`
-	ExclusiveUnavailableReason string `json:"exclusiveUnavailableReason,omitempty"`
+	Control                    *model.ThinkingChoice `json:"control,omitempty"`
+	ID                         string                `json:"id"`
+	Settings                   Object                `json:"settings,omitempty"`
+	Body                       Object                `json:"body,omitempty"`
+	ExclusiveUnavailableReason string                `json:"exclusiveUnavailableReason,omitempty"`
 }
 type CatalogModel struct {
 	Provider                   string                    `json:"provider"`
@@ -169,6 +170,9 @@ func readCatalog(ctx context.Context, host plugin.HostContext, runtime *Runtime,
 		if index != 0 && err != nil {
 			return nil, err
 		}
+	}
+	if models == nil {
+		return nil, errors.New("invalid OpenCode model catalog")
 	}
 	// Plugin inventory is diagnostic, not proof of remote model completeness.
 	// A working native model response remains usable when this optional list is

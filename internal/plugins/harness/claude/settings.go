@@ -30,10 +30,11 @@ type modelPresentation struct {
 	disabled         bool
 }
 type catalog struct {
-	sourceProof plugin.CatalogSourceEvidence
-	identity    string
-	CLI         map[string]any      `json:"cli"`
-	Models      []modelPresentation `json:"models"`
+	nativeAccount bool
+	sourceProof   plugin.CatalogSourceEvidence
+	identity      string
+	CLI           map[string]any      `json:"cli"`
+	Models        []modelPresentation `json:"models"`
 }
 type settingsAdapter struct {
 	harness         *Harness
@@ -248,6 +249,14 @@ func (a *settingsAdapter) ResolveThread(ctx context.Context, r plugin.ResolveSet
 		s.AllowedTools = old.AllowedTools
 		s.DisallowedTools = old.DisallowedTools
 	}
+	if r.Dispatch {
+		raw, err := json.Marshal(s)
+		if err != nil {
+			return nil, err
+		}
+		_, err = parseSettings(raw)
+		return raw, err
+	}
 	if e = a.validate(ctx, s, r.Cwd); e != nil {
 		return nil, e
 	}
@@ -348,6 +357,7 @@ func (a *settingsAdapter) loadCatalog(ctx context.Context, configured, cwd strin
 	probe := func(shared context.Context) (catalog, error) {
 		value, err := a.readCatalog(shared, path, cwd, env)
 		if err == nil {
+			value.nativeAccount, _ = usesNativeAccount(shared, cwd, env, "")
 			currentPath, currentEnv, sourceErr := a.harness.resolve(shared, cwd, configured)
 			if sourceErr != nil {
 				return catalog{}, sourceErr
@@ -375,6 +385,9 @@ func (a *settingsAdapter) loadCatalog(ctx context.Context, configured, cwd strin
 			value, err := a.catalogs.Get(probeCtx, key, false, 5*time.Minute, 45*time.Second, probe)
 			if err != nil {
 				return value, err
+			}
+			if len(value.Models) == 0 {
+				return value, errors.New("Claude native catalog is empty")
 			}
 			return value, nil
 		})
@@ -406,7 +419,11 @@ func (a *settingsAdapter) readCatalog(ctx context.Context, path, cwd string, env
 		result.CLI["version"] = version
 	}
 	seen := map[string]bool{}
-	for _, v := range arr(value["models"]) {
+	list, ok := value["models"].([]any)
+	if !ok {
+		return result, errors.New("invalid Claude model catalog")
+	}
+	for _, v := range list {
 		m := obj(v)
 		id := nonempty(str(m["value"]), nonempty(str(m["id"]), str(m["model"])))
 		if strings.TrimSpace(id) == "" || strings.ContainsRune(id, 0) || seen[id] {
@@ -429,9 +446,6 @@ func (a *settingsAdapter) readCatalog(ctx context.Context, path, cwd string, env
 			thinking = model.ThinkingCapability{Kind: "unknown", Reason: "Model is disabled in the native catalog"}
 		}
 		result.Models = append(result.Models, modelPresentation{Value: id, DisplayName: nonempty(str(m["displayName"]), nonempty(str(m["display_name"]), id)), Description: str(m["description"]), SupportedEfforts: advertised, Thinking: thinking, disabled: m["disabled"] == true})
-	}
-	if len(result.Models) == 0 {
-		return result, errors.New("Claude native catalog is empty")
 	}
 	return result, nil
 }
@@ -481,6 +495,13 @@ func (a *settingsAdapter) Presentation(ctx context.Context, r plugin.SettingsPre
 	c, e := a.load(ctx, s.ExecutablePath, r.Cwd, r.Refresh)
 	if e != nil {
 		return nil, e
+	}
+	if r.ModelReferences != nil {
+		refs, err := catalogReferences(c)
+		if err != nil {
+			return nil, err
+		}
+		r.ModelReferences(refs)
 	}
 	return json.Marshal(c)
 }
@@ -620,4 +641,8 @@ func (a *settingsAdapter) SnapshotExecution(ctx context.Context, r plugin.Settin
 		value["effort"] = captured.Effort
 	}
 	return json.Marshal(map[string]any{"useDefaultThreadSettings": false, "threadSettings": value})
+}
+
+func (*settingsAdapter) DispatchSchema() json.RawMessage {
+	return plugin.DispatchSchema([]string{"model", "thinking"}, nil, permissionModes)
 }

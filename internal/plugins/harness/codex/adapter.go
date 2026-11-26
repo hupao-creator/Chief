@@ -1261,6 +1261,9 @@ func (a *Adapter) usesNativeAccount(ctx context.Context, s *AppServer, cwd strin
 	if e != nil {
 		return false, e
 	}
+	return nativeAccountForConfig(ctx, s, config, env)
+}
+func nativeAccountForConfig(ctx context.Context, s *AppServer, config Map, env []string) (bool, error) {
 	values := ceEnvironment(env)
 	id := first(str(config["model_provider"]), "openai")
 	provider := obj(obj(config["model_providers"])[id])
@@ -1286,6 +1289,9 @@ func (a *Adapter) ModelCatalog(ctx context.Context, r plugin.SettingsRequest) (j
 	if e != nil {
 		return nil, e
 	}
+	return catalogReferences(models, nativeAccount), nil
+}
+func catalogReferences(models []Map, nativeAccount bool) json.RawMessage {
 	entries := []any{}
 	for _, m := range models {
 		item := Map{"selector": m["value"], "displayName": m["displayName"], "aliases": []any{}}
@@ -1296,7 +1302,7 @@ func (a *Adapter) ModelCatalog(ctx context.Context, r plugin.SettingsRequest) (j
 		item["provenance"] = Map{"kind": kind}
 		entries = append(entries, item)
 	}
-	return raw(Map{"models": entries}), nil
+	return raw(Map{"models": entries})
 }
 func (a *Adapter) MokuContext(ctx context.Context, purpose string, r plugin.SettingsRequest, ledger plugin.TelemetryLedger) (string, error) {
 	if err := ctx.Err(); err != nil {

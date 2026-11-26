@@ -45,17 +45,13 @@
 | `ToolModes` | 独占模式只允许宿主注入的工具，追加模式保留可用的原生工具。通过 `ToolBinding.Execute(ctx, ToolCall)` 分派调用并传播取消。Codex 和 OpenCode 在 Go 声明 `extend`，Claude 声明 `additive`，Swift 将追加模式写为 `.extend`。Pi 仅支持 `exclusive`。按实际引擎验证隔离行为。[Claude Go](claude/harness.go) · [Claude Swift](../../../app/macos/Sources/Plugins/Harnesses/Claude/ClaudeHarnessPlugin.swift) · [OpenCode 工具桥](opencode/bridge.go) |
 | `FollowUpOnly` | Go 端对活动执行的保证。即使目标恰好在分派时结束，追加输入也不能启动下一次执行。遇到已结束的目标，在保留或发送前返回 `plugin.ErrFollowUpUnavailable`。目前只有 Codex 声明这项能力。其他插件仍能接收普通输入，延迟通知随下一次独立输入投递。[投递判定](../../services/moku/delivery.go) |
 
-**要让 Chief 向它派发任务**，为 `create_thread` 返回该 Harness 的创建 schema。协调器对每个选中目标调用可选的 `MokuTargetDiscoverer.DiscoverMokuTarget`，缺省调用 `Settings().Describe`，两者均带 `RoutingCatalog: true`。任一目标返回空或不完整的目录，都会阻止本次准备。[目标发现](../../services/moku/context.go)
-
-完成所有原生分页后用 `plugin.ModelCatalogSchema` 绑定创建选项、非空模型清单、配置身份和来源依据。清单保留尚无可执行选项的模型，创建分支只列可用组合。远端来源是否完整有独立的 `source.complete`，未知可以如实保留。路由允许复用同配置的完整缓存，实际创建仍须在目标工作目录校验模型和 thinking 等选项。[schema 构造器](../../core/plugin/model_catalog.go) · [目录准入与缓存](../../services/moku/catalog-evidence.md)
-
-**按需实现其他接口。** `AvailabilityProbe` 可检查给定配置和工具模式是否可运行，宿主选择在缺省时回退到 `Detect`。`Forker` 提供原生分叉，`PromptCompleter` 提供独立补全，`Extension` 实现专属命令，`WorkspaceDiscoverer` 提供已知工作目录。按需给状态适配器实现 `SearchPassageAdapter`，只交付已完成执行的公开文本及其执行 ID。对于不支持的能力，省略可选接口，让宿主处理缺失。[可选接口](../../core/plugin/harness.go) · [检索契约](../../core/plugin/search.go)
+**要让 Chief 向它派发任务**，在 Settings adapter 上实现 `plugin.DispatchOptions`，声明创建普通 Thread 的字段。可见模型和原生控制值通过配置发布提供。真实派发由目标 adapter 编码，并从原生响应获取结果。目录获取失败时，Chief 仍可派发。 [配置模块](../../services/dispatchconfig/README.md)
 
 ## 4. 注册 runtime 并检查配置
 
 1. 在 `bootstrap.go` 导入新包，在 `Bootstrap.open` 的 `constructors` 增加 ID 对应的构造函数，**同时把 ID 加入 `ids`**。启动循环按这份列表创建适配器和每个引擎的 telemetry ledger，将适配器传入 `core.Config.Harnesses`。活动插件目录中的键为 `harness:<id>`，默认启用。composition 在启动时读取 `settings.pluginEnabled`，保存偏好不会改变当前实例的启用状态。[bootstrap.go](../../core/composition/bootstrap.go) · [启用状态](../../core/runtime/README.md#settings)
 2. 在架构检查器的 `allowed` 为新包声明实际导入的内部包，并在校验 `bootstrap.go` 构造调用的 ID 列表加入新包。检查器识别包的 `New` / `NewWithOptions` 调用。Pi 和 OpenCode 嵌入的四份 JS 是供外部引擎加载的单独白名单资源。[架构检查器](../../tooling/architecture/check.go)
-3. 如需向 Chief 贡献原生账号或使用情况等上下文，可实现 `MokuContextContributor`。如需向 Context 插件提供参考模型目录，实现 `ModelCatalogSource` 并在 `CollectContext` 的显式 ID 列表接入。可选 `CachedModelCatalogSource` 提供快速只读快照。此处的消费者是 Context 插件。协调器另行获取派发目标的目录。协调者和后台执行的自动排序都把额外注册的 ID 接在内建优先项之后。[Context 组装](../../core/composition/moku.go) · [后台执行选择](../../core/runtime/background.go)
+3. 如需向 Chief 贡献原生账号或使用情况等上下文，可实现 `MokuContextContributor`。如需向 Context 插件提供参考模型目录，实现 `ModelCatalogSource` 并在 `CollectContext` 的显式 ID 列表接入。可选 `CachedModelCatalogSource` 提供快速只读快照。此处的消费者是 Context 插件。协调器从配置模块读取已发布的目标选项。协调者和后台执行的自动排序都把额外注册的 ID 接在内建优先项之后。[Context 组装](../../core/composition/moku.go) · [后台执行选择](../../core/runtime/background.go)
 4. 从新的隔离 profile 检查 `state:load`。在 `plugins` 找到 `harness:<id>`，在 `settings.harnesses[id]` 核对默认配置。`moku.hostHarnessPreference` 选择协调者，`moku.executionHarnesses` 保存其执行配置，`moku.targetHarnessIds` 选择可派发的目标。Runtime 仅在首次创建设置时写入各 Harness 默认值，保存时要求每个已注册 ID 均有设置。[初始化](../../core/runtime/runtime.go) · [设置校验](../../core/runtime/settings.go)
 
 ## 5. 接入 macOS

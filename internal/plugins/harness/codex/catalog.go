@@ -2,6 +2,7 @@ package codex
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
@@ -24,6 +25,7 @@ type catalogSource struct {
 	cacheUpdatedAt time.Time
 }
 type catalogEntry struct {
+	nativeAccount      bool
 	sourceProof        plugin.CatalogSourceEvidence
 	identity           string
 	models             []Map
@@ -54,7 +56,7 @@ func (c *Catalog) Load(ctx context.Context, cwd, configured string, routing ...b
 	}
 	return Map{"models": csCopy(entry.models), "computerUse": entry.computerUse, "catalogIdentity": entry.identity, "catalogSource": entry.sourceProof}, nil
 }
-func (c *Catalog) LoadPresentation(ctx context.Context, cwd, configured string, refresh bool) (Map, error) {
+func (c *Catalog) LoadPresentation(ctx context.Context, cwd, configured string, refresh bool, references func(json.RawMessage)) (Map, error) {
 	entry, err := c.observe(ctx, cwd, configured, refresh, false)
 	if err != nil {
 		if ctx.Err() != nil {
@@ -64,6 +66,9 @@ func (c *Catalog) LoadPresentation(ctx context.Context, cwd, configured string, 
 	}
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
+	}
+	if references != nil && entry.modelsError == nil {
+		references(catalogReferences(entry.models, entry.nativeAccount))
 	}
 	out := Map{"cli": csCopy(entry.cli), "models": csCopy(entry.models)}
 	if entry.modelsError != nil {
@@ -189,7 +194,7 @@ func (c *Catalog) probe(ctx context.Context, cwd, configured string, factory Cat
 			entry.models, refreshStatus = refreshRoutingModels(ctx, server, started, entry.models)
 			entry.sourceProof.Basis += "; " + refreshStatus
 		}
-		if entry.modelsError == nil && len(entry.models) == 0 {
+		if routing && entry.modelsError == nil && len(entry.models) == 0 {
 			entry.modelsError = fmt.Errorf("Codex model catalog is empty")
 		}
 		if entry.models == nil {
@@ -204,6 +209,10 @@ func (c *Catalog) probe(ctx context.Context, cwd, configured string, factory Cat
 		entry.configuration, entry.configurationError = ReadThreadConfiguration(limited, server, cwd)
 		if entry.configurationError == nil {
 			entry.autoReview, entry.autoReviewError = supportsAutoReviewConfiguration(limited, server, server.initialized, entry.configuration)
+			// Provenance is advisory; its timeout cannot preempt permission evidence.
+			refCtx, stop := context.WithTimeout(limited, time.Second)
+			entry.nativeAccount, _ = nativeAccountForConfig(refCtx, server, entry.configuration, server.launch.Environment)
+			stop()
 		}
 	}()
 	go func() {

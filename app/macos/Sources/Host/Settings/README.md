@@ -1,5 +1,12 @@
 # Native settings
 
+Ordinary Agent settings attach to the workspace's [published provider configuration](../../../../../internal/services/dispatchconfig/README.md).
+Onboarding and workspace prefetch request discovery. An open ordinary editor
+reads new presentations when the runtime publishes a changed version. A failed
+refresh retains the provider's previous choices across restarts. Thread and
+execution-profile editors use their own settings scopes.
+
+
 Settings form controls use system SwiftUI/AppKit controls on the existing macOS
 26 minimum. The page's `nativeSettingsFormPage` environment selects system
 popups, rounded text/secure fields, switches, bordered action buttons and AppKit

@@ -205,6 +205,13 @@ public final class NativeHarnessHost {
         return surface
     }
 
+    func receivePublishedSettings(_ id: JSONText) {
+        for surface in globalSettingsSurfaces.values where surface.configuration.harnessID == id
+            && surface.configuration.scope == .global() && surface.prefetchID == nil {
+            Task { try? await surface.reload() }
+        }
+    }
+
     func cachedSettingsSurface(configuration: NativeHarnessSettingsConfiguration) -> NativeHarnessSettingsSurface? {
         guard settingsLifetime.available,
               let surface = globalSettingsSurfaces[configuration.editorIdentity],

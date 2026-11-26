@@ -78,7 +78,7 @@ public struct NativeHarnessSettingsConfiguration: Hashable, Sendable {
         guard case .global(let application, let owner) = scope else { return false }
         return application != nil || owner != nil
     }
-    func request(refresh: Bool) -> JSONValue {
+    func request(refresh: Bool, readPublished: Bool = false) -> JSONValue {
         var object: [JSONText: JSONValue]
         switch scope {
         case .thread(let id): object = ["scope": .text("thread"), "threadId": .string(id)]
@@ -90,6 +90,7 @@ public struct NativeHarnessSettingsConfiguration: Hashable, Sendable {
                 object["previewIndependent"] = .bool(true)
             }
         }
+        if readPublished, case .global(applicationSettings: nil, executionOwner: nil) = scope { object["readPublished"] = .bool(true) }
         if refresh { object["refresh"] = .bool(true) }
         return .object(object)
     }
@@ -233,7 +234,7 @@ public final class NativeHarnessSettingsSurface {
             if sequence == requestSequence { lastLoad = .now }
             if loadingSequence == requestSequence { loadingSequence = nil }
         }
-        let result = try await host.client.invoke("harness:settings-presentation", args: [configuration.request(refresh: refresh)])
+        let result = try await host.client.invoke("harness:settings-presentation", args: [configuration.request(refresh: refresh, readPublished: prefetchID == nil && !refresh)])
         try checkAuthority()
         guard requestSequence == sequence else { throw CancellationError() }
         let expectedScope: JSONValue

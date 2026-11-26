@@ -302,7 +302,10 @@ func (c *Coordinator) eventsLoop(ctx context.Context) {
 				c.mu.Lock()
 				injection := c.injection
 				c.mu.Unlock()
-				_, err = c.config.SendSession(ctx, record.ID, input, injection, entries, nil)
+				result, err := c.config.SendSession(ctx, record.ID, input, injection, entries, nil)
+				if err == nil {
+					c.rememberDispatch(result.ExecutionID, entries)
+				}
 				return err
 			})
 		})

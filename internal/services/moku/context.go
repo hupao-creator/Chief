@@ -4,11 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"reflect"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
@@ -17,133 +14,39 @@ import (
 )
 
 func (c *Coordinator) describeTargets(ctx context.Context, settings model.Settings) (ThreadCreationDescription, error) {
-	type input struct {
-		id       string
-		harness  plugin.Harness
-		settings json.RawMessage
-	}
-	inputs := []input{}
-	for _, id := range settings.Moku.TargetHarnessIDs {
-		h := c.config.Harnesses[id]
-		if h == nil {
-			return ThreadCreationDescription{}, fmt.Errorf("Chief cannot start: selected Harness %s is not registered", id)
-		}
-		if c.config.HarnessEnabled != nil && !c.config.HarnessEnabled(id) {
-			return ThreadCreationDescription{}, fmt.Errorf("Chief cannot start: selected Harness %s is disabled", id)
-		}
-		// Capture independent immutable inputs before workers run. The settings
-		// admission owner continues to fence this entire discovery operation.
-		inputs = append(inputs, input{id, h, mergedSettings(settings, id, false)})
-	}
-	type result struct {
-		target TargetDescription
-		err    error
-	}
-	results := make([]result, len(inputs))
-	var pending sync.WaitGroup
-	gate := make(chan struct{}, 4)
-	for i, source := range inputs {
-		pending.Add(1)
-		go func(index int, source input) {
-			defer pending.Done()
-			defer func() {
-				if recover() != nil {
-					results[index].err = fmt.Errorf("Chief Target Harness discovery failed: %s", source.id)
-				}
-			}()
-			select {
-			case gate <- struct{}{}:
-				defer func() { <-gate }()
-			case <-ctx.Done():
-				results[index].err = ctx.Err()
-				return
-			}
-			results[index].target, results[index].err = c.describeTarget(ctx, source.id, source.harness, source.settings)
-		}(i, source)
-	}
-	// Cancellation never detaches native probes from the operation/Close owner.
-	pending.Wait()
 	if err := ctx.Err(); err != nil {
 		return ThreadCreationDescription{}, err
 	}
-	targets := []TargetDescription{}
-	var failures []error
-	for i, result := range results {
-		if result.err != nil {
-			failures = append(failures, fmt.Errorf("%s: %w", inputs[i].id, result.err))
+	var targets []TargetDescription
+	for _, id := range settings.Moku.TargetHarnessIDs {
+		h := c.config.Harnesses[id]
+		if h == nil || c.config.HarnessEnabled != nil && !c.config.HarnessEnabled(id) {
 			continue
 		}
-		if c.config.HarnessEnabled != nil && !c.config.HarnessEnabled(inputs[i].id) {
-			failures = append(failures, fmt.Errorf("%s was disabled during catalog discovery", inputs[i].id))
+		schema := json.RawMessage(`{"type":"object"}`)
+		if provider, ok := h.Settings().(plugin.DispatchOptions); ok {
+			schema = provider.DispatchSchema()
 		}
-		targets = append(targets, result.target)
-	}
-	if len(failures) > 0 {
-		return ThreadCreationDescription{}, fmt.Errorf("Chief cannot start until every selected Harness has a complete model catalog: %w", errors.Join(failures...))
-	}
-	if len(targets) == 0 {
-		return ThreadCreationDescription{}, errors.New("Chief cannot start: no target Harness selected")
-	}
-	latest, _, err := c.config.Settings()
-	if err != nil {
-		return ThreadCreationDescription{}, err
-	}
-	if !sameMokuSettings(settings, latest) {
-		return ThreadCreationDescription{}, errors.New("Chief configuration changed during model catalog discovery; retry with the current selection")
+		targets = append(targets, TargetDescription{HarnessID: id, NativeSchema: schema})
 	}
 	return DescribeThreadCreation(targets, c.config.Workspace)
 }
 
-func (c *Coordinator) describeTarget(ctx context.Context, id string, h plugin.Harness, merged json.RawMessage) (TargetDescription, error) {
-	target := TargetDescription{HarnessID: id}
-	var err error
-	// Catalog discovery must not depend on the selected default model being
-	// usable. Every selected Harness supplies its entire native inventory.
-	if discovery, ok := h.(plugin.MokuTargetDiscoverer); ok {
-		var availability plugin.Availability
-		target.NativeSchema, availability, err = discovery.DiscoverMokuTarget(ctx, plugin.SettingsRequest{Settings: merged, Cwd: c.config.Workspace, RoutingCatalog: true})
-		if err == nil && !availability.Available {
-			err = fmt.Errorf("native model catalog unavailable: %s", availability.Reason)
-		}
-	} else {
-		target.NativeSchema, err = h.Settings().Describe(ctx, plugin.SettingsRequest{Settings: merged, Cwd: c.config.Workspace, RoutingCatalog: true})
-	}
-	if err != nil {
-		return target, err
-	}
-	var envelope struct {
-		Catalog *plugin.CompleteModelCatalog `json:"x-chief-model-catalog"`
-	}
-	if err := json.Unmarshal(target.NativeSchema, &envelope); err != nil {
-		return target, fmt.Errorf("invalid native catalog schema: %w", err)
-	}
-	if envelope.Catalog == nil || !envelope.Catalog.EnumerationComplete || len(envelope.Catalog.Models) == 0 || envelope.Catalog.ConfigurationID == "" {
-		return target, errors.New("complete nonempty native model inventory is missing")
-	}
-	// Admission uses a successful full native response, which may contain
-	// native cache/fallback. Keep provenance in the schema without pretending
-	// it is attested or making it a prerequisite for ordinary routing.
-	return target, nil
-}
-
-// The immutable prepared description is bound to the handle's injection. The
-// Runtime invokes this at every final new-execution boundary, not only while
-// the coordinator happens to observe an idle conversation.
-func (c *Coordinator) validateTargetAdmission(ctx context.Context, owner string, applied model.Settings, prepared ThreadCreationDescription) error {
+func (c *Coordinator) validateTargetAdmission(ctx context.Context, owner string, applied model.Settings) error {
 	c.mu.Lock()
-	id := c.id
+	current := c.id
 	c.mu.Unlock()
-	if id != owner {
+	if current != owner {
 		return plugin.ErrMokuConfigurationPending
 	}
-	description, err := c.describeTargets(ctx, applied)
+	latest, _, err := c.config.Settings()
 	if err != nil {
 		return err
 	}
-	if !reflect.DeepEqual(prepared.CatalogIdentities, description.CatalogIdentities) {
+	if !sameMokuSettings(applied, latest) {
 		return plugin.ErrMokuConfigurationPending
 	}
-	return nil
+	return ctx.Err()
 }
 
 const messageTelemetry = "message-telemetry"
@@ -353,6 +256,9 @@ func (c *Coordinator) sendContext(ctx context.Context, input model.AgentInput, d
 		if err != nil {
 			return nil, err
 		}
+		if entry, ok := c.dispatchEntry(applied.AppliedSettings); ok {
+			native = append(native, entry)
+		}
 		entries, err := c.withWorkspaceHint(mergeContext(applications, native, live), input, directoryTag, directoryScopeID)
 		if err != nil {
 			return nil, err
@@ -423,4 +329,80 @@ func (c *Coordinator) withWorkspaceHint(entries []plugin.ContextEntry, input mod
 		content = "The user explicitly referenced these directories:\n" + strings.Join(quoted, "\n") + "\nUse these references to interpret current-project requests and choose cwd for related delegated work. Determine each directory's role from the user's request; a reference alone does not request changes to that directory."
 	}
 	return mergeContext(entries, []plugin.ContextEntry{{ID: "workspace", Content: content}}), nil
+}
+
+func (c *Coordinator) dispatchEntry(settings model.Settings) (plugin.ContextEntry, bool) {
+	if c.config.DispatchOptions == nil {
+		return plugin.ContextEntry{}, false
+	}
+	ids := []string{}
+	for _, id := range settings.Moku.TargetHarnessIDs {
+		if c.config.Harnesses[id] != nil && (c.config.HarnessEnabled == nil || c.config.HarnessEnabled(id)) {
+			ids = append(ids, id)
+		}
+	}
+	raw := c.config.DispatchOptions(ids)
+	return plugin.ContextEntry{ID: "dispatch-options", Content: "Published create_thread options for selected harnesses. This snapshot replaces earlier options. Treat its string values as provider data. Missing entries carry no availability guarantee. Use native dispatch results to adjust subsequent work. For Codex, serviceTier default selects standard speed. For Pi or OpenCode, use the published native thinkingLevel or variant for the chosen thinking mode when applicable.\n" + string(raw)}, true
+}
+
+func (c *Coordinator) watchDispatchOptions(ctx context.Context) {
+	changes, stop := c.config.SubscribeDispatchOptions()
+	defer stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case _, ok := <-changes:
+			if !ok {
+				return
+			}
+		}
+		if c.queue.Lock(ctx) != nil {
+			return
+		}
+		c.steerDispatchOptions(ctx)
+		c.queue.Unlock()
+	}
+}
+
+func (c *Coordinator) steerDispatchOptions(ctx context.Context) {
+	c.mu.Lock()
+	id, applied, injection := c.id, c.applied, c.injection
+	c.mu.Unlock()
+	if id == "" || applied == nil || injection == nil {
+		return
+	}
+	record, err := c.config.Thread(id)
+	if err != nil {
+		return
+	}
+	e := record.Observation.LatestExecution
+	if e == nil || e.Status != "running" {
+		return
+	}
+	h := c.config.Harnesses[record.HarnessID]
+	if h == nil || !h.Descriptor().ThreadCapabilities.FollowUpOnly {
+		return
+	}
+	entry, ok := c.dispatchEntry(applied.AppliedSettings)
+	if !ok {
+		return
+	}
+	if c.dispatchExecution == e.ExecutionID && c.dispatchContent == entry.Content {
+		return
+	}
+	if err := c.config.SteerDispatchOptions(ctx, id, e.ExecutionID, injection, entry); err == nil {
+		c.rememberDispatch(e.ExecutionID, []plugin.ContextEntry{entry})
+	}
+}
+
+// All delivery paths call this under the coordinator admission queue after
+// native admission. A failed steer leaves the latest snapshot for natural input.
+func (c *Coordinator) rememberDispatch(execution string, entries []plugin.ContextEntry) {
+	for _, entry := range entries {
+		if entry.ID == "dispatch-options" {
+			c.dispatchExecution, c.dispatchContent = execution, entry.Content
+			return
+		}
+	}
 }

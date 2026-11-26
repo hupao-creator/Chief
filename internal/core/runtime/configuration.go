@@ -136,7 +136,7 @@ func (r *Runtime) MokuConfigurationChange(host string) (ConfigurationChange, err
 	return result, nil
 }
 func (r *Runtime) PrepareSettings(ctx context.Context, currentHost string) (model.Settings, int64, error) {
-	return r.prepareExecutionSettings(ctx, "", "", false)
+	return r.prepareExecutionSettings(ctx, "", "", true)
 }
 func (r *Runtime) EnsureExecutionSettings(ctx context.Context, harnessID, applicationSettings string) (model.Settings, error) {
 	settings, _, err := r.prepareExecutionSettings(ctx, applicationSettings, harnessID, true)

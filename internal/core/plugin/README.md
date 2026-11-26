@@ -97,25 +97,15 @@ Unavailable passages carry no text and require an explicit retrieval coverage
 issue. Core never interprets opaque Harness state to infer locators. Empty IDs
 remain unavailable.
 
-`ModelCatalogSchema` binds completed enumeration and independent source evidence
-to creation options. It validates response shape, not provider completeness.
-Adapters must finish every page and supply source evidence separately; neither
-nonempty data nor a finished page sequence certifies the source.
-The inventory includes unsupported model identities independently of executable
-branches. Moku requires a completed nonempty native inventory before starting
-any task and exposes it in the standard tool schema description; unknown source
-provenance is retained without becoming a routing rejection. Optional `MokuTargetDiscoverer`
-uses this same contract; it cannot defer model discovery to a later tool call.
-Advisory model caches remain separate from task admission.
+`DispatchOptions.DispatchSchema` declares an adapter's static ordinary creation
+arguments. `ResolveSettingsRequest.Dispatch` identifies conversion of an explicit
+request for native execution. [Published configurations](../../services/dispatchconfig/README.md)
+supply available values to the settings panel and coordinator.
 
 `SettingsPresentationRequest.ExecutionProfile` identifies Chief and background execution editors, including independent previews. These editors can depend on model availability filtering to finish before the returned choices become actionable.
 
-`SettingsRequest.RoutingCatalog` permits a complete same-configuration directory
-to be stale and refreshed in the background. It is only set for Moku routing;
-creation and execution validation keep strict reads. Completeness evidence also
-contains a configuration hash, which Moku retains outside the exposed schema.
-This distinguishes a same-configuration catalog refresh from a source change at
-native admission. Snapshot descriptions explicitly allow outdated information.
+`SettingsRequest.RoutingCatalog` selects the adapters' complete-enumeration
+diagnostic path. Its source evidence describes native acquisition.
 
 `Injection.AdmitNewExecution` is an in-process, non-serialized authority callback
 used at Runtime's final Moku execution reservation boundary. It must not reopen

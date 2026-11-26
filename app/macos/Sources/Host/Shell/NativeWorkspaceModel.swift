@@ -209,6 +209,11 @@ public final class NativeWorkspaceModel {
                 snapshotAuthority = authority
                 recoveryRevision += 1
             }
+            let previousPublications = state?["dispatchPresentationVersions"]?.objectValue ?? [:]
+            let currentPublications = snapshot["dispatchPresentationVersions"]?.objectValue ?? [:]
+            for (id, version) in currentPublications where previousPublications[id] != version {
+                harnessHost.receivePublishedSettings(id)
+            }
             state = snapshot
             catalogError = nil
             if connection == .connected { connectionError = nil }

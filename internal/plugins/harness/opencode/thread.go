@@ -1069,7 +1069,7 @@ func (t *Thread) Send(ctx context.Context, request plugin.SendRequest) error {
 		if err == nil {
 			err = ValidateRuntimeSettings(ctx, runtime, settings, t.open.RequireExplicitSettings, nil, t.toolMode())
 		}
-		if err == nil && len(prepared.Modalities) > 0 {
+		if err == nil && !t.open.RequireExplicitSettings && len(prepared.Modalities) > 0 {
 			var info Object
 			err = runtime.Request(ctx, "GET", sessionPath(id, ""), nil, &info)
 			if err == nil {

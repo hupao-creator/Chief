@@ -431,7 +431,9 @@ func (s *SettingsAPI) observeOnce(ctx context.Context, settings Settings, cwd st
 					flight.value.identity = key
 					// Reject empty/malformed inventories before replacing a complete
 					// cache entry, including refreshes initiated by the settings UI.
-					_, err = describeCatalog(settings, flight.value)
+					if len(flight.value.NativeModels) > 0 {
+						_, err = describeCatalog(settings, flight.value)
+					}
 				}
 				cleanupErr = runtime.Close()
 				err = errors.Join(err, cleanupErr)
@@ -445,6 +447,9 @@ func (s *SettingsAPI) observeOnce(ctx context.Context, settings Settings, cwd st
 			}
 			if err == nil && probe.Err() == nil && !s.closed && generation == s.generation && s.publishers[key] == flight {
 				s.cache[key] = catalogCacheEntry{at: time.Now(), value: flight.value}
+				if flight.nativeValue != nil && flight.nativeValue.AccountCheckPending && s.host.DispatchConfigurationChanged != nil {
+					s.host.DispatchConfigurationChanged()
+				}
 			}
 			if s.publishers[key] == flight {
 				delete(s.publishers, key)
@@ -678,7 +683,11 @@ func (s *SettingsAPI) ResolveThread(ctx context.Context, input plugin.ResolveSet
 		if err != nil {
 			return nil, err
 		}
-		requested, err := normalizeCreateSettings(value, ordinarySettingsKeys)
+		allowed := ordinarySettingsKeys
+		if input.Dispatch {
+			allowed = append(append([]string{}, allowed...), "variant")
+		}
+		requested, err := normalizeCreateSettings(value, allowed)
 		if err != nil {
 			return nil, err
 		}
@@ -695,6 +704,25 @@ func (s *SettingsAPI) ResolveThread(ctx context.Context, input plugin.ResolveSet
 		if err = assertSettingsExecutable(existing, next); err != nil {
 			return nil, err
 		}
+	}
+	if input.Dispatch {
+		if next.Thinking == nil {
+			return nil, errors.New("OpenCode dispatch requires explicit thinking")
+		}
+		if next.Variant == "" && next.Thinking.Mode != "fixed" {
+			next.Variant = next.Thinking.Mode
+			if next.Thinking.Mode == "effort" {
+				next.Variant = next.Thinking.Effort
+			}
+		}
+		if next.Thinking.Mode == "fixed" && next.Variant != "" {
+			return nil, errors.New("fixed thinking requires the base variant")
+		}
+		if err := AssertExplicitSettings(next); err != nil {
+			return nil, err
+		}
+		next.ConfigurationCWD = input.Cwd
+		return json.Marshal(next)
 	}
 	next, err = s.resolve(ctx, next, input.Cwd)
 	if err != nil {
@@ -906,7 +934,28 @@ func (s *SettingsAPI) Presentation(ctx context.Context, input plugin.SettingsPre
 	if restriction != "" {
 		cli["message"] = restriction
 	}
-	result := Object{"cli": cli, "models": observed.Models, "agents": observed.Agents, "accountCheckPending": observed.AccountCheckPending}
+	models := append([]CatalogModel{}, observed.Models...)
+	for i, m := range models {
+		variants := append([]CatalogVariant{}, m.Variants...)
+		for j, v := range variants {
+			variants[j].Control = variantControl(m, v)
+		}
+		models[i].Variants = variants
+		capability := ThinkingCapability(m)
+		models[i].Thinking = &capability
+	}
+	agents := append([]CatalogAgent{}, observed.Agents...)
+	for i, agent := range agents {
+		agents[i].HasRequestOverrides = agent.HasRequestOverrides || hasThinkingOrModelOverrides(agent.Body)
+	}
+	if input.ModelReferences != nil {
+		refs, err := catalogProjection(observed)
+		if err != nil {
+			return nil, err
+		}
+		input.ModelReferences(refs)
+	}
+	result := Object{"cli": cli, "models": models, "agents": agents, "accountCheckPending": observed.AccountCheckPending}
 	if choice, err := SelectModel(observed, selected); err == nil {
 		effective := Object{"provider": choice.Model.Provider, "model": choice.Model.ID}
 		if choice.Variant != "" {
@@ -1081,8 +1130,10 @@ func ValidateRuntimeSettings(ctx context.Context, runtime *Runtime, settings Set
 			selected.Provider, selected.Model, selected.Variant = actual.ProviderID, actual.ID, actual.Variant
 		}
 	}
+	if requireExplicit && toolMode != "exclusive" {
+		return nil
+	}
 	if selected.Provider == "" || selected.Model == "" {
-
 		return nil
 	}
 	var models []CatalogNativeModel
@@ -1240,4 +1291,8 @@ func (h *Harness) DiscoverMokuTarget(ctx context.Context, input plugin.SettingsR
 		return nil, plugin.Availability{}, err
 	}
 	return schema, plugin.Availability{Available: true}, nil
+}
+
+func (*SettingsAPI) DispatchSchema() json.RawMessage {
+	return plugin.DispatchSchema([]string{"provider", "model", "thinking"}, []string{"variant"}, []string{"auto", "default"})
 }

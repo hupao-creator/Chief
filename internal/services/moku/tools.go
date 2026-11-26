@@ -173,22 +173,15 @@ func (c *Coordinator) executeTool(ctx context.Context, owner, name string, raw j
 			if err != nil {
 				return nil, err
 			}
-			schema, err := h.Settings().Describe(ctx, plugin.SettingsRequest{Settings: settings, Cwd: cwd})
-			if err != nil {
-				return nil, err
-			}
-			options, err := normalizeToolArguments(schema, target.Options)
-			if err != nil {
-				return nil, plugin.CallerError(err)
-			}
-			if err = validateToolJSON(schema, options); err != nil {
-				return nil, plugin.CallerError(err)
-			}
 			defaults, err := h.Settings().DefaultThread(settings)
 			if err != nil {
 				return nil, err
 			}
-			return h.Settings().ResolveThread(ctx, plugin.ResolveSettingsRequest{Merged: defaults, Requested: options, Cwd: cwd})
+			resolved, err := h.Settings().ResolveThread(ctx, plugin.ResolveSettingsRequest{Merged: defaults, Requested: target.Options, Cwd: cwd, Dispatch: true})
+			if err != nil && ctx.Err() == nil {
+				return nil, plugin.CallerError(err)
+			}
+			return resolved, err
 		}
 		if c.config.CreateThread == nil {
 			return nil, errors.New("Chief thread creation unavailable")
@@ -199,6 +192,13 @@ func (c *Coordinator) executeTool(ctx context.Context, owner, name string, raw j
 		}
 		created, err := c.config.CreateThread(ctx, CreateThreadRequest{HarnessID: target.HarnessID, Input: textInput(target.Prompt), Cwd: target.Cwd, ResolveSettings: resolve, Worktree: worktree})
 		if err != nil {
+			if created.Record.ID != "" {
+				identity := "thread " + created.Record.ID
+				if created.Execution.ExecutionID != "" {
+					identity += " execution " + created.Execution.ExecutionID
+				}
+				return nil, plugin.CallerError(fmt.Errorf("%s was created; check its state before retrying dispatch: %w", identity, err))
+			}
 			return nil, err
 		}
 		result := map[string]any{"ok": true, "threadId": created.Record.ID, "executionId": created.Execution.ExecutionID, "workspace": publicWorkspace(created.Record), "acknowledgement": created.Acknowledgement, "hint": ThreadNotificationHint}
@@ -220,23 +220,6 @@ func (c *Coordinator) executeTool(ctx context.Context, owner, name string, raw j
 			return nil, err
 		}
 		return encode(map[string]any{"ok": true, "threadId": id, "absentRoot": root})
-	case "describe_native_harness":
-		if len(object) != 1 {
-			return nil, errors.New("Invalid native Harness selection")
-		}
-		id, err := getText("harnessId", 128)
-		if err != nil {
-			return nil, err
-		}
-		h, settings, err := c.target(ctx, id, description)
-		if err != nil {
-			return nil, err
-		}
-		schema, err := h.Settings().Describe(ctx, plugin.SettingsRequest{Settings: settings, Cwd: c.config.Workspace})
-		if err != nil {
-			return nil, err
-		}
-		return encode(map[string]any{"target": map[string]any{id: schema}, "creation": "Call create_thread with exactly this target key and explicit native settings matching its schema. " + threadCreationWorktreeGuidance})
 	case "interrupt_thread":
 		var request struct {
 			ThreadIDs []string `json:"threadIds"`
@@ -415,8 +398,7 @@ func (c *Coordinator) target(ctx context.Context, id string, description ThreadC
 		return nil, nil, plugin.CallerError(fmt.Errorf("Unknown Harness %s", id))
 	}
 	merged := mergedSettings(settings, id, false)
-	// The exact requested model is validated by Describe/ResolveThread in the
-	// destination workspace and by live native admission, not the saved default.
+	// The native adapter receives the request in the actual destination workspace.
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}

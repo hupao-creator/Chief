@@ -16,8 +16,8 @@ import (
 func TestClaudeToolSchemaProperties(t *testing.T) {
 	rapidcheck.Check(t, func(t *rapid.T) {
 		targets := []moku.TargetDescription{{HarnessID: "fixture", NativeSchema: json.RawMessage(`{"type":"object"}`)}}
-		if rapid.Bool().Draw(t, "deferred-target") {
-			targets = append(targets, moku.TargetDescription{HarnessID: "deferred", DeferredNative: true})
+		if rapid.Bool().Draw(t, "second-target") {
+			targets = append(targets, moku.TargetDescription{HarnessID: "second", NativeSchema: json.RawMessage(`{"type":"object"}`)})
 		}
 		description, err := moku.DescribeThreadCreation(targets, "/chief")
 		if err != nil {

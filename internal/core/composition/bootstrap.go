@@ -42,6 +42,7 @@ type Options struct {
 	Overview    *transport.OverviewBroker
 }
 type Bootstrap struct {
+	dispatchWorkers   sync.WaitGroup
 	options           Options
 	initOnce          sync.Once
 	closeOnce         sync.Once
@@ -191,6 +192,7 @@ func (b *Bootstrap) open(ctx context.Context) error {
 	}
 	b.resolver = environment.New(supplied)
 	b.processes = applicationprocess.New(ctx, b.resolver)
+	dispatchUpdates := map[string]chan struct{}{}
 	constructors := map[string]func(plugin.HostContext) plugin.Harness{
 		"codex":    func(host plugin.HostContext) plugin.Harness { return codex.New(host) },
 		"claude":   func(host plugin.HostContext) plugin.Harness { return claude.New(host) },
@@ -214,7 +216,14 @@ func (b *Bootstrap) open(ctx context.Context) error {
 		if err := b.running(ctx); err != nil {
 			return err
 		}
-		host := plugin.HostContext{ResolveExecutable: b.resolver.ResolveExecutable, Environment: b.resolver.Environment, HarnessDataRoot: filepath.Join(stateRoot, "harnesses", id), TemporaryWorkspaceRoot: temporary}
+		wake := make(chan struct{}, 1)
+		dispatchUpdates[id] = wake
+		host := plugin.HostContext{DispatchConfigurationChanged: func() {
+			select {
+			case wake <- struct{}{}:
+			default:
+			}
+		}, ResolveExecutable: b.resolver.ResolveExecutable, Environment: b.resolver.Environment, HarnessDataRoot: filepath.Join(stateRoot, "harnesses", id), TemporaryWorkspaceRoot: temporary}
 		b.harnesses[id] = constructors[id](host)
 	}
 	catalog := []model.RuntimePlugin{}
@@ -290,6 +299,38 @@ func (b *Bootstrap) open(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	for id, wake := range dispatchUpdates {
+		if b.disabled[id] != "" {
+			continue
+		}
+		b.dispatchWorkers.Add(1)
+		go func() {
+			defer b.dispatchWorkers.Done()
+			// Without a desktop workspace owner, discovery still progresses independently
+			// of Chief submissions. Each worker only probes its own installation.
+			var timer *time.Timer
+			var tick <-chan time.Time
+			if b.options.Headless {
+				timer = time.NewTimer(0)
+				tick = timer.C
+				defer timer.Stop()
+			}
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-wake:
+					b.runtime.DispatchConfigurationChanged(ctx, id)
+				case <-tick:
+					installed, err := b.runtime.DetectInstallation(ctx, id)
+					if err == nil && installed.Status == "installed" {
+						_, _ = b.runtime.RequestDispatchUpdate(ctx, id, false)
+					}
+					timer.Reset(5 * time.Minute)
+				}
+			}
+		}()
+	}
 	b.runtime.StartRecovery()
 	err = b.coordinator.Start(ctx, plugin.RuntimeStartContext{Reason: "startup"})
 	if err != nil {
@@ -308,6 +349,7 @@ func (b *Bootstrap) Close(ctx context.Context) error {
 	b.initOnce.Do(func() { b.initErr = context.Canceled; close(b.initialized) })
 	b.closeOnce.Do(func() {
 		<-b.initialized
+		b.dispatchWorkers.Wait()
 		failures := []error{}
 		if b.runtime != nil {
 			failures = append(failures, b.runtime.Close(ctx))
