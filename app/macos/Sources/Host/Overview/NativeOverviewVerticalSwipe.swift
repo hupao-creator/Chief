@@ -14,10 +14,14 @@ struct NativeOverviewSwipeActions {
     let canFilter: @MainActor () -> Bool
     let openConversation: @MainActor () -> Bool
     let stepRail: @MainActor (Bool) -> Bool
+    let requestFeedback: @MainActor () -> Void
 }
 
 extension EnvironmentValues {
     @Entry var overviewSwipeActions: NativeOverviewSwipeActions? = nil
+    @Entry var requestRailSwipeFeedback: @MainActor () -> Void = {
+        NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+    }
 }
 
 /// Classify the starting surface before native scrolling. After recognition,
@@ -29,9 +33,7 @@ struct NativeOverviewVerticalSwipe {
     private var horizontal: CGFloat = 0
 
     @MainActor mutating func route(_ event: NSEvent, canFilter: () -> Bool,
-                                  perform: (Bool) -> Bool, requestFeedback: () -> Void = {
-                                      NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
-                                  }) -> Bool {
+                                  perform: (Bool) -> Bool, requestFeedback: () -> Void) -> Bool {
         let phase = event.phase
         if !event.momentumPhase.isEmpty {
             if case .awaitingMomentum(let end) = stage, event.timestamp - end > 0.25 { stage = .idle }

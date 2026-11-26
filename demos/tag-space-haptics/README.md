@@ -15,6 +15,11 @@ when it wraps. Keep your fingers down after the switch, then lift them. The
 rest of that gesture stays on the same choice. Try a mouse-wheel step or
 click a left label to change the selection silently.
 
+The bottom bar counts swipe feedback requests after the system performer
+returns. For a comparison while stationary, rest one finger on the trackpad
+and press Command-T with your other hand. The test button shows a separate
+count for these manual requests. AppKit provides no hardware delivery receipt.
+
 The windowless replay sends synthetic AppKit phases directly to the
 [production recognizer](../../app/macos/Sources/Host/Overview/NativeOverviewVerticalSwipe.swift)
 with the real Overview selection model. Its feedback callback counts requests.

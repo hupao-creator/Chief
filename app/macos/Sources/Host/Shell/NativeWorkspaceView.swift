@@ -906,6 +906,7 @@ public final class NativeWorkspacePresentation {
 @MainActor
 public struct NativeWorkspaceView: View {
     public let model: NativeWorkspaceModel
+    @Environment(\.requestRailSwipeFeedback) private var requestRailSwipeFeedback
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.controlActiveState) private var controlActiveState
@@ -1119,7 +1120,8 @@ public struct NativeWorkspaceView: View {
                             presentation.scene.openConversation()
                             return presentation.scene.conversationOpen
                         },
-                        stepRail: { presentation.overview.stepRail(up: $0) }))
+                        stepRail: { presentation.overview.stepRail(up: $0) },
+                        requestFeedback: requestRailSwipeFeedback))
                     .nativeCollectionPanelHost(enabled: presentation.readingCollectionMember || (!presentation.scene.settingsOpen
                         && !presentation.onboarding.blocksWorkspace),
                         presentation: presentation.collectionPanel)

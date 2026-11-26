@@ -49,6 +49,9 @@ private struct DemoError: Error, CustomStringConvertible {
 
 @MainActor private struct DemoWindow: App {
     let fixture: Fixture
+    @State private var swipeRequests = 0
+    @State private var testRequests = 0
+    private let systemFeedback = EnvironmentValues().requestRailSwipeFeedback
     init() {
         do { fixture = try Fixture() }
         catch { fatalError(String(describing: error)) }
@@ -57,7 +60,25 @@ private struct DemoError: Error, CustomStringConvertible {
     var body: some Scene {
         Window("Tag Space Haptics", id: "tag-space-haptics") {
             NativeWorkspaceView(model: fixture.workspace, presentation: fixture.presentation)
+                .environment(\.requestRailSwipeFeedback, {
+                    systemFeedback()
+                    swipeRequests += 1
+                })
                 .modifier(NativeWorkspaceWindowSurface())
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    HStack {
+                        Text("滑动请求 \(swipeRequests)").monospacedDigit()
+                        Spacer()
+                        Text("一指贴住触控板，按 ⌘T").foregroundStyle(.secondary)
+                        Button("测试轻触（\(testRequests)）") {
+                            systemFeedback()
+                            testRequests += 1
+                        }
+                        .keyboardShortcut("t", modifiers: .command)
+                    }
+                    .padding(10)
+                    .background(.regularMaterial)
+                }
                 .task {
                     do { try await fixture.load() }
                     catch { print(error); exit(1) }

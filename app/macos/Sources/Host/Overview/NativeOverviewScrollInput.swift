@@ -173,7 +173,8 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             // The router may consume this contact before AppKit dispatches it to the pressed tag.
             if event.momentumPhase.isEmpty { swipeActions?.regions.pressedTag?.cancelPress() }
             if let swipeActions, verticalSwipe.route(event,
-                canFilter: { canStartFilter(event, actions: swipeActions) }, perform: swipeActions.stepRail) {
+                canFilter: { canStartFilter(event, actions: swipeActions) }, perform: swipeActions.stepRail,
+                requestFeedback: swipeActions.requestFeedback) {
                 sequence.reset()
                 return nil
             }
