@@ -312,6 +312,9 @@ public struct NativeThreadOpeningContent: View {
         ThreadConversation(threadId: "opening-heading", title: visit?.source["title"]?.text ?? "",
             icon: visit?.source["emoji"]?.text ?? "", rows: [],
             emptyState: AnyView(Color.clear.frame(height: 240)))
+            // The opening title shares the conversation layout. Only the live
+            // reader's selection should reach the composer during this handoff.
+            .transformPreference(ThreadConversationInputTargetKey.self) { $0 = nil }
             .overlay { if showsLoading { NativeSurfaceLoading() } }
     }
 

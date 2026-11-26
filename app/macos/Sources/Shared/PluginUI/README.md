@@ -74,7 +74,7 @@ Browser and suppressed states. The Host converts that geometry through the same
 passive native marker as Agent Sidecards and owns the composer and send routing.
 
 `ThreadConversationInputTargetKey` publishes the main reader's actual selection,
-entry request and motion readiness. Ordinary current documents follow latest;
+entry request and motion readiness. The heading placeholder used during card entry clears this preference at its boundary. Only the task reader supplies a target for typing. Ordinary current documents follow latest;
 explicit TOC/history/result visits retain their exact execution, including an
 entry temporarily excluded into the active Sidecard. Row-only renders and
 execution Sidecards do not publish another input owner. Unavailable or aggregate

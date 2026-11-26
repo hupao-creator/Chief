@@ -691,6 +691,15 @@ identically. Check a narrow pane at or below 540pt and a pane wide enough to
 reach the 744pt column limit. Open an earlier run from the margin and return
 to verify the same geometry in both documents.
 
+### Agent card input focus
+
+Run `python3 demos/moku-panel-transition/workspace/composer_focus.py /private/tmp/chief-agent-focus` with a new output directory on macOS.
+The replay builds the current workspace and holds two private Codex tasks in their first execution with a loopback provider.
+It clicks the visible cards and Close controls in a mounted workspace, types through the window's first responder, clicks back into the editor, revisits the first draft and opens Compose on Overview.
+A second offscreen panel receives a key while the workspace is hidden and its scene is inactive. On return the next key must reach the original Agent draft.
+The panels use window-local AppKit events and stay outside system key-window arbitration. System activation and physical input methods require separate evidence.
+The output includes the build receipts, observed drafts in `focus.txt` and owned-process cleanup. [Composer focus ownership](../../design/composer.md#route-input-and-focus)
+
 ### Agent history composer
 
 Use an isolated profile with an ordinary Agent Thread and at least three
