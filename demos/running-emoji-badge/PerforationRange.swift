@@ -57,7 +57,7 @@ struct PerforationRangeSample: View {
                 .overlay(shell.strokeBorder(palette.lineSoft.swiftUI, lineWidth: 1))
                 .overlay {
                     if reach > 0 {
-                        EdgeReflection(reach: CGFloat(reach)).padding(-6)
+                        EdgeReflection(reach: CGFloat(reach)).padding(-EdgeReflection.inset)
                     }
                 }
                 .environment(\.threadCardProviderColor, plugin.themeColor ?? palette.provider.swiftUI)
@@ -66,17 +66,23 @@ struct PerforationRangeSample: View {
     }
 }
 
-/// One light grazes the card edge. The same gradient reveals the perforations
-/// in the paper lip, so the dots never need individual animation clocks.
+/// Keep the corner's footprint fixed and sweep light across it in badge coordinates.
 private struct EdgeReflection: View {
     let reach: CGFloat
     @Environment(\.threadCardProviderColor) private var accent
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.threadCardCloudAnimationsEnabled) private var enabled
 
+    static let inset: CGFloat = 6
+    private static let pitch = (ThreadCardProviderStatus.diameter / 2 - 1) / 4
+    // ThreadCardBrand places the 44pt badge 17pt from the right and 12pt from the top.
+    private static let badgeCenter = CGPoint(
+        x: inset + NativeGeometry.overviewCard.width - 17 - ThreadCardProviderStatus.diameter / 2,
+        y: inset + 12 + ThreadCardProviderStatus.diameter / 2)
+
     private static let metalwork: (rim: Path, lip: Path, holes: Path) = {
         let size = NativeGeometry.overviewCard
-        let paper = CGRect(origin: CGPoint(x: 6, y: 6), size: size)
+        let paper = CGRect(origin: CGPoint(x: inset, y: inset), size: size)
         let radius = NativeGeometry.overviewCardRadius
         func outline(inset: CGFloat) -> Path {
             Path(roundedRect: paper.insetBy(dx: inset, dy: inset), cornerRadius: radius - inset, style: .continuous)
@@ -84,9 +90,10 @@ private struct EdgeReflection: View {
         var lip = outline(inset: 3)
         lip.addPath(outline(inset: 12))
         var holes = Path()
-        let pitch = (ThreadCardProviderStatus.diameter / 2 - 1) / 4
-        for y in stride(from: paper.minY + 2, to: paper.maxY, by: pitch) {
-            for x in stride(from: paper.minX + 2, to: paper.maxX, by: pitch)
+        let firstX = badgeCenter.x - floor((badgeCenter.x - paper.minX) / pitch) * pitch
+        let firstY = badgeCenter.y - floor((badgeCenter.y - paper.minY) / pitch) * pitch
+        for y in stride(from: firstY, to: paper.maxY, by: pitch) {
+            for x in stride(from: firstX, to: paper.maxX, by: pitch)
             where y < paper.minY + 15 || x > paper.maxX - 15 {
                 holes.addEllipse(in: CGRect(x: x - 1, y: y - 1, width: 2, height: 2))
             }
@@ -96,27 +103,43 @@ private struct EdgeReflection: View {
 
     var body: some View {
         let still = reduceMotion || !enabled
+        let tint = accent
         TimelineView(.animation(minimumInterval: 1 / 30, paused: still)) { timeline in
             Canvas { context, size in
-                let time = still ? 1.12 : timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 2.8)
+                let time = still ? 0.8 : timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 2.8)
                 let phase = min(1, time / 2.25)
-                let lift = pow(sin(.pi * phase), 2)
-                guard lift > 0.001 else { return }
-                // The highlight travels round the corner while both its reach
-                // and intensity ease away. Text is always outside the drawn lip.
-                let angle = (1 - phase) * .pi / 2
-                let radius = NativeGeometry.overviewCardRadius
-                let light = CGPoint(x: size.width - 6 - radius + radius * cos(angle),
-                                    y: 6 + radius - radius * sin(angle))
-                let gradient = Gradient(stops: [
-                    .init(color: accent.opacity(0.86 * lift), location: 0),
-                    .init(color: accent.opacity(0.53 * lift), location: 0.42),
-                    .init(color: accent.opacity(0.15 * lift), location: 0.78),
-                    .init(color: accent.opacity(0), location: 1)
-                ])
-                let ink = GraphicsContext.Shading.radialGradient(gradient, center: light,
-                    startRadius: 0, endRadius: reach * (0.6 + 0.4 * lift))
+                guard phase < 1 else { return }
+                // The production CA bands peak at column + row = 20 * phase - 10.
+                // Past the outermost badge diagonal, extend the travel smoothly
+                // so one crest can also enter and leave the longest card edge.
+                let diagonal = 20 * phase - 10
+                let outside = max(0, abs(diagonal) - 6) / 4
+                let extra = CGFloat(PerforationReach.edge.rawValue) * outside * outside
+                let travel = Self.pitch * diagonal + (diagonal < 0 ? -extra : extra)
+                let crest = CGPoint(x: Self.badgeCenter.x + travel / 2,
+                                    y: Self.badgeCenter.y + travel / 2)
+                // A soft wash keeps each approved footprint visible while the
+                // stronger moving crest reads as the continuation of the badge.
+                func band(halfWidth: CGFloat, wash: Double = 0) -> GraphicsContext.Shading {
+                    let shoulder = tint.opacity(wash + (1 - wash) * 0.4)
+                    let highlight = Gradient(colors: [tint.opacity(wash), shoulder, tint, shoulder, tint.opacity(wash)])
+                    let tail = halfWidth / 2
+                    return .linearGradient(highlight, startPoint: CGPoint(x: crest.x - tail, y: crest.y - tail),
+                        endPoint: CGPoint(x: crest.x + tail, y: crest.y + tail))
+                }
+                let paper = CGRect(origin: .zero, size: size).insetBy(dx: Self.inset, dy: Self.inset)
+                let cornerInset = NativeGeometry.overviewCardRadius * (1 - sqrt(0.5))
+                let corner = CGPoint(x: paper.maxX - cornerInset, y: paper.minY + cornerInset)
+                context.clipToLayer { mask in
+                    mask.fill(Path(CGRect(origin: .zero, size: size)), with: .radialGradient(Gradient(stops: [
+                        .init(color: .white.opacity(0.86), location: 0),
+                        .init(color: .white.opacity(0.53), location: 0.42),
+                        .init(color: .white.opacity(0.15), location: 0.78),
+                        .init(color: .white.opacity(0), location: 1)
+                    ]), center: corner, startRadius: 0, endRadius: reach))
+                }
                 let geometry = Self.metalwork
+                let ink = band(halfWidth: 8 * Self.pitch, wash: 0.45 * pow(sin(.pi * phase), 2))
                 context.drawLayer { bloom in
                     bloom.opacity = 0.46
                     bloom.addFilter(.blur(radius: 3.5))
@@ -126,7 +149,7 @@ private struct EdgeReflection: View {
                 var texture = context
                 texture.clip(to: geometry.lip, style: FillStyle(eoFill: true))
                 texture.opacity = 0.48
-                texture.fill(geometry.holes, with: ink)
+                texture.fill(geometry.holes, with: band(halfWidth: 2.5 * Self.pitch))
             }
         }
         .allowsHitTesting(false)
