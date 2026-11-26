@@ -5,7 +5,7 @@ import Foundation
 /// Public audit data only. A tool result acknowledges delivery; its arguments
 /// retain the exact text. Identity includes the owner and execution, not text.
 public struct NativeMokuTalkMessage: Equatable, Sendable, Identifiable {
-    // The compact reader also presents successful messages saved by earlier Alpha builds.
+    // This ceiling covers saved Alpha audit records. The coordinator owns admission for new replies.
     public static let maximumCodePoints = 1024
 
     public let id: JSONText

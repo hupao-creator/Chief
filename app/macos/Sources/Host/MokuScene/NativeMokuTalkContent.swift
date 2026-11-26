@@ -13,7 +13,7 @@ import SwiftUI
     // Reserve the eyes and mirror that inset to keep prose centered on the shell.
     static let centeredInset: CGFloat = 64
     static let lineHeight: CGFloat = 16
-    static var maximumHeight: CGFloat { lineHeight * 8 + lineSpacing * 7 }
+    static var maximumHeight: CGFloat { lineHeight * 6 + lineSpacing * 5 }
     static func height(_ text: String, width: CGFloat) -> CGFloat {
         // Match the rendered weight so Latin wrapping and the viewport agree.
         let font = NativePlatformFont.systemFont(ofSize: 13, weight: .semibold)

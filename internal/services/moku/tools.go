@@ -5,13 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
 )
+
+var talkLineBreak = regexp.MustCompile(`\r\n|[\n\r\v\f\x{85}\x{2028}\x{2029}]`)
 
 func (c *Coordinator) tools(owner string, description ThreadCreationDescription) []plugin.ToolBinding {
 	c.mu.Lock()
@@ -301,19 +303,12 @@ func (c *Coordinator) executeTool(ctx context.Context, owner, name string, raw j
 			return encode(map[string]any{"ok": true, "threadId": id, "answer": answer})
 		}
 	case "talk":
-		original, ok := object["text"].(string)
-		if !ok {
-			return nil, fmt.Errorf("%s 的 text 必须是纯文本字符串", name)
-		}
-		limit := TalkTextMaxCharacters
-		if utf8.RuneCountInString(original) > limit {
-			return nil, fmt.Errorf("%s 的 text 最多 %d 个 Unicode 码点（含空白和换行）；请缩短后重试，内容不会截断", name, limit)
-		}
-		if len(object) != 1 {
-			return nil, fmt.Errorf("%s 只接受 text 参数", name)
-		}
+		original := object["text"].(string) // The tool schema validates type and code-point length.
 		if strings.TrimFunc(original, func(r rune) bool { return r == '\u0085' || mokuWhitespace(r) }) == "" || strings.ContainsRune(original, 0) {
-			return nil, fmt.Errorf("%s 的 text 必须包含非空白内容，且不能包含 NUL", name)
+			return nil, plugin.CallerError(errors.New("talk 的 text 必须包含非空白内容，且不能包含 NUL"))
+		}
+		if len(talkLineBreak.FindAllStringIndex(original, talkTextMaxLineBreaks+1)) > talkTextMaxLineBreaks {
+			return nil, plugin.CallerError(fmt.Errorf("talk 的 text 最多允许 %d 处手动换行；请减少换行后重试", talkTextMaxLineBreaks))
 		}
 		return encode(map[string]any{"ok": true})
 	}

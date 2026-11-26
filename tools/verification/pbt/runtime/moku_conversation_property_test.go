@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
@@ -59,7 +61,7 @@ func TestMokuConversationProperties(t *testing.T) {
 			row := map[string]any{"id": fmt.Sprint(i), "createdAt": i/3 + 1}
 			entry := visible{}
 			if rapid.Bool().Draw(t, "historical-talk") {
-				entry.Role, entry.Text = "chief", "留意第二节"
+				entry.Role, entry.Text = "chief", rapid.SampledFrom([]string{"留意第二节", strings.Repeat("界", 512)}).Draw(t, "saved-reply")
 				row["type"], row["name"], row["executionId"] = "tool-operation", "talk", "previous-run"
 				row["completedAt"], row["result"] = i/3+1, map[string]bool{"ok": true}
 				row["arguments"] = map[string]string{"text": entry.Text}
@@ -129,26 +131,41 @@ func TestMokuConversationProperties(t *testing.T) {
 		commandID := "1788000000000_" + rapid.StringMatching("[a-zA-Z0-9_-]{16,80}").Draw(t, "command-id")
 		coordinator, talk := openChiefTool(t, model.WithFollowUpCommand(ctx, commandID), r, dir, harnesses, peer, input, "talk")
 		want = append(want, visible{Role: "user", Text: prompt})
+		const talkLimit = 320
 		link := fmt.Sprintf("[Review](chief://execution?threadId=%s&executionId=%s)", old.ID, chief.ID)
-		linked := strings.Repeat("界", rapid.IntRange(1, 64).Draw(t, "prose-length")) + " " + link + "\n" + link
-		for i, reply := range []string{"Same reply.", "Same reply.", linked, strings.Repeat("😀", 512)} {
+		breaks := []string{"\n", "\r", "\r\n", "\v", "\f", "\u0085", "\u2028", "\u2029"}
+		secondBreak := rapid.SampledFrom(breaks).Draw(t, "second-line-break")
+		tail := "\r\n" + link + secondBreak + link
+		glyph := rapid.SampledFrom([]string{"a", "界", "😀", "\u0301"}).Draw(t, "boundary-scalar")
+		atLimit := "A" + strings.Repeat(glyph, talkLimit-1-utf8.RuneCountInString(tail)) + tail
+		for i, reply := range []string{"Same reply.", "Same reply.", "A" + tail, atLimit} {
 			_, err := talk.Execute(ctx, plugin.ToolCall{CallID: fmt.Sprint(i), Arguments: raw(map[string]string{"text": reply})})
 			check(err)
 			want = append(want, visible{Role: "chief", Text: reply})
 		}
-		_, err = talk.Execute(ctx, plugin.ToolCall{Arguments: raw(map[string]string{"text": strings.Repeat("😀", 513)})})
-		if err == nil {
-			t.Fatal("invalid Talk unexpectedly succeeded")
+		// An extra code point, or a third hard break in otherwise short
+		// text, must fail and leave the last successful reply in dialogue.
+		for i, reply := range []string{atLimit + glyph, "A\r\nB" + secondBreak + "C\nD", "\u0085\u3000", "A\x00B"} {
+			_, err = talk.Execute(ctx, plugin.ToolCall{CallID: fmt.Sprintf("invalid-%d", i), Arguments: raw(map[string]string{"text": reply})})
+			var callerError *plugin.ToolCallError
+			if !errors.As(err, &callerError) {
+				t.Fatalf("invalid Talk %q should return a caller error, got %v", reply, err)
+			}
 		}
-		limits := map[string]int{"talk": 512}
+		limits := map[string]int{"talk": talkLimit}
 		for _, binding := range peer.tools.Bindings {
 			if limit, ok := limits[binding.Name]; ok {
 				var schema struct {
-					Properties map[string]struct{ MaxLength int }
+					Properties map[string]struct {
+						MaxLength   int
+						Description string
+					}
 				}
 				check(json.Unmarshal(binding.InputSchema, &schema))
-				if schema.Properties["text"].MaxLength != limit {
-					t.Fatalf("%s schema has incorrect text budget", binding.Name)
+				field := schema.Properties["text"]
+				if field.MaxLength != limit || !strings.Contains(field.Description, "320 Unicode code points") ||
+					!strings.Contains(field.Description, "at most 2 explicit line breaks") || !strings.Contains(binding.Description, field.Description) {
+					t.Fatalf("%s schema and descriptions have incorrect text budgets", binding.Name)
 				}
 				delete(limits, binding.Name)
 			}
@@ -213,10 +230,24 @@ func TestMokuConversationProperties(t *testing.T) {
 		if owner < 0 || len(snapshot.Threads[owner].Transcript) == 0 {
 			t.Fatal("catalog lost the current Chief audit preview")
 		}
-		for _, row := range snapshot.Threads[owner].Transcript {
-			if bytes.Contains(row, []byte(`"id":"retired-timer"`)) {
+		var latestTalk string
+		for _, raw := range snapshot.Threads[owner].Transcript {
+			if bytes.Contains(raw, []byte(`"id":"retired-timer"`)) {
 				t.Fatal("catalog replayed the reminder from another execution")
 			}
+			var op struct {
+				Name      string
+				IsError   bool
+				Arguments struct{ Text string }
+				Result    struct{ OK bool }
+			}
+			check(json.Unmarshal(raw, &op))
+			if op.Name == "talk" && !op.IsError && op.Result.OK {
+				latestTalk = op.Arguments.Text
+			}
+		}
+		if latestTalk != atLimit {
+			t.Fatal("catalog did not preserve the latest successful boundary-length Talk")
 		}
 		closeRuntime()
 		r, closeRuntime = open("first")
