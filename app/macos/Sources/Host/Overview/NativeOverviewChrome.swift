@@ -528,6 +528,9 @@ private struct OverviewHorizontalScroll<Content: View>: View {
             .onChange(of: ids.isEmpty, initial: true) { _, empty in
                 if !empty, overflows, let selectedID { proxy.scrollTo(selectedID) }
             }
+            .onChange(of: selectedID) { _, id in
+                if overflows, let id { proxy.scrollTo(id) }
+            }
             .modifier(NativeOverviewFilterScrollRegistration(registry: interactions, root: owner, ids: ids, enabled: !ids.isEmpty,
                 scroll: { id in proxy.scrollTo(id, anchor: .center) }))
         }

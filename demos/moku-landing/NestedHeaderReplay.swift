@@ -186,6 +186,13 @@ private final class WheelSample: NSEvent {
             try await tagStates(window, directory: directory, authority: authority)
             return
         }
+        if CommandLine.arguments.contains("--tag-space-keys") {
+            window.setContentSize(CGSize(width: 700, height: 640))
+            window.center()
+            try await focusReplayWindow(window)
+            try await tagSpaceKeys(window, directory: directory, authority: authority)
+            return
+        }
         if CommandLine.arguments.contains("--tag-read") {
             window.center()
             try await focusReplayWindow(window)
@@ -2283,6 +2290,126 @@ private final class WheelSample: NSEvent {
         try await checkCounts([:])
         try JSONSerialization.data(withJSONObject: samples, options: [.prettyPrinted, .sortedKeys])
             .write(to: directory.appending(path: "unread-filter.json"))
+    }
+
+    private func tagSpaceKeys(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+        let model = presentation.overview
+        let inbox = try HarnessThread(id: "stock", harnessID: "codex", revision: 1, sessionState: .null,
+            observation: .init(), cwd: "", settings: .object([:]), createdAt: 1, updatedAt: 2,
+            title: "Stock prices", tags: ["Stocks"], tagEmojis: ["Stocks": "📈"],
+            directoryTag: "", directoryScope: "inbox").json
+        try await installTasks(4, revision: 2, authority: authority, firstDirectoryCount: 3,
+                               manyDirectories: true, firstTagCount: 2, extraThreads: [inbox])
+        let spaces = model.visibleFilters
+        guard let first = spaces.first, first.scope == "/fixture",
+              let child = first.children.first(where: { $0.tag == "Review" }),
+              let last = spaces.last, last.scope == "inbox", spaces.count == 15 else {
+            throw ReplayError("Missing replay folders, directory child or Inbox tag")
+        }
+        try await wait("Directory child never mounted", timeout: .seconds(5)) {
+            model.chromeInteractions.mountedIDs(in: .semantic).contains(child.id)
+        }
+        try model.chromeInteractions.activate(.semantic, id: child.id)
+        try await wait("Overview did not settle on the directory child", timeout: .seconds(5)) {
+            model.selectedFilter?.id == child.id && presentation.canvas.mountedCardIDs == ["task-2"]
+        }
+        guard !model.chromeInteractions.mountedIDs(in: .semantic).contains(last.id) else {
+            throw ReplayError("Expected the last top-row chip to start offscreen")
+        }
+
+        let flags: NSEvent.ModifierFlags = [.command, .shift]
+        func key(_ code: UInt16, _ type: NSEvent.EventType, _ modifiers: NSEvent.ModifierFlags,
+                 _ text: String = "") -> NSEvent {
+            NSEvent.keyEvent(with: type, location: .zero, modifierFlags: modifiers,
+                timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil,
+                characters: text, charactersIgnoringModifiers: text, isARepeat: false, keyCode: code)!
+        }
+        func bracketCode(_ bracket: String) throws -> UInt16 {
+            guard let code = (0..<128).map(UInt16.init).first(where: {
+                key($0, .keyDown, flags).characters(byApplyingModifiers: .command) == bracket
+            }) else { throw ReplayError("Use a keyboard input source with a Command-layer \(bracket) key") }
+            return code
+        }
+        let left = try bracketCode("[")
+        let right = try bracketCode("]")
+        func press(_ code: UInt16, _ modifiers: NSEvent.ModifierFlags = [.command, .shift]) async throws {
+            let text = key(code, .keyDown, modifiers).characters(byApplyingModifiers: modifiers) ?? ""
+            NSApp.postEvent(key(code, .keyDown, modifiers, text), atStart: false)
+            NSApp.postEvent(key(code, .keyUp, modifiers, text), atStart: false)
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        var visited: [String] = []
+        func expect(_ id: String?, _ stage: String) throws {
+            guard model.selectedFilter?.id == id else {
+                throw ReplayError("\(stage): expected \(id ?? "no selection"), got \(model.selectedFilter?.id ?? "no selection")")
+            }
+            visited.append(stage)
+        }
+        try await press(left)
+        try expect(child.id, "left edge keeps directory child")
+        try await press(right, [.command, .shift, .option])
+        try expect(child.id, "extra modifier keeps selection")
+        try await press(right, .command)
+        try expect(child.id, "missing Shift keeps selection")
+        for space in spaces.dropFirst() {
+            try await press(right)
+            guard (model.selectedDirectory ?? model.selectedFilter)?.id == space.id else {
+                throw ReplayError("Right shortcut missed the next top-row chip \(space.id)")
+            }
+            visited.append(space.id)
+        }
+        try await wait("Inbox chip or card stayed offscreen", timeout: .seconds(5)) {
+            model.chromeInteractions.mountedIDs(in: .semantic).contains(last.id)
+                && presentation.canvas.mountedCardIDs == ["stock"] && !presentation.canvas.isLayingOut
+        }
+        try await press(right)
+        try expect(last.id, "right edge keeps Inbox tag")
+
+        guard let content = window.contentView else { throw ReplayError("Workspace has no content view") }
+        let field = NSTextField(frame: CGRect(x: 10, y: 10, width: 100, height: 24))
+        field.stringValue = "Keep editing"
+        content.addSubview(field)
+        guard window.makeFirstResponder(field), field.currentEditor() != nil else {
+            throw ReplayError("Could not focus native field editor")
+        }
+        try await press(left)
+        try expect(last.id, "field editor keeps selection")
+        guard field.currentEditor()?.string == "Keep editing" else { throw ReplayError("Field contents changed") }
+        window.makeFirstResponder(nil)
+        field.removeFromSuperview()
+
+        presentation.openSettings()
+        try await wait("Settings did not open", timeout: .seconds(5)) { presentation.scene.settingsOpen }
+        try await press(left)
+        try expect(last.id, "Settings keeps selection")
+        presentation.scene.closeSettings()
+        try await wait("Settings did not close", timeout: .seconds(5)) { !presentation.scene.settingsOpen }
+        for space in spaces.dropLast().reversed() {
+            try await press(left)
+            guard (model.selectedDirectory ?? model.selectedFilter)?.id == space.id else {
+                throw ReplayError("Left shortcut missed the previous top-row chip \(space.id)")
+            }
+            visited.append(space.id)
+        }
+        try expect(child.id, "directory reentry restores its child")
+        try await wait("Remembered directory child did not restore its card", timeout: .seconds(5)) {
+            presentation.canvas.mountedCardIDs == ["task-2"] && !presentation.canvas.isLayingOut
+        }
+
+        try await installTasks(1, revision: 3, authority: authority)
+        guard model.visibleFilters.count == 1 else { throw ReplayError("Expected one top-row chip") }
+        let only = model.selectedFilter?.id
+        try await press(left)
+        try await press(right)
+        try expect(only, "single space keeps selection")
+        try await installTasks(0, revision: 4, authority: authority)
+        guard model.visibleFilters.isEmpty else { throw ReplayError("Expected no top-row chips") }
+        try await press(left)
+        try await press(right)
+        try expect(nil, "empty top row keeps selection")
+
+        try JSONSerialization.data(withJSONObject: ["keyCodes": [left, right], "steps": visited], options: [.prettyPrinted])
+            .write(to: directory.appending(path: "tag-space-keys.json"))
     }
 
     private func tagStates(_ window: NSWindow, directory: URL, authority: UUID) async throws {

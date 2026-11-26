@@ -22,6 +22,26 @@ python3 demos/moku-landing/verify_header.py --tag-states --output .build/tag-sta
 
 The replay reads the empty Inbox message from a window capture, adds an untagged project run and checks that the first card and its folder arrive together. It then assigns the folder’s name as a semantic tag. It clicks the folder and its sole child, then selects six tags with equal and nested member sets. The evidence directory contains the three state screenshots and `tag-states.json`.
 
+## Top-row Tag Space shortcuts
+
+Build the current Debug package and run the mounted workspace replay in a
+macOS graphical session with an input source that provides both brackets on
+the Command layer.
+
+```sh
+xcrun swift build --package-path app/macos -Xswiftc -enable-testing
+python3 demos/moku-landing/verify_header.py --tag-space-keys --output .build/tag-space-keys
+```
+
+An isolated catalog presents project folders, a remembered folder tag and
+an initially offscreen Inbox tag. The replay posts window-local AppKit
+key events and checks both directions, both ends, visibility of the selected
+Inbox chip, mounted cards, remembered folder selection, modifier matching,
+native field-editor and Settings priority, and single or empty rows.
+`source.json` identifies the revision and `tag-space-keys.json` records the
+key codes and checked steps. Physical input, other input sources and IME
+composition require separate verification.
+
 ## Nested workspace header replay
 
 Build the current Debug package and use a new output directory. The optional

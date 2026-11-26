@@ -833,7 +833,7 @@ public final class NativeWorkspacePresentation {
         }
     }
 
-    fileprivate var overviewSwipeAvailable: Bool {
+    fileprivate var overviewNavigationAvailable: Bool {
         started && scene.overviewVisible && !workspace.stopping && !scene.dockCovered
             && !onboarding.blocksWorkspace && scene.windowVisible && scene.inputInteractionReady
             && !scene.conversationOpen && !scene.inputLeaving
@@ -1103,12 +1103,19 @@ public struct NativeWorkspaceView: View {
                     landing: presentation.moku.landing,
                     chromeVisible: presentation.selected == nil,
                     readingMotion: presentation.messageMotion)
+                    .background {
+                        NativeOverviewTagSpaceKeys { forward in
+                            guard presentation.overviewNavigationAvailable, !presentation.scene.interactionPaused,
+                                  !presentation.moku.landing else { return false }
+                            return presentation.overview.stepTopFilter(forward: forward)
+                        }
+                    }
                     .environment(\.overviewSwipeActions, NativeOverviewSwipeActions(
                         regions: presentation.scene.swipeRegions,
-                        available: { presentation.overviewSwipeAvailable },
+                        available: { presentation.overviewNavigationAvailable },
                         canFilter: { !presentation.scene.inputOpen && !presentation.moku.landing && presentation.canvas.interactionPauseReasons.isEmpty },
                         openConversation: {
-                            guard presentation.overviewSwipeAvailable, model.catalog.hasMoku else { return false }
+                            guard presentation.overviewNavigationAvailable, model.catalog.hasMoku else { return false }
                             presentation.scene.openConversation()
                             return presentation.scene.conversationOpen
                         },

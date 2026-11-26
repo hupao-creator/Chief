@@ -45,6 +45,7 @@ scenario.add_argument("--conversation-performance", action="store_true", help="m
 parser.add_argument("--profile-opening", action="store_true", help="sample the main thread during the first measured opening")
 scenario.add_argument("--talk-link", action="store_true", help="click execution links in Talk notifications and conversation history across and within tag spaces")
 scenario.add_argument("--tag-states", action="store_true", help="check untagged running work and select every assigned tag")
+scenario.add_argument("--tag-space-keys", action="store_true", help="switch top-row spaces with window-local bracket shortcuts")
 scenario.add_argument("--tag-read", action="store_true", help="check tag read receipts with window-local pointer input")
 scenario.add_argument("--unread-filter", action="store_true", help="exercise the native Unread preset and mark-as-read receipts")
 scenario.add_argument("--status-only", action="store_true", help="run the mounted folder and Inbox rail scenario, including full screen")
@@ -54,9 +55,9 @@ parser.add_argument("--rail-hover", action="store_true", help="capture the mount
 args = parser.parse_args()
 if args.profile_opening and not args.conversation_performance:
     parser.error("--profile-opening requires --conversation-performance")
-if (args.header_glass or args.rail_hover) and (args.unread_filter or args.tag_read or args.tag_states or args.status_only or args.completed_card or args.bar_swipe or args.talk_link or args.conversation_opening or args.conversation_performance):
+if (args.header_glass or args.rail_hover) and (args.unread_filter or args.tag_read or args.tag_states or args.tag_space_keys or args.status_only or args.completed_card or args.bar_swipe or args.talk_link or args.conversation_opening or args.conversation_performance):
     parser.error("choose dedicated chrome captures or the workspace scenario")
-if (args.unread_filter or args.tag_read or args.tag_states or args.talk_link or args.status_only or args.completed_card or args.conversation_opening or args.conversation_performance or args.header_glass or args.rail_hover) and args.keyboard:
+if (args.unread_filter or args.tag_read or args.tag_states or args.tag_space_keys or args.talk_link or args.status_only or args.completed_card or args.conversation_opening or args.conversation_performance or args.header_glass or args.rail_hover) and args.keyboard:
     parser.error("--keyboard requires the card interaction scenario")
 with lease() if args.conversation_performance else nullcontext(), native_lease():
     args.output.mkdir(parents=True, exist_ok=False)
@@ -109,6 +110,8 @@ with lease() if args.conversation_performance else nullcontext(), native_lease()
             arguments.append("--conversation-opening")
         if args.tag_states:
             arguments.append("--tag-states")
+        if args.tag_space_keys:
+            arguments.append("--tag-space-keys")
         if args.tag_read:
             arguments.append("--tag-read")
         if args.unread_filter:
@@ -141,6 +144,8 @@ if args.header_glass or args.rail_hover:
     sys.exit(status or int(not passed))
 if args.tag_states:
     sys.exit(status or int(not (args.output / "tag-states.json").is_file()))
+if args.tag_space_keys:
+    sys.exit(status or int(not (args.output / "tag-space-keys.json").is_file()))
 if args.tag_read:
     sys.exit(status or int(not (args.output / "tag-read.json").is_file()))
 if args.unread_filter:

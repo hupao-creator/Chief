@@ -350,6 +350,14 @@ public final class NativeOverviewWorkspaceModel {
         selectTag(child ?? children.first ?? directory, unread: keepUnread)
     }
 
+    func stepTopFilter(forward: Bool) -> Bool {
+        guard let selectedTopFilter,
+              let current = filters.firstIndex(where: { $0.id == selectedTopFilter.id }) else { return false }
+        let next = current + (forward ? 1 : -1)
+        if filters.indices.contains(next) { selectTopFilter(filters[next]) }
+        return true
+    }
+
     public func selectTag(_ filter: NativeOverviewFilter?) { selectTag(filter, unread: false) }
 
     private func selectTag(_ filter: NativeOverviewFilter?, unread: Bool) {
