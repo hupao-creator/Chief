@@ -9,7 +9,7 @@ You'll need a Mac with Apple silicon running macOS 26 or later.
 3. Open the disk image. In the **Install Chief Alpha** window, drag **Chief Alpha.app** on the left onto **Applications** on the right. When copying finishes, eject the disk image. Open Chief Alpha from **Applications**.
 4. If macOS says it can't verify the developer or check the app for malicious software, confirm that you trust this copy. In **System Settings → Privacy & Security**, find the message for Chief Alpha and click **Open Anyway**. If macOS reports malware or damage, or the app still won't open, stop and contact your inviter with the warning text and release version.
 
-While Chief connects, you may see its skillet toss three agent icons. With Reduce Motion on, the three icons rest in the pan while you wait. If Chief says it can't connect to its background service, click **Reconnect**. When the connection succeeds, Chief shows setup or your workspace. If the message returns, include it and the release version when you contact your inviter. Remove account details and private paths before sharing a screenshot.
+While Chief connects, you may see its skillet toss three agent icons. If Overview opens on **No running conversations**, the icons settle into the pan and the message appears beneath it. With Reduce Motion on, the skillet stays still while you wait and the message appears immediately when Overview opens. If Chief says it can't connect to its background service, click **Reconnect**. When the connection succeeds, Chief shows setup or your workspace. If the message returns, include it and the release version when you contact your inviter. Remove account details and private paths before sharing a screenshot.
 
 ## Connect an agent
 

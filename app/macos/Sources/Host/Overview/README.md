@@ -257,14 +257,27 @@ interventions, onboarding, Settings, readers and collection panels keep their in
 
 The directory Running tag filters the whole directory. Running, All statuses and Completed in Inbox filter the selected top-level semantic tag. These scoped views use eligible members after report coverage and before layout and collection budgeting. Running includes pending submission, an active execution (running or waiting for the user), or background work. Completed uses the existing successful completion fact with no pending submission or background work, and includes Super Threads individually or collected. Idle and interrupted tasks with no ongoing work remain visible in ordinary directory and semantic selections and in the Inbox's All statuses view. A status change reprojects membership for the current view when a catalog delta admits or removes a matching card. The tag hierarchy, counts, activity indicators and current tag selection use the full eligible catalog.
 
-The [Running and Completed empty states](NativeOverviewStatusPresentation.swift) center the
+The [Running, Unread and Completed empty states](NativeOverviewStatusPresentation.swift) center the
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
 with its bowl on the title and viewport centerline and its handle extending fully
-to the right. Both display the illustration at up to 195 × 85 pt directly on the
+to the right. They display the illustration at up to 195 × 85 pt directly on the
 canvas above the localized status title, with no panel or scroll hint. The
 skillet gently bobs while three lowercase z’s drift above it. Reduce Motion
 holds both still. Each title is exposed to accessibility and the empty
-presentation passes input through to Overview. An empty ordinary selection shows a localized title and tag-switch hint on an opaque surface.
+presentation passes input through to Overview.
+
+On direct admission from full-window loading, the empty status view takes the
+current toss pose and aligns the pan bottom with the sleeping artwork in the
+measured title layout. Throughout the 800 ms entrance the same opaque bowl and
+handle travel together. The rim hides the landing agents as the sleeping faces
+rise behind it. The filters and Dock fade in during travel. The title and z’s
+appear with the sleeping faces and the skillet joins its idle bob.
+Reduce Motion presents the static destination immediately. Cards, landing,
+onboarding, restored readers, Settings and errors use their own presentations.
+Later filter changes do not replay startup. The [native window replay](../../../../../demos/chief-logo-loading/README.md#原生加载标记)
+mounts the workspace with isolated catalogs.
+
+An empty ordinary selection shows a localized title and tag-switch hint on an opaque surface.
 The [status replay](../../../../../demos/moku-landing/README.md#overview-bar-swipe-at-actual-size)
 exercises empty and populated states and both input types.
 

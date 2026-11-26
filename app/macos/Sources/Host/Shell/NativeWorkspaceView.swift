@@ -924,12 +924,20 @@ public struct NativeWorkspaceView: View {
             || presentation.moku.interaction != nil
     }
 
+    private var visibleRuntimeSurface: RuntimeSurfacePhase? {
+        if presentation.scene.settingsOpen || (presentation.onboarding.blocksWorkspace && model.hasInitialContent) { return nil }
+        return model.runtimeSurface
+    }
+
     public var body: some View {
         NativeOperationNotice(error: model.localizedOperationError,
             suppressed: presentation.scene.settingsOpen,
             onScroll: { presentation.scene.setShellScrollOffset($0) },
             onDismiss: { model.dismissOperationError() }) {
-            workspaceScene
+            workspaceScene.modifier(RuntimeSkilletAdmission(phase: visibleRuntimeSurface) {
+                !presentation.moku.landing && presentation.selected == nil
+                    && !presentation.browsingCollection && presentation.overview.showsStatusEmptyState
+            })
         }
         .environment(\.threadLocalSteers, presentation.localSteers)
         .environment(\.locale, Locale(identifier: model.locale.rawValue))
@@ -1028,6 +1036,7 @@ public struct NativeWorkspaceView: View {
                     })
                     .opacity(presentation.collectionPanel.parentVisible || presentation.selected != nil ? 1 : 0)
                     .animation(NativeReadingPageTiming.openingAnimation, value: presentation.collectionPanel.parentVisible)
+                    .modifier(StartupSkilletChrome())
                     .opacity(presentation.onboarding.dockVisible ? 1 : 0)
                     .animation(nil, value: presentation.onboarding.dockVisible)
                     .disabled(presentation.browsingCollection)

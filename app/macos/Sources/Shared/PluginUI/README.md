@@ -260,7 +260,10 @@ bowl of the skillet above its optional localized caption. A 250 × 152 pt
 transparent canvas fits proportionally in smaller viewports. At full size the
 pan paints about 191 pt across, matching the visible width of the Running
 empty-state skillet. Three agents leave the rim in sequence and settle into
-the pan as it rebounds. Reduce Motion holds that resting pose. Agent configuration notices use the same mark at 32 pt, with the adjacent localized text providing their accessible status. The reading placeholder
+the pan as it rebounds. The workspace loader shares its bowl and handle with
+the [Overview empty status](../../Host/Overview/README.md). Both presentations
+sample the same toss clock while the catalog opens. Reduce Motion holds the
+agents still. Agent configuration notices use the same mark at 32 pt, with the adjacent localized text providing their accessible status. The reading placeholder
 shows it after a cancellable 180ms grace period without taking focus or pointer input. Its layout is reserved during the delay,
 and it is absent from accessibility until visible. Unmounting cancels the delay
 and resets visibility; errors and retry controls appear immediately. The shared

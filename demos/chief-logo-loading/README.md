@@ -24,9 +24,13 @@
 
 启动、打开对话和其他整页加载界面共用颠勺动效。锅和三个角色取自应用图标原画。锅口随锅柄下压、上挑，角色依次离锅，落回锅口后锅身轻轻回弹。开启「减少动态效果」时，三个角色停在锅中。启动状态由 [NativeRuntimeSurface](../../app/macos/Sources/Host/Shell/NativeRuntimeSurface.swift) 控制。
 
-[原生回放](Replay.swift) 在同一个 900 × 560 pt 内容区挂载真实启动界面，在注入会话目录后显示 Overview 的「没有运行中的会话」组件。回放录制连续两个以上周期，切换窗口内的「减少动态效果」与外观，并保存开启减少动态效果后相隔约一秒的两个画面。截图校验对比两张静帧、恢复动效后的画面及两只锅的可见宽度。运行时使用独立的临时 profile。
+[原速过渡 demo](evidence/transition.mp4) 是 900 × 560 pt 原生工作区的窗口录屏。启动界面和 Overview 空态使用同一只锅。目录就绪后，锅接住角色，移到标题上方。角色从锅沿后以睡姿露出，筛选栏和 Dock 同步淡入。[动效实现](../../app/macos/Sources/Host/Overview/NativeOverviewStatusPresentation.swift)
 
-[等比例截图对照](evidence/comparison.png) · [原生窗口录像](evidence/window.mp4)
+[原生回放](Replay.swift) 使用临时 profile，在已保存 Running 筛选的真实工作区注入目录。空态样本含一个空闲任务。回放录制至少两次颠勺，检查减少动态效果的两张加载静帧，在恢复动效后从加载直接进入空态，并核对标题和两端锅身的可见宽度。FFmpeg 读取深色窗口录像最后 2.2 秒的每一帧，在中心右侧 105 pt 处沿竖线检查锅柄。每帧应有上下两条亮边，期间上移至少 12 pt，单帧位移不超过总位移的三分之一。逐帧结果保存在 `handle-rows.json`。
+
+独立场景覆盖浅色 680 × 480 pt 窗口的减少动态效果、运行中任务卡、首次设置、目录准入失败后的 Reconnect 和零会话 landing。输出目录包含各自的截图、结果、版本及隔离记录。这些场景通过 fixture 驱动目录准入，真实网络连接和服务重试需要另行验证。
+
+在有图形会话、Swift 依赖和 FFmpeg 的 Mac 上运行：
 
 ```sh
 swift build --package-path app/macos --product Chief

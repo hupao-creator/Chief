@@ -74,6 +74,10 @@ public final class NativeOverviewWorkspaceModel {
         if selectedFilter == nil || tagSelection?.runningTag == true { return .running }
         return isTopSemanticSelected ? topTagStatus : .all
     }
+    var showsEmptyState: Bool {
+        content.isEmpty && globalConversationCount != nil && error == nil && canvasState.layoutError == nil
+    }
+    var showsStatusEmptyState: Bool { showsEmptyState && statusFilter != .all }
     var railChoices: [NativeOverviewRailChoice] {
         let presets: [NativeOverviewRailChoice] = [.status(.running), .status(.unread)]
         guard selectedFilter != nil else {
