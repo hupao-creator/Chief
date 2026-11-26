@@ -993,7 +993,10 @@ The native overview retains offscreen cards and the overview behind a reading
 page. `ThreadCardAnimationVisibility` reports their actual viewport/page visibility
 independently of the cloud-animation switch. A running duration suspends its
 one-second task while that visibility is false or the scene is in the background;
-on return it immediately samples wall time. Completed durations stay fixed.
+on return it immediately samples wall time. Completed Agent cards use the same
+visibility gate for a relative time label. The label uses the latest execution’s
+finish timestamp once pending input and background work are clear. It wakes at
+the next elapsed minute, hour or day boundary, with days as the largest unit.
 Disabled cloud effects do not stop a visible duration. Outside
 the overview, omitting the visibility environment keeps the ordinary visible
 behavior; an inactive but still visible window can continue showing elapsed time.

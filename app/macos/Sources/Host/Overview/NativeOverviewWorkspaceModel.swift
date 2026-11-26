@@ -50,7 +50,7 @@ enum NativeOverviewStatusFilter: String {
         case .all: true
         case .unread: unread
         case .running: thread.pendingInput || thread.observation.isExecutionActive || thread.observation.backgroundWork != nil
-        case .completed: !thread.pendingInput && thread.observation.backgroundWork == nil && thread.observation.latestExecution?.status == .completed
+        case .completed: thread.completedExecutionFinishedAt != nil
         }
     }
 }

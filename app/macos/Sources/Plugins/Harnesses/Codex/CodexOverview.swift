@@ -51,7 +51,8 @@ public struct CodexOverviewCard: View {
     public var body: some View {
         HarnessThreadCard(identity: brandedIdentity, presentation: localizedPresentation,
             onRespond: responseHandler, onOpen: openThread,
-            status: threadCardStatus(input.thread.observation), emoji: generatedEmoji,
+            status: threadCardStatus(input.thread.observation), completedAt: input.thread.completedExecutionFinishedAt,
+            emoji: generatedEmoji,
             harnessLogo: AnyView(CodexLogo(size: 12)))
             .environment(\.threadCardProviderColor, CodexLogo.themeColor)
     }

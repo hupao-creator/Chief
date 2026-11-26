@@ -2542,7 +2542,7 @@ private final class WheelSample: NSEvent {
         let inboxTasks = ["Inbox tagged", "Inbox untagged", "Inbox label"]
         let namedFolderTask = "Directory named Inbox"
         let reportIDs = (1...8).map { "Report-\($0)" }
-        let finishedAt = 1_790_000_000_000.0
+        var finishedAt = floor(Date.now.addingTimeInterval(-8.5 * 86_400).timeIntervalSince1970 * 1_000)
         let permission = PublicInteraction(id: "permission", kind: .permission, title: "Review request",
             actions: [.init(id: "allow", intent: .allow, label: "Allow")], questions: [])
         func thread(_ name: String, _ status: PublicExecution.Status?, revision: Int = 1, semanticTag: JSONText? = nil) throws -> JSONValue {
@@ -2750,7 +2750,7 @@ private final class WheelSample: NSEvent {
                     let completion = locale.text("已完成", "Completed")
                     let lines = try checkStatusText(in: url, expected: ["Inbox tagged", model, "medium", excerpt],
                         absent: [completion], region: region)
-                    let expectedLabels = [locale.text("用时：00:00:33", "Duration: 00:00:33"), "847 tokens", "Codex · " + completion]
+                    let expectedLabels = [locale.text("8天前", "8 days ago"), "847 tokens", "Codex · " + completion]
                     let labels = accessibilityLabels(window) + accessibilityLabels(content)
                     guard expectedLabels.allSatisfy(labels.contains) else {
                         throw ReplayError("Missing card accessibility labels in \(name): expected=\(expectedLabels), found=\(labels)")
@@ -3102,6 +3102,21 @@ private final class WheelSample: NSEvent {
         captureScheme = nil
         guard canvas.cardRegionInWindow == cardViewport else {
             throw ReplayError("Changing a tag or a status moved the card viewport")
+        }
+        if CommandLine.arguments.contains("--completed-card") {
+            // Keep the card open across each threshold. Only the fixture setup
+            // publishes a revision; the second label must arrive from its clock.
+            let boundaries = [(60, "刚刚", "1分钟前"), (3_600, "59分钟前", "1小时前"), (86_400, "23小时前", "1天前")]
+            for (index, boundary) in boundaries.enumerated() {
+                let (seconds, before, after) = boundary
+                finishedAt = floor(Date.now.timeIntervalSince1970 * 1_000) - Double(seconds - 3) * 1_000
+                try await updateThread("Inbox tagged", .completed, revision: 13 + index)
+                for label in [before, after] {
+                    try await wait("Completed card did not show " + label, timeout: .seconds(6)) {
+                        (self.accessibilityLabels(window) + self.accessibilityLabels(content)).contains(label)
+                    }
+                }
+            }
         }
         if CommandLine.arguments.contains("--capture") {
             let cards = samples.filter { $0["modelToExcerptPt"] != nil }

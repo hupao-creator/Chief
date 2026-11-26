@@ -214,13 +214,14 @@ Window captures show [Running below five folder tags](evidence/overview-left-fil
 
 The Inbox portion checks both empty illustrations, their text, and the 195 × 85 pt
 image bounds and bowl alignment. It compares the completed card's model, excerpt,
-duration, usage, completion badge and vertical spacing in All statuses and
+time since completion, usage, completion badge and vertical spacing in All statuses and
 Completed in English and Chinese. The fixtures use the production workspace with
 an isolated catalog. Physical trackpad hardware and model services are outside
 this replay.
 
 To exercise the completed card layout and write `overview-completed-card.json`,
-run the status replay through both localized card comparisons:
+run the status replay through both localized card comparisons. It also keeps a
+completed card visible across the minute, hour and day thresholds:
 
 ```sh
 python3 demos/moku-landing/verify_header.py --completed-card --output .build/completed-card-layout

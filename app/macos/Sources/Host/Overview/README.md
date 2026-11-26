@@ -292,7 +292,8 @@ exercises empty and populated states and both input types.
 The selected left button stays expanded when its result is empty. Card borders stay the same on pointer hover. In the Inbox **Completed** view, keyboard
 focus adds a 2pt accent outline to Agent cards. A completed Agent card uses the
 completion badge and the same metadata layout in All and Completed. The model
-row is followed by the available duration and usage, with the excerpt below.
+row is followed by time since the latest execution finished and available usage,
+with the excerpt below. Pending input and background work retain the duration display.
 Super Threads retain their document update time and collection selection.
 
 A trackpad contributes its horizontal delta, including native momentum. For
