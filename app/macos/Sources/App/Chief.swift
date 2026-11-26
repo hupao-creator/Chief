@@ -50,7 +50,7 @@ private struct WorkspaceApp: App {
                     .keyboardShortcut("?")
             }
             CommandGroup(replacing: .appTermination) {
-                Button(session.locale.text("退出", "Quit")) { session.quit() }.keyboardShortcut("q")
+                Button(session.locale.text("退出", "Quit")) { session.quit() }.keyboardShortcut("q").disabled(session.resetting)
             }
             CommandGroup(after: .toolbar) {
                 Button(session.locale.text("重新载入", "Reload")) { session.performWebCommand("chiefReloadFocusedWebContent:") { session.reload() } }.keyboardShortcut("r").disabled(session.busy)
@@ -73,6 +73,9 @@ final class WorkspaceSession {
     var quitSettingsBlocked = false
     var busy = false
     var generation = UUID()
+    private var lease: RuntimeProfileClientLease?
+    private var options: LaunchOptions?
+    private(set) var resetting = false
     private var exitCleanup: NativeRuntimeExitCleanup?
     private var interactionServer: NativeInteractionServer?
     private var launchReceipt: URL?
@@ -90,33 +93,61 @@ final class WorkspaceSession {
             benchmarkOverview = options.benchmarkOverview
             benchmarkEmojiGlass = options.benchmarkEmojiBadge == "liquid-glass"
             let lease = try RuntimeProfileClientLease(dataDirectory: options.dataDirectory)
-            lease.retainForProcess()
-            let profile = lease.profile
-            NativeTypography.registerFonts()
-            let preferences = DesktopPreferences(directory: profile.dataDirectory)
-            // Explicit scenario setup belongs to the application. External runners
-            // never synthesize preference files or bypass the production renderer.
-            if options.benchmarkOverview {
-                try preferences.setOnboardingCompleted(true)
-                let receipt: [String: Any] = ["version": 1, "scenario": "overview",
-                    "pid": ProcessInfo.processInfo.processIdentifier, "agentEmojiBadge": options.benchmarkEmojiBadge,
-                    "reduceTransparency": NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
-                    "increaseContrast": NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast]
-                try JSONSerialization.data(withJSONObject: receipt, options: [.sortedKeys])
-                    .write(to: profile.dataDirectory.appendingPathComponent("benchmark-scenario.json"), options: .atomic)
-            }
-            let client = RuntimeClient(profile: profile, launch: options.launch)
-            let composition = try NativePlugins.make()
-            let model = NativeWorkspaceModel(client: client, preferences: preferences, plugins: composition, locale: locale)
-            if let path = options.automationSocket {
-                interactionServer = try NativeInteractionServer(path: path) { [weak self] in
-                    guard let self, !self.busy else { return nil }
-                    return self.presentation
+            if try lease.profile.hasPendingFactoryReset() {
+                guard let runtime = options.launch?.executable else {
+                    throw RuntimeError("RESET_FAILED", "Reopen Chief with its Runtime to finish resetting this profile.")
                 }
+                let profile = lease.profile
+                resetting = true
+                task = Task {
+                    defer { resetting = false }
+                    do {
+                        try await Task.detached { try NativeFactoryReset.finish(profile: profile, runtime: runtime) }.value
+                        try open(options, lease: RuntimeProfileClientLease(dataDirectory: profile.dataDirectory))
+                        start()
+                    } catch {
+                        self.error = locale.text("重置未完成。请处理以下问题，然后重新打开 Chief。", "Reset did not finish. Resolve the issue below and reopen Chief.") + "\n" + error.localizedDescription
+                    }
+                }
+            } else {
+                try open(options, lease: lease)
             }
-            self.model = model; presentation = NativeWorkspacePresentation(workspace: model)
-            if let executable = Bundle.main.executableURL { exitCleanup = NativeRuntimeExitCleanup(profile: profile, executable: executable) }
-        } catch {  self.error = error.localizedDescription }
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func open(_ options: LaunchOptions, lease: RuntimeProfileClientLease) throws {
+        // Another confirming client may have won admission between maintenance and reopen.
+        guard try !lease.profile.hasPendingFactoryReset() else {
+            throw RuntimeError("PROFILE_MAINTENANCE", "Reopen Chief to finish the pending factory reset.")
+        }
+        self.options = options
+        self.lease = lease
+        lease.retainForProcess()
+        let profile = lease.profile
+        NativeTypography.registerFonts()
+        let preferences = DesktopPreferences(directory: profile.dataDirectory)
+        // Explicit scenario setup belongs to the application. External runners
+        // never synthesize preference files or bypass the production renderer.
+        if options.benchmarkOverview {
+            try preferences.setOnboardingCompleted(true)
+            let receipt: [String: Any] = ["version": 1, "scenario": "overview",
+                "pid": ProcessInfo.processInfo.processIdentifier, "agentEmojiBadge": options.benchmarkEmojiBadge,
+                "reduceTransparency": NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
+                "increaseContrast": NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast]
+            try JSONSerialization.data(withJSONObject: receipt, options: [.sortedKeys])
+                .write(to: profile.dataDirectory.appendingPathComponent("benchmark-scenario.json"), options: .atomic)
+        }
+        let client = RuntimeClient(profile: profile, launch: options.launch)
+        let composition = try NativePlugins.make()
+        let model = NativeWorkspaceModel(client: client, preferences: preferences, plugins: composition, locale: locale)
+        if let path = options.automationSocket {
+            interactionServer = try NativeInteractionServer(path: path) { [weak self] in
+                guard let self, !self.busy else { return nil }
+                return self.presentation
+            }
+        }
+        self.model = model; presentation = NativeWorkspacePresentation(workspace: model)
+        if let executable = Bundle.main.executableURL { exitCleanup = NativeRuntimeExitCleanup(profile: profile, executable: executable) }
     }
     #if CHIEF_WORKSPACE_LIFECYCLE_REPLAY
     init(model: NativeWorkspaceModel) {
@@ -146,6 +177,52 @@ final class WorkspaceSession {
     func performWebCommand(_ selector: String, fallback: () -> Void = {}) {
         if !NSApp.sendAction(NSSelectorFromString(selector), to: nil, from: nil) { fallback() }
     }
+    func requestFactoryReset() {
+        guard !busy, !quitting, let model, model.settingsOpen, let window = NSApp.keyWindow,
+              window.attachedSheet == nil else { return }
+        NativeFactoryReset.confirm(in: window, locale: locale) { [weak self] confirmed in
+            guard confirmed else { return }
+            self?.beginFactoryReset()
+        }
+    }
+
+    private func beginFactoryReset() {
+        guard !busy, !quitting, let model, model.settingsOpen, let lease else { return }
+        guard model.runtimeAvailable, let runtime = options?.launch?.executable else {
+            error = locale.text("请连接 Chief 后台服务，然后重试。", "Connect to Chief’s Runtime, then try again.")
+            return
+        }
+        do { try lease.reserveForFactoryReset() }
+        catch { self.error = error.localizedDescription; return }
+        exitCleanup?.captureEpoch()
+        busy = true
+        resetting = true
+        task = Task {
+            do {
+                guard let owner = try lease.profile.readConnection() else {
+                    throw RuntimeError("RESET_FAILED", "Chief’s Runtime is unavailable.")
+                }
+                _ = try await model.invoke("history:prepare-reset")
+                try lease.profile.requestFactoryReset(epoch: owner.epoch)
+                try await model.stop()
+                exitCleanup?.disarm()
+                guard try lease.profile.hasPendingFactoryReset() else {
+                    throw RuntimeError("RESET_FAILED", "The retiring Runtime did not commit the reset.")
+                }
+                interactionServer?.stop()
+                try NativeFactoryReset.restart(profile: lease.profile, runtime: runtime, socket: options?.automationSocket)
+            } catch {
+                // Drain can fail after fencing the generation. Never return a
+                // half-retired workspace to the user or report reset success.
+                self.model = nil
+                presentation = nil
+                self.error = locale.text("重置未完成。退出并重新打开 Chief 后重试。", "Reset did not finish. Quit and reopen Chief to retry.") + "\n" + error.localizedDescription
+                busy = false
+                resetting = false
+            }
+        }
+    }
+
     func reload() {
         guard !busy, !quitting, let model else { return }
         model.resetSettingsForReload()
@@ -176,6 +253,7 @@ final class WorkspaceSession {
         task = pending
     }
     func quit(discardSettings: Bool = false) {
+        guard !resetting else { return }
         guard !quitting else {
             NativeProcessExit.forceExit { exitCleanup?.prepareForExit() }
         }
@@ -183,7 +261,7 @@ final class WorkspaceSession {
         let operationID = UUID()
         self.operationID = operationID
         quitSavingSettings = !discardSettings
-        exitCleanup?.captureEpoch()
+        if model != nil { exitCleanup?.captureEpoch() }
         task?.cancel()
         // Network cleanup can outlive cancellation. The deadline must
         // not join that work; the epoch-fenced exit helper finishes it instead.
@@ -245,13 +323,16 @@ private extension UserDefaults {
     @objc(AppleLanguages) dynamic var preferredInterfaceLanguages: [String]? { stringArray(forKey: "AppleLanguages") }
 }
 
-private struct WorkspaceWindow: View {
+struct WorkspaceWindow: View {
     let session: WorkspaceSession
     var body: some View {
         Group {
-            if let model = session.model, let presentation = session.presentation {
+            if session.resetting {
+                ProgressView(session.locale.text("正在恢复出厂设置…", "Resetting Chief…"))
+            } else if let model = session.model, let presentation = session.presentation {
                 NativeWorkspaceView(model: model, presentation: presentation).id(session.generation)
                     .environment(\.agentThreadEmojiUsesLiquidGlass, session.benchmarkEmojiGlass)
+                    .environment(\.requestFactoryReset, session.requestFactoryReset)
             } else {
                 ContentUnavailableView(session.locale.text("无法打开 Chief", "Unable to open Chief"),
                     systemImage: "exclamationmark.triangle", description: Text(session.error ?? ""))

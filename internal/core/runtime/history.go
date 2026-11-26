@@ -259,11 +259,25 @@ func (r *Runtime) assertHistoryResettable() error {
 	return nil
 }
 
-// ClearHistory fences admission before draining every handle. A failed close
-// leaves the generation fenced instead of installing competing native owners.
-func (r *Runtime) ClearHistory(ctx context.Context) error {
+func (r *Runtime) prepareFactoryReset(ctx context.Context) error {
 	r.lifecycleMu.Lock()
 	defer r.lifecycleMu.Unlock()
+	if err := r.drainHistory(ctx); err != nil {
+		return err
+	}
+	r.factoryResetPrepared = true
+	return nil
+}
+
+func (r *Runtime) FactoryResetPrepared() bool {
+	r.lifecycleMu.Lock()
+	defer r.lifecycleMu.Unlock()
+	return r.factoryResetPrepared
+}
+
+// Caller owns lifecycleMu. Factory reset keeps the generation fenced through
+// service shutdown and never runs the history command's workspace cleanup.
+func (r *Runtime) drainHistory(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -310,9 +324,17 @@ func (r *Runtime) ClearHistory(ctx context.Context) error {
 	}
 	// Native cleanup can publish background state after the initial preflight.
 	// History cannot be replaced until every such durable owner is accounted for.
-	if err := r.assertHistoryResettable(); err != nil {
+	return r.assertHistoryResettable()
+}
+
+// ClearHistory replaces history only after every native owner has settled.
+func (r *Runtime) ClearHistory(ctx context.Context) error {
+	r.lifecycleMu.Lock()
+	defer r.lifecycleMu.Unlock()
+	if err := r.drainHistory(ctx); err != nil {
 		return err
 	}
+	var errs []error
 	threads, err := r.Threads()
 	if err != nil {
 		return err

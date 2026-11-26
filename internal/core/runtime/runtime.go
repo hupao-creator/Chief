@@ -91,6 +91,7 @@ type Runtime struct {
 	configurationGate         chan struct{}
 	closed                    bool
 	resetting                 bool
+	factoryResetPrepared      bool // guarded by lifecycleMu
 	generation                uint64
 	handles                   map[string]*threadHandle
 	locks                     map[string]*threadCommandLock

@@ -153,7 +153,7 @@ func (b *Bootstrap) open(ctx context.Context) error {
 	if data == "" || workspace == "" {
 		return errors.New("composition requires resolved data and workspace profile paths")
 	}
-	stateRoot := profile.ExistingPathOr(filepath.Join(data, "mokusei-go-state-v1"), filepath.Join(data, "chief-go-state-v1"))
+	stateRoot := b.options.Profile.StateDirectory()
 	mokuCwd := filepath.Join(workspace, "moku-workspace")
 	temporary := filepath.Join(workspace, "tmp-workspaces")
 	for _, path := range []string{stateRoot, mokuCwd, temporary, filepath.Join(workspace, "plugins")} {

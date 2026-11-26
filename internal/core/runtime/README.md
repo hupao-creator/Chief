@@ -266,6 +266,13 @@ a deleted session's gate is reclaimed after its final reference is released. His
 
 History clearing stops participants, restores sessions that require cleanup, drains native owners and rechecks public/private background observations before replacing history in one SQLite transaction. Settings survive a full clear. Failed cleanup preserves history and fences the generation; it does not silently erase uncertain native work or start another owner.
 
+Factory reset uses the zero-argument `history:prepare-reset` write to perform
+the same native owner recovery, cancellation, drain and background-work
+recheck. A successful preparation keeps the generation fenced until shutdown.
+Workspace cleanup and the history replacement transaction belong only to
+`history:clear`. The [profile owner](../../platform/profile/README.md#factory-reset)
+commits the native confirmation after the daemon drains receipts and closes storage.
+
 The [property boundaries](#property-boundaries) define Runtime admission, outbox
 and optional system coverage. [E2E observation](#e2e-observation) describes the
 selected mounted Settings/read journeys. The [verification index](../../../tools/verification/facts.md)

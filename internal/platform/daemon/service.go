@@ -39,6 +39,7 @@ func Serve(ctx context.Context, options ServeOptions) error {
 	defer cancel()
 	var mu sync.Mutex
 	var server *transport.Server
+	var host transport.Host
 	var stopping bool
 	var closeOnce sync.Once
 	initialized := make(chan struct{})
@@ -75,7 +76,11 @@ func Serve(ctx context.Context, options ServeOptions) error {
 				// Every participant and admitted call has finished cleanup. An
 				// error is diagnostic evidence, not permission to hold the profile
 				// forever and prevent the user's next launch.
-				stopErr = errors.Join(stopErr, profile.RemoveConnection(options.Profile, owner.Epoch), owner.Release())
+				stopErr = errors.Join(stopErr, profile.RemoveConnection(options.Profile, owner.Epoch))
+				if prepared, ok := host.(interface{ FactoryResetPrepared() bool }); ok && stopErr == nil && prepared.FactoryResetPrepared() {
+					stopErr = profile.CommitFactoryReset(options.Profile, owner.Epoch)
+				}
+				stopErr = errors.Join(stopErr, owner.Release())
 				if current != nil {
 					stopErr = errors.Join(stopErr, current.Close(context.Background()))
 				}
@@ -98,7 +103,8 @@ func Serve(ctx context.Context, options ServeOptions) error {
 		case <-watchDone:
 		}
 	}()
-	host, openErr := options.Bootstrap.Initialize(lifetime)
+	var openErr error
+	host, openErr = options.Bootstrap.Initialize(lifetime)
 	if openErr == nil {
 		mu.Lock()
 		if stopping {

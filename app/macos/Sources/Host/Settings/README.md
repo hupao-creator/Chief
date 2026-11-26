@@ -146,6 +146,15 @@ safe area; the main window retains its own native controls. When the page has le
 also scrolls so its chrome cannot make form controls unreachable. The resident
 eyes scroll with the header so they stay with their seat above the form.
 
+The header face slot owns a three-second primary-button hold. Reaching the
+threshold presents one native confirmation sheet. Early release, drag outside,
+window resignation, cancellation or unmount retires the hold. Cancel keeps the
+Settings visit. Erase and Restart requires a connected Runtime and reserves the
+native client lease before stopping work. The [profile maintenance
+contract](../../../../../internal/platform/profile/README.md#factory-reset)
+defines the erase scope and recovery. [The mounted reset replay](../../../../../tools/e2e/README.md#settings-factory-reset)
+drives the header and both sheet buttons.
+
 The scene blurs Overview and blocks pointer, keyboard and accessibility access
 until the capsule finishes returning. Super Thread covers and card text keep
 their normal contrast beneath the animated workspace blur and shade, including

@@ -497,6 +497,23 @@ mode and before/after observations with each run. A process-local simulation
 covers only its injected inputs. It cannot certify macOS notifications or all
 window pixels.
 
+### Settings factory reset
+
+Run `python3 tools/e2e/factory_reset.py /private/tmp/chief-reset-evidence-UNIQUE`
+on macOS with a graphical session. The [replay](FactoryResetReplay.swift) mounts
+the production workspace and routes AppKit mouse events through its own window.
+It checks early release, dragging outside, a single confirmation during a
+continued hold, cancellation with saved settings intact, and explicit erasure.
+A fresh process must mount onboarding, restore default Runtime settings and
+replace the old Chief conversation. The runner uses temporary app and agent
+homes, a legacy SQLite profile and a real detached Git worktree. It checks a
+removed draft and preserved external files. Offline maintenance also rejects
+a missing or mismatched confirmation, an occupied ownership port, a
+symlinked cache directory and unexpected transfer files. It retries after
+the obstruction is cleared. The output records the revision, local
+observations and isolated profile. System-wide AX and physical input
+are separate boundaries.
+
 ### Settings over a populated Overview
 
 In an isolated workspace, scroll horizontally until an Agent and a Super Thread are in view.

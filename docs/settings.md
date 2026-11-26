@@ -30,6 +30,14 @@ Choose **OpenCode** to see its providers, models and variants. If **Loading Agen
 
 [Find tags and Super Threads](reports-tags-and-changes.md)
 
+## Reset Chief and start setup again
+
+Open **Settings** from Overview. Press and hold the eyes at the left end of the Settings header for three seconds, until the confirmation appears. Release early or drag away to abandon the hold. Choose **Cancel** to keep working with your current settings and history.
+
+**Erase and Restart** permanently clears the current Chief profile. This includes conversations, Super Threads, tags, agent settings, unsent drafts, Chief’s attachment and transfer copies, and saved agent sessions, usage records, reading and command history, and local caches. Chief stops active work. Your project files, task folders, Git worktrees, and external agents’ accounts, credentials and history stay on disk.
+
+After Chief restarts, the first setup page opens. If Chief reports that another window is using this profile, quit the other copy and try again. If reset stops with an error, keep the error message and reopen Chief. It finishes a pending erase before opening the workspace.
+
 ## Change appearance or language on your Mac
 
 To change Chief's appearance, open **System Settings → Appearance** on your Mac and choose **Light**, **Dark**, or **Auto**. You can see the change in Overview. The first-run setup panel, Settings, Chief Bar, and your conversation with Chief stay dark.

@@ -60,3 +60,28 @@ descriptor, including device and inode. These files are permanent: release close
 it never unlinks or replaces a lock file, including after profile rotation.
 `ClientLeasePath` exposes the current canonical lock path for diagnostics and
 isolated verification; computing that path grants no authority.
+
+## Factory reset
+
+Settings upgrades its lifetime client lease under the admission lock, asks the
+Runtime to prepare for reset, then writes a private request bound to that
+Runtime epoch and the active canonical directory. A clean shutdown promotes
+that request to a committed marker while the daemon still owns the profile.
+A failed drain, a mismatched epoch or an unconfirmed request cannot authorize
+erasure. The committed marker blocks new Runtime ownership.
+
+Chief replaces its process to retire outstanding native tasks and their lease.
+Before opening preferences or restoring drafts, startup checks for a committed
+marker. The bundled Runtime's `finish-factory-reset --data-dir <absolute path>`
+requires that marker plus exclusive native and Runtime ownership. It preflights
+the selected entries before unlinking them. If interrupted, the marker keeps
+the profile out of use. Reopening retries the remaining entries. A successful
+reset starts normal onboarding with a new database.
+
+The [profile erase list](factory_reset.go) covers the active current or legacy
+SQLite store, worktree ownership registry, profile-local model facts, usage
+ledgers, Chief-managed Harness histories, attachment copies, command receipts,
+desktop preferences, reading caches, drafts and managed transfer files. The
+existing legacy state directory keeps its identity. Task working directories,
+project files, linked Git checkouts, shared caches, agents’ source homes and
+other profiles (including backups) are outside this list.
