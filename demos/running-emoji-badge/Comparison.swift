@@ -53,8 +53,8 @@ struct Comparison: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(state.group == .range ? "微孔外扩范围" : "运行态徽章").font(.system(size: 23, weight: .semibold))
-                    Text(state.group == .range ? "徽章固定 44 pt  ·  卡面 320 × 196 pt" : "Agent Thread  ·  320 × 196 pt  /  徽章 44 pt").font(.system(size: 12))
+                    Text(state.group == .range ? "边缘反光" : "运行态徽章").font(.system(size: 23, weight: .semibold))
+                    Text(state.group == .range ? "44 pt 徽章  ·  2 pt 微孔" : "Agent Thread  ·  320 × 196 pt  /  徽章 44 pt").font(.system(size: 12))
                         .foregroundStyle(state.group == .range ? palette.ink.swiftUI.opacity(0.75) : palette.muted.swiftUI)
                 }
                 Spacer()
@@ -63,6 +63,11 @@ struct Comparison: View {
                 }
                 .pickerStyle(.menu).labelsHidden().frame(width: 118)
                 if state.group == .range {
+                    Menu("动效参考") {
+                        Link("Terkel · 窗口边光", destination: URL(string: "https://x.com/terkelg/status/2057155764402171933")!)
+                        Link("Dot · 雾化拖尾", destination: URL(string: "https://x.com/julianfkelly/status/1987678145193877890")!)
+                        Link("Linear · 旋转层次", destination: URL(string: "https://x.com/emilkowalski_/status/1937134338816053290")!)
+                    }.fixedSize()
                     Toggle("全部显示现状", isOn: $state.showBaseline).toggleStyle(.checkbox)
                     Toggle("静态对照", isOn: $state.still).toggleStyle(.checkbox)
                 } else if state.group == .colors {
@@ -85,8 +90,8 @@ struct Comparison: View {
             }
             Grid(alignment: .leading, horizontalSpacing: NativeGeometry.overviewCardGap, verticalSpacing: 18) {
                 if state.group == .range {
-                    GridRow { range(.badge); range(.header) }
-                    GridRow { range(.passages); range(.card) }
+                    GridRow { range(.badge); range(.near) }
+                    GridRow { range(.corner); range(.edge) }
                 } else if state.group == .colors {
                     GridRow { sample(state.pattern, .codex); sample(state.pattern, .claude) }
                     GridRow { sample(state.pattern, .pi); sample(state.pattern, .openCode) }
