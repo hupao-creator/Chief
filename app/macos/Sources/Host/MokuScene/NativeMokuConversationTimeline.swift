@@ -122,7 +122,12 @@ struct NativeMokuConversationTimeline: View {
         TimelineView(.everyMinute) { clock in
             let day = dayLabel(for: date, relativeTo: clock.date)
             Text("\(day.fontWeight(.semibold)) \(Text(date, format: .dateTime.hour().minute()))")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .font(.system(size: 12))
+                .foregroundStyle(Color(white: 0.88))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                // Regular glass samples the workspace. Give small text a stable contrast pair.
+                .background(Color(white: 0.18), in: .capsule)
                 .accessibilityIdentifier("moku-conversation-period")
         }
     }
