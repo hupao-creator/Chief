@@ -31,6 +31,8 @@ private struct NativeSettingsGroupBottomSpacingKey: EnvironmentKey { static let 
 public extension EnvironmentValues {
     /// Host-provided title for the primary model selector in a Harness form.
     @Entry var nativeSettingsModelLabel: String? = nil
+    /// Host-provided title for the OpenCode variant selector.
+    @Entry var nativeSettingsOpenCodeVariantLabel: String? = nil
     /// Locks configuration values while allowing disclosures and resource retries.
     var nativeSettingsReadOnly: Bool {
         get { self[NativeSettingsReadOnlyKey.self] }
