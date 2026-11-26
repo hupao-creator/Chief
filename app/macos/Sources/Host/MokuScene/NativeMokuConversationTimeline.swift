@@ -2,6 +2,7 @@ import ChiefCore
 import SwiftUI
 
 struct NativeMokuConversationTimeline: View {
+    static let bubbleVerticalInset: CGFloat = 7
     let page: NativeMokuConversationPage
     let showsTyping: Bool
     var workspace: NativeWorkspaceModel?
@@ -164,7 +165,7 @@ private struct ConversationBubble: View {
         }
         .font(.system(size: 15))
         .foregroundStyle(Color.white)
-        .padding(.horizontal, 13).padding(.vertical, 7)
+        .padding(.horizontal, 13).padding(.vertical, NativeMokuConversationTimeline.bubbleVerticalInset)
         .padding(.bottom, tail ? ConversationBalloon.tailHeight : 0)
         .background {
             if user {

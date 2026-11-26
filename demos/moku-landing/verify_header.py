@@ -134,7 +134,10 @@ with lease() if args.conversation_performance else nullcontext(), native_lease()
         with keyboard_client(replay, args.output) if args.keyboard else nullcontext():
             # The combined visit also runs card fitting, status rail and Landing scenarios.
             timeout = 75 if args.status_only or args.completed_card else 60
-            status = replay.run(arguments, timeout=150 if args.bar_swipe or args.talk_link or args.conversation_performance else timeout)
+            # Screen capture is followed by Vision analysis of each settled window.
+            if args.bar_swipe or args.talk_link or args.conversation_performance or args.conversation_opening:
+                timeout = 150
+            status = replay.run(arguments, timeout=timeout)
     finally:
         try:
             replay.export(args.output)

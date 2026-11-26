@@ -745,6 +745,13 @@ private final class WheelSample: NSEvent {
             try await open()
             try await Task.sleep(for: .milliseconds(550))
             let timeline = try await captureViewport("first")
+            if linkedPage, let document = timeline.documentView {
+                @MainActor func mountedLinks(in view: NSView) -> Int {
+                    if view is MarkdownExecutionHost { return 1 }
+                    return view.subviews.reduce(0) { $0 + mountedLinks(in: $1) }
+                }
+                samples.append(["mountedLinksAtOpen": mountedLinks(in: document)])
+            }
             let clip = timeline.contentView
             let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
             let initial = clip.bounds.minY
@@ -795,6 +802,18 @@ private final class WheelSample: NSEvent {
             }
             try await wait("Top edge did not settle at \(clip.bounds)", timeout: .seconds(3)) { abs(clip.bounds.minY) < 1 }
             let screenClip = window.convertToScreen(clip.convert(clip.bounds, to: nil))
+            if linkedPage {
+                // Inspect the painted button before traversing AX, which can itself request a control.
+                try await wait("The first execution capsule did not appear after scrolling to its message") {
+                    guard let text = self.descendant(MarkdownTextView.self, in: content, matching: {
+                        $0.string.hasPrefix("Message 1\n")
+                    }) else { return false }
+                    return text.executionSurfaces.values.contains { button in
+                        button.window === window && clip.bounds.contains(button.convert(button.bounds, to: clip))
+                    }
+                }
+                samples.append(["firstExecutionLinkVisible": true])
+            }
             let oldestVisible = conversationElements(in: window).contains { row in
                 row.id == "moku-conversation-message" && (row.value + row.label).contains("Message 0\n") &&
                     screenClip.contains(CGPoint(x: row.frame.midX, y: row.frame.midY))
