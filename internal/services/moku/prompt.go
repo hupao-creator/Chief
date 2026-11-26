@@ -1,16 +1,18 @@
 package moku
 
 const ToolInputMaxCharacters = 1_000_000
-const TalkTextMaxCharacters = 512
+const TalkTextMaxCharacters = 320
+const talkTextMaxLineBreaks = 2
 
-// TalkTextPolicy is shared by the talk tool and its text parameter descriptions.
+// talkTextPolicy is shared by the talk tool and its text parameter descriptions.
 // JSON Schema maxLength counts Unicode code points, not UTF-16 units or graphemes.
-const TalkTextPolicy = "Lead with the outcome or next action in one or two short sentences. Link to details instead of splitting a long reply across notifications. Use emoji naturally when they suit the context. To point the user to a result, blocker, or run that needs review, " +
+const talkTextPolicy = "Give the outcome or next action in one or two short sentences. Keep test counts, logs and other supporting details in the cited run. Use emoji naturally when they suit the context. To point the user to a result, blocker, or run that needs review, " +
 	"include [short label](chief://execution?threadId=THREAD_ID&executionId=EXECUTION_ID). Use the exact pair from the tool result or lifecycle event. " +
 	"Percent-encode query values when needed. Do not invent IDs or query a Thread just to obtain a link. Multiple execution links are supported. " +
 	"The user can open the cited run from either the compact notification or Chief Bar conversation. " +
-	"The entire text, including link URLs, labels, whitespace and newlines, must fit in 512 Unicode code points. Blank, NUL or over-budget text is rejected. " +
-	"The latest message replaces the compact notification, which grows to about eight lines before scrolling and hides after 60 seconds. Successful messages stay in the conversation."
+	"The entire text, including link URLs, labels, whitespace and newlines, must fit in %d Unicode code points and contain at most %d explicit line breaks (CRLF counts as one). " +
+	"Let the bar wrap text and keep execution links near the outcome. Blank, NUL or over-budget text is rejected. Shorten it and retry in a single message. " +
+	"The latest message replaces the compact notification, which grows to about six lines before scrolling and hides after 60 seconds. Successful messages stay in the conversation."
 
 const dispatchReplyGuidance = "When delegating a direct user request, use talk before ending your turn to say what was handed off, unless a successful talk already conveyed that handoff."
 

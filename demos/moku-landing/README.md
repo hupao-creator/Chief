@@ -109,8 +109,15 @@ notice ending with a run link. It checks that the short notice fits the
 58-point Overview row, the complete multiline document is visible, and the
 button has 8–16 points of clearance to the shell's bottom edge. The two
 window captures and `notification-layout.json` record the mounted result.
+A saved Chinese and English report with a paragraph break and a final run link
+opens at the top of the 129-point compact shell (111-point viewport).
+An AppKit scroll reveals its last link, which opens the cited run. The top
+and scrolled captures and `notification-overflow.json` record that visit.
 
 The replay clicks the native glass execution capsules in the compact notification and the Chief conversation with AppKit mouse events. It captures each surface before navigating. The message contains labeled and bare links to different runs, a deleted Thread and a malformed URL. The replay checks the destination filter, historical row, loaded content and top scroll position, plus the unavailable page for a missing run. During the one-minute expiry observation the window ignores physical desktop clicks. Pointer input is enabled again before the replay follows the saved link into a Super Thread that cites a newer run. `talk-links.json` identifies the source surface and execution for each visit. The catalog and reading data are fixtures in a private profile.
+
+For a missing run, the replay checks that the history timeline contains no row and
+verifies both the unavailable heading and its explanation in `notification-missing-execution.png`.
 
 ### Overview Bar swipe at actual size
 

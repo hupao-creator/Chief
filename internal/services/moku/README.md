@@ -238,7 +238,9 @@ The coordinator prompt calls for a Talk reply to a direct request, a handoff ack
 
 Detailed work belongs in the ordinary Agent Thread. To point the user to a specific run, include `[short label](chief://execution?threadId=THREAD_ID&executionId=EXECUTION_ID)` in Talk. Use the exact pair from the tool result or lifecycle event and percent-encode query values when needed. A message can link to several runs.
 
-`talk(text)` accepts up to **512 Unicode code points** including all URLs, labels, whitespace and newlines. A blank, NUL-containing or over-budget message fails without replacing the displayed notification. The compact bar shows the newest successful message from the beginning in a scrollable viewport of up to about eight lines for 60 seconds. Its links also work in the persistent [Chief Bar conversation](../../core/runtime/README.md#chief-conversation). The registered tool and its text parameter share [TalkTextPolicy](prompt.go).
+`talk(text)` accepts up to **320 Unicode code points** including all URLs, labels, whitespace and newlines, and at most **two explicit line breaks**. LF, CR, vertical tab, form feed, NEL, LINE SEPARATOR and PARAGRAPH SEPARATOR each count as one break. CRLF counts as one break and two code points. Automatic wrapping depends on the display width and does not use this break budget.
+
+The injected schema sets `maxLength` and shares its [description](prompt.go) with the tool. The coordinator rejects blank text, NUL and extra line breaks. A failed call adds neither a replacement notification nor a Chief conversation reply. A successful call preserves the original text and links. The [compact bar](../../../app/macos/Sources/Host/MokuScene/README.md#talk-and-dispatch) opens the newest successful message at the top for 60 seconds, and the [Chief Bar conversation](../../core/runtime/README.md#chief-conversation) retains it.
 
 
 ## Context

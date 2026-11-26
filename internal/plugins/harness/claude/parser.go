@@ -45,6 +45,7 @@ func (p *timelinePosition) resolve(t *Turn) map[string]any {
 }
 
 type frameParser struct {
+	checkAutoMode   bool
 	onUsage         func(model, generation, kind string, usage map[string]any)
 	contextTokens   float64
 	messages        map[string]streamMessage
@@ -61,9 +62,10 @@ type frameParser struct {
 	taskOrder     []string
 }
 
-func newParser() *frameParser {
+func newParser(permissionMode string) *frameParser {
 	return &frameParser{
-		messages: map[string]streamMessage{}, tools: map[string]*nativeTool{}, known: map[string]bool{},
+		checkAutoMode: permissionMode == "auto",
+		messages:      map[string]streamMessage{}, tools: map[string]*nativeTool{}, known: map[string]bool{},
 		textBlocks: map[string]*timelinePosition{}, reasoningBlocks: map[string]*reasoningSpan{}, textBoundaries: map[string]bool{},
 		usage: map[string]map[string]any{}, costs: map[string]float64{},
 		taskMutations: map[string]*nativeTool{}, tasks: map[string]map[string]any{},
@@ -254,6 +256,13 @@ func (p *frameParser) apply(s *State, t *Turn, f map[string]any, canonical func(
 		}
 	case "system":
 		switch str(f["subtype"]) {
+		case "init":
+			if mode := str(f["permissionMode"]); p.checkAutoMode && mode != "" && mode != "auto" {
+				// The Agent reader surfaces error-level notices for a configuration failure,
+				// while the native result still determines whether the task succeeded.
+				t.notice("error", fmt.Sprintf("Claude Code could not apply auto permissions. This run started in %s mode.", mode))
+				p.checkAutoMode = false
+			}
 		case "status":
 			switch str(f["status"]) {
 			case "compacting":

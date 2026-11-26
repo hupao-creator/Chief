@@ -284,9 +284,10 @@ func ToolSchemas(description ThreadCreationDescription) []plugin.ToolBinding {
 	add("ask_thread", "Ask a specific content question about an ordinary Agent Thread whose answer is needed now for an explicit user question, a next action otherwise blocked, fault diagnosis, or review of finished results. Specificity alone does not justify reading a running Thread or fetching an intermediate update for a progress report. This invokes an additional model request against a native history fork or captured snapshot; it is not a live status read, and the history may already be stale while the source runs. It does not return raw history, send a message to the source, create a source Execution, or mutate the source Thread state. Do not repeatedly query readiness for review, validation, completion, or delivery; automatic terminal events handle waiting.", mokuRaw(mokuObjectSchema(map[string]any{"threadId": idSchema, "question": questionSchema}, "threadId", "question")))
 	add("interrupt_thread", "Stop current work on one or more ordinary Agent Threads. Results follow threadIds in order. Each includes threadId and ok. Status cancelled means Runtime acknowledged the stop request. Status stale means there was no work to stop or another stop was in progress. Unsuccessful items include an error. Top-level ok is true only if every stop was acknowledged.", mokuRaw(mokuObjectSchema(map[string]any{"threadIds": map[string]any{"type": "array", "minItems": 1, "items": idSchema}}, "threadIds")))
 	talkSchema := mokuCopyObject(textSchema)
+	talkPolicy := fmt.Sprintf(talkTextPolicy, TalkTextMaxCharacters, talkTextMaxLineBreaks)
 	talkSchema["maxLength"] = TalkTextMaxCharacters
-	talkSchema["description"] = TalkTextPolicy
-	add("talk", "Show a short answer, question, progress update, or confirmation inside Chief's bar in the Overview. "+TalkTextPolicy+" Showing a message does not end your turn or the task, or wait for a user response. Do not poll delegated Threads just to produce an update; base each update on facts already available.", mokuRaw(mokuObjectSchema(map[string]any{"text": talkSchema}, "text")))
+	talkSchema["description"] = talkPolicy
+	add("talk", "Show a short answer, question, progress update, or confirmation inside Chief's bar in the Overview. "+talkPolicy+" Showing a message does not end your turn or the task, or wait for a user response. Do not poll delegated Threads just to produce an update; base each update on facts already available.", mokuRaw(mokuObjectSchema(map[string]any{"text": talkSchema}, "text")))
 	return bindings
 }
 
