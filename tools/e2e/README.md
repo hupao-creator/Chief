@@ -507,7 +507,11 @@ continued hold, cancellation with saved settings intact, and explicit erasure.
 A fresh process must mount onboarding, restore default Runtime settings and
 replace the old Chief conversation. The runner uses temporary app and agent
 homes, a legacy SQLite profile and a real detached Git worktree. It checks a
-removed draft and preserved external files. Offline maintenance also rejects
+removed draft and Codex plugin catalog clone and preserved external files.
+Offline maintenance exercises a current profile with a one-shot Codex home.
+It rejects a linked worktree at the catalog path, a catalog backing an external
+worktree and an unexpected nested checkout before allowing a standalone clone
+to be removed. It also rejects
 a missing or mismatched confirmation, an occupied ownership port, a
 symlinked cache directory and unexpected transfer files. It retries after
 the obstruction is cleared. The output records the revision, local

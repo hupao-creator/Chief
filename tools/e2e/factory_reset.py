@@ -56,8 +56,34 @@ def check_maintenance(work, runtime, env):
     rejected("unexpected contents")
     assert (bucket / "upload").read_text() == "staged" and token.exists()
     extra.rename(work / "preserved-notes")
+    isolated = profile / "chief-go-state-v1/harnesses/codex/application-tools-only/session-123"
+    cache = isolated / ".tmp/plugins"
+    source = work / "catalog-source"
+
+    def git(*args):
+        subprocess.run(["git", *args], cwd=work, env=env, check=True)
+
+    git("init", "-q", source)
+    git("-C", source, "-c", "user.name=Replay", "-c", "user.email=test@invalid",
+        "commit", "--allow-empty", "-qm", "catalog")
+    git("-C", source, "worktree", "add", "--detach", cache)
+    rejected("Git checkout inside managed storage")
+    assert (cache / ".git").is_file() and token.exists()
+    git("-C", source, "worktree", "remove", cache)
+    git("clone", "-q", source, cache)
+    linked = work / "linked-catalog"
+    git("-C", cache, "worktree", "add", "--detach", linked)
+    rejected("Git worktree registry")
+    assert (linked / ".git").is_file() and token.exists()
+    git("-C", cache, "worktree", "remove", linked)
+    # An identical suffix deeper in the isolated home belongs to a different checkout.
+    nested = cache / "extra/.tmp/plugins"
+    git("init", "-q", nested)
+    rejected("Git checkout inside managed storage")
+    nested.rename(work / "preserved-checkout")
     subprocess.run(command, cwd=work, env=env, check=True)
     assert not token.exists() and not draft.exists() and sentinel.read_text() == "external"
+    assert not isolated.exists() and (work / "preserved-checkout/.git").is_dir()
     assert not bucket.exists() and (work / "preserved-notes").read_text() == "user work"
 
 
@@ -101,6 +127,7 @@ def run(output):
             isolated = profile / "mokusei-go-state-v1/harnesses/codex/application-tools-only" / ("thread-" + "a" * 64)
             isolated.mkdir(parents=True)
             (isolated / "account-link").symlink_to(home / ".codex", target_is_directory=True)
+            subprocess.run(["git", "clone", "-q", repo, isolated / ".tmp/plugins"], env=env, check=True)
             code = replay.run(["--data-dir", profile, "--runtime", runtime], timeout=125, launch_environment=env)
             if code != 0 or not (work / "passed").exists():
                 raise RuntimeError("Factory reset replay failed; inspect stdout.log and stderr.log")
@@ -115,7 +142,8 @@ def run(output):
                 "trackedChanges": subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).splitlines(),
                 "runtimeSHA256": sha256(runtime),
                 "replaySHA256": sha256(replay.executable),
-                "rejected": ["missing confirmation", "other profile", "ownership conflict", "symlinked cache directory", "unexpected transfer contents"],
+                "rejected": ["missing confirmation", "other profile", "ownership conflict", "symlinked cache directory", "unexpected transfer contents",
+                             "cache backing a worktree", "nested checkout", "linked worktree at cache path"],
                 "profile": str(profile), "preserved": [str(p.relative_to(work)) for p in kept]}
         finally:
             try:

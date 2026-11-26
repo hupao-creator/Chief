@@ -85,3 +85,8 @@ desktop preferences, reading caches, drafts and managed transfer files. The
 existing legacy state directory keeps its identity. Task working directories,
 project files, linked Git checkouts, shared caches, agents’ source homes and
 other profiles (including backups) are outside this list.
+
+Within a Chief-managed Codex thread or session home, reset can erase the plugin
+catalog clone at `.tmp/plugins`. Only a real `.git` directory at that exact
+location qualifies. A linked checkout there, a catalog with a Git worktree
+registry, or another checkout anywhere within a selected tree stops preflight.

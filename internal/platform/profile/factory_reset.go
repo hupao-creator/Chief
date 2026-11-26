@@ -106,6 +106,7 @@ func resetPaths(root *os.Root, state string) ([]resetEntry, error) {
 		directory, files, trees string
 		flatTrees               bool
 	}
+	codexHomes := state + "/harnesses/codex/application-tools-only"
 	groups := []group{
 		{".", `desktop-preferences\.json|native-(html-zoom|moku-reply-read)\.json|client-command-journal\.json`, "", false},
 		{"runtime", `receipts\.json|output-locale\.json|startup-error\.json`, "", false},
@@ -114,7 +115,7 @@ func resetPaths(root *os.Root, state string) ([]resetEntry, error) {
 		{state + "/moku-telemetry-ledgers", `(codex|pi|opencode|claude)\.json(\.corrupt-[0-9]+)?`, "", false},
 		{state + "/attachments", `\.owners\.json`, resetUUID, true},
 		{state + "/attachments/.metadata", resetUUID + `\.json`, "", false},
-		{state + "/harnesses/codex/application-tools-only", "", `thread-` + resetHash + `|session-[0-9]+`, false},
+		{codexHomes, "", `thread-` + resetHash + `|session-[0-9]+`, false},
 		{state + "/harnesses/pi", "", resetUUID, false},
 		{"thread-reading", resetHash, "", false},
 		{"client-drafts", resetHash + `\.(json|lock)`, "", false},
@@ -165,12 +166,21 @@ func resetPaths(root *os.Root, state string) ([]resetEntry, error) {
 					return nil, fmt.Errorf("expected a real profile directory at %s", path)
 				}
 				var tree []resetEntry
+				// Codex clones its plugin catalog inside each isolated home.
+				// A linked checkout or a cache backing other worktrees still needs protection.
+				pluginGit := ""
+				if g.directory == codexHomes {
+					pluginGit = filepath.Join(path, ".tmp", "plugins", ".git")
+				}
 				err := fs.WalkDir(root.FS(), path, func(name string, item fs.DirEntry, err error) error {
 					if err != nil {
 						return err
 					}
-					if strings.EqualFold(item.Name(), ".git") {
+					if strings.EqualFold(item.Name(), ".git") && (name != pluginGit || !item.IsDir()) {
 						return fmt.Errorf("Git checkout inside managed storage at %s", name)
+					}
+					if filepath.Dir(name) == pluginGit && strings.EqualFold(item.Name(), "worktrees") {
+						return fmt.Errorf("Git worktree registry inside managed storage at %s", name)
 					}
 					// Each transfer or attachment bucket contains a single copy.
 					// Extra files or directories can be user work; leave them in place.
