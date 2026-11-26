@@ -26,6 +26,9 @@ count for these manual requests. AppKit provides no hardware delivery receipt.
 The windowless replay sends synthetic AppKit phases directly to the
 [production recognizer](../../app/macos/Sources/Host/Overview/NativeOverviewVerticalSwipe.swift)
 with the real Overview selection model. Its feedback callback counts requests.
+The replay holds contact after selection, sends further travel in both
+directions, then lifts and sends momentum. The selected label and request
+count must stay fixed until a new swipe changes the selection.
 It prints the resulting rail and cumulative count at each step and exits with
 an error on a routing, selection or count mismatch. The interactive app uses
 the system performer and a private temporary profile. Window hit testing,

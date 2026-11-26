@@ -100,12 +100,14 @@ private final class ScrollSample: NSEvent {
     let y: CGFloat
     let direct, momentum: NSEvent.Phase
     let precise: Bool
+    let eventTime: TimeInterval
 
-    init(_ y: CGFloat, _ phase: NSEvent.Phase, _ momentum: NSEvent.Phase, precise: Bool) {
+    init(_ y: CGFloat, _ phase: NSEvent.Phase, _ momentum: NSEvent.Phase, precise: Bool, time: TimeInterval) {
         self.y = y
         self.direct = phase
         self.momentum = momentum
         self.precise = precise
+        self.eventTime = time
         super.init()
     }
     required init?(coder: NSCoder) { nil }
@@ -115,7 +117,7 @@ private final class ScrollSample: NSEvent {
     override var hasPreciseScrollingDeltas: Bool { precise }
     override var phase: NSEvent.Phase { direct }
     override var momentumPhase: NSEvent.Phase { momentum }
-    override var timestamp: TimeInterval { ProcessInfo.processInfo.systemUptime }
+    override var timestamp: TimeInterval { eventTime }
 }
 
 @main @MainActor private enum Demo {
@@ -137,10 +139,12 @@ private final class ScrollSample: NSEvent {
         }
         var router = NativeOverviewVerticalSwipe()
         var requests = 0
+        var eventTime: TimeInterval = 0
         func check(_ label: String, _ y: CGFloat, _ phase: NSEvent.Phase, momentum: NSEvent.Phase = [],
                    precise: Bool = true, available: Bool = true, claimed: Bool = true,
                    selected: String?, count: Int) throws {
-            let sample = ScrollSample(y, phase, momentum, precise: precise)
+            eventTime += 0.2
+            let sample = ScrollSample(y, phase, momentum, precise: precise, time: eventTime)
             let consumed = router.route(sample, canFilter: { available }, perform: model.stepRail(up:),
                                         requestFeedback: { requests += 1 })
             let rail = model.selectedRailID ?? "whole folder"
@@ -152,11 +156,13 @@ private final class ScrollSample: NSEvent {
         try check("Swipe down from the whole folder", -30, .began, selected: nil, count: 0)
         try check("Swipe up 10 pt", 10, .began, selected: nil, count: 0)
         try check("Reach 24 pt", 14, .changed, selected: design.id, count: 1)
-        try check("Reverse before lifting", -50, .changed, selected: design.id, count: 1)
+        try check("Keep swiping up", 240, .changed, selected: design.id, count: 1)
+        try check("Reverse before lifting", -240, .changed, selected: design.id, count: 1)
         try check("Lift", 0, .ended, selected: design.id, count: 1)
         try check("Momentum", 60, [], momentum: .began, selected: design.id, count: 1)
         try check("Momentum ends", 0, [], momentum: .ended, selected: design.id, count: 1)
-        try check("Wrap first to last", -30, .began, selected: "unread", count: 2)
+        try check("Wrap first to last", -240, .began, selected: "unread", count: 2)
+        try check("Lift after wrapping", 0, .ended, selected: "unread", count: 2)
         try check("Wrap last to first", 30, .began, selected: design.id, count: 3)
         try check("Mouse wheel", 1, [], precise: false, selected: review.id, count: 3)
         try check("Phase-less precise scroll", 60, [], claimed: false, selected: review.id, count: 3)
