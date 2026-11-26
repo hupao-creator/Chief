@@ -1,6 +1,22 @@
 # Agent Thread 运行态徽章
 
-窗口默认在「Harness 配色」中并排展示 Codex、Claude、Pi Agent、OpenCode。四张卡同步播放同一种点阵动效。运行时，亮起的微孔取对应 Harness 的原生主题色，暗孔与圆底使用中性色。微孔按 5.25 pt 间距排在 9 × 9 网格上，上下左右四个轴端的孔与圆边相切，其余外缘微孔由同一个圆形蒙版裁切。点阵从 emoji 背后连续铺到圆边。切到「空闲」可同时看到四枚原始徽章，切到「完成」可查看带勾号的终态。
+## 微孔范围
+
+打开窗口即可以原尺寸对照截图中的 Codex 卡片。四张卡均挂载正式运行态徽章，44 pt 圆底内的 21 pt 🎞️ 静止，Core Animation 在它背后扫亮 2 pt 微孔。左上是现状。其余三张在同一 5.25 pt 网格上把微孔延伸到卡面的留白处。
+
+| 候选 | 在卡面上观察的位置 |
+| --- | --- |
+| A · 右上斜掠 | 从徽章向左掠过模型旁的留白，沿右边缘向下消散。 |
+| B · 穿过行间 | 延伸到卡片上沿，沿右侧转入摘要行间。 |
+| C · 漫游全卡 | 横穿摘要之间的空隙，扫到左侧和底边。 |
+
+三档共用同一组弯曲轨迹、孔径、颜色和 2.8 秒周期。范围由沿轨迹向左、向下的覆盖距离控制。演示层位于正式卡片内容下方，按这张固定卡片的文字位置留白。勾选「静态对照」可在同一相位查看孔位。勾选「全部显示现状」会同时收回三张卡的外扩点阵，取消勾选即可原位比较。
+
+[原生窗口截图](range.png) · [动态对照录像](range.mp4)
+
+## 其他徽章对照
+
+在候选组菜单选择「Harness 配色」，可并排查看 Codex、Claude、Pi Agent、OpenCode。四张卡同步播放同一种点阵动效。运行时，亮起的微孔取对应 Harness 的原生主题色，暗孔与圆底使用中性色。微孔按 5.25 pt 间距排在 9 × 9 网格上，上下左右四个轴端的孔与圆边相切，其余外缘微孔由同一个圆形蒙版裁切。点阵从 emoji 背后连续铺到圆边。切到「空闲」可同时看到四枚原始徽章，切到「完成」可查看带勾号的终态。
 
 | Harness | 浅色外观 | 深色外观 |
 | --- | --- | --- |
@@ -36,16 +52,20 @@
 python3 demos/running-emoji-badge/build.py --open
 ```
 
-产物为 `.build/running-emoji-badge/ThreadBadgeDemo.app`，可在 Finder 中双击。构建需要 macOS 26 和项目的 Swift 工具链。使用 `--skip-build` 可复用当前工作树已构建的原生模块。使用 `--capture` 会通过 ScreenCaptureKit 录制 demo 自身窗口，把 `preview.mp4` 写入同一产物目录。
+产物为 `.build/running-emoji-badge/ThreadBadgeDemo.app`，可在 Finder 中双击。构建需要 macOS 26 和项目的 Swift 工具链。使用 `--skip-build` 可复用当前工作树已构建的原生模块。使用 `--capture-range` 可在产物目录生成微孔范围的 `range.png` 与 `range.mp4`。使用 `--capture` 会通过 ScreenCaptureKit 录制 demo 自身窗口，把 `preview.mp4` 写入同一产物目录。
 
 ## 比较条件
 
-- [原生卡片](../../app/macos/Sources/Shared/PluginUI/Cards/HarnessThreadCard.swift)负责标题、模型、用量、摘要和徽章定位。四张卡片共用一份内存 fixture，计时固定为 1 分 24 秒。
+- Harness 配色、点阵和材质三个候选组的[原生卡片](../../app/macos/Sources/Shared/PluginUI/Cards/HarnessThreadCard.swift)负责标题、模型、用量、摘要和徽章定位。四张卡片共用一份内存 fixture，计时固定为 1 分 24 秒。
 - [生产徽章](../../app/macos/Sources/Shared/PluginUI/Cards/ThreadCardBrand.swift)绘制直径 44 pt 的圆底和 21 pt 的 🧭，距顶边 12 pt、右边 17 pt。「微孔点阵」、空闲与完成态均使用卡片内置徽章。游弧叠加在原生徽章上，其余运行候选通过已有徽章插槽绘制等大 emoji 及圆形底板，动画只绘制在 emoji 背后的材质层。
 - 画布和卡片取 [Overview 调色板及 320 × 196 pt 单格](../../app/macos/Sources/Shared/PluginUI/Design/NativePalette.swift)，每张卡从其 Harness plugin 读取名称、logo 和自适应主题色，通过生产环境值传给徽章。卡面使用中性底色。
 - 构建使用仓库的 [NativeReplay](../../tools/verification/native_replay.py) 打包生产组件与资源。演示仅使用本地 fixture，独立于 Chief 进程和用户数据。
 
 ## 录像核对
+
+微孔范围在 Apple Silicon、macOS 27.2.1、Swift 6.3.2 上使用 `python3 demos/running-emoji-badge/build.py --skip-build --capture-range --open` 录制。窗口为 1408 × 1214 像素，持续 9.18 秒。生产模块来自 `efc2113d`，录制制品的可执行文件 SHA-256 为 `6b93df370bdfefae78125c1d9050cf9ae57634fd99894e90a129e6233155c4f4`。
+
+对运行段和恢复播放段每秒抽取八帧，以 RGB 单通道跨度超过 18/255 判定变化。标题旁的取样区仅 A、B、C 有变化，第一、二行摘要之间仅 B、C 有变化，左下底边仅 C 有变化。静态对照段三处取样区均静止。另在交互窗口实际点按两个复选框，四卡均回到「仅徽章内」，关闭复选框后恢复三档候选。取样与交互仅覆盖此固定卡面的 demo。
 
 Harness 配色录像在 Apple Silicon、macOS 26.5.1 上通过 `build.py --skip-build --capture` 取得，时长 15.80 秒，分辨率 1408 × 1214。深色运行、空闲、浅色运行之后，窗口展示 Claude 的四种节奏，最后四张卡均切到带勾号的完成态。录制版可执行文件 SHA-256 为 `a5ccfeb0e2df93c625583d52a0ae644b8fe0825a8a1daf81e39a07ac75aa4776`。
 

@@ -20,6 +20,7 @@ enum PreviewHarness: CaseIterable {
 }
 
 enum ComparisonGroup: String, CaseIterable {
+    case range = "微孔范围"
     case colors = "Harness 配色"
     case dots = "点阵候选"
     case materials = "材质对照"
@@ -27,12 +28,15 @@ enum ComparisonGroup: String, CaseIterable {
 
 @MainActor @Observable final class ComparisonState {
     var status = ThreadCardStatusKind.running
-    var group = ComparisonGroup.colors
+    var group = ComparisonGroup.range
+    var showBaseline = false
+    var still = false
     var harness = PreviewHarness.codex
     var pattern = BadgeStyle.matrix
 }
 
 struct Comparison: View {
+    @Environment(\.colorScheme) private var scheme
     @Bindable var state: ComparisonState
     private let palette = NativePalette.overview
     private let size = NativeGeometry.overviewCard
@@ -49,16 +53,19 @@ struct Comparison: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("运行态徽章").font(.system(size: 23, weight: .semibold))
-                    Text("Agent Thread  ·  320 × 196 pt  /  徽章 44 pt").font(.system(size: 12))
-                        .foregroundStyle(palette.muted.swiftUI)
+                    Text(state.group == .range ? "微孔外扩范围" : "运行态徽章").font(.system(size: 23, weight: .semibold))
+                    Text(state.group == .range ? "徽章固定 44 pt  ·  卡面 320 × 196 pt" : "Agent Thread  ·  320 × 196 pt  /  徽章 44 pt").font(.system(size: 12))
+                        .foregroundStyle(state.group == .range ? palette.ink.swiftUI.opacity(0.75) : palette.muted.swiftUI)
                 }
                 Spacer()
                 Picker("候选组", selection: $state.group) {
                     ForEach(ComparisonGroup.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.menu).labelsHidden().frame(width: 118)
-                if state.group == .colors {
+                if state.group == .range {
+                    Toggle("全部显示现状", isOn: $state.showBaseline).toggleStyle(.checkbox)
+                    Toggle("静态对照", isOn: $state.still).toggleStyle(.checkbox)
+                } else if state.group == .colors {
                     Picker("点阵动效", selection: $state.pattern) {
                         ForEach([BadgeStyle.matrix, .split, .duet, .steps], id: \.self) { Text($0.rawValue).tag($0) }
                     }.pickerStyle(.menu).labelsHidden().frame(width: 104)
@@ -67,15 +74,20 @@ struct Comparison: View {
                         ForEach(PreviewHarness.allCases, id: \.self) { Text($0.plugin.descriptor.displayName.string).tag($0) }
                     }.pickerStyle(.menu).labelsHidden().frame(width: 104)
                 }
-                Picker("候选状态", selection: $state.status) {
-                    Text("空闲").tag(ThreadCardStatusKind.idle)
-                    Text("运行中").tag(ThreadCardStatusKind.running)
-                    Text("完成").tag(ThreadCardStatusKind.completed)
+                if state.group != .range {
+                    Picker("候选状态", selection: $state.status) {
+                        Text("空闲").tag(ThreadCardStatusKind.idle)
+                        Text("运行中").tag(ThreadCardStatusKind.running)
+                        Text("完成").tag(ThreadCardStatusKind.completed)
+                    }
+                    .pickerStyle(.segmented).labelsHidden().frame(width: 144)
                 }
-                .pickerStyle(.segmented).labelsHidden().frame(width: 144)
             }
             Grid(alignment: .leading, horizontalSpacing: NativeGeometry.overviewCardGap, verticalSpacing: 18) {
-                if state.group == .colors {
+                if state.group == .range {
+                    GridRow { range(.badge); range(.header) }
+                    GridRow { range(.passages); range(.card) }
+                } else if state.group == .colors {
                     GridRow { sample(state.pattern, .codex); sample(state.pattern, .claude) }
                     GridRow { sample(state.pattern, .pi); sample(state.pattern, .openCode) }
                 } else {
@@ -92,9 +104,22 @@ struct Comparison: View {
         }
         .padding(24)
         .foregroundStyle(palette.ink.swiftUI)
-        .background(palette.canvas.swiftUI)
+        .background {
+            if state.group == .range {
+                LinearGradient(colors: [NativePalette.color(0xa5aab4).swiftUI, NativePalette.color(0xd3d8e2).swiftUI],
+                    startPoint: .topLeading, endPoint: .bottomTrailing)
+            } else {
+                palette.canvas.swiftUI
+            }
+        }
+        .environment(\.colorScheme, state.group == .range ? .light : scheme)
         .environment(\.scenePhase, .active)
         .environment(\.locale, Locale(identifier: "zh-Hans"))
+    }
+
+    private func range(_ scope: PerforationReach) -> some View {
+        PerforationRangeSample(scope: scope, showBaseline: state.showBaseline)
+            .environment(\.threadCardCloudAnimationsEnabled, !state.still)
     }
 
     private func sample(_ style: BadgeStyle, _ harness: PreviewHarness) -> some View {
