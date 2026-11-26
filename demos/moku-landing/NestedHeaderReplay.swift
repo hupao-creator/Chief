@@ -661,8 +661,11 @@ private final class WheelSample: NSEvent {
         let paragraph = "The current checklist includes the release notes, a review of the changes, and the remaining checks."
         let measuring = CommandLine.arguments.contains("--conversation-performance")
         let last = measuring ? 63 : 31
+        let linkedPage = CommandLine.arguments.contains("--linked-page")
         let rows = (0..<last).map { i in
-            row(i, "Message \(i)\n" + Array(repeating: paragraph, count: 1 + (i % 5)).joined(separator: "\n"))
+            let link = linkedPage && !i.isMultiple(of: 2)
+                ? "\n[执行记录](chief://execution?threadId=task-0&executionId=run-\(i))" : ""
+            return row(i, "Message \(i)\n" + Array(repeating: paragraph, count: 1 + (i % 5)).joined(separator: "\n") + link)
         } + [row(last, Array(repeating: paragraph, count: 15).joined(separator: "\n") + "\n" + ending)]
         func latestPage(_ messages: [JSONValue]) -> JSONValue {
             var fields: [JSONText: JSONValue] = ["messages": .array(messages)]
@@ -718,7 +721,7 @@ private final class WheelSample: NSEvent {
             guard !scene.conversationOpen, !scene.inputOpen else { throw ReplayError("Outside click did not dismiss Chief Bar") }
         }
         if measuring {
-            let configuration: [String: Any] = ["messages": rows.count, "pageBytes": try page.encodedData().count,
+            let configuration: [String: Any] = ["messages": rows.count, "linkedPage": linkedPage, "pageBytes": try page.encodedData().count,
                 "windowWidth": window.frame.width, "windowHeight": window.frame.height, "appearance": "dark",
                 "displayScale": window.backingScaleFactor, "displayMaximumFPS": window.screen?.maximumFramesPerSecond ?? 0,
                 "reduceMotion": NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
@@ -742,6 +745,13 @@ private final class WheelSample: NSEvent {
             try await open()
             try await Task.sleep(for: .milliseconds(550))
             let timeline = try await captureViewport("first")
+            if linkedPage, let document = timeline.documentView {
+                @MainActor func mountedLinks(in view: NSView) -> Int {
+                    if view is MarkdownExecutionHost { return 1 }
+                    return view.subviews.reduce(0) { $0 + mountedLinks(in: $1) }
+                }
+                samples.append(["mountedLinksAtOpen": mountedLinks(in: document)])
+            }
             let clip = timeline.contentView
             let point = clip.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), to: nil)
             let initial = clip.bounds.minY
@@ -792,6 +802,18 @@ private final class WheelSample: NSEvent {
             }
             try await wait("Top edge did not settle at \(clip.bounds)", timeout: .seconds(3)) { abs(clip.bounds.minY) < 1 }
             let screenClip = window.convertToScreen(clip.convert(clip.bounds, to: nil))
+            if linkedPage {
+                // Inspect the painted button before traversing AX, which can itself request a control.
+                try await wait("The first execution capsule did not appear after scrolling to its message") {
+                    guard let text = self.descendant(MarkdownTextView.self, in: content, matching: {
+                        $0.string.hasPrefix("Message 1\n")
+                    }) else { return false }
+                    return text.executionSurfaces.values.contains { button in
+                        button.window === window && clip.bounds.contains(button.convert(button.bounds, to: clip))
+                    }
+                }
+                samples.append(["firstExecutionLinkVisible": true])
+            }
             let oldestVisible = conversationElements(in: window).contains { row in
                 row.id == "moku-conversation-message" && (row.value + row.label).contains("Message 0\n") &&
                     screenClip.contains(CGPoint(x: row.frame.midX, y: row.frame.midY))

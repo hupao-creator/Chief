@@ -276,6 +276,14 @@ bounds the time to input readiness. The separate profile samples the first
 visit at 1 ms intervals. The [secondary-click comparison](evidence/conversation-opening/secondary-click.md)
 includes the workload, per-visit results and retained samples.
 
+Add `--linked-page` to either opening scenario to place a labeled execution link
+in each Chief reply preceding the oversized final reply. The 64-message timing
+page has 31 inline capsules. The interaction replay records the number of
+mounted controls at entry and checks that scrolling to the first linked reply
+brings its native button fully into view before inspecting accessibility. See the
+[linked-page comparison](evidence/conversation-opening/linked-page.md) for the
+recorded pauses, per-visit timings and replay receipts.
+
 The header replay mounts the 46.2-point production filters at the top of a
 real window in Aqua and Dark Aqua. The initial selection is the Chief folder
 with an unread count of 8. Beside it is the Inbox tag **🔵 Blue** with an

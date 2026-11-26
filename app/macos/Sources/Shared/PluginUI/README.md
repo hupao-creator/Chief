@@ -1136,6 +1136,10 @@ successor is running. This eligibility is separate from output following so fina
 content layout and result-anchor positioning keep their existing behavior.
 Internal execution URLs are admitted by the shared Markdown parser but dispatched
 only through an explicitly supplied typed execution callback. Chief Talk uses the same [TextKit execution capsule](Reading/NativeMarkdownExecutionLink.swift) for labeled and bare links in both the conversation and compact bar. TextKit owns inline layout, selection and pointer tracking. The capsule exposes its Harness logo, title and arrow as a single accessible button.
+In Chief conversation history, TextKit measures the inline seat with the full
+page. Each message creates its native glass controls when it comes within one
+viewport of the reader or accessibility requests its children. Admitted controls
+remain with the mounted message, including during selection and scrolling.
 
 Timeline anchors retain document coordinates through nested rows. If a requested
 position is initially clamped because Markdown has not finished layout, content

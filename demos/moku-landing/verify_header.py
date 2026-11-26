@@ -42,6 +42,7 @@ scenario = parser.add_mutually_exclusive_group()
 scenario.add_argument("--bar-swipe", action="store_true", help="run Chief Bar and scroll interactions entirely at actual size")
 scenario.add_argument("--conversation-opening", action="store_true", help="record Chief Bar opening and verify the native reading position")
 scenario.add_argument("--conversation-performance", action="store_true", help="measure five Chief Bar openings against a full cached page using Release modules")
+parser.add_argument("--linked-page", action="store_true", help="include inline execution capsules in the conversation fixture")
 parser.add_argument("--profile-opening", action="store_true", help="sample the main thread during the first measured opening")
 scenario.add_argument("--talk-link", action="store_true", help="click execution links in Talk notifications and conversation history across and within tag spaces")
 scenario.add_argument("--tag-states", action="store_true", help="check untagged running work and select every assigned tag")
@@ -53,6 +54,8 @@ scenario.add_argument("--completed-card", action="store_true", help="capture the
 parser.add_argument("--header-glass", action="store_true", help="capture and measure the production directory row over gray")
 parser.add_argument("--rail-hover", action="store_true", help="capture the mounted semantic rail during hover")
 args = parser.parse_args()
+if args.linked_page and not (args.conversation_performance or args.conversation_opening):
+    parser.error("--linked-page requires a conversation opening scenario")
 if args.profile_opening and not args.conversation_performance:
     parser.error("--profile-opening requires --conversation-performance")
 if (args.header_glass or args.rail_hover) and (args.unread_filter or args.tag_read or args.tag_states or args.tag_space_keys or args.status_only or args.completed_card or args.bar_swipe or args.talk_link or args.conversation_opening or args.conversation_performance):
@@ -118,6 +121,8 @@ with lease() if args.conversation_performance else nullcontext(), native_lease()
             arguments.append("--unread-filter")
         if args.conversation_performance:
             arguments.append("--conversation-performance")
+        if args.linked_page:
+            arguments.append("--linked-page")
         if args.profile_opening:
             arguments.append("--profile-opening")
         if args.status_only:
@@ -129,7 +134,10 @@ with lease() if args.conversation_performance else nullcontext(), native_lease()
         with keyboard_client(replay, args.output) if args.keyboard else nullcontext():
             # The combined visit also runs card fitting, status rail and Landing scenarios.
             timeout = 75 if args.status_only or args.completed_card else 60
-            status = replay.run(arguments, timeout=150 if args.bar_swipe or args.talk_link else timeout)
+            # Screen capture is followed by Vision analysis of each settled window.
+            if args.bar_swipe or args.talk_link or args.conversation_performance or args.conversation_opening:
+                timeout = 150
+            status = replay.run(arguments, timeout=timeout)
     finally:
         try:
             replay.export(args.output)

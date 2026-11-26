@@ -300,7 +300,13 @@ The panel fits the current page and its composer. Its maximum height is the smal
 
 An active window prepares the plain Overview editor at its destination width while the ordinary Bar is idle. The folded editor stays disabled, unfocused and hidden from accessibility. Drafts with attachments or directory chips mount on demand.
 
-Each visit subscribes to the newest page when the secondary click opens the Bar. The timeline lays out every message on the loaded page at its reading width. The measured document height fits the panel up to its cap, and the inset below the final bubble anchors the end of even a reply taller than the window. The reader stays mounted through subsequent size changes until the visit ends.
+Each visit subscribes to the newest page when the secondary click opens the Bar.
+While the folded shell begins to widen, a ready page can report its minimum
+height from the bubble insets. After 24 points of travel, or immediately at the
+destination width, the timeline lays out every message at its reading width.
+Execution links reserve their full inline dimensions in that pass. Their native
+glass buttons mount as the row approaches the viewport or accessibility visits
+its text. The measured document height fits the panel up to its cap, and the inset below the final bubble anchors the end of even a reply taller than the window. The reader stays mounted through subsequent size changes until the visit ends.
 
 The resident eyes stay on the bottom row as they move between the centered capsule and the editor seat. On dismissal to the centered capsule, message and editor ink retire together before the eyes cross the input seat. Expression changes and blinks retain their own clock. The [opening replay and benchmark](../../../../../demos/moku-landing/README.md#chief-bar-opening) measure the reading position, visible response, time to the latest line and pauses during expansion.
 

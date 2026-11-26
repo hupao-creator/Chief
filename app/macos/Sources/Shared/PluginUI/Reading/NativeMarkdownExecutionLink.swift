@@ -9,6 +9,7 @@ package struct NativeExecutionCapsuleText: View {
     private let harnesses: [JSONText: AnyHarnessPlugin]
     private let compact: Bool
     @Environment(\.openURL) private var openURL
+    @State private var reachedViewport = false
 
     package init(runs: [(text: String, url: URL?)], harnesses: [JSONText: AnyHarnessPlugin], compact: Bool) {
         spans = runs.map { MarkdownSpan(text: $0.text, link: $0.url?.absoluteString) }
@@ -19,8 +20,16 @@ package struct NativeExecutionCapsuleText: View {
     package var body: some View {
         MarkdownSelectableText(spans: spans, fontSize: compact ? 13 : 15, weight: compact ? 600 : 400,
             strongInk: true, lineHeight: compact ? 19 : 20, alignment: compact ? .center : .left,
-            executionLinkHarnesses: harnesses, openLink: { openURL($0) })
+            executionLinkHarnesses: harnesses, showsExecutionControls: compact || reachedViewport, openLink: { openURL($0) })
             .fixedSize(horizontal: false, vertical: true)
+            .onGeometryChange(for: Bool.self) { geometry in
+                guard !compact, let viewport = geometry.bounds(of: .scrollView) else { return false }
+                // Prepare one viewport ahead. TextKit already reserves the exact inline seats.
+                return CGRect(origin: .zero, size: geometry.size)
+                    .intersects(viewport.insetBy(dx: 0, dy: -viewport.height))
+            } action: { near in
+                if near { reachedViewport = true }
+            }
     }
 }
 
@@ -152,7 +161,7 @@ final class MarkdownExecutionHost: NSHostingView<AnyView> {
 
 extension MarkdownTextView {
     func updateExecutionSurfaces() {
-        guard let storage = textStorage, let layout = layoutManager, let container = textContainer else { return }
+        guard showsExecutionControls, let storage = textStorage, let layout = layoutManager, let container = textContainer else { return }
         var retained = Set<Int>()
         storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
             guard let attachment = value as? MarkdownExecutionAttachment else { return }
