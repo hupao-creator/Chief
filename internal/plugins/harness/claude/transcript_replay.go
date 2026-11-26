@@ -12,7 +12,7 @@ import (
 // NewTranscriptReplay drives the same stream-json parser and turn settlement
 // used by a Handle, with a synthetic admitted execution.
 func NewTranscriptReplay() func(map[string]any) (json.RawMessage, error) {
-	state, parser := NewState(), newParser()
+	state, parser := NewState(), newParser("")
 	input := func(text string) model.AgentInput {
 		return model.AgentInput{Parts: []model.AgentInputPart{{Kind: "text", Text: text}}}
 	}

@@ -364,10 +364,7 @@ func buildArguments(o TransportOptions, directories map[string]bool, env, overla
 			return nil, errors.New("Claude cannot encode requested thinking mode")
 		}
 	}
-	mode := s.PermissionMode
-	if mode == "" {
-		mode = "auto"
-	}
+	mode := s.requestedPermissionMode()
 	args = append(args, "--permission-mode", mode)
 	if mode == "bypassPermissions" {
 		args = append(args, "--allow-dangerously-skip-permissions")
@@ -1051,7 +1048,7 @@ func (t *Transport) ApplySettings(ctx context.Context, next Settings) error {
 			requests = append(requests, map[string]any{"subtype": "set_model", "model": nullable(next.Model)})
 		}
 		if previous.PermissionMode != next.PermissionMode {
-			requests = append(requests, map[string]any{"subtype": "set_permission_mode", "mode": nonempty(next.PermissionMode, "auto")})
+			requests = append(requests, map[string]any{"subtype": "set_permission_mode", "mode": next.requestedPermissionMode()})
 		}
 		if previous.Effort != next.Effort {
 			requests = append(requests, map[string]any{"subtype": "apply_flag_settings", "settings": map[string]any{"effortLevel": nullable(next.Effort)}})
