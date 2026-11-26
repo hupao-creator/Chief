@@ -65,13 +65,41 @@ import SwiftUI
     try controls.activate(.semantic, id: work.id)
     try await until("Work selected") { model.selectedFilter?.id == work.id }
     if let activityMotionReduced {
+        try await until("Running card settles in Work") {
+            model.canvasState.mountedCardIDs.contains("active") && !model.canvasState.isLayingOut
+        }
+        func cardSurfaces(_ name: String) -> [NSView] {
+            (panel.contentView?.descendants(NSView.self) ?? []).filter {
+                String(describing: type(of: $0)) == name && $0.identifier?.rawValue != "OverviewTagActivityPerforations"
+            }
+        }
+        try await until("One running card mounts its badge and reflected edge") {
+            cardSurfaces("RunningEdgeSurface").count == 1 && cardSurfaces("RunningThreadBadgeSurface").count == 1
+        }
+        var frame = CGRect.zero
+        var settledSince = ContinuousClock.now
+        try await until("Running badge reaches its settled card seat") {
+            guard let badge = cardSurfaces("RunningThreadBadgeSurface").first else { return false }
+            let current = badge.convert(badge.bounds, to: nil)
+            if frame != current || model.canvasState.isLayingOut {
+                frame = current
+                settledSince = .now
+            }
+            return !frame.isEmpty && ContinuousClock.now - settledSince >= .milliseconds(400)
+        }
+        try save(["badge": NSStringFromRect(frame)], "running-card-geometry.json")
+        try check(frame.size == CGSize(width: 44, height: 44), "Running badge left its 44pt seat")
+        // Include the upper lip, away from the badge, title and card corners.
+        let lip = CGRect(x: frame.midX - 14, y: frame.maxY + 2, width: 28, height: 11)
+        _ = try await captureActivity(in: panel, regions: ["badge": frame, "lip": lip],
+                                      reduced: activityMotionReduced, card: true)
         // Keep the active conversation out of the canvas. Any running decoration
         // observed on this page must belong to a filter, not a task card.
         guard let reading = parent.children.first(where: { $0.tag == "Reading" }) else { throw ReplayFailure("Missing Reading tag") }
         try controls.activate(.semantic, id: reading.id)
         try await until("Reading tag settled") {
             model.selectedRailID == reading.id && !model.canvasState.isLayingOut
-                && !model.canvasState.mountedCardIDs.contains("active")
+                && !model.canvasState.mountedCardIDs.contains("active") && cardSurfaces("RunningEdgeSurface").isEmpty
         }
         try await inspectTagActivity(in: panel, directoryID: parent.id, childID: work.id, reduced: activityMotionReduced,
                                      currentButtons: { measuredButtons }) {
@@ -174,7 +202,7 @@ import SwiftUI
         samples.append(["id": id, "button": NSStringFromRect(button), "perforations": NSStringFromRect(bounds),
                         "shapeLayers": holes.count, "animatedLayers": sweeps.count])
     }
-    let pixels = try await captureTagActivity(in: panel, regions: regions, reduced: reduced)
+    let pixels = try await captureActivity(in: panel, regions: regions, reduced: reduced)
     try finishExecution()
     try await until("Completing the final running conversation removes both filter decorations") {
         surfaces().isEmpty

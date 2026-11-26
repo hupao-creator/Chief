@@ -15,7 +15,7 @@ private final class RecordingObserver: NSObject, SCRecordingOutputDelegate, Send
     // Keep the sampled window visible so the production badge can admit motion.
     window.level = .floating
     window.orderFrontRegardless()
-    window.appearance = NSAppearance(named: .darkAqua)
+    window.appearance = NSAppearance(named: state.group == .range ? .aqua : .darkAqua)
     try await Task.sleep(for: .milliseconds(800))
     let available = try await SCShareableContent.currentProcess
     guard let target = available.windows.first(where: { $0.windowID == CGWindowID(window.windowNumber) })
@@ -38,18 +38,47 @@ private final class RecordingObserver: NSObject, SCRecordingOutputDelegate, Send
     let output = SCRecordingOutput(configuration: settings, delegate: observer)
     try stream.addRecordingOutput(output)
     try await stream.startCapture()
-    try await Task.sleep(for: .seconds(4))
-    state.status = .idle
-    try await Task.sleep(for: .seconds(2))
-    window.appearance = NSAppearance(named: .aqua)
-    state.status = .running
-    try await Task.sleep(for: .seconds(4))
-    state.harness = .claude
-    state.group = .dots
-    try await Task.sleep(for: .seconds(3))
-    state.group = .colors
-    state.status = .completed
-    try await Task.sleep(for: .seconds(2))
+    if state.group == .sizes {
+        let directory = URL(fileURLWithPath: "sizes", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for sample in CardSizeSample.all {
+            state.sizeID = sample.id
+            state.still = false
+            try await Task.sleep(for: .seconds(2.8))
+            state.still = true
+            try await Task.sleep(for: .milliseconds(350))
+            let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+            guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+            else { throw CocoaError(.fileWriteUnknown) }
+            try data.write(to: directory.appendingPathComponent(sample.id + ".png"))
+        }
+    } else if state.group == .range {
+        try await Task.sleep(for: .seconds(4))
+        state.still = true
+        try await Task.sleep(for: .seconds(1))
+        let still = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        guard let png = NSBitmapImageRep(cgImage: still).representation(using: .png, properties: [:])
+        else { throw CocoaError(.fileWriteUnknown) }
+        try png.write(to: URL(fileURLWithPath: "range.png"))
+        state.showBaseline = true
+        try await Task.sleep(for: .seconds(1))
+        state.showBaseline = false
+        state.still = false
+        try await Task.sleep(for: .seconds(3))
+    } else {
+        try await Task.sleep(for: .seconds(4))
+        state.status = .idle
+        try await Task.sleep(for: .seconds(2))
+        window.appearance = NSAppearance(named: .aqua)
+        state.status = .running
+        try await Task.sleep(for: .seconds(4))
+        state.harness = .claude
+        state.group = .dots
+        try await Task.sleep(for: .seconds(3))
+        state.group = .colors
+        state.status = .completed
+        try await Task.sleep(for: .seconds(2))
+    }
     try await stream.stopCapture()
     for try await _ in finished {}
 }

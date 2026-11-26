@@ -1042,10 +1042,13 @@ Window visibility, detachment, cancellation and explicit pause are separate life
 The running Agent badge uses a 9 × 9 grid with 2pt perforations on a 5.25pt
 pitch. Four axial holes touch the 44pt circular rim. Core Animation varies the
 opacity of the harness accent over neutral holes grouped by diagonal. The sweep
-travels for 2.25s in a 2.8s cycle. The emoji, unread mark and card surface stay
-still. The view removes its animations when the workspace pauses decorations,
+travels for 2.25s in a 2.8s cycle. The [edge reflection](Cards/RunningThreadEdge.swift)
+continues the same crest across the upper-right rim and the 3–12pt inset lip.
+The card shell resolves the mounted badge center to align both grids. The
+reflection fades over an 88pt radius. A badge separated from the outer corner
+by extension cells lights the top edge above it. The emoji and unread mark stay still. The view removes its animations when the workspace pauses decorations,
 the card leaves the viewport, the window hides or is occluded, or the view
-detaches. Reduce Motion uses a fixed lit diagonal. Visible badges share a phase
+detaches. Reduce Motion uses a fixed lit diagonal. Visible badges and edges share a phase
 and require no per-frame SwiftUI updates. See the [mounted badge comparison](../../../../../demos/running-emoji-badge/README.md).
 
 Overview reuses the perforation renderer behind active folder icons and

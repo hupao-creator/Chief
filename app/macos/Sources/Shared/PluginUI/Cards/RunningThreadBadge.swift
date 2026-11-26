@@ -40,14 +40,58 @@ struct RunningThreadBadge: NSViewRepresentable {
     }
 }
 
-final class RunningThreadBadgeSurface: NSView {
+enum RunningSweep {
+    @MainActor static let pitch = (ThreadCardProviderStatus.diameter / 2 - 1) / 4
+    static let cycle = 2.8
+    static let still = 0.8
+    static let times = (0...84).map { Double($0) / 30 }
+    static func phase(_ time: Double) -> Double { min(1, time / 2.25) }
+    static func diagonal(_ time: Double) -> Double { phase(time) * 20 - 10 }
+
+    static func animate(_ layer: CALayer, _ property: String, values: [Any], key: String) {
+        let animation = CAKeyframeAnimation(keyPath: property)
+        animation.values = values
+        animation.duration = cycle
+        animation.repeatCount = .infinity
+        let phase = Date().timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: cycle)
+        animation.beginTime = layer.convertTime(CACurrentMediaTime(), from: nil) - phase
+        layer.add(animation, forKey: key)
+    }
+}
+
+class RunningSweepSurface: NSView {
+    var animates = false
+    isolated deinit { NotificationCenter.default.removeObserver(self) }
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func isAccessibilityElement() -> Bool { false }
+
+    override func viewDidHide() { super.viewDidHide(); synchronize() }
+    override func viewDidUnhide() { super.viewDidUnhide(); synchronize() }
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        NotificationCenter.default.removeObserver(self)
+        if let window {
+            NotificationCenter.default.addObserver(self, selector: #selector(visibilityChanged(_:)),
+                name: NSWindow.didChangeOcclusionStateNotification, object: window)
+        }
+        synchronize()
+    }
+    @objc private func visibilityChanged(_ notification: Notification) { synchronize() }
+
+    func synchronize() {
+        setSweeping(animates && !bounds.isEmpty && !isHiddenOrHasHiddenAncestor && window?.occlusionState.contains(.visible) == true)
+    }
+    func setSweeping(_ active: Bool) {}
+}
+
+final class RunningThreadBadgeSurface: RunningSweepSurface {
     private static let diameter = ThreadCardProviderStatus.diameter
-    private static let cycle = 2.8
     private static let key = "badge.sweep"
     // Holes on a diagonal have identical brightness. Cache their geometry and one cycle
     // of opacity samples so Overview panning never requires a SwiftUI or CPU frame clock.
     private static let bands: [(path: CGPath, samples: [Double], still: Float)] = {
-        let radius = diameter / 2, pitch = (radius - 1) / 4
+        let radius = diameter / 2, pitch = RunningSweep.pitch
         return (-8...8).compactMap { diagonal in
             let path = CGMutablePath()
             for y in -4...4 {
@@ -58,18 +102,17 @@ final class RunningThreadBadgeSurface: NSView {
             }
             guard !path.isEmpty else { return nil }
             func intensity(_ seconds: Double) -> Double {
-                let sweep = min(1, seconds / 2.25) * 20 - 10
+                let sweep = RunningSweep.diagonal(seconds)
                 let distance = (Double(diagonal) - sweep) / 1.25
                 return exp(-distance * distance)
             }
-            return (path, (0...84).map { intensity(Double($0) / 30) }, Float(intensity(0.8)))
+            return (path, RunningSweep.times.map(intensity), Float(intensity(RunningSweep.still)))
         }
     }()
 
     private let disk = CALayer()
     private let unlit = CAShapeLayer()
     private let highlights = RunningThreadBadgeSurface.bands.map { _ in CAShapeLayer() }
-    private var animates = false
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -92,11 +135,6 @@ final class RunningThreadBadgeSurface: NSView {
         unlit.path = holes
     }
     required init?(coder: NSCoder) { nil }
-    isolated deinit { NotificationCenter.default.removeObserver(self) }
-    override var isFlipped: Bool { true }
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-    override func isAccessibilityElement() -> Bool { false }
-
     func update(face: CGColor, unlit: CGColor, lit: CGColor, animates: Bool) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -124,32 +162,11 @@ final class RunningThreadBadgeSurface: NSView {
         unlit.contentsScale = scale
         for highlight in highlights { highlight.contentsScale = scale }
     }
-    override func viewDidHide() { super.viewDidHide(); synchronize() }
-    override func viewDidUnhide() { super.viewDidUnhide(); synchronize() }
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        NotificationCenter.default.removeObserver(self)
-        if let window {
-            NotificationCenter.default.addObserver(self, selector: #selector(visibilityChanged(_:)),
-                name: NSWindow.didChangeOcclusionStateNotification, object: window)
-        }
-        synchronize()
-    }
-    @objc private func visibilityChanged(_ notification: Notification) { synchronize() }
-
-    private func synchronize() {
-        let active = animates && !bounds.isEmpty && !isHiddenOrHasHiddenAncestor && window?.occlusionState.contains(.visible) == true
+    override func setSweeping(_ active: Bool) {
         guard active != (highlights.first?.animation(forKey: Self.key) != nil) else { return }
-        let now = CACurrentMediaTime()
-        let phase = Date().timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: Self.cycle)
         for (band, highlight) in zip(Self.bands, highlights) {
             if active {
-                let sweep = CAKeyframeAnimation(keyPath: "opacity")
-                sweep.values = band.samples
-                sweep.duration = Self.cycle
-                sweep.repeatCount = .infinity
-                sweep.beginTime = highlight.convertTime(now, from: nil) - phase
-                highlight.add(sweep, forKey: Self.key)
+                RunningSweep.animate(highlight, "opacity", values: band.samples, key: Self.key)
             } else {
                 highlight.removeAnimation(forKey: Self.key)
             }

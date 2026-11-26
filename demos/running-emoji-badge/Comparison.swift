@@ -20,6 +20,8 @@ enum PreviewHarness: CaseIterable {
 }
 
 enum ComparisonGroup: String, CaseIterable {
+    case range = "微孔范围"
+    case sizes = "卡片尺寸"
     case colors = "Harness 配色"
     case dots = "点阵候选"
     case materials = "材质对照"
@@ -27,12 +29,17 @@ enum ComparisonGroup: String, CaseIterable {
 
 @MainActor @Observable final class ComparisonState {
     var status = ThreadCardStatusKind.running
-    var group = ComparisonGroup.colors
+    var group = ComparisonGroup.range
+    var sizeID = "2×1"
+    var actualSize = false
+    var showBaseline = false
+    var still = false
     var harness = PreviewHarness.codex
     var pattern = BadgeStyle.matrix
 }
 
 struct Comparison: View {
+    @Environment(\.colorScheme) private var scheme
     @Bindable var state: ComparisonState
     private let palette = NativePalette.overview
     private let size = NativeGeometry.overviewCard
@@ -49,16 +56,30 @@ struct Comparison: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("运行态徽章").font(.system(size: 23, weight: .semibold))
-                    Text("Agent Thread  ·  320 × 196 pt  /  徽章 44 pt").font(.system(size: 12))
-                        .foregroundStyle(palette.muted.swiftUI)
+                    Text(state.group == .sizes ? "B · 卡片尺寸" : state.group == .range ? "边缘反光" : "运行态徽章").font(.system(size: 23, weight: .semibold))
+                    Text(state.group == .sizes ? "88 pt 边光  ·  44 pt 徽章" : state.group == .range ? "44 pt 徽章  ·  2 pt 微孔" : "Agent Thread  ·  320 × 196 pt  /  徽章 44 pt").font(.system(size: 12))
+                        .foregroundStyle(state.group == .range ? palette.ink.swiftUI.opacity(0.75) : palette.muted.swiftUI)
                 }
                 Spacer()
                 Picker("候选组", selection: $state.group) {
                     ForEach(ComparisonGroup.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.menu).labelsHidden().frame(width: 118)
-                if state.group == .colors {
+                if state.group == .range {
+                    Menu("动效参考") {
+                        Link("Terkel · 窗口边光", destination: URL(string: "https://x.com/terkelg/status/2057155764402171933")!)
+                        Link("Dot · 雾化拖尾", destination: URL(string: "https://x.com/julianfkelly/status/1987678145193877890")!)
+                        Link("Linear · 旋转层次", destination: URL(string: "https://x.com/emilkowalski_/status/1937134338816053290")!)
+                    }.fixedSize()
+                    Toggle("仅显示徽章", isOn: $state.showBaseline).toggleStyle(.checkbox)
+                    Toggle("静态对照", isOn: $state.still).toggleStyle(.checkbox)
+                } else if state.group == .sizes {
+                    Picker("卡片尺寸", selection: $state.sizeID) {
+                        ForEach(CardSizeSample.all) { sample in
+                            Text(sample.id + (sample.inOverview ? "" : " · 限列")).tag(sample.id)
+                        }
+                    }.labelsHidden().frame(width: 106)
+                } else if state.group == .colors {
                     Picker("点阵动效", selection: $state.pattern) {
                         ForEach([BadgeStyle.matrix, .split, .duet, .steps], id: \.self) { Text($0.rawValue).tag($0) }
                     }.pickerStyle(.menu).labelsHidden().frame(width: 104)
@@ -67,34 +88,68 @@ struct Comparison: View {
                         ForEach(PreviewHarness.allCases, id: \.self) { Text($0.plugin.descriptor.displayName.string).tag($0) }
                     }.pickerStyle(.menu).labelsHidden().frame(width: 104)
                 }
-                Picker("候选状态", selection: $state.status) {
-                    Text("空闲").tag(ThreadCardStatusKind.idle)
-                    Text("运行中").tag(ThreadCardStatusKind.running)
-                    Text("完成").tag(ThreadCardStatusKind.completed)
+                if state.group != .range {
+                    Picker("候选状态", selection: $state.status) {
+                        Text("空闲").tag(ThreadCardStatusKind.idle)
+                        Text("运行中").tag(ThreadCardStatusKind.running)
+                        Text("完成").tag(ThreadCardStatusKind.completed)
+                    }
+                    .pickerStyle(.segmented).labelsHidden().frame(width: 144)
                 }
-                .pickerStyle(.segmented).labelsHidden().frame(width: 144)
             }
-            Grid(alignment: .leading, horizontalSpacing: NativeGeometry.overviewCardGap, verticalSpacing: 18) {
-                if state.group == .colors {
-                    GridRow { sample(state.pattern, .codex); sample(state.pattern, .claude) }
-                    GridRow { sample(state.pattern, .pi); sample(state.pattern, .openCode) }
-                } else {
-                    GridRow {
-                        sample(state.group == .dots ? .matrix : .orbit, state.harness)
-                        sample(state.group == .dots ? .split : .titanium, state.harness)
-                    }
-                    GridRow {
-                        sample(state.group == .dots ? .duet : .latitude, state.harness)
-                        sample(state.group == .dots ? .steps : .matrix, state.harness)
-                    }
-                }
+            if state.group == .sizes, let sample = CardSizeSample.all.first(where: { $0.id == state.sizeID }) {
+                CardSizePreview(sample: sample, actualSize: state.actualSize, status: state.status, still: state.still)
+                    .frame(width: 680, height: 425)
+                HStack {
+                    Text("\(Int(sample.points.width)) × \(Int(sample.points.height)) pt · " +
+                         (sample.inOverview ? "Overview" : "限列排版")).monospacedDigit()
+                    Spacer()
+                    Toggle("原寸", isOn: $state.actualSize)
+                    Toggle("静态对照", isOn: $state.still)
+                }.font(.system(size: 12)).toggleStyle(.checkbox)
+            } else {
+                comparisonGrid
             }
         }
         .padding(24)
         .foregroundStyle(palette.ink.swiftUI)
-        .background(palette.canvas.swiftUI)
+        .background {
+            if state.group == .range {
+                LinearGradient(colors: [NativePalette.color(0xa5aab4).swiftUI, NativePalette.color(0xd3d8e2).swiftUI],
+                    startPoint: .topLeading, endPoint: .bottomTrailing)
+            } else {
+                palette.canvas.swiftUI
+            }
+        }
+        .environment(\.colorScheme, state.group == .sizes ? .dark : state.group == .range ? .light : scheme)
         .environment(\.scenePhase, .active)
         .environment(\.locale, Locale(identifier: "zh-Hans"))
+    }
+
+    private var comparisonGrid: some View {
+        Grid(alignment: .leading, horizontalSpacing: NativeGeometry.overviewCardGap, verticalSpacing: 18) {
+            if state.group == .range {
+                GridRow { range(.badge); range(.near) }
+                GridRow { range(.corner); range(.edge) }
+            } else if state.group == .colors {
+                GridRow { sample(state.pattern, .codex); sample(state.pattern, .claude) }
+                GridRow { sample(state.pattern, .pi); sample(state.pattern, .openCode) }
+            } else {
+                GridRow {
+                    sample(state.group == .dots ? .matrix : .orbit, state.harness)
+                    sample(state.group == .dots ? .split : .titanium, state.harness)
+                }
+                GridRow {
+                    sample(state.group == .dots ? .duet : .latitude, state.harness)
+                    sample(state.group == .dots ? .steps : .matrix, state.harness)
+                }
+            }
+        }
+    }
+
+    private func range(_ scope: PerforationReach) -> some View {
+        PerforationRangeSample(scope: scope, showBaseline: state.showBaseline)
+            .transformEnvironment(\._accessibilityReduceMotion) { if state.still { $0 = true } }
     }
 
     private func sample(_ style: BadgeStyle, _ harness: PreviewHarness) -> some View {
@@ -125,6 +180,7 @@ struct Comparison: View {
                 .frame(width: size.width, height: size.height)
                 .background(shell.fill(palette.surface.swiftUI))
                 .overlay(shell.strokeBorder(palette.lineSoft.swiftUI, lineWidth: 1))
+                .threadCardRunningEdge()
         }
     }
 }

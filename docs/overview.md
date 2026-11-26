@@ -60,7 +60,7 @@ Click a task card to open its conversation. Cards show statuses such as **Runnin
 
 When the main part of a task card spans two rows, you can see up to two recent message previews and, for agents that show tool activity on cards, up to five recent tool calls. A single-row main area shows one message preview when available. Open the conversation for the full context.
 
-While a task is running, a band of tiny dots sweeps diagonally behind its emoji in the harness color. With **Reduce Motion** turned on in macOS, the dots stay still. When the task completes, a check mark appears on the badge.
+While a task is running, look for tiny dots sweeping from upper left to lower right behind its emoji. A soft highlight in the same harness color catches the card edge nearest the badge as the dots pass. With **Reduce Motion** turned on in macOS, both the dots and the edge light stay still. When the task completes, a check mark appears on the badge.
 
 A red bookmark on the upper-left edge of the emoji badge means there’s a completed result or Super Thread document you haven’t viewed. Open the card and let the result or document appear in the foreground. When you return to Overview, the bookmark is gone. Chief remembers this after you quit. A newly completed run or a new version of the document brings the bookmark back.
 
