@@ -56,6 +56,10 @@ func unknownTelemetry(note, availability string) Object {
 func formatTelemetry(value Object) string {
 	value = clone(value)
 	value["namespace"] = "opencode"
+	value["provider"] = "opencode-go"
+	if value["zen"] == nil {
+		value["zen"] = unknownZenTelemetry("Zen prepaid balance is unknown until the native Console workspace can be read.")
+	}
 	if at := number(value["observedAt"]); at != 0 {
 		value["observedAt"] = time.UnixMilli(int64(at)).UTC().Format("2006-01-02T15:04:05.000Z")
 	}
@@ -82,6 +86,9 @@ func attachLedger(ctx context.Context, snapshot Object, ledger plugin.TelemetryL
 			}
 		}
 		windows = append(windows, reading)
+	}
+	if len(windows) == 0 {
+		return nil
 	}
 	encoded, _ := json.Marshal(Object{"type": "window-reading", "observedAt": snapshot["observedAt"], "windows": windows})
 	if err := ledger.Record(ctx, encoded); err != nil {
@@ -157,21 +164,15 @@ func (h *Harness) MokuMessageTelemetry(ctx context.Context, request plugin.Setti
 			if err == nil {
 				err = checkErr
 			}
-			if err == nil {
-				err = attachLedger(life, snapshot, ledger)
-			}
 			if err != nil {
 				// Native HTTP errors may include private response data in other
 				// transports. Publish only the operation class and HTTP status.
 				note := "OpenCode account usage could not be resolved."
-				var rpc *RequestError
-				if errors.As(err, &rpc) {
-					note = fmt.Sprintf("OpenCode %s failed (HTTP %d).", rpc.Path, rpc.Status)
-				}
-				if errors.Is(err, context.DeadlineExceeded) {
-					note = "OpenCode account usage timed out."
-				}
-				snapshot = unknownTelemetry(note, "error")
+				snapshot = unknownTelemetry(telemetryErrorNote(err, note), "error")
+			} else if ledgerErr := attachLedger(life, snapshot, ledger); ledgerErr != nil {
+				zen := snapshot["zen"]
+				snapshot = unknownTelemetry("The OpenCode Go subscription usage ledger could not be read or updated.", "error")
+				snapshot["zen"] = zen
 			}
 			text := formatTelemetry(snapshot)
 			h.backgroundMu.Lock()
@@ -193,31 +194,60 @@ func readTelemetry(ctx context.Context, opts Options) (_ Object, err error) {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, runtime.Close()) }()
-	return readGoAccountTelemetry(ctx, runtime, accounttelemetry.ClientOptions{})
+	return readAccountTelemetry(ctx, runtime, accounttelemetry.ClientOptions{})
 }
 
-func readGoAccountTelemetry(ctx context.Context, runtime *Runtime, client accounttelemetry.ClientOptions) (Object, error) {
-	// The native provider owns the account binding. Neither an execution model
-	// nor its build agent/variant can establish capacity for this account.
-	const id = "opencode-go"
-	unknown := func() Object {
-		return unknownTelemetry("No verified native OpenCode Go provider account is available. Account capacity is unknown.", "unknown")
+func telemetryErrorNote(err error, fallback string) string {
+	var rpc *RequestError
+	if errors.As(err, &rpc) {
+		return fmt.Sprintf("OpenCode %s failed (HTTP %d).", rpc.Path, rpc.Status)
 	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "OpenCode account usage timed out."
+	}
+	return fallback
+}
+
+func readAccountTelemetry(ctx context.Context, runtime *Runtime, client accounttelemetry.ClientOptions) (Object, error) {
 	var providers []CatalogNativeProvider
 	if err := runtime.Request(ctx, "GET", "/api/provider", nil, &providers); err != nil {
 		return nil, err
 	}
-	var provider *CatalogNativeProvider
-	for i := range providers {
-		if providers[i].ID != id {
-			continue
+	var goProviders, zenProviders []CatalogNativeProvider
+	for _, provider := range providers {
+		switch provider.ID {
+		case "opencode-go":
+			goProviders = append(goProviders, provider)
+		case "opencode":
+			zenProviders = append(zenProviders, provider)
 		}
-		if provider != nil {
-			return unknown(), nil
-		}
-		provider = &providers[i]
 	}
-	if provider == nil || !consoleProviderPackage(provider.Package) || (provider.IntegrationID != "opencode" && provider.IntegrationID != id) ||
+	// A slow provider should leave time to publish the other provider's reading
+	// and recheck the native source before the background refresh expires.
+	probe, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	zen := make(chan Object, 1)
+	go func() { zen <- readZenAccountTelemetry(probe, runtime, client, zenProviders) }()
+	snapshot, err := readGoAccountTelemetry(probe, runtime, client, goProviders)
+	if err != nil {
+		snapshot = unknownTelemetry(telemetryErrorNote(err, "OpenCode Go subscription usage could not be resolved."), "error")
+	}
+	snapshot["zen"] = <-zen
+	return snapshot, ctx.Err()
+}
+
+func readGoAccountTelemetry(ctx context.Context, runtime *Runtime, client accounttelemetry.ClientOptions, providers []CatalogNativeProvider) (Object, error) {
+	// The native provider owns the account binding. Neither an execution model
+	// nor its build agent/variant can establish capacity for this account.
+	const id = "opencode-go"
+	unknown := func() Object {
+		return unknownTelemetry("No verified native OpenCode Go provider account is available. Go subscription limits are unknown.", "unknown")
+	}
+	if len(providers) != 1 {
+		return unknown(), nil
+	}
+	provider := providers[0]
+	if !consoleProviderPackage(provider.Package) || (provider.IntegrationID != "opencode" && provider.IntegrationID != id) ||
 		!accounttelemetry.OfficialOpenCodeGoEndpoint(str(provider.Settings["baseURL"]), true) ||
 		hasCatalogAuthenticationHeader(provider.Headers, true) || hasCatalogField(provider.Settings, "headers") || hasIdentityOverride(provider.Body) {
 		return unknown(), nil
@@ -270,4 +300,44 @@ func readGoAccountTelemetry(ctx context.Context, runtime *Runtime, client accoun
 	}
 	telemetry["note"] = "This reading belongs to the native opencode-go provider account. Check each model's own route and credentials for execution availability. " + str(telemetry["note"])
 	return telemetry, nil
+}
+
+func unknownZenTelemetry(note string) Object {
+	return Object{"provider": "opencode", "availability": "unknown", "balance": nil, "note": note}
+}
+
+func readZenAccountTelemetry(ctx context.Context, runtime *Runtime, client accounttelemetry.ClientOptions, providers []CatalogNativeProvider) Object {
+	unknown := unknownZenTelemetry("Zen prepaid balance requires a verified native OpenCode Console workspace. An inference API key alone leaves the balance unknown.")
+	if len(providers) != 1 {
+		return unknown
+	}
+	provider := providers[0]
+	if provider.IntegrationID != "opencode" || !consoleProviderPackage(provider.Package) ||
+		!isNativeProviderEndpoint(provider.ID, str(provider.Settings["baseURL"])) || consoleAccountOverrides(Object{
+		"settings": provider.Settings, "headers": provider.Headers, "body": provider.Body,
+	}) {
+		return unknown
+	}
+	org, conflict := sourceOrganization(provider.Headers)
+	if conflict {
+		return unknown
+	}
+	account, err := runtime.ReadConsoleAccount(ctx, provider.ID, "", "")
+	if err != nil {
+		return unknownZenTelemetry("The native OpenCode Console workspace could not be resolved. Zen prepaid balance is unknown.")
+	}
+	if account == nil || (org != "" && org != account.OrgID) {
+		return unknown
+	}
+	amount, err := accounttelemetry.ReadConsoleZenBalance(ctx, client, accounttelemetry.ConsoleAccount{
+		AccessToken: account.AccessToken, OrgID: account.OrgID, ExpiresAt: account.ExpiresAt,
+	})
+	if err != nil || amount == "" {
+		return unknownZenTelemetry("The Console workspace did not provide a verified Zen prepaid balance.")
+	}
+	return Object{
+		"provider": "opencode", "source": accounttelemetry.ConsoleZenBillingSource, "availability": "available",
+		"observedAt": time.Now().UTC().Format(time.RFC3339Nano), "balance": Object{"currency": "USD", "total": amount},
+		"note": "Zen prepaid pay-as-you-go credits for the native Console workspace. Go subscription limits and Console spending budgets are separate. Apply Go's paid overflow setting only to credits verified for the same workspace.",
+	}
 }

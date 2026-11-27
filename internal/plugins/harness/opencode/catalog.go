@@ -613,9 +613,9 @@ func filterUnavailableAccounts(ctx context.Context, snapshot *CatalogSnapshot, f
 	budget, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	type billingRequest struct {
-		token, org, expected string
-		keys                 []string
-		status               consoleAccountStatus
+		token, org string
+		keys       []string
+		status     consoleAccountStatus
 	}
 	requests := map[string]*billingRequest{}
 	for _, fact := range facts {
@@ -625,24 +625,15 @@ func filterUnavailableAccounts(ctx context.Context, snapshot *CatalogSnapshot, f
 		if fact.conflictingOrgHeaders || (fact.account != nil && fact.expectedOrgID != "" && fact.expectedOrgID != fact.account.OrgID) {
 			continue
 		}
-		key, token, org, expected := "", "", "", fact.expectedOrgID
-		authenticated := false
 		if fact.account != nil {
-			if fact.account.Server != "https://opencode.ai/console" || !orgIDPattern.MatchString(fact.account.OrgID) {
+			if fact.account.Server != "https://opencode.ai/console" || !orgIDPattern.MatchString(fact.account.OrgID) || !fact.account.ExpiresAt.After(time.Now()) {
 				continue
 			}
-			token, org, expected = fact.account.AccessToken, fact.account.OrgID, fact.account.OrgID
-			key = "oauth\x00" + fact.account.Server + "\x00" + org + "\x00" + token
-			authenticated = true
-		} else if fact.credential != nil && officialPaidEndpoint(fact.credential.BaseURL) && strings.TrimSpace(fact.credential.APIKey) != "" && strings.TrimSpace(fact.credential.APIKey) != "public" {
-			token = fact.credential.APIKey
-			key = "api-key\x00" + token + "\x00" + expected
-			authenticated = true
-		}
-		if authenticated {
+			token, org := fact.account.AccessToken, fact.account.OrgID
+			key := org + "\x00" + token
 			request := requests[key]
 			if request == nil {
-				request = &billingRequest{token: token, org: org, expected: expected}
+				request = &billingRequest{token: token, org: org}
 				requests[key] = request
 			}
 			request.keys = append(request.keys, fact.key)
@@ -657,7 +648,7 @@ func filterUnavailableAccounts(ctx context.Context, snapshot *CatalogSnapshot, f
 		pending.Add(1)
 		go func(request *billingRequest) {
 			defer pending.Done()
-			request.status = readConsoleAccountStatus(budget, request.token, request.org, request.expected)
+			request.status = readConsoleAccountStatus(budget, request.token, request.org)
 		}(request)
 	}
 	pending.Wait()
@@ -683,9 +674,9 @@ func filterUnavailableAccounts(ctx context.Context, snapshot *CatalogSnapshot, f
 	snapshot.Models = models
 	return nil
 }
-func readConsoleAccountStatus(ctx context.Context, token, org, expected string) consoleAccountStatus {
+func readConsoleAccountStatus(ctx context.Context, token, org string) consoleAccountStatus {
 	unknown := consoleAccountStatus{"unknown", "unknown"}
-	if strings.TrimSpace(token) == "" || strings.TrimSpace(token) == "public" || (expected != "" && !orgIDPattern.MatchString(expected)) {
+	if strings.TrimSpace(token) == "" || strings.TrimSpace(token) == "public" || !orgIDPattern.MatchString(org) {
 		return unknown
 	}
 	client := &http.Client{Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("redirect refused") }}
@@ -704,9 +695,7 @@ func readConsoleAccountStatus(ctx context.Context, token, org, expected string) 
 			req.Header.Set("Accept", "application/json")
 			req.Header.Set("User-Agent", "Chief/0.1")
 			req.Header.Set("Cache-Control", "no-store")
-			if org != "" {
-				req.Header.Set("x-org-id", org)
-			}
+			req.Header.Set("x-org-id", org)
 			response, err := client.Do(req)
 			if err != nil {
 				return
@@ -721,7 +710,7 @@ func readConsoleAccountStatus(ctx context.Context, token, org, expected string) 
 	pending.Wait()
 	current := results[1]
 	orgID := str(configRecord(current["org"])["id"])
-	if !orgIDPattern.MatchString(orgID) || (expected != "" && orgID != expected) {
+	if orgID != org {
 		return unknown
 	}
 	result := unknown

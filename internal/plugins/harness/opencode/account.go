@@ -28,7 +28,7 @@ func officialInferenceRoute(raw string) string {
 	}
 	path := strings.TrimSuffix(u.Path, "/")
 	switch path {
-	case "/inference/openai/v1", "/inference/anthropic/v1", "/inference/google/v1beta",
+	case "/zen", "/zen/v1", "/inference/openai/v1", "/inference/anthropic/v1", "/inference/google/v1beta",
 		"/inference/go/openai/v1", "/inference/go/anthropic", "/zen/go/v1", "/zen/go":
 		return "https://opencode.ai" + path
 	}
@@ -73,8 +73,22 @@ func describeConsoleRoute(facts map[string]any, providerID, modelID, variantID s
 		return "", nil
 	}
 	route := officialInferenceRoute(credentialString(credentialObject(provider["settings"])["baseURL"]))
-	if route == "" || (modelID == "" && (providerID != "opencode-go" || !accounttelemetry.OfficialOpenCodeGoEndpoint(route, true))) {
+	if route == "" {
 		return "", nil
+	}
+	if modelID == "" {
+		switch providerID {
+		case "opencode":
+			if !isNativeProviderEndpoint(providerID, route) {
+				return "", nil
+			}
+		case "opencode-go":
+			if !accounttelemetry.OfficialOpenCodeGoEndpoint(route, true) {
+				return "", nil
+			}
+		default:
+			return "", nil
+		}
 	}
 	headers := make(map[string]any)
 	for _, layer := range []map[string]any{provider, model, variant} {

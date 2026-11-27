@@ -32,9 +32,6 @@ func (runtime *Runtime) ReadProviderCredential(ctx context.Context, providerID, 
 // Console account facts are resolved by this same native server, only after the
 // provider or effective model route has been validated. Refresh grants never cross RPC.
 func (runtime *Runtime) ReadConsoleAccount(ctx context.Context, providerID, modelID, variant string) (*ConsoleAccount, error) {
-	if modelID == "" && providerID != "opencode-go" {
-		return nil, nil
-	}
 	input := Object{"providerID": providerID, "modelID": modelID, "variant": variant, "phase": "describe"}
 	var facts Object
 	if err := runtime.RPC(ctx, "consoleAccount", input, &facts); err != nil {
@@ -61,12 +58,18 @@ func (runtime *Runtime) ReadConsoleAccount(ctx context.Context, providerID, mode
 	if _, exists := metadata["server"]; !exists {
 		server = "https://opencode.ai/console"
 	}
-	if !validConsoleServer(server) || hasCredentialOverride(metadata) || hasCredentialOverride(object(raw["configuration"])) {
+	configuration := object(raw["configuration"])
+	if !validConsoleServer(server) || hasCredentialOverride(metadata) || hasCredentialOverride(configuration) {
 		return nil, nil
 	}
 	orgID := str(metadata["orgID"])
 	if !consoleOrgPattern.MatchString(orgID) {
 		return nil, nil
+	}
+	for key, expected := range map[string]string{"server": server, "orgID": orgID} {
+		if value, exists := configuration[key]; exists && value != expected {
+			return nil, nil
+		}
 	}
 	input["phase"] = "describe"
 	facts = nil

@@ -225,7 +225,9 @@ Moku collects registered [Context contributions](../../hosts/contexthost/README.
 Periodic telemetry collection warms message-scoped account sources. Moku
 collects their current readings at each outgoing message, including when
 the other Harness readings are already cached. An unreadable account source
-leaves its capacity unknown. [OpenCode account binding](../../plugins/harness/opencode/README.md#permission-and-account-boundaries)
+leaves its capacity unknown. OpenCode contributes one message-scoped entry with
+separate availability for its Go subscription and its `zen` prepaid balance.
+[OpenCode account binding](../../plugins/harness/opencode/README.md#permission-and-account-boundaries)
 
 Outgoing workspace context reads the Thread catalog only when a directory tag
 needs resolving. Explicit directory mentions and inputs without a directory tag

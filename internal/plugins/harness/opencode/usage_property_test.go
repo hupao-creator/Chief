@@ -3,6 +3,7 @@ package opencode
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,6 +22,19 @@ import (
 )
 
 type quotaTransport func(*http.Request) (*http.Response, error)
+
+type failingQuotaLedger struct{ failRecord bool }
+
+func (f failingQuotaLedger) Record(context.Context, json.RawMessage) error {
+	if f.failRecord {
+		return errors.New("fixture-secret-ledger-write")
+	}
+	return nil
+}
+
+func (failingQuotaLedger) Read(context.Context) (json.RawMessage, error) {
+	return nil, errors.New("fixture-secret-ledger-read")
+}
 
 func (f quotaTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 func quotaReply(status int, value any) (*http.Response, error) {
@@ -68,8 +82,10 @@ func TestGoAccountTelemetryProperties(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		oauth := rapid.Bool().Draw(rt, "Console-OAuth")
+		latePath := "/zen/go/v1/usage"
 		if oauth {
 			faults = append(faults, "switched-lease", "wrong-workspace")
+			latePath = rapid.SampledFrom([]string{"/console/api/go/status", "/console/api/billing/status"}).Draw(rt, "late-Console-reading")
 		}
 		invalid := rapid.SampledFrom(faults).Draw(rt, "invalid-binding-or-reply")
 		var invalidRemoteCalls atomic.Int32
@@ -88,13 +104,18 @@ func TestGoAccountTelemetryProperties(t *testing.T) {
 			}
 			if account == "invalid" {
 				peer.fault = invalid
+			} else if oauth && account != "" {
+				peer.zen = &zenQuotaFixture{billing: Object{"billingMode": "prepaid", "mode": "pay-as-you-go", "balanceMicroCents": fmt.Sprintf("%d00000000", peer.percent)}}
 			}
 			native := &Runtime{URL: "http://native", ctx: ctx, client: &http.Client{Transport: quotaTransport(peer.native)}, options: opts}
 			remote := quotaTransport(func(req *http.Request) (*http.Response, error) {
 				if account == "invalid" {
 					invalidRemoteCalls.Add(1)
 				}
-				if account == "late" && (req.URL.Path == "/zen/go/v1/usage" || oauth && req.URL.Path == "/console/api/go/status") {
+				if !oauth && strings.HasPrefix(req.URL.Path, "/console/") {
+					t.Error("Go API key reached the Console API")
+				}
+				if account == "late" && req.URL.Path == latePath {
 					close(started)
 					select {
 					case <-block:
@@ -104,11 +125,12 @@ func TestGoAccountTelemetryProperties(t *testing.T) {
 				}
 				return peer.remote(req)
 			})
-			return readGoAccountTelemetry(ctx, native, accounttelemetry.ClientOptions{HTTP: &http.Client{Transport: remote}, Now: func() time.Time { return quotaNow }})
+			return readAccountTelemetry(ctx, native, accounttelemetry.ClientOptions{HTTP: &http.Client{Transport: remote}, Now: func() time.Time { return quotaNow }})
 		}
 		request := plugin.SettingsRequest{Cwd: root, Settings: h.DefaultSettings()}
+		var ledger plugin.TelemetryLedger
 		read := func() Object {
-			raw, err := h.MokuContext(ctx, "telemetry", request, nil)
+			raw, err := h.MokuContext(ctx, "telemetry", request, ledger)
 			check(err)
 			if strings.Contains(raw, "fixture-secret-") {
 				rt.Fatal("credential in public telemetry")
@@ -123,11 +145,17 @@ func TestGoAccountTelemetryProperties(t *testing.T) {
 			if s["availability"] != "available" || len(ws) != 1 || object(ws[0])["usedPercent"] != float64(pct) {
 				rt.Fatalf("expected verified %d%% window, availability=%v windows=%d", pct, s["availability"], len(ws))
 			}
+			if oauth && object(object(s["zen"])["balance"])["total"] != fmt.Sprint(pct) {
+				rt.Fatalf("expected separate Zen balance for the selected workspace, got %v", s["zen"])
+			}
 			return str(object(ws[0])["id"])
 		}
 		empty := func(s Object, availability string) {
 			if s["availability"] != availability || len(array(s["windows"])) != 0 {
 				rt.Fatalf("expected empty %s reading, got %v", availability, s["availability"])
+			}
+			if zen := object(s["zen"]); zen["availability"] != "unknown" || zen["balance"] != nil {
+				rt.Fatal("unverified source supplied a Zen balance")
 			}
 		}
 		a := window(settled(), percentA)
@@ -184,6 +212,16 @@ func TestGoAccountTelemetryProperties(t *testing.T) {
 		if invalid != "remote-error" && invalid != "no-meter" && invalid != "wrong-workspace" && invalidRemoteCalls.Load() != 0 {
 			rt.Fatal("unverified binding contacted remote telemetry")
 		}
+		if oauth {
+			ledger = failingQuotaLedger{failRecord: rapid.Bool().Draw(rt, "fail-ledger-write-before-read")}
+			selectAccount("A")
+			empty(read(), "unknown")
+			s := settled()
+			if s["availability"] != "error" || len(array(s["windows"])) != 0 ||
+				object(object(s["zen"])["balance"])["total"] != fmt.Sprint(percentA) {
+				rt.Fatal("Go ledger failure lost the verified Zen balance or published unverified Go usage")
+			}
+		}
 	})
 }
 
@@ -195,6 +233,7 @@ type quotaPeer struct {
 	account, fault string
 	oauth          bool
 	percent        int
+	zen            *zenQuotaFixture
 }
 
 func (p quotaPeer) native(req *http.Request) (*http.Response, error) {
@@ -211,13 +250,28 @@ func (p quotaPeer) native(req *http.Request) (*http.Response, error) {
 	}
 	if req.URL.Path == "/api/provider" {
 		rows := []Object{{"id": "opencode", "integrationID": "opencode"}, provider}
+		if p.zen != nil {
+			rows[0] = p.zen.provider()
+			if p.zen.only {
+				rows = rows[:1]
+			}
+			if p.zen.fault == "duplicate" {
+				rows = append(rows, rows[0])
+			}
+		}
 		if p.fault == "duplicate" {
 			rows = append(rows, provider)
 		}
 		return quotaReply(200, rows)
 	}
 	var in struct{ Input Object }
-	if req.Body == nil || json.NewDecoder(req.Body).Decode(&in) != nil || in.Input["providerID"] != "opencode-go" || str(in.Input["modelID"]) != "" {
+	if req.Body == nil || json.NewDecoder(req.Body).Decode(&in) != nil || str(in.Input["modelID"]) != "" {
+		return quotaReply(400, nil)
+	}
+	if in.Input["providerID"] == "opencode" && p.zen != nil {
+		return p.zen.native(req.URL.Path, in.Input, p.account, p.oauth)
+	}
+	if in.Input["providerID"] != "opencode-go" || p.zen != nil && p.zen.only {
 		return quotaReply(400, nil)
 	}
 	output := Object{}
@@ -265,11 +319,14 @@ func (p quotaPeer) remote(req *http.Request) (*http.Response, error) {
 	switch req.URL.Path {
 	case "/console/api/orgs/current":
 		org := "org_" + p.account
-		if p.fault == "wrong-workspace" {
+		if p.fault == "wrong-workspace" || p.zen != nil && p.zen.fault == "wrong-workspace" {
 			org = "org_elsewhere"
 		}
 		return quotaReply(200, Object{"org": Object{"id": org}})
 	case "/console/api/billing/status":
+		if p.zen != nil {
+			return p.zen.billingReply()
+		}
 		return quotaReply(200, Object{})
 	case "/console/api/go/status":
 		if !p.oauth {
