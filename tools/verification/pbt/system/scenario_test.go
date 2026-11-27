@@ -253,7 +253,23 @@ trace_exporter = "none"
 	client := &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{Proxy: nil}}
 	defer client.CloseIdleConnections()
 	invoke := func(channel string, args []any, target any) error {
-		return invoke(ctx, client, api.Connection, channel, args, target)
+		if err := invoke(ctx, client, api.Connection, channel, args, target); err != nil {
+			return err
+		}
+		// state:load carries a bounded transcript preview. The Talk oracle
+		// checks the durable result even after other tool calls displace it.
+		if state, ok := target.(*model.AppState); ok && channel == "state:load" {
+			for i, thread := range state.Threads {
+				if thread.Moku {
+					full, err := host.(actionHost).Thread(thread.ID)
+					if err != nil {
+						return err
+					}
+					state.Threads[i].Transcript = full.Transcript
+				}
+			}
+		}
+		return nil
 	}
 	submitArgs := []any{object{"input": object{"parts": []any{object{"kind": "text", "text": "SYSTEM_CHAIN_START: create the child and record completion"}}}}}
 	commandID, e := transport.CreateCommandID()
