@@ -1,4 +1,4 @@
-"""Deterministic model peer for the installed Pi CLI in a disposable profile."""
+"""Deterministic OpenAI-compatible model for installed Pi and OpenCode clients."""
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -18,7 +18,7 @@ class Model(BaseHTTPRequestHandler):
             return
         request = json.loads(self.rfile.read(size))
         messages = request["messages"]
-        # Read the private sentence and available tool from Pi's real model
+        # Read the private sentence and available tool from the harness's real model
         # request. The fixture has no reference to Chief or the media client.
         prompt = " ".join(json.dumps(m.get("content")) for m in messages if m["role"] in ("system", "developer"))
         sentence = re.search(r"exact English sentence once: (The [a-z ]+\.)", prompt)
@@ -44,20 +44,29 @@ class Model(BaseHTTPRequestHandler):
 
 
 @contextmanager
-def pi_model(directory):
-    directory.mkdir()
+def model_peer(directory, harness):
     with ThreadingHTTPServer(("127.0.0.1", 0), Model) as server:
-        config = {"providers": {"voice-fixture": {
-            "baseUrl": f"http://127.0.0.1:{server.server_port}/v1", "api": "openai-completions",
-            "apiKey": "voice-fixture", "models": [{"id": "voice-replay", "name": "Voice replay",
-                                                    "contextWindow": 128000, "maxTokens": 2048}]}}}
-        (directory / "models.json").write_text(json.dumps(config))
-        (directory / "settings.json").write_text(json.dumps({
-            "defaultProvider": "voice-fixture", "defaultModel": "voice-replay", "defaultThinkingLevel": "off"}))
+        endpoint = f"http://127.0.0.1:{server.server_port}/v1"
+        if harness == "pi":
+            directory.mkdir()
+            config = {"providers": {"voice-fixture": {
+                "baseUrl": endpoint, "api": "openai-completions", "apiKey": "voice-fixture",
+                "models": [{"id": "voice-replay", "name": "Voice replay", "contextWindow": 128000, "maxTokens": 2048}]}}}
+            (directory / "models.json").write_text(json.dumps(config))
+            (directory / "settings.json").write_text(json.dumps({
+                "defaultProvider": "voice-fixture", "defaultModel": "voice-replay", "defaultThinkingLevel": "off"}))
+            environment, profile = {"PI_CODING_AGENT_DIR": str(directory)}, None
+        else:
+            config = {"model": "voice-fixture/voice-replay", "provider": {"voice-fixture": {
+                "npm": "@ai-sdk/openai-compatible", "name": "Voice replay",
+                "options": {"baseURL": endpoint, "apiKey": "voice-fixture"}, "models": {
+                    "voice-replay": {"name": "Voice replay", "tool_call": True, "limit": {"context": 128000, "output": 2048}}}}}}
+            environment = {"OPENCODE_CONFIG_CONTENT": json.dumps(config)}
+            profile = {"useDefaultThreadSettings": False, "threadSettings": {"provider": "voice-fixture", "model": "voice-replay"}}
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
         try:
-            yield directory
+            yield environment, profile
         finally:
             server.shutdown()
             worker.join()

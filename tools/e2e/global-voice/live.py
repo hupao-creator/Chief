@@ -24,7 +24,7 @@ import wave
 from aiortc import AudioStreamTrack, RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 from av import AudioFrame
 
-from pi_model import pi_model
+from model_peer import model_peer
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools/benchmarks"))
@@ -65,7 +65,7 @@ class SyntheticMic(AudioStreamTrack):
         return frame
 
 
-async def exercise(binary, root, harness, rounds, report, pi_home):
+async def exercise(binary, root, harness, rounds, report, model_environment, execution_profile):
     expected = target_sentence()
     report["targetSentence"] = expected
     wav = root / "request.wav"
@@ -79,8 +79,7 @@ async def exercise(binary, root, harness, rounds, report, pi_home):
     # Profile and Chief workspace live in this temporary tree. Native account
     # access goes through the installed Codex executable and its own auth store.
     env = dict(os.environ, HOME=str(root), CODEX_HOME=native_home, CHIEF_HEADLESS="1")
-    if pi_home:
-        env["PI_CODING_AGENT_DIR"] = str(pi_home)
+    env.update(model_environment)
     process = subprocess.Popen([binary, "serve", "--data-dir", profile], cwd=root, env=env,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     rtc = RTCPeerConnection(RTCConfiguration(iceServers=[]))
@@ -98,6 +97,10 @@ async def exercise(binary, root, harness, rounds, report, pi_home):
         state = await asyncio.to_thread(service.state)
         settings = state["settings"]
         settings["moku"]["hostHarnessPreference"] = harness
+        if execution_profile is not None:
+            # Apply the selected destination's ordinary Chief Agent profile.
+            # The runtime owns validation and model admission.
+            settings["moku"]["executionHarnesses"][harness] = execution_profile
         # Only the selected Chief receives this value in its own system prompt.
         settings["moku"]["routingPreset"] = "custom"
         settings["moku"]["routingGuidance"] = (
@@ -248,7 +251,6 @@ async def exercise(binary, root, harness, rounds, report, pi_home):
             await asyncio.sleep(1.5)
         if matching_appends() != [1] * rounds:
             raise RuntimeError("unexpected repeated or missing speech after output settled")
-        report["passed"] = True
     finally:
         for stream_socket in sockets:
             try:
@@ -278,20 +280,37 @@ def main():
     parser.add_argument("--runtime", type=Path, required=True)
     parser.add_argument("--harness", choices=("codex", "pi", "claude", "opencode"), default="codex")
     parser.add_argument("--rounds", type=int, choices=(1, 2), default=1, help="repeat the identical recording on one call")
-    parser.add_argument("--pi-loopback", action="store_true", help="run the installed Pi with a deterministic local model")
+    destination = parser.add_mutually_exclusive_group()
+    destination.add_argument("--pi-loopback", action="store_true", help="run the installed Pi with a deterministic local model")
+    destination.add_argument("--opencode-loopback", action="store_true", help="run installed OpenCode with a deterministic local model")
+    destination.add_argument("--chief-profile", type=Path, help="JSON Chief Agent execution settings for the selected harness")
     args = parser.parse_args()
     if args.pi_loopback and args.harness != "pi":
         parser.error("--pi-loopback requires --harness pi")
+    if args.opencode_loopback and args.harness != "opencode":
+        parser.error("--opencode-loopback requires --harness opencode")
+    loopback = args.pi_loopback or args.opencode_loopback
     binary = args.runtime.resolve()
-    report = {"revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
-              "sourceDirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT)),
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    metadata = subprocess.check_output([ROOT / "scripts/go.sh", "version", "-m", binary], cwd=ROOT, text=True)
+    settings = dict(re.findall(r"^\s*build\s+(vcs\.\w+)=(.+)$", metadata, re.MULTILINE))
+    if settings.get("vcs.revision") != revision or settings.get("vcs.modified") not in ("true", "false"):
+        parser.error("Build chief-runtime from this checkout before running the live replay.")
+    report = {"revision": revision, "sourceDirty": settings["vcs.modified"] == "true",
+              "driverDirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT)),
               "runtimeSha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
-              "harness": args.harness, "rounds": args.rounds, "targetModel": "loopback" if args.pi_loopback else "native account", "audioSource": "synthetic", "passed": False}
+              "harness": args.harness, "rounds": args.rounds, "targetModel": "loopback" if loopback else "native account", "audioSource": "synthetic", "passed": False}
     try:
         with tempfile.TemporaryDirectory(prefix="chief-voice-live-") as root:
             directory = Path(root)
-            with (pi_model(directory / "pi-agent") if args.pi_loopback else nullcontext()) as pi_home:
-                asyncio.run(exercise(binary, directory, args.harness, args.rounds, report, pi_home))
+            peer = model_peer(directory / "agent", args.harness) if loopback else nullcontext(({}, None))
+            with peer as (environment, execution_profile):
+                if args.chief_profile:
+                    profile_bytes = args.chief_profile.read_bytes()
+                    execution_profile = json.loads(profile_bytes)
+                    report["chiefProfileSHA256"] = hashlib.sha256(profile_bytes).hexdigest()
+                asyncio.run(exercise(binary, directory, args.harness, args.rounds, report, environment, execution_profile))
+        report["passed"] = True
     except Exception as error:
         report["failure"] = str(error) or type(error).__name__
     print(json.dumps(report, ensure_ascii=False))

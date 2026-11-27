@@ -10,6 +10,16 @@ Click Chief’s eyes once. The bar expands and the cursor appears in **Type a me
 
 ![Chief Bar expands into a text field, a weather question is typed, and the bar folds after sending.](images/chief-bar-input.gif)
 
+## Hold Chief Bar to speak
+
+Press and hold the bar for half a second. If the text box is open, hold the eyes or agent icon at its left edge. Chief glances to the right while it connects. The first time, allow Chief to use your microphone when macOS asks. When the blue orb separates from the bar, you can release the mouse and speak. The call continues until you end it.
+
+Click the orb to mute your microphone. Its blue color fades and you can still hear Chief’s reply. Click again to speak, or right-click the orb to end the call. **Control-click** also ends it. **⇧⌘V** starts Voice Mode from the bar, cancels a pending connection or ends an active call.
+
+Voice goes to the **Chief Agent** selected in Settings, even when you open another task. Typing in that task still sends to the task, and opening Voice Mode keeps your draft and selection. Chief speaks its replies without opening a transcript window. Ending the call lets accepted work continue. [Choose your Chief Agent](settings.md)
+
+Voice Mode needs a microphone, audio output and a Codex installation signed in with a ChatGPT account that supports realtime voice. If microphone access was denied, turn on **Chief** in **System Settings → Privacy & Security → Microphone**, then hold the bar again.
+
 ## Right-click Chief Bar to chat
 
 Right-click the eyes, or hold **Control** and click. Your conversation opens above the input field. Your messages appear in blue on the right and Chief’s replies appear on the left. Type a follow-up and press **Return** to keep chatting in the panel. Press **Esc** to close it.

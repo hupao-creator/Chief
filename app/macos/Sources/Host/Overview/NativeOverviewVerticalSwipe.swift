@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor final class NativeOverviewSwipeRegions {
     let bar = NativeCanvasInputRegions()
     let controls = NativeCanvasInputRegions()
+    let voice = NativeCanvasInputRegions()
     weak var pressedTag: OverviewTagPointerPress.PressView?
 }
 

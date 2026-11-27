@@ -61,6 +61,10 @@ class NativeReplay:
         shutil.copytree(production / "Modules", self.build / "Modules")
         frameworks = self.application / "Contents/Frameworks"
         frameworks.mkdir()
+        # swiftc links the production objects. Their SwiftPM binary dependencies
+        # must resolve through the replay's own Frameworks rpath after staging.
+        for framework in production.glob("*.framework"):
+            shutil.copytree(framework, frameworks / framework.name, symlinks=True)
         resources = self.application / "Contents/Resources"
         resources.mkdir()
         bundles = []

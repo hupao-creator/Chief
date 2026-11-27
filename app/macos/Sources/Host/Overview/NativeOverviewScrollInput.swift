@@ -143,6 +143,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
             let contentPoint = content.convert(point, from: nil)
             guard content.bounds.contains(contentPoint),
                   !actions.regions.bar.contains(point, in: window),
+                  !actions.regions.voice.contains(point, in: window),
                   !actions.regions.controls.contains(point, in: window) else { return false }
             // A long Talk or another vertically overflowing native viewport
             // keeps the whole contact, even when already at either end.
@@ -165,6 +166,7 @@ struct NativeOverviewScrollInput: NSViewRepresentable {
                 let secondary = event.type == .rightMouseDown ||
                     (event.type == .leftMouseDown && event.modifierFlags.contains(.control))
                 if secondary, let actions = swipeActions, window.isVisible,
+                   !actions.regions.voice.contains(event.locationInWindow, in: window),
                    actions.regions.bar.contains(event.locationInWindow, in: window),
                    actions.openConversation() { return nil }
                 return event
