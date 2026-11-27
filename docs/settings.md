@@ -28,8 +28,6 @@ Use **Auto-Categorization** to set up Tag Agent and **Super Thread** to set up S
 
 Choose **OpenCode** to see its providers and models. Use **OpenCode model variant** (**思考强度** in Simplified Chinese) to choose a preset, or choose **Base model variant** (**模型默认配置** in Simplified Chinese) to use the selected model’s settings without a named preset. If **Loading Agent configuration…** appears, wait for the options to open, then make your selections. If your saved model is marked **Unavailable in catalog**, check the provider in OpenCode or choose another listed model.
 
-If Chief warns that it can’t verify the thinking settings for an OpenCode preset, the preset is still available in this menu. The warning means Chief can’t tell whether it changes how the model thinks.
-
 [Find tags and Super Threads](reports-tags-and-changes.md)
 
 ## Reset Chief and start setup again

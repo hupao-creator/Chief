@@ -55,15 +55,8 @@ public struct OpenCodeHarnessPlugin: HarnessPlugin {
     }
     public func harnessSettings(props: HarnessSettingsProps<OpenCodeHarnessSettings, OpenCodeSettingsPresentationData>) -> some View { OpenCodeHarnessSettingsView(props: props) }
 }
-let ocUnverifiedThinkingReason = "OpenCode returned a variant without a verified thinking encoding"
-
 func ocLocalized(_ source: String, locale: Locale) -> String {
-    guard locale.language.languageCode?.identifier != "zh" else {
-        if source == ocUnverifiedThinkingReason {
-            return "Chief 无法确认部分 OpenCode 预设是否会改变模型的思考设置。"
-        }
-        return NativePluginLocalization.localize(source, locale: locale)
-    }
+    guard locale.language.languageCode?.identifier != "zh" else { return NativePluginLocalization.localize(source, locale: locale) }
     return ocEnglish[source] ?? NativePluginLocalization.localize(source, locale: locale)
 }
 private let ocEnglish: [String: String] = [

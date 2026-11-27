@@ -72,6 +72,9 @@ func ocCleanSettings(_ raw: JSONValue) -> JSONValue {
 private func ocReplacing(_ raw: JSONValue, key: String, value: JSONValue?) -> JSONValue {
     var result = raw.objectValue ?? [:]; result[JSONText(key)] = value; return ocCleanSettings(.object(result))
 }
+// The runtime catalog and the Swift fallback use the same capability reason.
+private let ocUnverifiedThinkingReason = "OpenCode returned a variant without a verified thinking encoding"
+
 func ocThinkingCapability(model: JSONValue, agent: JSONValue?) -> JSONValue {
     func unknown(_ reason: String) -> JSONValue { .object(["kind": .text("unknown"), "reason": .text(reason)]) }
     if let unavailable = model["unavailableReason"]?.stringValue, !unavailable.isEmpty { return unknown(unavailable) }
@@ -172,8 +175,9 @@ private struct OpenCodeProfileFields: View {
                         .disabled(disabled || selected == nil || selected?["unavailableReason"] != nil)
                 }
             }
-            if capability?["kind"] == .text("unknown"), let reason = capability?["reason"]?.stringValue {
-                NativeSettingsNotice(message: t(reason), kind: .warning)
+            if capability?["kind"] == .text("unknown"), let reason = capability?["reason"]?.stringValue,
+               reason != ocUnverifiedThinkingReason {
+                NativeSettingsNotice(message: reason, kind: .warning)
             }
             if let exclusiveReason { NativeSettingsNotice(message: t(exclusiveReason), kind: .warning) }
         } advanced: {
