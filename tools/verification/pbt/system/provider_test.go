@@ -152,6 +152,25 @@ func (p *provider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "read fork lacks persisted assistant result", http.StatusBadRequest)
 		return
 	}
+	if role == "read" {
+		// Fork history contains the source task's former declarations too.
+		// Inspect the current tool set sent to the model for this question.
+		current := list(req["tools"])
+		for _, item := range list(req["input"]) {
+			if update := record(item); update["type"] == "additional_tools" {
+				current = append(list(req["tools"]), list(update["tools"])...)
+			}
+		}
+		for _, tool := range []string{"exec_command", "apply_patch", "request_user_input", "spawn_agent", "sleep", "update_plan"} {
+			if name, _ := findTool(current, tool, ""); name != "" {
+				p.mu.Lock()
+				p.failures = append(p.failures, "history question advertises "+name)
+				p.mu.Unlock()
+				http.Error(w, "unexpected history question tool", http.StatusBadRequest)
+				return
+			}
+		}
+	}
 	if role == "child" {
 		finish := p.waitBarrier(req["input"])
 		defer finish()

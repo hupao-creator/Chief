@@ -1,12 +1,12 @@
 package runtime
 
-import "sync"
+import "context"
 
-// A command lease pins the shared mutex before its caller starts waiting. Never
-// remove a mutex merely because its thread was deleted: a waiter may still own
+// A command lease pins the shared gate before its caller starts waiting. Never
+// remove a gate merely because its thread was deleted: a waiter may still own
 // a reference to it and must serialize with subsequent callers for that ID.
 type threadCommandLock struct {
-	mu    sync.Mutex
+	held  chan struct{}
 	users int // protected by Runtime.mu
 }
 
@@ -24,7 +24,7 @@ func (r *Runtime) threadLock(id string) *threadCommandLease {
 	}
 	lock := r.locks[id]
 	if lock == nil {
-		lock = &threadCommandLock{}
+		lock = &threadCommandLock{held: make(chan struct{}, 1)}
 		r.locks[id] = lock
 	}
 	lock.users++
@@ -32,19 +32,36 @@ func (r *Runtime) threadLock(id string) *threadCommandLease {
 }
 
 // Each lease is used for one Lock/Unlock pair.
-func (l *threadCommandLease) Lock() { l.lock.mu.Lock() }
+func (l *threadCommandLease) Lock() { l.lock.held <- struct{}{} }
+
+// A history query must be able to leave the queue while a source command is busy.
+func (l *threadCommandLease) LockContext(ctx context.Context) error {
+	select {
+	case l.lock.held <- struct{}{}:
+		if err := ctx.Err(); err != nil {
+			l.Unlock()
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+		l.release()
+		return ctx.Err()
+	}
+}
 
 // A destructive operation must reject a busy command (including a native
 // history read) instead of queuing behind it and acting later.
 func (l *threadCommandLease) TryLock() bool {
-	if l.lock.mu.TryLock() {
+	select {
+	case l.lock.held <- struct{}{}:
 		return true
+	default:
+		l.release()
+		return false
 	}
-	l.release()
-	return false
 }
 func (l *threadCommandLease) Unlock() {
-	l.lock.mu.Unlock()
+	<-l.lock.held
 	l.release()
 }
 func (l *threadCommandLease) release() {

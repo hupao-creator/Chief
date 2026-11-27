@@ -57,7 +57,7 @@ Prepared launch resources are disposed even when cancellation prevents process
 startup, so isolated configuration does not outlive a rejected launch.
 
 Thread Read uses a separate ephemeral native fork when source history is
-available. Missing history or a failed fork read uses a snapshot fallback in an
+available. The fork uses the source history home with exclusive tool configuration, no injected tools, read-only sandboxing and approvals disabled. It does not request a managed worktree write grant. Missing history or a failed fork read uses a snapshot fallback in an
 isolated read-only session and temporary workspace. Each temporary session is registered with the Handle and releases its own exact
 registration on return, even when a fallback replaces the current session. Handle Close cancels and joins in-flight reads before returning. Read answers
 are not projected into the source session; their native processes, temporary

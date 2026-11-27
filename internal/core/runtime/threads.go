@@ -1343,8 +1343,12 @@ func (r *Runtime) ReadThread(ctx context.Context, id, question string) (string, 
 	if strings.TrimSpace(question) == "" || model.UTF16Length(question) > 1_000_000 {
 		return "", errors.New("thread question is empty or too long")
 	}
+	ctx, cancelRead := context.WithTimeout(ctx, 90*time.Second)
+	defer cancelRead()
 	lock := r.threadLock(id)
-	lock.Lock()
+	if err := lock.LockContext(ctx); err != nil {
+		return "", fmt.Errorf("waiting to read thread history: %w", err)
+	}
 	defer lock.Unlock()
 	t, err := r.Thread(id)
 	if err != nil {
@@ -1359,7 +1363,11 @@ func (r *Runtime) ReadThread(ctx context.Context, id, question string) (string, 
 	}
 	ctx, cancelOwner := owner.operationContext(ctx)
 	defer cancelOwner()
-	return owner.native.Read(ctx, question)
+	answer, err := owner.native.Read(ctx, question)
+	if ctx.Err() != nil {
+		return "", fmt.Errorf("reading thread history: %w", ctx.Err())
+	}
+	return answer, err
 }
 func (r *Runtime) RespondThread(ctx context.Context, id string, response model.RespondRequest) error {
 	if err := r.begin(); err != nil {

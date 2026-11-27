@@ -257,8 +257,10 @@ history and cannot substitute for successful-execution evidence.
 
 Command locks count both holders and waiters. Only the final lease release
 removes a lock, so deleting a thread cannot split concurrent callers across two
-mutexes. Cancellation gates retain live-session identity and pending send claims;
+command gates. Cancellation gates retain live-session identity and pending send claims;
 a deleted session's gate is reclaimed after its final reference is released. History reset prunes unreferenced gates after removing durable session records. Unknown-ID requests do not retain gates.
+
+History questions share one 90-second deadline across waiting for the source command lock, opening the Harness and reading its history. An earlier caller deadline wins. Expiry cancels the read and returns an error after native cleanup. Queued readers can leave independently while the current owner retains its lease.
 
 ## Shutdown and history reset
 

@@ -12,6 +12,8 @@ The button at the right of the input box shows **Send** when your message is rea
 
 You can send your request while a task agent’s model list is unavailable. Chief can use the choices that agent last reported. If the agent rejects a model when the task starts, Chief receives the error and can choose how to continue.
 
+When you ask what happened in an earlier task, Chief can consult that conversation. Each lookup has a 90-second limit. If it times out, Chief can continue with the information it already has. You can also open the task’s card to read its replies yourself.
+
 When Chief's input is at the bottom of Overview, click outside it or press **Esc** to close it. Your unsent draft is there when you reopen the box. [Watch Chief Bar open for typing and chat](chief-bar-and-tags.md)
 
 When the bar is folded, watch the three dots beneath it while Chief thinks or uses a tool. They brighten in turn, lift off and circle the bar once as Chief’s eyes follow. The dots settle back into a row and Chief briefly squints before the sequence repeats. Switching tools keeps the rhythm. The dots fade out when the work ends. If Chief needs your permission or an answer, a request appears above the bar.

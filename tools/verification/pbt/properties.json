@@ -4,6 +4,7 @@
   {"id":"PBT-DISPATCH-PUBLICATION","suite":"go","engine":"rapid","package":"internal/services/dispatchconfig","test":"TestDispatchPublicationProperties","doc":"internal/services/dispatchconfig/README.md","cases":40},
   {"id":"PBT-DISPATCH-OPTIONS","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestDispatchOptionsProperties","doc":"internal/services/dispatchconfig/README.md","cases":40},
   {"id":"PBT-RUNTIME-TAG-MEMBERSHIP","suite":"go","engine":"rapid","package":"internal/core/runtime","test":"TestRetainTagMembershipProperties","doc":"internal/core/runtime/README.md","cases":30},
+  {"id":"PBT-RUNTIME-HISTORY-READ","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestHistoryReadDeadlineProperties","doc":"internal/core/runtime/README.md","cases":20},
   {"id":"PBT-RUNTIME-ADMISSION","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestSendAdmissionProperties","doc":"internal/core/runtime/README.md","cases":100},
   {"id":"PBT-RUNTIME-SETTINGS","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestSettingsPresentationProperties","doc":"internal/core/runtime/README.md","cases":100},
   {"id":"PBT-RUNTIME-ROLE-SETTINGS","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestBackgroundSettingsSaveProperties","doc":"internal/core/runtime/README.md","cases":100},
