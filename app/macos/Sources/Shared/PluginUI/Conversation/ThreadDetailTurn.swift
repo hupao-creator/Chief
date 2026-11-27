@@ -31,7 +31,7 @@ public struct ThreadDetailRow: Identifiable {
 public struct ThreadExecutionSummary: Sendable {
     public let reasoningSegments: Int
     public let toolCalls: Int
-    /// False only for positively identified empty bodies or settled Hook bookkeeping.
+    /// False only for positively identified empty bodies or Hook bookkeeping.
     /// Unknown execution kinds keep the conservative default.
     public let hasContent: Bool
 
@@ -147,6 +147,11 @@ public struct ThreadDetailTurn: View {
     @Environment(\.threadDetailVisibility) private var visibility
     @Environment(\.threadAgentDetail) private var agentDetail
     @Environment(\.locale) private var locale
+    private enum ReplyHandoff: Equatable {
+        case status(execution: JSONText, text: String)
+        case ready(execution: JSONText, reply: JSONText)
+    }
+    @State private var replyHandoff: ReplyHandoff?
 
     public init(id: JSONText, author: JSONValue? = nil, rows: [ThreadDetailRow],
                 reasoningUsage: ThreadReasoningUsage? = nil, createdAt: Double,
@@ -196,6 +201,8 @@ public struct ThreadDetailTurn: View {
             // Harnesses identify the final reply, including its first text part.
             // Resolve only after the body loads; review/status rows can follow it.
             let result = completedAt != nil ? displayed.first(where: \.finalReply)?.id ?? displayed.last?.id : displayed.last?.id
+            let soleReply = agentDetail && displayed.count == 1 && displayed[0].finalReply
+                ? ReplyHandoff.ready(execution: id, reply: displayed[0].id) : nil
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(displayed.enumerated()), id: \.element.id) { index, row in
                     row.node
@@ -207,14 +214,21 @@ public struct ThreadDetailTurn: View {
                         .padding(.bottom, index == displayed.count - 1 ? 0 : row.kind == .user ? 26 : 16)
                 }
                 if displayed.isEmpty {
-                    Text(localize(status))
-                        .modifier(ThreadLoadingTextStyle(loading: active && executionRunning))
-                        .threadReadingAnchor(threadExecutionResultAnchor(id))
+                    inlineStatus.threadReadingAnchor(threadExecutionResultAnchor(id))
+                        .onChange(of: agentDetail && executionRunning ? status : nil, initial: true) { _, text in
+                            replyHandoff = text.map { .status(execution: id, text: $0) }
+                        }
                 }
                 // Catalog activity and scoped Harness content update independently.
-                // A still-running execution must not expose the terminal footer.
-                if !active && !executionRunning {
+                // Completion and the first drawable reply can also arrive separately.
+                if !active && !executionRunning && (completedAt == nil || soleReply == nil || replyHandoff == soleReply) {
                     footer.padding(.top, displayed.last?.kind == .user ? 26 : 18)
+                }
+            }
+            .environment(\.nativeMarkdownLoadingPlaceholder, soleReply == nil ? nil : replyPlaceholder)
+            .backgroundPreferenceValue(NativeReadingContentStatusKey.self) { reading in
+                if agentDetail, !displayed.isEmpty, !reading.pending {
+                    Color.clear.onChange(of: soleReply, initial: true) { _, next in replyHandoff = next }
                 }
             }
             .transformPreference(NativeReadingContentStatusKey.self) { $0.hasContent = true }
@@ -230,6 +244,16 @@ public struct ThreadDetailTurn: View {
             .preference(key: ThreadWorkPreference.self, value: [id: workAvailable ?? hasDisplayableWork])
             .id(id)
         }
+    }
+
+    private var inlineStatus: some View {
+        ThreadExecutionStatusLabel(text: localize(status), loading: active && executionRunning)
+    }
+
+    private var replyPlaceholder: AnyView? {
+        if executionRunning { return AnyView(inlineStatus) }
+        guard completedAt != nil, case let .status(execution, text) = replyHandoff, execution == id else { return nil }
+        return AnyView(ThreadExecutionStatusLabel(text: localize(text), loading: false))
     }
 
     private var hasDisplayableWork: Bool {

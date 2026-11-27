@@ -26,6 +26,11 @@ public struct SidecardExecutionReveal: Equatable, Sendable {
     public init(id: UUID, previousExecutionID: JSONText? = nil, receipt: SidecardSendReceipt? = nil) {
         self.id = id; self.previousExecutionID = previousExecutionID; self.receipt = receipt
     }
+
+    public func continues(to target: HarnessReadingTarget?) -> Bool {
+        guard let target, let receipt else { return false }
+        return target.requestID.string == id.uuidString && target.executionID == receipt.executionID
+    }
 }
 
 /// Semantic user requests are routed by the host independently of plugin IDs.
@@ -190,18 +195,22 @@ public struct SidecardView<Content: View> {
     /// Reserves the execution column while a locally captured send awaits its reader.
     public let pendingExecution: Bool
     public let excludeExecutionID: JSONText?
+    /// Last execution main may display while this card resolves a local send.
+    public let retainedMainExecutionID: JSONText?
     public let composer: SidecardComposerRequest?
     public let content: Content
 
     public init(available: Bool, label: JSONText, indicator: SidecardIndicator? = nil,
                 acceptsInput: Bool? = nil, preferredWidth: Double, focusContentOnOpen: Bool = true,
-                pendingExecution: Bool = false, excludeExecutionID: JSONText? = nil, composer: SidecardComposerRequest? = nil,
+                pendingExecution: Bool = false, excludeExecutionID: JSONText? = nil,
+                retainedMainExecutionID: JSONText? = nil, composer: SidecardComposerRequest? = nil,
                 @ViewBuilder content: () -> Content) throws {
         guard preferredWidth.isFinite else { throw PluginContractError("Sidecard preferred width must be finite") }
         self.available = available; self.label = label; self.indicator = indicator
         self.acceptsInput = acceptsInput; self.preferredWidth = preferredWidth
         self.focusContentOnOpen = focusContentOnOpen
         self.pendingExecution = pendingExecution; self.excludeExecutionID = excludeExecutionID
+        self.retainedMainExecutionID = retainedMainExecutionID
         self.composer = composer; self.content = content()
     }
 }
@@ -289,7 +298,8 @@ public final class AnySidecardPlugin {
                     return try SidecardView(available: output.available, label: output.label,
                         indicator: output.indicator, acceptsInput: output.acceptsInput,
                         preferredWidth: output.preferredWidth, focusContentOnOpen: output.focusContentOnOpen,
-                        pendingExecution: output.pendingExecution, excludeExecutionID: output.excludeExecutionID, composer: output.composer) {
+                        pendingExecution: output.pendingExecution, excludeExecutionID: output.excludeExecutionID,
+                        retainedMainExecutionID: output.retainedMainExecutionID, composer: output.composer) {
                         AnyView(output.content)
                     }
                 }

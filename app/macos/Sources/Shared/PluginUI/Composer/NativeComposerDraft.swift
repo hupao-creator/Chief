@@ -97,6 +97,7 @@ public final class NativeComposerDraft {
     private var saveFailed: Bool { saveError != nil }
     @ObservationIgnored private var textEditID = UUID()
     @ObservationIgnored private var savedRevision: String?
+    @ObservationIgnored private var settledLocalSubmission: String?
     @ObservationIgnored private var protectedAttachmentIDs: Set<JSONText> = []
     @ObservationIgnored private var retiredAttachmentIDs: Set<JSONText> = []
     @ObservationIgnored private var remoteDiscardEnabled = true
@@ -129,6 +130,65 @@ public final class NativeComposerDraft {
             && NativeComposerSubmissionPolicy.canSubmit(text: text, attachments: attachments, directories: directories)
     }
     public func clearError() { operationError = nil }
+
+    public func ownsPendingSubmission(_ commandID: String) -> Bool { submitting && pending?.id == commandID }
+
+    public var editingForHandoff: Bool { submitting || clearing || importing || composingEditor != nil }
+
+    /// An accepted, same-Thread continuation moves only the editable successor.
+    /// The submitting scope resolves its own command and attachment leases first.
+    public func moveNextDraft(after submission: String, to destination: NativeComposerDraft) -> Bool {
+        // A confirmed command can still fail to settle or acknowledge its
+        // saved receipt. Keep that recovery action on its owning result.
+        guard !saveFailed, pending == nil, cleanupReceipt == nil else { return false }
+        do {
+            guard !isDisposed, !destination.isDisposed, !editingForHandoff, !destination.editingForHandoff,
+                  !destination.saveFailed else {
+                throw PluginContractError("下一条草稿仍在原执行结果中。请先完成草稿保存或回执清理。")
+            }
+            if text.isEmpty, directories.isEmpty, attachments.isEmpty {
+                try destination.refreshForContinuation()
+                editors.allObjects.first(where: \.isEditingDraft)?.continueEditing(in: destination)
+                return true
+            }
+            guard settledLocalSubmission == submission else {
+                throw PluginContractError("另一窗口已编辑此草稿。草稿仍在原执行结果中。")
+            }
+            guard let persistence, let target = destination.persistence else {
+                throw PluginContractError("下一条草稿仍在原执行结果中。请先完成草稿保存或回执清理。")
+            }
+            let sourceRevision = savedRevision
+            let moved = try persistence.move(contents, revision: sourceRevision, to: target)
+            destination.attachmentOwner = moved.owner
+            destination.install(moved.snapshot.contents, pending: nil, revision: moved.snapshot.revision)
+            // Only this window's focused input continues editing. Keep its
+            // NSTextView and caret while the new SwiftUI bindings are installed.
+            editors.allObjects.first(where: \.isEditingDraft)?.continueEditing(in: destination)
+            // Refresh idle editors of the moved revision. A divergent editor
+            // keeps its buffer and its next write still has to match its scope.
+            let empty = Contents.empty
+            for owner in Self.owners.compactMap(\.value) where !owner.isDisposed && !owner.saveFailed && !owner.editingForHandoff {
+                if owner.persistence?.identity == persistence.identity, owner.savedRevision == sourceRevision {
+                    owner.install(empty, pending: nil, revision: nil)
+                } else if owner !== destination, owner.persistence?.identity == target.identity, owner.savedRevision == moved.previousRevision {
+                    owner.install(moved.snapshot.contents, pending: nil, revision: moved.snapshot.revision)
+                }
+            }
+            return true
+        } catch { record(error); return false }
+    }
+
+    private func refreshForContinuation() throws {
+        // The catalog can create this owner while the source receipt is still being
+        // cleared. Read and pin the destination another window last saved.
+        guard let saved = try persistence?.loadRetainingAttachments(forContinuation: true) else { return }
+        attachmentOwner = saved.owner
+        cleanupReceipt = nil
+        guard savedRevision != saved.snapshot?.revision else { return }
+        let next = saved.snapshot?.contents ?? .empty
+        install(next, pending: nil, revision: saved.snapshot?.revision)
+        loadPreviews(next.attachments)
+    }
 
     public var supportsHostFiles: Bool { services.hostDirectory != nil }
     public var canPreviewHostFiles: Bool { services.openHostFile != nil }
@@ -573,7 +633,12 @@ public final class NativeComposerDraft {
             }
             let next: Contents
             if let saved, owner.savedRevision != saved.previousRevision { next = saved.snapshot.contents }
-            else { next = restore ? owner.contents.restoring(handoff.original) : owner.contents }
+            else {
+                next = restore ? owner.contents.restoring(handoff.original) : owner.contents
+                // Settling the send also refreshes other windows. Only the
+                // submitting window may move edits from its own winning revision.
+                if owner === self, !restore { owner.settledLocalSubmission = handoff.id }
+            }
             owner.install(next, pending: nil, revision: saved?.snapshot.revision,
                           restoredPrefix: restore ? handoff.original.text : nil)
         }

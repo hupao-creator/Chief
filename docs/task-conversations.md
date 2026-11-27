@@ -30,9 +30,11 @@ When a follow-up appears in the conversation, click **Show full text** to see it
 
 If Chief is still connected to a background service from before an update, your message appears when the agent records it.
 
-When you send from the latest finished result, the **Execution** sidecard opens immediately. You can fold it or switch to another sidecard while the run starts.
+When you send from the latest finished result, the **Execution** sidecard opens for the new run. You can keep reading the previous answer where you left off. Its work summary stays open or closed as you left it. You may see **Connecting to Codex** while the run starts. **Running** means Codex has started working on your message. You can fold the sidecard or switch to another one while you wait. When the new run finishes, its answer appears in the main reading area.
 
-You can start writing the next message while Chief confirms the previous send. Once the send succeeds, the next draft stays in the box. If the send is rejected, Chief puts the earlier message above your new text so you can review both before sending.
+You can start writing the next message while Chief confirms the previous send. When the input box switches to the new run, your next draft goes with it. If another window has already saved a draft for the new run, its text appears before yours. If the send is rejected, Chief puts the earlier message above your new text so you can review both before sending.
+
+If Chief says another window edited the draft and it stayed on the original result, the input box still belongs to that earlier run. Sending from there tries to start a separate conversation. To continue the latest run, copy any text you want to use, click **×** to return to Overview, and reopen the task’s card. You can then paste your text and send it. The saved draft stays with the earlier result.
 
 ## Revisit or branch from an earlier run
 

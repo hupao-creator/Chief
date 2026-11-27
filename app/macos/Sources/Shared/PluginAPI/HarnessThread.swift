@@ -549,6 +549,11 @@ public struct ThreadConversationIndex: Hashable, Sendable {
     public init(executionIDs: [JSONText], hasInheritedHistory: Bool) {
         self.executionIDs = executionIDs; self.hasInheritedHistory = hasInheritedHistory
     }
+    public func contains(_ executionID: JSONText, after predecessor: JSONText) -> Bool {
+        guard let earlier = executionIDs.lastIndex(of: predecessor),
+              let later = executionIDs.firstIndex(of: executionID) else { return false }
+        return earlier < later
+    }
     public init(json: JSONValue) throws {
         let r = try ThreadContractReader(json, path: "conversationIndex", keys: ["executionIds", "hasInheritedHistory"])
         executionIDs = try r.texts("executionIds")

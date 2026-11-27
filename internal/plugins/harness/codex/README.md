@@ -27,6 +27,11 @@ session. The live session checks the requested permission policy.
 
 ## Settings, tools and execution
 
+A staged execution reports **Connecting to Codex**. The first native turn ID
+confirmed by `turn/start` or `turn/started` advances that execution to
+**Running**. A more specific status already received, such as a request for
+input or connection recovery, retains precedence.
+
 [settings.go](settings.go) requires explicit model, thinking and service-tier choices for ordinary task creation. `default` is the standard tier; other tiers use native identifiers. During initial import, CLI 0.171.0 can return `service_tier = "fast"` in `config/read`. An exact tier ID takes precedence. Otherwise Chief pins `priority` for that setting only when the selected model advertises it. Display names do not establish support. Pinned profiles and explicit task settings use catalog IDs. A missing/null/boolean tier in a task request is not inheritance. Native replies confirm the effective tier; explicit null means known standard, while absence is unreported. [presentation.go](presentation.go) uses reported execution facts for Fast status before falling back to requested settings.
 
 The [native Settings editor](../../../../app/macos/Sources/Plugins/Harnesses/Codex/CodexSettings.swift) reads a saved reasoning effort from either `effort` or an explicit `thinking` choice. It displays `thinking.mode = off` as `none`. An effort edit writes one choice and preserves the other profile fields.
@@ -219,13 +224,20 @@ and a repeated start cannot erase a completed diagnostic. Existing stored
 diagnostics already discarded by earlier versions cannot be reconstructed by the
 reader; no history rewrite is performed.
 
+Hook starts and completions retain their activity identity. Reported status
+messages and output entries supply bounded detail. Failed or blocked Hooks
+retain a failure diagnostic, and stopped Hooks retain their cancellation.
+An otherwise empty Agent reader shows the execution's own status while an
+output-free Hook runs. Reported Hook output, tool calls, failures and
+cancellations qualify for the work summary.
+
 Lightweight deferred execution projections record meaningful activity `detail` by
 native activity ID before stripping its body. The native Agent reader uses that
 presence to distinguish completed no-output Hook bookkeeping from actual output;
 canonical activity state and full execution content remain unchanged.
 
-Matching id/status/name-only successful Hook JSON is lifecycle metadata, not
-summary output; unknown fields remain conservative and full detail is retained.
+Matching id/status/name-only Hook JSON in saved running or successful activity
+records counts as lifecycle metadata. Unknown fields retain their detail.
 
 Lazy Moku delivery uses `SendRequest.FollowUpOnly`. The adapter checks its own
 active execution before retaining input and returns `ErrFollowUpUnavailable`

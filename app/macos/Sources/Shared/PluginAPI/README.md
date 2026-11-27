@@ -111,9 +111,14 @@ identifiers).
 `SidecardContext.executionReveal` is a visit-scoped detail-send request: its UUID
 is stable across admission. The previous execution identifies content the card
 may retain while opening. Its optional receipt supplies the exact accepted
-execution. A pending card can claim the Dock column without excluding an
-execution from main. Its opening context can restore the previous selection
-while it still owns the selection revision.
+execution. A pending card can claim the Dock column before the accepted ID is
+known. Its `retainedMainExecutionID` keeps newer manifest rows out of the main
+reader while the full index remains available to the card. The Host retires
+the reveal when main displays the accepted result. A follow-latest reader can
+also report a settled successor with both runs in order in its mounted
+manifest. Subsequent catalog and index updates resolve against the current
+conversation. The opening context can restore the previous selection while
+it owns the selection revision.
 `executionHandoff` retains only the selected terminal execution during the Host's
 move into main. Generic Browser sends and compose notifications do not acquire
 these presentation requests.

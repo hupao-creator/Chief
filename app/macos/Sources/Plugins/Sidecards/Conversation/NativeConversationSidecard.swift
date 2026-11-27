@@ -28,7 +28,8 @@ public struct NativeConversationSidecard: SidecardPlugin {
         return try SidecardView(available: presentation.pendingExecution || executionID != nil, label: JSONText(label),
                                indicator: active == nil ? nil : waiting ? .attention : .active,
                                acceptsInput: false, preferredWidth: 1.0 / 3, focusContentOnOpen: false,
-                               pendingExecution: presentation.pendingExecution, excludeExecutionID: executionID) {
+                               pendingExecution: presentation.pendingExecution, excludeExecutionID: executionID,
+                               retainedMainExecutionID: presentation.retainedMainExecutionID) {
             ConversationExecutionPane(presentation: presentation)
         }
     }

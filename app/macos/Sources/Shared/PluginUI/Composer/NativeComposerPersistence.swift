@@ -19,6 +19,8 @@ public struct NativeComposerDraftPersistence: Sendable {
         let directories: [NativeComposerDirectory]
         let attachments: [NativeComposerAttachment]
 
+        static var empty: Self { Self(textValue: "", textEditID: UUID(), directories: [], attachments: []) }
+
         func restoring(_ original: Contents) -> Contents {
             let nextPaths = Set(directories.map(\.path)), nextIDs = Set(attachments.map(\.id))
             return Contents(textValue: JSONText(Self.recoveredText(submitted: original.text, next: text)),
@@ -64,9 +66,9 @@ public struct NativeComposerDraftPersistence: Sendable {
         return try decode(value)
     }
 
-    @MainActor func loadRetainingAttachments() throws -> (snapshot: Snapshot?, owner: RuntimeAttachmentOwner) {
+    @MainActor func loadRetainingAttachments(forContinuation: Bool = false) throws -> (snapshot: Snapshot?, owner: RuntimeAttachmentOwner) {
         let retained = try store.loadRetainingAttachments()
-        let snapshot = try retained.value.map(decode)
+        let snapshot = try retained.value.map(forContinuation ? continuationDestination : decode)
         let chips = (snapshot?.attachments ?? []) + (snapshot?.pending?.original.attachments ?? [])
         let ready = Set(chips.compactMap(\.attachment).map(\.id))
         guard ready == Set(retained.attachmentIDs) else { throw PluginContractError("保存的草稿附件归属无法读取") }
@@ -147,6 +149,44 @@ public struct NativeComposerDraftPersistence: Sendable {
     }
 
     func acquireSubmissionLease() throws -> RuntimeDraftSubmissionLease { try store.acquireSubmissionLease() }
+
+    private func requireFinishedImports(_ value: JSONValue) throws {
+        if value["attachments"]?.arrayValue?.contains(where: { $0["status"]?.stringValue == "pending" }) == true {
+            throw PluginContractError("草稿仍在导入文件。下一条草稿仍在原执行结果中。")
+        }
+    }
+
+    @MainActor private func continuationDestination(_ value: JSONValue) throws -> Snapshot {
+        let saved = try decode(value)
+        guard saved.pending == nil, saved.cleanupReceipt == nil else {
+            throw PluginContractError("新一轮执行有待处理的发送。下一条草稿仍在原执行结果中。")
+        }
+        try requireFinishedImports(value)
+        return saved
+    }
+
+    @MainActor
+    func move(_ contents: Contents, revision: String?, to destination: Self) throws -> (previousRevision: String?, snapshot: Snapshot, owner: RuntimeAttachmentOwner) {
+        let moved = try store.move(to: destination.store) { source, target in
+            let original = try decode(source)
+            guard original.revision == revision, original.pending == nil, original.cleanupReceipt == nil else {
+                throw PluginContractError("原草稿已更改，下一条草稿仍在原执行结果中。")
+            }
+            let existing = try target.map(continuationDestination)
+            try requireFinishedImports(source)
+            let merged = existing.map { contents.restoring($0.contents) } ?? contents
+            guard merged.attachments.count <= NativeComposerDraft.maximumAttachments,
+                  merged.directories.count <= NativeComposerDraft.maximumDirectories else {
+                throw PluginContractError("合并后的草稿超出项目数量限制。两份草稿均已保留在各自的执行结果中。")
+            }
+            let revision = UUID().uuidString
+            var value = fields(merged)
+            value["revision"] = .text(revision)
+            let snapshot = Snapshot(revision: revision, contents: merged, pending: nil)
+            return (.object(value), Array(Set(merged.attachments.compactMap(\.attachment).map(\.id))), (existing?.revision, snapshot))
+        }
+        return (moved.result.0, moved.result.1, moved.owner)
+    }
 
     @MainActor
     private func fields(_ contents: Contents) -> [JSONText: JSONValue] {

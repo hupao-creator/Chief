@@ -13,6 +13,7 @@ import (
 )
 
 const StateSchema = "mokusei.harness.codex.thread.v1"
+const connectingLabel = "正在连接 Codex"
 const stMaxTurns = 200
 const stMaxAnswer = 256 * 1024
 const stMaxReasoning = 64 * 1024
@@ -78,7 +79,7 @@ func StageExecutionChecked(state Map, id string, input Map, at int64, settings M
 	if messageID == "" {
 		messageID = "message:" + id
 	}
-	turn := Map{"executionId": id, "createdAt": timestamp, "updatedAt": timestamp, "status": "running", "statusLabel": "正在连接 Codex", "messages": []any{stMessage(input, messageID, "prompt", timestamp)}, "timeline": []any{Map{"id": fmt.Sprintf("tl:%d:user-message:0", timestamp), "kind": "user-message", "createdAt": timestamp, "messageId": messageID}}, "answer": "", "reasoning": "", "plan": []any{}, "activities": []any{}, "interactions": []any{}, "notices": []any{}, "reasoningTokensByGeneration": Map{}}
+	turn := Map{"executionId": id, "createdAt": timestamp, "updatedAt": timestamp, "status": "running", "statusLabel": connectingLabel, "messages": []any{stMessage(input, messageID, "prompt", timestamp)}, "timeline": []any{Map{"id": fmt.Sprintf("tl:%d:user-message:0", timestamp), "kind": "user-message", "createdAt": timestamp, "messageId": messageID}}, "answer": "", "reasoning": "", "plan": []any{}, "activities": []any{}, "interactions": []any{}, "notices": []any{}, "reasoningTokensByGeneration": Map{}}
 	if settings != nil {
 		author := Map{}
 		if model := strings.TrimSpace(stString(settings["model"])); model != "" {
@@ -188,6 +189,12 @@ func ReduceEvent(state Map, executionID string, event Map) Map {
 	}
 	timeline := stArray(turn["timeline"])
 	switch kind {
+	case "turn-started":
+		// A request, recovery or progress report can precede the start reply.
+		if turn["status"] != "running" || turn["statusLabel"] != connectingLabel {
+			return state
+		}
+		turn["statusLabel"] = "运行中"
 	case "status":
 		if label, exists := event["label"]; exists {
 			turn["statusLabel"] = label
@@ -298,9 +305,11 @@ func ReduceEvent(state Map, executionID string, event Map) Map {
 					activity["filePaths"] = paths
 				}
 			}
-			delete(activity, "detail")
-			if (activity["kind"] == "command" || event["status"] == "failed") && stString(event["detail"]) != "" {
-				activity["detail"] = stTail(stString(event["detail"]), stMaxDetail)
+			// A Hook may report its output before an output-free completion frame.
+			if detail := stString(event["detail"]); detail != "" && (activity["kind"] == "hook" || activity["kind"] == "command" || event["status"] == "failed") {
+				activity["detail"] = stTail(detail, stMaxDetail)
+			} else if activity["kind"] != "hook" {
+				delete(activity, "detail")
 			}
 		}
 	case "interaction-opened":
@@ -631,6 +640,9 @@ func stStartActivity(turn, incoming Map, at int64) {
 		return
 	}
 	activity := Map{"id": id, "kind": incoming["kind"], "label": stTail(stString(incoming["label"]), stMaxDetail), "status": "running"}
+	if detail := stString(incoming["detail"]); incoming["kind"] == "hook" && detail != "" {
+		activity["detail"] = stTail(detail, stMaxDetail)
+	}
 	if value, exists := incoming["toolCall"]; exists {
 		activity["toolCall"] = value
 	}

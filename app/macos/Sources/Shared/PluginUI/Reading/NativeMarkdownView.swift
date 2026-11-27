@@ -4,6 +4,10 @@ import ChiefCore
 import ChiefPluginAPI
 import SwiftUI
 
+extension EnvironmentValues {
+    @Entry var nativeMarkdownLoadingPlaceholder: AnyView?
+}
+
 /// Native conversation/document Markdown. Hosts supply their external navigation
 /// and attachment resolver; plain Markdown never creates a browser view.
 public struct NativeMarkdownView: View {
@@ -20,6 +24,7 @@ public struct NativeMarkdownView: View {
     public var documentToken: String?
     public var onDocumentApplied: ((String?) -> Void)?
     @Environment(\.nativeMarkdownMediaResolver) private var environmentMediaResolver
+    @Environment(\.nativeMarkdownLoadingPlaceholder) private var loadingPlaceholder
     @Environment(\.nativeReadingPageCapacity) private var pageCapacity
     @StateObject private var model = MarkdownViewModel()
     @State private var hasStreamed = false
@@ -66,6 +71,8 @@ public struct NativeMarkdownView: View {
                 // parsing Markdown, constructing blocks or resolving media.
                 MarkdownSelectableText(spans: [MarkdownSpan(text: text)], fontSize: fontSize,
                     muted: muted, openLink: actions.open)
+            } else if !model.hasParsedContent, model.blocks.isEmpty, let loadingPlaceholder {
+                loadingPlaceholder
             } else if defersDistantSections {
                 MarkdownReadingSections(blocks: model.blocks, options: options)
             } else {

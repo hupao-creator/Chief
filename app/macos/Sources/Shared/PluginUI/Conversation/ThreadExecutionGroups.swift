@@ -205,10 +205,20 @@ public struct ThreadConnectionLabel: View {
     public init(harness: String) { self.harness = harness }
 
     public var body: some View {
-        Text(verbatim: locale.language.languageCode?.identifier == "zh"
-            ? "正在连接 \(harness)" : "Connecting to \(harness)")
-            .font(.callout)
-            .modifier(ThreadLoadingTextStyle(loading: true))
+        let text = locale.language.languageCode?.identifier == "zh"
+            ? "正在连接 \(harness)" : "Connecting to \(harness)"
+        ThreadExecutionStatusLabel(text: text, loading: true)
+    }
+}
+
+struct ThreadExecutionStatusLabel: View {
+    let text: String
+    let loading: Bool
+
+    var body: some View {
+        Text(verbatim: text)
+            .font(NativeTypography.inter(size: 16))
+            .modifier(ThreadLoadingTextStyle(loading: loading))
     }
 }
 

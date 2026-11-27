@@ -63,11 +63,16 @@ struct CodexTurnRows: View {
 
     private var statusLabel: String {
         switch turn.status {
-        case "waiting-input": codexLocalized("等待输入", locale: locale)
-        case "completed": codexLocalized("已完成", locale: locale)
-        case "failed": codexLocalized("失败", locale: locale)
-        case "interrupted": codexLocalized("已取消", locale: locale)
-        default: turn.statusLabel.flatMap { $0.isEmpty ? nil : $0 }.map { $0 == "运行中" ? codexLocalized($0, locale: locale) : $0 } ?? codexLocalized("运行中", locale: locale)
+        case "waiting-input": return codexLocalized("等待输入", locale: locale)
+        case "completed": return codexLocalized("已完成", locale: locale)
+        case "failed": return codexLocalized("失败", locale: locale)
+        case "interrupted": return codexLocalized("已取消", locale: locale)
+        default:
+            let label = turn.statusLabel.flatMap { $0.isEmpty ? nil : $0 } ?? "运行中"
+            switch label {
+            case "运行中", "正在连接 Codex": return codexLocalized(label, locale: locale)
+            default: return label
+            }
         }
     }
 
@@ -172,8 +177,10 @@ extension CodexTurn {
     }
 
     private func transcriptActivity(_ activity: CodexActivity, presence: ThreadExecutionPresence) -> ThreadTranscriptActivity {
+        // Hook start and successful completion can both carry only lifecycle metadata.
         let hasContent = activity.kind != "hook" || activity.toolCall || activity.raw["toolName"] != nil ||
-            activity.status != "completed" || presence.contains(activity.id, "detail") || activityHasOutput(activity)
+            activity.status == "failed" || activity.status == "cancelled" ||
+            presence.contains(activity.id, "detail") || activityHasOutput(activity)
         return .init(id: activity.id, kind: activity.kind, label: activity.label, status: activity.status,
             detail: activity.detail, filePaths: activity.filePaths,
             countsAsTool: activity.toolCall || ["command", "file", "tool", "search"].contains(activity.kind), hasContent: hasContent)
@@ -181,11 +188,10 @@ extension CodexTurn {
 
     private func activityHasOutput(_ activity: CodexActivity) -> Bool {
         guard !codexTrim(activity.raw["detail"]).codeUnits.isEmpty else { return false }
-        // Codex serializes hook/completed's run object as detail. Matching
-        // lifecycle metadata is not output; unknown fields remain conservative.
+        // Older projections can contain the native run object in the detail field.
         guard let detail = activity.detail,
               let metadata = try? JSONValue(data: Data(detail.utf8)), let fields = metadata.objectValue,
-              metadata["id"] == .string(activity.id), metadata["status"] == .text("completed"),
+              metadata["id"] == .string(activity.id), metadata["status"] == .text(activity.status),
               fields.keys.allSatisfy({ ["id", "status", "name"].contains($0.string) }),
               metadata["name"] == nil || metadata["name"] == .text("") || metadata["name"] == .text(activity.label)
         else { return true }

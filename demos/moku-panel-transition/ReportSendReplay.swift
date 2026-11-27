@@ -141,28 +141,51 @@ throws -> ApplicationThreadProps<NativeReportView> {
         let evidence = ProcessInfo.processInfo.environment["CHIEF_REPORT_REPLAY_EVIDENCE"].map { URL(fileURLWithPath: $0) }
         var start = ContinuousClock.now
         var lastFrame: ReaderFrame?
-        func sample(_ stage: String) throws -> [String] {
-            view.layoutSubtreeIfNeeded()
-            var captured = ContinuousClock.now
-            let frame = try readerFrame(view, saveTo: evidence?.appendingPathComponent(step + "-" + stage + ".png")) {
-                captured = .now
+        var frameNumber = 0
+        func sample(_ stage: String, _ capture: ReaderCapture) async throws -> [String] {
+            frameNumber += 1
+            if let evidence {
+                try capture.save(to: evidence.appendingPathComponent("\(step)-\(stage)-\(frameNumber).png"))
             }
+            let elapsed = start.duration(to: capture.instant)
+            print("Report", step, stage, frameNumber, "captured", elapsed)
+            let frame = try await capture.recognize()
             lastFrame = frame
             let labels = frame.labels
-            print("Report", step, stage, start.duration(to: captured), labels)
+            print("Report", step, stage, frameNumber, "recognized", start.duration(to: .now), labels)
             return labels
         }
-        func observe(_ expected: String, stage: String, afterRemovalOf outgoing: String? = nil) async throws {
+        func capture(editorOnly: Bool) throws -> ReaderCapture {
+            guard editorOnly else { return try ReaderCapture(view) }
+            // Full-window OCR can include the adjacent attachment button on the
+            // editor's text line. Crop the mounted pixels to its current bounds.
+            guard let editor = editableText(in: view) else { throw PluginContractError("Missing Report editor") }
+            return try ReaderCapture(view, region: view.convert(editor.visibleRect, from: editor))
+        }
+        func observe(_ expected: String, stage: String, afterRemovalOf outgoing: String? = nil, editorOnly: Bool = false) async throws {
             let deadline = ContinuousClock.now + .seconds(3)
-            repeat {
+            // Take the deadline frame even if OCR of an entrance frame is
+            // still running. Recognition latency must not consume the last
+            // opportunity to observe the pixels within this stage.
+            let deadlineFrame = Task { @MainActor in
+                try await Task.sleep(until: deadline, clock: .continuous)
+                return try capture(editorOnly: editorOnly)
+            }
+            defer { deadlineFrame.cancel() }
+            while ContinuousClock.now < deadline {
                 try await Task.sleep(for: .milliseconds(16))
-                let labels = try sample(stage)
+                guard ContinuousClock.now < deadline else { break }
+                let labels = try await sample(stage, capture(editorOnly: editorOnly))
                 if labels.contains(expected), outgoing.map(labels.contains) != true { return }
-            } while ContinuousClock.now < deadline
-            throw PluginContractError("Missing Report pixels: " + expected)
+            }
+            let labels = try await sample(stage, deadlineFrame.value)
+            guard labels.contains(expected), outgoing.map(labels.contains) != true else {
+                throw PluginContractError("Missing Report pixels: " + expected)
+            }
         }
         try await observe("Previous result", stage: "source")
-        try require(try sample("source").contains(prompt), "Source frame did not show the submitted input")
+        try require(try await sample("source-editor", capture(editorOnly: true)).contains(prompt),
+                    "Source frame did not show the submitted input")
         start = .now
         editor.keyDown(with: enter)
         try require(draft.inputText.isEmpty && draft.submitting && cards.connection?.source == src,
@@ -205,10 +228,10 @@ throws -> ApplicationThreadProps<NativeReportView> {
             try require(presentation.selected == src.thread && cards.selectedExecution == nil, "Late receipt navigated after leaving")
         }
         try await Task.sleep(for: .milliseconds(40))
-        try require(try !sample("settled").contains(expected), "Retired feedback remained visible")
+        try require(try await !sample("settled", ReaderCapture(view)).contains(expected), "Retired feedback remained visible")
         if step == "accept" {
             cards.selectExecution(src)
-            try await observe("next", stage: "source-draft")
+            try await observe("next", stage: "source-draft", editorOnly: true)
             try require(presentation.dockExecution == src && presentation.dockDraft.text == "next",
                 "Returning to the source lost the next draft")
         }

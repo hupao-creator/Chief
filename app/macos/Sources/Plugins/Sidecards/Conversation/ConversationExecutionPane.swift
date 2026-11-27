@@ -34,7 +34,9 @@ public struct ConversationExecutionPane: View {
     private var conversation: some View {
         if let executionID = presentation.sidecardExecutionID {
             let readingTarget = presentation.context.readingTarget
+            let continuing = presentation.context.executionReveal?.continues(to: readingTarget) == true
             presentation.context.conversation(executionID, readingTarget?.executionID == executionID ? readingTarget : nil)
+                .environment(\.threadContinuationRequestID, continuing ? readingTarget?.requestID : nil)
                 .disabled(presentation.context.executionDisabled)
         } else if presentation.pendingExecution {
             NativeSurfaceLoading(locale.language.languageCode?.identifier == "zh" ? "正在打开对话…" : "Opening conversation…")

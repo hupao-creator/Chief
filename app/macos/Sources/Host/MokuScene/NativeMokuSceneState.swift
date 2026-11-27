@@ -58,6 +58,16 @@ import ChiefPluginUI
     @ObservationIgnored private var composerFocusSequence = 0
     @ObservationIgnored private var composeKeys: NativeMokuComposeKeyHandoff?
     @ObservationIgnored private var composerIdentity: ObjectIdentifier?
+    @ObservationIgnored private weak var continuedEditorSource: NativeComposerDraft?
+    private var editorVisit = UUID()
+
+    enum EditorIdentity: Hashable { case visit(UUID), draft(ObjectIdentifier) }
+    func editorIdentity(for draft: NativeComposerDraft) -> EditorIdentity {
+        let identity = ObjectIdentifier(draft)
+        // SwiftUI can lay out the source Dock again before installing the
+        // destination Dock. Both renders refer to the same native editor.
+        return identity == composerIdentity || draft === continuedEditorSource ? .visit(editorVisit) : .draft(identity)
+    }
     public private(set) var talkPresentation = NativeMokuTalkState()
     public private(set) var settingsOpen = false
     public private(set) var settingsClosing = false
@@ -189,7 +199,8 @@ import ChiefPluginUI
     /// editor selection must never cross from Moku or one Thread to another.
     public func setComposerContext(_ draft: NativeComposerDraft, opensInput: Bool, keepsInputOpen: Bool = false,
                                    inputAdmissionReady: Bool = true, waitsForHarnessIdentity: Bool = false,
-                                   autofocus: Bool = true, retainingOpenInput: Bool = false) {
+                                   autofocus: Bool = true, retainingOpenInput: Bool = false,
+                                   continuingEditorFrom source: NativeComposerDraft? = nil) {
         let identity = ObjectIdentifier(draft)
         // A document change inside an admitted reader replaces the draft, but
         // the pinned shell and its settled Harness mark still belong to the visit.
@@ -210,12 +221,17 @@ import ChiefPluginUI
             }
         }
         guard composerIdentity != identity else { return }
+        let continuesEditor = retainOpenInput && source.map { ObjectIdentifier($0) == composerIdentity } == true
+        continuedEditorSource = continuesEditor ? source : nil
         composerIdentity = identity
         composerAutofocus = autofocus
         composerGeneration = UUID()
         capsuleTask?.cancel(); capsuleTask = nil
         inputOpen = retainOpenInput; retiringInput = nil; capsuleSealed = false
-        retainedSelection = nil; retainedSelectionText = nil
+        if !continuesEditor {
+            editorVisit = composerGeneration
+            retainedSelection = nil; retainedSelectionText = nil
+        }
         retainDraft(draft)
         setInputOpen(opensInput)
         command?(.position)

@@ -27,7 +27,12 @@ immediately. The entrance leaves scrolling to the reader's existing follow or
 manual position. When the result anchor moves to a new tail row, the preceding
 reply stays mounted at its measured height. [Send identity and ownership](composer.md#send-identity-and-ownership)
 
-Empty no-output bookkeeping does not create a visible execution summary.
+An output-free Codex Hook at submission or completion keeps its timeline
+identity. Its start and successful end alone do not create a work summary.
+The reader shows the execution status until there is a visible row. When
+that row is the Agent's first reply, the last visible running status stays
+in place while its Markdown prepares, including when completion arrives with
+the reply. The completion time and usage follow the drawable reply.
 
 Codex, Claude Code, Pi Agent and OpenCode each decode their own native protocol
 and saved state into ordered transcript occurrences. The shared layout selects
@@ -169,6 +174,12 @@ inline connection status. The receipt binds the accepted execution to this same
 page. Its prepared reader takes over in place after landing. A same-execution
 steer keeps the reader and scroll position.
 
+In the current related document, the mounted execution body owns the transition
+from live work to the final reply and footer. The Agent reader offers **Show
+work** only where visibility is adjustable and mounted content reports work.
+The submitted heading stays in place until the execution ends and its generated
+title is available. The title and Thread emoji then appear together.
+
 The Report, sidecard column and open composer stay in place throughout the
 handoff. The source draft accepts typing while the request is pending. The
 destination owns actions only after its reader, exact input and column are ready.
@@ -187,6 +198,18 @@ The shell still fills the reader and the Sidecard aperture stays folded. Once
 the main document and heading are ready, the first body fades in at its
 prepared width while the main shell contracts and Execution unfolds from its
 launcher. Later toggles use the current selection and retained document.
+
+When sending from the latest finished Agent execution, the displayed run owns
+its title, answer, work visibility and scroll anchor until its successor takes
+over. Execution opens when the Dock captures the send. The main reader stays
+on the source even if the manifest already includes a newer row. For an exact
+result, the receipt and catalog bind input to the accepted run within the same
+visit. Folding or choosing another card during the wait takes precedence.
+An exact continuation releases the send reveal when main displays the accepted
+result. A visit that follows latest can also finish the handoff on a later
+settled result when the displayed reader's full index places the accepted run
+before it. Subsequent runs follow the current conversation, including when a
+new catalog entry arrives ahead of its manifest row.
 
 On ordinary execution completion, the active Sidecard folds to its real launcher
 using the shared 380ms fold. Fold completion and destination-content readiness

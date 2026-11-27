@@ -579,6 +579,10 @@ before delivering a receipt or index. It checks both receipt/catalog orders, a t
 successor draft, folding, Browser selection and replacing the reading target. The scenario
 drives the native presentation and selection model without measuring screen timing.
 
+The attachment scenario moves two staged files into one draft and immediately
+replaces the saved destination. It runs the Go collector in another process
+and reads both files while the editor holds the move's attachment token.
+
 The [Super Thread follow-up scenario](ReportSendReplay.swift) mounts the Report
 sidecard and native editor, presses Return on a finished execution, and holds
 the Go response for at least 900ms. The new heading and a single inline
@@ -586,8 +590,14 @@ connection label must land before the receipt. OCR locates the label below the
 submitted heading. The accepted reader must take over in the same visit. The
 replay also checks duplicate Return, continued typing, rejection and restoration,
 and leaving before the reply. The document and source are fixtures. The accepted
-reader uses a Go-reduced Codex turn. Set `CHIEF_REPORT_REPLAY_EVIDENCE` to an
-existing absolute directory to keep the AppKit bitmap samples.
+reader uses a Go-reduced Codex turn. AppKit captures the mounted pixels while
+Vision recognizes earlier frames off the main actor. Before the 50-second
+workload starts, the same process has up to 120 seconds to recognize a known
+English label with the replay's Vision settings. Each stage keeps a deadline
+capture and logs capture and recognition times. On failure the driver prints
+the directory containing the numbered bitmap samples. Set
+`CHIEF_REPORT_REPLAY_EVIDENCE` to an absolute directory to retain successful
+samples as well.
 
 To capture the complete workspace, build the Debug Chief Swift product and the
 Go `./cmd/chief-runtime` binary at `.build/e2e/chief-runtime` (or pass

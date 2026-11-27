@@ -24,7 +24,9 @@ extension EnvironmentValues {
 public struct NativeReadingContentStatus: Equatable, Sendable {
     var hasContent = false
     var pending = false
-    var settledExecutions: Set<JSONText> = []
+    /// A missing ID has no mounted turn yet. A mounted turn reports both live
+    /// and terminal states independently of catalog and manifest delivery.
+    var executionSettled: [JSONText: Bool] = [:]
     public init() {}
     public var ready: Bool { hasContent && !pending }
 }
@@ -36,7 +38,7 @@ public struct NativeReadingContentStatusKey: PreferenceKey {
         let next = nextValue()
         value.hasContent = value.hasContent || next.hasContent
         value.pending = value.pending || next.pending
-        value.settledExecutions.formUnion(next.settledExecutions)
+        value.executionSettled.merge(next.executionSettled) { $0 || $1 }
     }
 }
 
@@ -89,7 +91,7 @@ private struct NativeReadingExecutionReady: ViewModifier {
     func body(content: Content) -> some View {
         content
             .transformPreference(NativeReadingContentStatusKey.self) { status in
-                if settled { status.settledExecutions.insert(executionID) }
+                status.executionSettled[executionID] = settled || status.executionSettled[executionID] == true
             }
             .onChange(of: Visit(id: handoff?.id, settled: settled), initial: true) { _, _ in
                 guard handoff?.executionID == executionID, let preparation else { return }

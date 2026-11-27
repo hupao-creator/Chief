@@ -341,6 +341,8 @@ struct NativeSidecardWorkspaceLayout: View {
                 NativeHarnessThreadView(host: model.harnessHost, input: snapshot.input,
                 presentation: .main(excludedExecutionIDs: snapshot.excludedExecutionIDs),
                 routes: model.routes, onIndexChange: model.receiveIndex)
+                .environment(\.threadRetainedMainExecution, snapshot.cards.lazy.compactMap(\.view.retainedMainExecutionID).first)
+                .environment(\.threadContinuationRequestID, snapshot.continuationRequestID)
                 .environment(\.nativeReadingContentHandoff, contentHandoff)
                 .environment(\.nativeReadingContentReady, contentHandoff?.ready)
                 .disabled(snapshot.executionDisabled)

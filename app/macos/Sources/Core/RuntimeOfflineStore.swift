@@ -92,14 +92,14 @@ public struct RuntimeDraftStore: Sendable {
     }
 
     public func load() throws -> JSONValue? {
-        try RuntimeAttachmentLease.withSharedOwnership(in: storageDirectory) { try readDocument()?.value }
+        try RuntimeAttachmentLease.withSharedOwnership(in: storageDirectory) { try readDocument(readEnvelope())?.value }
     }
 
     /// Read and pin under the same gate so another client's replacement of the
     /// saved draft cannot let collection overtake this restored in-memory owner.
     public func loadRetainingAttachments() throws -> Retained {
         try RuntimeAttachmentLease.withSharedOwnership(in: storageDirectory) {
-            let document = try readDocument()
+            let document = try readDocument(readEnvelope())
             let ids = document?.attachmentIDs ?? []
             let owner = try RuntimeAttachmentLease.ownerWhileLocked(in: storageDirectory, attachmentIDs: ids)
             return Retained(value: document?.value, attachmentIDs: ids, owner: owner)
@@ -112,35 +112,106 @@ public struct RuntimeDraftStore: Sendable {
         }
     }
 
-    private func readDocument() throws -> (value: JSONValue, attachmentIDs: [JSONText])? {
+    private struct Document {
+        let value: JSONValue
+        let attachmentIDs: [JSONText]
+        let move: Move?
+    }
+
+    private enum Move: Equatable {
+        case outgoing(UUID, to: JSONText)
+        case incoming(UUID, from: JSONText)
+
+        static let key: JSONText = "nativeDraftScopeMove"
+        var json: JSONValue {
+            switch self {
+            case let .outgoing(id, target): .object(["id": .text(id.uuidString), "to": .string(target)])
+            case let .incoming(id, source): .object(["id": .text(id.uuidString), "from": .string(source)])
+            }
+        }
+
+        init(_ value: JSONValue, scope: JSONText) throws {
+            guard let fields = value.objectValue, fields.count == 2,
+                  let id = fields["id"]?.stringValue.flatMap(UUID.init(uuidString:)) else {
+                throw RuntimeError("DRAFT_STORAGE_INVALID", "The saved draft move could not be read")
+            }
+            if case let .string(target) = fields["to"], target != scope { self = .outgoing(id, to: target) }
+            else if case let .string(source) = fields["from"], source != scope { self = .incoming(id, from: source) }
+            else { throw RuntimeError("DRAFT_STORAGE_INVALID", "The saved draft move has an invalid scope") }
+        }
+    }
+
+    private func readEnvelope() throws -> Document? {
         guard FileManager.default.fileExists(atPath: file.path) else { return nil }
         let data = try RuntimePrivateFile.read(file, maximumBytes: RuntimeProtocol.maxRequestBytes)
         let document = try JSONValue(data: data)
         guard document["version"]?.intValue == 2, document["scope"] == .string(scope),
               let attachmentIDs = document["attachmentIDs"]?.arrayValue,
-              attachmentIDs.allSatisfy({ if case .string = $0 { return true }; return false }),
               let value = document["value"] else {
             throw RuntimeError("DRAFT_STORAGE_INVALID", "The saved draft could not be read")
         }
-        let ids = attachmentIDs.compactMap { value -> JSONText? in
-            if case let .string(id) = value { return id }; return nil
+        let ids = try attachmentIDs.map { item -> JSONText in
+            guard case let .string(id) = item else { throw RuntimeError("DRAFT_STORAGE_INVALID", "Invalid saved draft attachment") }
+            return id
         }
-        return (value, ids)
+        if var fields = value.objectValue, let marker = fields.removeValue(forKey: Move.key) {
+            return Document(value: .object(fields), attachmentIDs: ids, move: try Move(marker, scope: scope))
+        }
+        return Document(value: value, attachmentIDs: ids, move: nil)
+    }
+
+    private func readDocument(_ envelope: Document?) throws -> Document? {
+        if case let .outgoing(id, target) = envelope?.move {
+            let destination = RuntimeDraftStore(storageDirectory: storageDirectory, scope: target)
+            if try destination.readEnvelope()?.move == .incoming(id, from: scope) { return nil }
+        }
+        return envelope
     }
 
     /// Match and replace under the collector's gate so another client cannot
     /// erase a pending send or consume a newer draft between read and write.
     public func update(_ change: (JSONValue?) throws -> (JSONValue, [JSONText])?) throws {
         try RuntimeAttachmentLease.withExclusiveOwnership(in: storageDirectory) {
-            if let (value, ids) = try change(readDocument()?.value) {
-                try write(value, attachmentIDs: ids)
+            let current = try readEnvelope()
+            if let (value, ids) = try change(readDocument(current)?.value) {
+                try write(value, attachmentIDs: ids, replacing: current)
             }
         }
     }
 
     public func save(_ value: JSONValue, attachmentIDs: [JSONText] = []) throws {
-        try RuntimeAttachmentLease.withSharedOwnership(in: storageDirectory) {
-            try write(value, attachmentIDs: attachmentIDs)
+        try RuntimeAttachmentLease.withExclusiveOwnership(in: storageDirectory) {
+            try write(value, attachmentIDs: attachmentIDs, replacing: readEnvelope())
+        }
+    }
+
+    /// Both scopes use the same attachment-ownership gate. The destination's
+    /// atomic write commits the move. If the process exits before unlinking
+    /// the source, its matching marker still makes it logically empty.
+    public func move<Result>(to destination: Self,
+                             merging: (JSONValue, JSONValue?) throws -> (value: JSONValue, attachmentIDs: [JSONText], result: Result)) throws -> (result: Result, owner: RuntimeAttachmentOwner) {
+        guard storageDirectory == destination.storageDirectory, file != destination.file else {
+            throw RuntimeError("DRAFT_STORAGE_INVALID", "A draft move requires two scopes in the same profile")
+        }
+        // On a failed disk write, release the new owner's token after leaving
+        // the exclusive gate. Its destructor acquires the shared gate.
+        var pinned: RuntimeAttachmentOwner?
+        defer { withExtendedLifetime(pinned) {} }
+        return try RuntimeAttachmentLease.withExclusiveOwnership(in: storageDirectory) {
+            let before = try readEnvelope(), after = try destination.readEnvelope()
+            guard let source = try readDocument(before) else {
+                throw RuntimeError("DRAFT_CHANGED", "The source draft changed before it could be moved")
+            }
+            let merged = try merging(source.value, destination.readDocument(after)?.value)
+            let owner = try RuntimeAttachmentLease.ownerWhileLocked(in: storageDirectory, attachmentIDs: merged.attachmentIDs)
+            pinned = owner
+            let id = UUID()
+            try write(source.value, attachmentIDs: source.attachmentIDs, replacing: before, move: .outgoing(id, to: destination.scope))
+            try destination.write(merged.value, attachmentIDs: merged.attachmentIDs, replacing: after, move: .incoming(id, from: scope))
+            // A failed unlink is retried before the destination replaces its
+            // receipt. Until then both the reader and collector retain safety.
+            try? FileManager.default.removeItem(at: file)
+            return (merged.result, owner)
         }
     }
 
@@ -148,12 +219,24 @@ public struct RuntimeDraftStore: Sendable {
         try RuntimeDraftSubmissionLease(file: file.deletingPathExtension().appendingPathExtension("lock"))
     }
 
-    private func write(_ value: JSONValue, attachmentIDs: [JSONText]) throws {
-        // The repository reads this versioned ownership envelope without knowing
-        // the native composer's value schema. Publish both in one atomic write.
+    private func write(_ value: JSONValue, attachmentIDs: [JSONText], replacing current: Document?, move: Move? = nil) throws {
+        // Runtime collectors strictly decode the v2 envelope. Only the opaque
+        // native value carries the optional, crash-recoverable scope move.
+        var stored = value
+        if let move {
+            guard var fields = value.objectValue else { throw RuntimeError("DRAFT_STORAGE_INVALID", "Invalid draft move contents") }
+            fields[Move.key] = move.json
+            stored = .object(fields)
+        }
         let data = try runtimeObject(["version": .integer(2), "scope": .string(scope),
-            "attachmentIDs": .array(attachmentIDs.map(JSONValue.string)), "value": value]).encodedData()
+            "attachmentIDs": .array(attachmentIDs.map(JSONValue.string)), "value": stored]).encodedData()
         guard data.count <= RuntimeProtocol.maxRequestBytes else { throw RuntimeError("DRAFT_TOO_LARGE", "The draft exceeds the local storage limit") }
+        if case let .incoming(id, previous) = current?.move {
+            let source = RuntimeDraftStore(storageDirectory: storageDirectory, scope: previous)
+            if try source.readEnvelope()?.move == .outgoing(id, to: scope) {
+                try FileManager.default.removeItem(at: source.file)
+            }
+        }
         try RuntimePrivateFile.write(data, to: file)
     }
 }

@@ -76,6 +76,7 @@ func codexLocalized(_ source: String, locale: Locale) -> String {
 
 private let codexEnglish: [String: String] = [
     "该 Codex 请求已失效。": "This Codex request has expired.", "Codex 消息时间线": "Codex message timeline",
+    "正在连接 Codex": "Connecting to Codex",
     "Codex 线程发生系统错误": "A system error occurred in the Codex thread", "后台终端": "Background terminals",
     "保存后的设置在下一次 Codex 操作时生效；Primary Native Session 不会被替换。": "Saved settings take effect on the next Codex operation; the primary native session is preserved.",
     "用于新建 Thread 的原生配置默认值。": "Native defaults for new threads.",

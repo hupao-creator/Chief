@@ -34,6 +34,7 @@ struct NativeSidecardWorkspaceCard: Identifiable {
 @MainActor
 struct NativeSidecardWorkspaceSnapshot {
     let input: HarnessThreadInput
+    var continuationRequestID: JSONText? = nil
     let cards: [NativeSidecardWorkspaceCard]
     let layoutSelection: JSONText?
     var selected: JSONText? { entranceReady ? layoutSelection : nil }
@@ -418,7 +419,10 @@ final class NativeSidecardWorkspaceModel {
         } while needsReconciliation && passes < 16
         // Size the main reader for the reconciled selection before its first
         // visible document. The entrance gate still owns the card aperture.
-        snapshot = NativeSidecardWorkspaceSnapshot(input: configuration.input, cards: cards,
+        let target = configuration.input.readingTarget
+        let continuing = configuration.executionReveal?.continues(to: target) == true
+        snapshot = NativeSidecardWorkspaceSnapshot(input: configuration.input,
+            continuationRequestID: continuing ? target?.requestID : nil, cards: cards,
             layoutSelection: selected, lastSelected: lastSelected, selectionRevision: selectionRevision,
             transitioning: transitioning, dragging: dragging, widths: widths,
             executionDisabled: configuration.executionDisabled,

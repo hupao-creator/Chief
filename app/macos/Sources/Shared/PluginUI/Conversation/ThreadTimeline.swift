@@ -58,8 +58,9 @@ public struct ThreadTimelineReadingTarget: Hashable, Sendable {
     public let requestId: JSONText
     public let anchorId: JSONText
     public let follow: Bool
-    public init(requestId: JSONText, anchorId: JSONText, follow: Bool = false) {
-        self.requestId = requestId; self.anchorId = anchorId; self.follow = follow
+    public let requestsFocus: Bool
+    public init(requestId: JSONText, anchorId: JSONText, follow: Bool = false, requestsFocus: Bool = true) {
+        self.requestId = requestId; self.anchorId = anchorId; self.follow = follow; self.requestsFocus = requestsFocus
     }
 }
 
@@ -486,7 +487,7 @@ public struct HarnessMessageTimeline: View {
             locatedRequest = target.requestId
             onLocated?(target.requestId)
         }
-        focused = true
+        if target.requestsFocus { focused = true }
     }
     private func follow(_ proxy: ScrollViewProxy) {
         guard followOutput else { return }

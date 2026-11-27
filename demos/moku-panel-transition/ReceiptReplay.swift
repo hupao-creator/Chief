@@ -60,6 +60,12 @@ private extension RuntimeClient {
             print("Second process rejected by scope lock; both staged IDs retained")
             return
         }
+        if CommandLine.arguments.count == 1 {
+            let start = ContinuousClock.now
+            try await prepareReaderRecognition()
+            print("English reader OCR ready after", start.duration(to: .now))
+            try Data().write(to: root.appendingPathComponent("reader-ocr-ready"), options: .atomic)
+        }
         let peer = try JSONValue(data: Data(contentsOf: root.appendingPathComponent("peer.json")))
         let rootProfile = root.appendingPathComponent("profile")
         let client = RuntimeClient(storageDirectory: rootProfile, connectionSource: NoLaunch())
@@ -409,6 +415,25 @@ private extension RuntimeClient {
                 name: .init(file["name"]!.stringValue!), mimeType: .init(file["mimeType"]!.stringValue!),
                 size: file["size"]!.intValue!, kind: .init(rawValue: file["kind"]!.stringValue!)!)
         }
+        // Only the move's returned owner can protect these files after a
+        // competing editor replaces the destination, before the UI binds it.
+        let source = RuntimeDraftStore(storageDirectory: root, scope: "move-source")
+        let target = RuntimeDraftStore(storageDirectory: root, scope: "move-destination")
+        try source.save(.object([:]), attachmentIDs: [files[0].id])
+        try target.save(.object([:]), attachmentIDs: [files[1].id])
+        let moved = try source.move(to: target) { _, _ in (.object([:]), files.map(\.id), ()) }
+        try target.save(.object([:]))
+        let collector = Process()
+        collector.executableURL = root.deletingLastPathComponent().appendingPathComponent("attachment-replay")
+        collector.arguments = ["collect"]
+        try collector.run()
+        collector.waitUntilExit()
+        try require(collector.terminationStatus == 0 && (try source.load()) == nil, "Incomplete draft move")
+        for (file, expected) in zip(files, ["first", "second"]) {
+            try require(try Data(contentsOf: URL(fileURLWithPath: file.path.string)) == Data(expected.utf8),
+                        "Draft transfer did not retain \(file.name.string) after destination replacement")
+        }
+        try moved.owner.release()
         let folder = root.deletingLastPathComponent().appendingPathComponent("Project 空", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let mixed = NativeComposerDraft(services: .init(chooseItems: { _, _ in
