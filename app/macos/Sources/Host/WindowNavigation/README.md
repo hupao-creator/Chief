@@ -29,6 +29,15 @@ hides for fullscreen, and detaches with its owner.
 The macOS 26 minimum supports clear directly; there is no regular-glass fallback.
 Reduce Transparency explicitly replaces glass with an opaque system window
 background, without changing system preferences or button behavior.
+
+The workspace window uses an ultra-thin material that samples the desktop.
+In native full screen, an opaque content backdrop covers the workspace through
+the safe areas. It uses sRGB `#E9E7DF` in light appearance and the Overview
+charcoal `#20211F` in dark appearance. The titlebar, cards, panels and plugins
+retain their own surfaces. The workspace follows the attached AppKit window’s
+full-screen state and removes the content backdrop on exit.
+See the [native full-screen replay](../../../../../tools/e2e/README.md#workspace-full-screen-backdrop).
+
 Current Report panels keep those controls visible while the HTML document
 scrolls, with document clearance owned by the panel Close. There is no full-window navigation portal or capsule-expansion replay.
 WebKit retains Option-Left

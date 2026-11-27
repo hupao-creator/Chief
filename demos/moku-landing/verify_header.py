@@ -157,7 +157,19 @@ if args.tag_space_keys:
 if args.tag_read:
     sys.exit(status or int(not (args.output / "tag-read.json").is_file()))
 if args.unread_filter:
-    sys.exit(status or int(not (args.output / "unread-filter.json").is_file()))
+    window_receipt = args.output / "unread-window.json"
+    if status or not window_receipt.is_file():
+        sys.exit(status or 1)
+    # Vision's cold start can outlast the interaction replay. Keep both original
+    # screenshots and require their text assertions after releasing the native lease.
+    for image in ("unread-empty-en-US.png", "unread-empty-zh-CN.png"):
+        if not (args.output / image).is_file():
+            sys.exit("Missing Unread window capture: " + image)
+    with (args.output / "unread-ocr.json").open("w") as observations:
+        subprocess.run(["xcrun", "swift", source / "UnreadCaptureText.swift", args.output.resolve()],
+                       stdout=observations, check=True, timeout=150)
+    window_receipt.replace(args.output / "unread-filter.json")
+    sys.exit(0)
 if args.talk_link:
     sys.exit(status or int(not (args.output / "talk-links.json").is_file()))
 if args.completed_card:

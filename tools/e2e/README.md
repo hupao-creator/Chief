@@ -497,6 +497,43 @@ mode and before/after observations with each run. A process-local simulation
 covers only its injected inputs. It cannot certify macOS notifications or all
 window pixels.
 
+### Recent-thread contrast and hover
+
+Use an isolated workspace with read Agent Threads and no unread results, or
+build and open the [native empty-state fixture](../../demos/empty-state-native-candidates/README.md).
+The fixture mounts the production list with sample data on a solid canvas.
+Use the built workspace over a saturated gradient for the desktop-material
+check. Follow the [Overview presentation contract](../../app/macos/Sources/Host/Overview/README.md#recent-threads-at-empty-status-filters).
+
+1. In Light and Dark, capture the empty Unread and Running views. Cover solid
+   and wallpaper-backed windows, then repeat with Reduce Transparency and
+   Increase Contrast. Sample the label and row ink and the adjacent fill in
+   sRGB. Use a 4.5:1 contrast floor for titles and timestamps.
+2. Hover the single-row list, then the first, middle and last rows of a
+   populated list. Include the top and bottom end insets when pointing.
+   Check that only the active row changes fill, that the fill follows the
+   panel corners with no strips of the idle face and that the text remains
+   readable. Check pressed and keyboard-focused rows, including the focus
+   outline at the outer corners.
+3. Activate a row with the pointer and with the keyboard. Confirm that each
+   opens the indicated Thread and returns to the same filter after closing.
+
+Record the revision, fixture or profile, effective appearance, background,
+accessibility settings, input route, frames and contrast samples. A static
+export covers only the flat face and resting text.
+
+### Workspace full-screen backdrop
+
+Use a built Chief and an isolated profile with Overview visible. In both light
+and dark appearance, capture the windowed workspace, enter macOS full screen,
+wait for the transition to finish, then capture the workspace again. Convert
+captured pixels to sRGB. Sample unobstructed canvas near the edges and above
+or below the cards. The solid backdrop should be `#E9E7DF` in light appearance
+and `#20211F` in dark appearance. The cards and reader panels retain their own
+surfaces. Exit full screen and confirm the windowed material has returned.
+Record the commit, build, capture method and sampled coordinates.
+[Workspace window contract](../../app/macos/Sources/Host/WindowNavigation/README.md#window-and-reading-navigation)
+
 ### Settings factory reset
 
 Run `python3 tools/e2e/factory_reset.py /private/tmp/chief-reset-evidence-UNIQUE`

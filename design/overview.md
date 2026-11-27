@@ -88,7 +88,8 @@ tracking pauses automatic paging. Stale removed-member actions are rejected.
 
 The collection is a native presentation of real Report identities. Returning
 to a collected report holds its cover for direct reopening. Archive operates on
-the real member. The current space determines its remaining membership.
+the real member. The current space determines its remaining membership. The
+Unread preset presents each eligible Super Thread as an individual card.
 [Collection budget and reading ownership](research/collection-space-budget.md)
 
 Source: [collection](../app/macos/Sources/Plugins/Applications/Report/NativeReportCollection.swift),

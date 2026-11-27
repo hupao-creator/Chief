@@ -113,7 +113,11 @@ unread task in Chief and one in the top-level stock research tag. Both badges
 start at one. The replay switches between them in Unread, clears the folder’s
 tag, adds a second tag to the research task and checks both tags after its
 version is acknowledged. It also checks a Report covering the Chief task and a
-catalog with no top-row space. The output contains `unread-filter.json`, the empty-state captures and `source.json`.
+catalog with no top-row space. The window replay has a 60-second deadline. After it exits,
+Vision checks both saved empty-state screenshots in a separate process with a 150-second deadline.
+`unread-ocr.json` records the recognized lines, expected titles and elapsed recognition time.
+The runner publishes `unread-filter.json` only after both the window and image assertions pass.
+On an image-check failure, the completed interaction steps remain in `unread-window.json`.
 This uses the production native workspace and fixture snapshots and mutations.
 
 ### Talk execution links

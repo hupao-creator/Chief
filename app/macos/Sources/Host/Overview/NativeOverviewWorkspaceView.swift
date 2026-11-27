@@ -96,7 +96,20 @@ public struct NativeOverviewWorkspaceView: View {
                     .accessibilityHidden(landing)
                 if !landing && model.showsEmptyState {
                     switch model.statusFilter {
-                    case .running, .unread, .completed:
+                    case .running, .unread:
+                        let sideInset = model.railChoices.isEmpty ? 16 : min(OverviewTagMetrics.railMaximumWidth, railWidth) + railEdgeInset + 12
+                        let recent = NativeOverviewRecentThreadList(
+                            title: model.statusFilter == .running
+                                ? locale.text("最近完成", "Recently completed") : locale.text("最近阅读", "Recently read"),
+                            threads: model.recentStatusThreads) { id in
+                                guard model.containsGlobalThread(id) else { return }
+                                callbackStore.current.openThread(id, nil)
+                            }
+                        NativeOverviewStatusEmptyState(title: emptyTitle, recent: recent,
+                            recentInsets: EdgeInsets(top: headerBottom, leading: sideInset,
+                                                    bottom: viewport.bottomReservedHeight, trailing: sideInset),
+                            recentInteractive: !interactionPaused && chromeVisible)
+                    case .completed:
                         NativeOverviewStatusEmptyState(title: emptyTitle)
                     case .all:
                         NativeOverviewEmptyState(title: emptyTitle, detail: locale.text("切换标签筛选以查看其他 Thread。", "Switch tag filters to see other threads."))
