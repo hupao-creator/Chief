@@ -2,6 +2,7 @@ import AppKit
 import Observation
 import ChiefCore
 import SwiftUI
+import Synchronization
 
 public extension EnvironmentValues {
     @Entry var nativeThreadIdentityRegistry: NativeThreadIdentityRegistry? = nil
@@ -181,21 +182,24 @@ final class NativeThreadIdentityFlight {
         for (element, leaf) in visit.source {
             guard leaf.window === surface.window, let parent = surface.superview,
                   let target = visit.openingTarget[element] else { continue }
-            let absolute = parent.convert(leaf.frame, from: nil)
-            let ratio: CGFloat = element == "emoji" ? 21 / 44 : 15 / 40
-            let scale = ratio * absolute.height / max(1, leaf.localSize.height)
-            let size = CGSize(width: absolute.width / max(0.01, scale), height: absolute.height / max(0.01, scale))
             let layer = CALayer()
             layer.contentsScale = surface.window?.backingScaleFactor ?? 2
             // Equal anchor frames do not imply equal glyph baselines: CATextLayer
             // lays out fallback fonts and emoji differently from SwiftUI Text.
             // Freeze the production heading's ink once, then let the compositor
             // move it without another text layout at the reader handoff.
-            let renderer = ImageRenderer(content: NativeThreadHeadingInk(text: leaf.text, element: element)
+            let titleInk = element == "title" ? NativeThreadTitleInkCapture() : nil
+            let renderer = ImageRenderer(content: NativeThreadHeadingInk(text: leaf.text, element: element, titleInk: titleInk)
                 .frame(width: target.localSize.width, height: target.localSize.height, alignment: .topLeading)
                 .environment(\.self, environment))
             renderer.scale = layer.contentsScale
             layer.contents = renderer.cgImage
+            let ratio: CGFloat = if element == "emoji" { 21 / 44 } else {
+                HarnessThreadCard.titlePointSize / (titleInk?.pointSize ?? NativeThreadTitle.standardPointSize)
+            }
+            let absolute = parent.convert(leaf.frame, from: nil)
+            let scale = ratio * absolute.height / max(1, leaf.localSize.height)
+            let size = CGSize(width: absolute.width / max(0.01, scale), height: absolute.height / max(0.01, scale))
             layer.bounds = CGRect(origin: .zero, size: size)
             layer.anchorPoint = .zero
             layer.position = CGPoint(x: absolute.minX - source.minX, y: absolute.minY - source.minY)
@@ -338,27 +342,39 @@ struct NativeThreadHeading: View {
 private struct NativeThreadHeadingInk: View {
     let text: String
     let element: String
+    var titleInk: NativeThreadTitleInkCapture? = nil
     var body: some View {
         if element == "emoji" {
             Text(text).font(.system(size: 44))
         } else {
-            NativeThreadTitle(text: text)
+            NativeThreadTitle(text: text, inkCapture: titleInk)
         }
     }
 }
 
 struct NativeThreadTitle: View {
+    static let standardPointSize: CGFloat = 40
     let text: String
+    var inkCapture: NativeThreadTitleInkCapture? = nil
 
+    @ViewBuilder
     var body: some View {
+        if let inkCapture {
+            fittedTitle.textRenderer(inkCapture)
+        } else {
+            fittedTitle
+        }
+    }
+
+    private var fittedTitle: some View {
         ViewThatFits(in: .horizontal) {
             if !text.contains(where: \.isNewline) {
-                title(size: 40).lineLimit(1).fixedSize()
+                title(size: Self.standardPointSize).lineLimit(1).fixedSize()
                 // Measure the unwrapped line before accepting a smaller size.
                 title(size: 36).lineLimit(1).fixedSize()
             }
             // An unnamed execution can still be displaying its full prompt.
-            title(size: 40).lineLimit(2).truncationMode(.tail)
+            title(size: Self.standardPointSize).lineLimit(2).truncationMode(.tail)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(NativePalette.thread.inkStrong.swiftUI)
@@ -367,9 +383,26 @@ struct NativeThreadTitle: View {
         .accessibilityLabel(Text(text))
     }
 
-    private func title(size: CGFloat) -> some View {
-        Text(text).font(NativeTypography.inter(size: size, weight: 650))
+    private func title(size: CGFloat) -> Text {
+        let title = Text(text).font(NativeTypography.inter(size: size, weight: 650))
             .tracking(-0.8)
+        return inkCapture == nil ? title : title.customAttribute(NativeThreadTitleInkCapture.PointSize(value: size))
+    }
+}
+
+// Only the offscreen bitmap uses a custom renderer. The drawn run reports
+// the selected size without measuring the title again or inferring it from height.
+final class NativeThreadTitleInkCapture: TextRenderer {
+    struct PointSize: TextAttribute { let value: CGFloat }
+
+    private let drawnPointSize = Mutex<CGFloat?>(nil)
+    var pointSize: CGFloat? { drawnPointSize.withLock { $0 } }
+
+    func draw(layout: Text.Layout, in context: inout GraphicsContext) {
+        if let size = layout.lazy.compactMap({ $0.first?[PointSize.self]?.value }).first {
+            drawnPointSize.withLock { $0 = size }
+        }
+        for line in layout { context.draw(line) }
     }
 }
 

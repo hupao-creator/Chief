@@ -788,11 +788,14 @@ check that the tooltip and accessible heading contain the full title.
 
 Open an earlier run from Conversation contents and return to the current run.
 Check that each page uses its own title and that keyboard focus follows the
-existing history route. Inspect the flying title and the first settled frame
-at the same width to check for a jump at handoff. Record the build revision,
-panel and title widths, current and history frames, focus and accessibility
-observations. An in-process fixture can exercise the mounted reader and native
-animation. VoiceOver speech and system keyboard delivery require a system run.
+existing history route. For 40pt single-line, 36pt single-line and 40pt wrapped
+headings, check that the opening bitmap starts at the card's 15pt size after
+accounting for camera magnification. Inspect the flying title and the first
+settled frame at the same width for a jump at handoff. Record the build revision,
+panel and title widths, starting transform, current and history frames, focus
+and accessibility observations. An in-process fixture can exercise the mounted
+reader and native animation. VoiceOver speech and system keyboard delivery
+require a system run.
 [Reading contract](../../design/reading.md#content-and-execution-identity)
 
 ## Fact sources

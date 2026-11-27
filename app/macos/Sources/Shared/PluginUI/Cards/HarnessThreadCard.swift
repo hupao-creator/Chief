@@ -2,6 +2,8 @@ import SwiftUI
 
 /// The plugin supplies all semantic contents; this view only places/render its cells.
 public struct HarnessThreadCard: View {
+    static let titlePointSize: CGFloat = 15
+
     public let identity: ThreadCardIdentityView
     public let presentation: ThreadCardPresentation
     private let onRespond: ThreadCardInterventionHandler?
@@ -224,7 +226,7 @@ private struct CardTitleSwap: View {
     @State private var transition = CardTitleTransition()
     init(text: String) { self.text = text; _displayed = State(initialValue: text) }
     var body: some View {
-        Text(displayed).cardFont(size: 15, weight: 620).offset(y: phase == 1 ? -4 : phase == 2 ? 4 : 0)
+        Text(displayed).cardFont(size: HarnessThreadCard.titlePointSize, weight: 620).offset(y: phase == 1 ? -4 : phase == 2 ? 4 : 0)
             .blur(radius: phase == 0 ? 0 : 2).opacity(phase == 0 ? 1 : 0)
             .id(visualIdentity).transition(.identity)
             .onChange(of: Input(text: text, animates: scenePhase != .background
