@@ -23,7 +23,11 @@ func TestSystemFaultCombinationProperties(t *testing.T) {
 		scopes := rapid.IntRange(1, 3).Draw(t, "scopes")
 		plan := []string{}
 		for _, role := range []string{"moku", "child", "report", "tag", "read"} {
-			mode := rapid.SampledFrom([]string{"", "429", "500", "truncate"}).Draw(t, role)
+			modes := []string{"", "429", "500", "truncate"}
+			if role == "read" {
+				modes = append(modes, "stall")
+			}
+			mode := rapid.SampledFrom(modes).Draw(t, role)
 			if mode != "" {
 				plan = append(plan, role+"="+mode)
 			}

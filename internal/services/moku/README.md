@@ -43,6 +43,8 @@ OpenCode and Claude continue receiving their existing definitions.
 
 [tools.go](tools.go) implements `list_threads`, `create_thread`, `remove_worktree`, `get_thread_status`, `send_to_thread`, `interrupt_thread`, `ask_thread` and `talk`. Tool calls and results are audited under the owning Moku execution; cancellation follows the captured owner. Creation success means the target input was admitted, not that its work has completed. Listing and queries retain bounded, explicit public access. `ask_thread` makes a model request against an ordinary Agent Thread history fork or captured snapshot; it does not return raw history, send a message to the source, or change source state. The snapshot can be stale and is not a live status query. Terminal events arrive automatically; do not poll for progress or readiness.
 
+If a history question exceeds the [Runtime read deadline](../../core/runtime/README.md#coordination-state-lifetime), Chief receives a failed tool result and can continue its turn. The tool transcript records the failure against the execution that asked the question.
+
 Tool scopes follow the current Moku Thread's monotonic record revision, not the
 arrival order of commit callbacks. A delayed metadata notification cannot
 cancel a successor's tools or revive a completed execution's scope. Reinstalling

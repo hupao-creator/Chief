@@ -253,7 +253,23 @@ trace_exporter = "none"
 	client := &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{Proxy: nil}}
 	defer client.CloseIdleConnections()
 	invoke := func(channel string, args []any, target any) error {
-		return invoke(ctx, client, api.Connection, channel, args, target)
+		if err := invoke(ctx, client, api.Connection, channel, args, target); err != nil {
+			return err
+		}
+		// state:load carries a bounded transcript preview. The Talk oracle
+		// checks the durable result even after other tool calls displace it.
+		if state, ok := target.(*model.AppState); ok && channel == "state:load" {
+			for i, thread := range state.Threads {
+				if thread.Moku {
+					full, err := host.(actionHost).Thread(thread.ID)
+					if err != nil {
+						return err
+					}
+					state.Threads[i].Transcript = full.Transcript
+				}
+			}
+		}
+		return nil
 	}
 	submitArgs := []any{object{"input": object{"parts": []any{object{"kind": "text", "text": "SYSTEM_CHAIN_START: create the child and record completion"}}}}}
 	commandID, e := transport.CreateCommandID()
@@ -327,6 +343,9 @@ trace_exporter = "none"
 				}
 				mock.mu.Lock()
 				failures := append([]string{}, mock.failures...)
+				if mock.faultPlan["read"] == "stall" && mock.snapshotRecoveries != 1 {
+					failures = append(failures, fmt.Sprintf("expected one silent snapshot recovery, observed %d", mock.snapshotRecoveries))
+				}
 				for role := range mock.faultPlan {
 					if mock.faultHits[role] != 1 {
 						failures = append(failures, "fault was not exercised: "+role)
@@ -550,6 +569,10 @@ func parseFaults(value string) (map[string]string, error) {
 		}
 		switch mode {
 		case "429", "500", "truncate":
+		case "stall":
+			if role != "read" {
+				return nil, errors.New("only history reads support a stalled stream")
+			}
 		default:
 			return nil, fmt.Errorf("unknown fault mode %q", mode)
 		}

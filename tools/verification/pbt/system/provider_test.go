@@ -12,22 +12,23 @@ import (
 
 type object = map[string]any
 type provider struct {
-	childrenWake    chan struct{}
-	barriers        map[string]*responseBarrier
-	scopeChecks     map[string]bool
-	userStops       map[string]string
-	children        map[string]string
-	childExecutions map[string]string
-	workspaces      []string
-	faultPlan       map[string]string
-	faultHits       map[string]int
-	blocked         []string
-	model, effort   string
-	mu              sync.Mutex
-	requests        []object
-	requestCount    int
-	activeRequests  int
-	failures        []string
+	childrenWake       chan struct{}
+	barriers           map[string]*responseBarrier
+	scopeChecks        map[string]bool
+	userStops          map[string]string
+	children           map[string]string
+	childExecutions    map[string]string
+	workspaces         []string
+	faultPlan          map[string]string
+	faultHits          map[string]int
+	snapshotRecoveries int
+	blocked            []string
+	model, effort      string
+	mu                 sync.Mutex
+	requests           []object
+	requestCount       int
+	activeRequests     int
+	failures           []string
 }
 
 func encoded(v any) []byte {
@@ -147,10 +148,36 @@ func (p *provider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.mu.Unlock()
 	if role == "read" && !hasCompletedChildEvidence(req["input"]) {
 		p.mu.Lock()
-		p.failures = append(p.failures, "read fork lacks persisted assistant result")
+		recovered := p.faultPlan["read"] == "stall" && p.faultHits["read"] == 1 && hasCompletedSnapshotEvidence(req["input"])
+		if recovered {
+			p.snapshotRecoveries++
+		} else {
+			p.failures = append(p.failures, "history question lacks persisted assistant result")
+		}
 		p.mu.Unlock()
-		http.Error(w, "read fork lacks persisted assistant result", http.StatusBadRequest)
-		return
+		if !recovered {
+			http.Error(w, "history question lacks persisted assistant result", http.StatusBadRequest)
+			return
+		}
+	}
+	if role == "read" {
+		// Fork history contains the source task's former declarations too.
+		// Inspect the current tool set sent to the model for this question.
+		current := list(req["tools"])
+		for _, item := range list(req["input"]) {
+			if update := record(item); update["type"] == "additional_tools" {
+				current = append(list(req["tools"]), list(update["tools"])...)
+			}
+		}
+		for _, tool := range []string{"exec_command", "apply_patch", "request_user_input", "spawn_agent", "sleep", "update_plan"} {
+			if name, _ := findTool(current, tool, ""); name != "" {
+				p.mu.Lock()
+				p.failures = append(p.failures, "history question advertises "+name)
+				p.mu.Unlock()
+				http.Error(w, "unexpected history question tool", http.StatusBadRequest)
+				return
+			}
+		}
 	}
 	if role == "child" {
 		finish := p.waitBarrier(req["input"])
@@ -172,10 +199,16 @@ func (p *provider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error":{"message":"scripted rate limit","type":"rate_limit_error"}}`, 429)
 		case "500":
 			http.Error(w, `{"error":{"message":"scripted provider failure"}}`, 500)
-		case "truncate":
+		case "truncate", "stall":
 			w.Header().Set("Content-Type", "text/event-stream")
 			fmt.Fprint(w, "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_fault\",\"status\":\"in_progress\",\"output\":[]}}\n\n")
 			w.(http.Flusher).Flush()
+			if fault == "stall" {
+				// The upstream opens a tool call without ever finishing the item.
+				fmt.Fprint(w, "event: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"id\":\"fc_stalled\",\"type\":\"function_call\",\"call_id\":\"call_stalled\",\"name\":\"fixture_call\",\"arguments\":\"\",\"status\":\"in_progress\"}}\n\n")
+				w.(http.Flusher).Flush()
+				<-r.Context().Done()
+			}
 		}
 		return
 	}
@@ -272,6 +305,31 @@ func hasCompletedChildEvidence(input any) bool {
 			part := record(rawPart)
 			if part["type"] == "output_text" && part["text"] == "SYSTEM_CHILD_DONE" {
 				return true
+			}
+		}
+	}
+	return false
+}
+
+// A snapshot retry must carry the source's completed answer, even though the
+// independent request has no native assistant message from the source.
+func hasCompletedSnapshotEvidence(input any) bool {
+	for _, raw := range list(input) {
+		message := record(raw)
+		if message["role"] != "user" {
+			continue
+		}
+		for _, part := range list(message["content"]) {
+			_, data, found := strings.Cut(text(record(part)["text"]), "\nSnapshot:\n")
+			var snapshot struct {
+				Turns []struct{ Status, Answer string }
+			}
+			if found && json.Unmarshal([]byte(data), &snapshot) == nil {
+				for _, turn := range snapshot.Turns {
+					if turn.Status == "completed" && turn.Answer == "SYSTEM_CHILD_DONE" {
+						return true
+					}
+				}
 			}
 		}
 	}

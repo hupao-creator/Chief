@@ -41,14 +41,36 @@ func verifyStaleStop(input any) error {
 
 func verifyFanout(state model.AppState, workspaces []string) error {
 	children := map[string]model.ThreadRecord{}
+	reads := map[string]int{}
 	for _, thread := range state.Threads {
 		if !thread.Moku {
 			children[thread.ID] = thread
+			continue
+		}
+		for _, raw := range thread.Transcript {
+			var row object
+			if err := json.Unmarshal(raw, &row); err != nil {
+				return err
+			}
+			if row["type"] != "tool-operation" || row["name"] != "ask_thread" {
+				continue
+			}
+			source := text(record(row["arguments"])["threadId"])
+			result := record(row["result"])
+			if source == "" || row["isError"] == true || row["completedAt"] == nil || result["ok"] != true || result["threadId"] != source || result["answer"] != "SYSTEM_CHILD_DONE" {
+				return fmt.Errorf("unfinished or incorrect history question in durable transcript: %s", raw)
+			}
+			reads[source]++
 		}
 	}
 	count := max(1, len(workspaces))
 	if len(children) != count {
 		return fmt.Errorf("expected %d child executions, found %d", count, len(children))
+	}
+	for id := range children {
+		if reads[id] != 1 {
+			return fmt.Errorf("expected one durable history question for %s, found %d", id, reads[id])
+		}
 	}
 	reports := []model.ApplicationThread{}
 	for _, a := range state.ApplicationThreads {

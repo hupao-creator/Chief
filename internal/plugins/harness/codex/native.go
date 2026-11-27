@@ -220,6 +220,10 @@ func (n *NativeSession) prepare(ctx context.Context, o NativeOptions) (string, e
 		cleanup()
 		return "", errors.New("Codex app-server 未返回 thread ID")
 	}
+	if id == o.ForkSessionID {
+		cleanup()
+		return "", errors.New("Codex fork 未创建独立 Native Session")
+	}
 	for _, k := range []string{"approvalsReviewer", "approvalPolicy"} {
 		if o.Settings["approvalsReviewer"] != nil && r[k] != o.Settings[k] {
 			cleanup()
