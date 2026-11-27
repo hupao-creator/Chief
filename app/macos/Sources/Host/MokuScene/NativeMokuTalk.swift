@@ -1,5 +1,6 @@
 import ChiefCore
 import ChiefPluginAPI
+import ChiefPluginUI
 import Foundation
 
 /// Public audit data only. A tool result acknowledges delivery; its arguments
@@ -10,12 +11,12 @@ public struct NativeMokuTalkMessage: Equatable, Sendable, Identifiable {
 
     public let id: JSONText
     public let text: String
-    let content: NativeMokuTalkText
+    let content: NativeMessageText
     public let dispatch: NativeMokuDispatch?
 
     public init(id: JSONText, text: String, dispatch: NativeMokuDispatch? = nil) {
         self.id = id; self.text = text; self.dispatch = dispatch
-        content = NativeMokuTalkText(text)
+        content = NativeMessageText(text)
     }
 
     public static func latest(in thread: HarnessThread?) -> Self? {
@@ -49,46 +50,6 @@ public struct NativeMokuTalkMessage: Equatable, Sendable, Identifiable {
              0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF: true
         default: false
         }
-    }
-}
-
-/// Talk is literal text with one inline link format. Leave unsupported markup
-/// and malformed destinations visible, including their original punctuation.
-struct NativeMokuTalkText: Equatable, Sendable {
-    enum Part: Equatable, Sendable {
-        case text(String)
-        case link(label: String?, url: URL, reference: ApplicationExecutionRef)
-    }
-    let parts: [Part]
-    var hasLinks: Bool { parts.contains { if case .link = $0 { true } else { false } } }
-
-    private static let links = try! NSRegularExpression(
-        pattern: #"\[([^\]\n]+)\]\(((?:chief|mokusei)://[^\s()]+)\)|(?:chief|mokusei)://[^\s<>()\[\]"“”‘’（），。！？；、：《》「」『』【】,;]+"#,
-        options: .caseInsensitive)
-
-    init(_ source: String) {
-        guard source.contains("://") else { parts = []; return }
-        var output = [Part]()
-        var start = source.startIndex
-        for match in Self.links.matches(in: source, range: NSRange(source.startIndex..., in: source)) {
-            guard let range = Range(match.range, in: source) else { continue }
-            let label = Range(match.range(at: 1), in: source)
-            let urlRange = Range(match.range(at: 2), in: source) ?? range
-            var end = urlRange.upperBound
-            if label == nil {
-                while end > urlRange.lowerBound, ".,;:!?".contains(source[source.index(before: end)]) {
-                    end = source.index(before: end)
-                }
-            }
-            let destination = source[urlRange.lowerBound..<end]
-            guard let url = URL(string: String(destination), encodingInvalidCharacters: false),
-                  let reference = ApplicationExecutionLink.parse(url) else { continue }
-            if start < range.lowerBound { output.append(.text(String(source[start..<range.lowerBound]))) }
-            output.append(.link(label: label.map { String(source[$0]) }, url: url, reference: reference))
-            start = label == nil ? end : range.upperBound
-        }
-        if start < source.endIndex { output.append(.text(String(source[start...]))) }
-        parts = output
     }
 }
 

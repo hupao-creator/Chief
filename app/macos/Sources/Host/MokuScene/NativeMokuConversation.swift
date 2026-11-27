@@ -26,6 +26,13 @@ struct NativeMokuConversationPage {
         let date: Date
         let text: String
         let attachments: [String]
+        let content: NativeMessageText
+
+        init(id: JSONText, fromUser: Bool, date: Date, text: String, attachments: [String]) {
+            self.id = id; self.fromUser = fromUser; self.date = date
+            self.text = text; self.attachments = attachments
+            content = NativeMessageText(text)
+        }
     }
     var messages: [Message]
     let before: JSONText?

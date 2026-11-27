@@ -72,6 +72,7 @@ private final class WheelSample: NSEvent {
     @State private var collectionViewport: CGSize?
     @State private var captureScheme: ColorScheme?
     @State private var brightCaptureBackdrop = false
+    @State private var openedMessageURLs: [URL] = []
     private let workspace: NativeWorkspaceModel
     private let presentation: NativeWorkspacePresentation
 
@@ -99,6 +100,11 @@ private final class WheelSample: NSEvent {
         Window("Overview header replay", id: "header-replay") {
             GeometryReader { geometry in
                 NativeWorkspaceView(model: workspace, presentation: presentation)
+                    .environment(\.openURL, OpenURLAction { url in
+                        guard CommandLine.arguments.contains("--talk-link") else { return .systemAction }
+                        openedMessageURLs.append(url)
+                        return .handled
+                    })
                     .frame(width: collectionViewport?.width ?? geometry.size.width,
                            height: collectionViewport?.height ?? geometry.size.height)
             }
@@ -747,7 +753,7 @@ private final class WheelSample: NSEvent {
             let timeline = try await captureViewport("first")
             if linkedPage, let document = timeline.documentView {
                 @MainActor func mountedLinks(in view: NSView) -> Int {
-                    if view is MarkdownExecutionHost { return 1 }
+                    if view is MarkdownLinkHost { return 1 }
                     return view.subviews.reduce(0) { $0 + mountedLinks(in: $1) }
                 }
                 samples.append(["mountedLinksAtOpen": mountedLinks(in: document)])
@@ -808,7 +814,7 @@ private final class WheelSample: NSEvent {
                     guard let text = self.descendant(MarkdownTextView.self, in: content, matching: {
                         $0.string.hasPrefix("Message 1\n")
                     }) else { return false }
-                    return text.executionSurfaces.values.contains { button in
+                    return text.linkSurfaces.values.contains { button in
                         button.window === window && clip.bounds.contains(button.convert(button.bounds, to: clip))
                     }
                 }
@@ -1022,7 +1028,7 @@ private final class WheelSample: NSEvent {
         try png.write(to: url)
     }
 
-    private func recognizedLines(in url: URL, languages: [String], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [(text: String, frame: CGRect)] {
+    private nonisolated func recognizedLines(in url: URL, languages: [String], region: CGRect = CGRect(x: 0, y: 0, width: 1, height: 1)) throws -> [(text: String, frame: CGRect)] {
         let request = VNRecognizeTextRequest()
         request.regionOfInterest = region
         request.recognitionLanguages = languages
@@ -1275,6 +1281,11 @@ private final class WheelSample: NSEvent {
     }
 
     private func talkLinks(_ window: NSWindow, directory: URL, authority: UUID) async throws {
+        // The replay posts AppKit events directly to its window. Keep physical
+        // desktop clicks from dismissing the live notification during a visit.
+        let ignoresMouse = window.ignoresMouseEvents
+        window.ignoresMouseEvents = true
+        defer { window.ignoresMouseEvents = ignoresMouse }
         let model = presentation.overview, scene = presentation.scene
         let source = ApplicationThreadRef(threadID: "linked-task", typeID: "agent")
         try cacheLinkedRuns(for: source.threadID)
@@ -1285,10 +1296,18 @@ private final class WheelSample: NSEvent {
         let earlier = "chief://execution?threadId=linked-task&executionId=prior-run"
         let message = "First: " + earlier + ". Then [Earlier run](chief://execution?threadId=linked-task&executionId=cited-run). "
             + "[Deleted](chief://execution?threadId=missing&executionId=gone) or chief://execution?threadId=broken"
+        let body = "链接https://a.co/?q=1,2、https://b.co/a;b;\n"
+            + "[站点](https://example.net/a_(b)?a=1&b=2) <https://example.net/next> [原文](javascript:https://example.net/) `https://example.net/code`"
+        let shown = "链接https://a.co/?q=1,2、https://b.co/a;b;\n"
+            + "站点 https://example.net/next [原文](javascript:https://example.net/) `https://example.net/code`"
+        let webRows: [JSONValue] = [
+            .object(["id": .text("outgoing-web"), "role": .text("user"), "createdAt": .integer(2000), "text": .text("发送\n" + body)]),
+            .object(["id": .text("incoming-web"), "role": .text("chief"), "createdAt": .integer(3000), "text": .text("收到\n" + body)]),
+        ]
         let cache = RuntimeOfflineStore(storageDirectory: workspace.client.storageDirectory, hostID: nil)
         try cache.saveContent(.object(["messages": .array([.object([
             "id": .text("linked-talk"), "role": .text("chief"), "createdAt": .integer(1000), "text": .text(message)
-        ])])]), thread: "moku", scope: .mokuConversation(before: nil))
+        ])] + webRows)]), thread: "moku", scope: .mokuConversation(before: nil))
         let thread = try HarnessThread(id: source.threadID, harnessID: "codex", revision: 1, sessionState: .null,
             observation: .init(latestExecution: .init(executionID: "later-run", status: .completed, startedAt: 1, finishedAt: 2)),
             cwd: "/other", settings: .object([:]), createdAt: 1, updatedAt: 2, title: "Linked task",
@@ -1321,6 +1340,7 @@ private final class WheelSample: NSEvent {
             }
         }
         var visits = [[String: Any]]()
+        var screenshotChecks = [Task<Void, Error>]()
         func linkFrame(_ title: String) -> CGRect? {
             guard let content = window.contentView, let button = conversationElements(in: window).first(where: {
                 $0.id == "chief-execution-link" && $0.role == "AXButton" && $0.label.hasSuffix(" · " + title)
@@ -1359,6 +1379,80 @@ private final class WheelSample: NSEvent {
                 NSApp.postEvent(event, atStart: false)
             }
         }
+        var webVisits = [[String: [String]]]()
+        func checkWebLinks(prefix: String, surface: String) async throws {
+            let expected = ["https://a.co/?q=1,2", "https://b.co/a;b", "https://example.net/a_(b)?a=1&b=2", "https://example.net/next"]
+            let titles = ["https://a.co/?q=1,2", "https://b.co/a;b", "站点", "https://example.net/next"]
+            func messageView() -> MarkdownTextView? {
+                window.contentView.flatMap { descendant(MarkdownTextView.self, in: $0, matching: { $0.string.hasPrefix(prefix) }) }
+            }
+            try await focusReplayWindow(window)
+            try await wait("Unsettled web links in " + surface) {
+                guard let text = messageView() else { return false }
+                return !text.visibleRect.isEmpty && text.bounds.width > 1
+            }
+            try await Task.sleep(for: .milliseconds(420))
+            guard let text = messageView(), let storage = text.textStorage,
+                  storage.markdownPlainText() == prefix + shown else {
+                throw ReplayError("Incorrect displayed web message in \(surface): \(messageView()?.textStorage?.markdownPlainText() ?? "missing")")
+            }
+            var links: [(MarkdownLinkAttachment, NSRange)] = []
+            storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
+                if let link = value as? MarkdownLinkAttachment, case .web = link.kind { links.append((link, range)) }
+            }
+            guard links.map({ $0.0.url.absoluteString }) == expected, links.map({ $0.0.title }) == titles else {
+                throw ReplayError("Incorrect web capsule titles or targets in \(surface)")
+            }
+            guard links.allSatisfy({ $0.0.usesGlass == (surface == "notification") }) else {
+                throw ReplayError("Incorrect web capsule surface in \(surface)")
+            }
+            let webKind = workspace.locale.text("网页链接", "Web link")
+            let buttons = conversationElements(in: window).filter { $0.id == "chief-web-link" && $0.role == "AXButton" }
+            func point(in range: NSRange, at fraction: CGFloat = 0.5) throws -> CGPoint {
+                let rect = text.linkSurfaces[range.location]?.frame ?? .zero
+                guard !rect.isEmpty, text.visibleRect.contains(rect) else {
+                    throw ReplayError("Clipped web capsule in \(surface) at \(range.location): \(rect) outside \(text.visibleRect)")
+                }
+                return text.convert(CGPoint(x: rect.minX + rect.width * fraction, y: rect.midY), to: nil)
+            }
+            for (link, range) in links {
+                let center = try point(in: range)
+                let screenPoint = window.convertPoint(toScreen: center)
+                guard buttons.contains(where: { $0.label == "\(webKind) · \(link.title)" && $0.frame.contains(screenPoint) }),
+                      storage.attribute(.toolTip, at: range.location, effectiveRange: nil) as? String == link.url.absoluteString else {
+                    throw ReplayError("Missing web capsule label or URL hint in \(surface): \(link.title)")
+                }
+            }
+            try await capture(window, to: directory.appending(path: "message-links-\(surface).png"))
+            func post(_ type: NSEvent.EventType, at position: CGPoint) throws {
+                guard let event = NSEvent.mouseEvent(with: type, location: position, modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+                    context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1) else {
+                    throw ReplayError("Cannot construct web link event")
+                }
+                NSApp.postEvent(event, atStart: false)
+            }
+            let count = openedMessageURLs.count
+            let first = try point(in: links[0].1, at: 0.2)
+            let second = try point(in: links[1].1, at: 0.8)
+            try post(.leftMouseDown, at: first)
+            try post(.leftMouseDragged, at: second)
+            try post(.leftMouseUp, at: second)
+            try await wait("Drag failed to select across links in " + surface) {
+                let selected = text.selectedRange()
+                return selected.location <= links[0].1.location && NSMaxRange(selected) >= NSMaxRange(links[1].1)
+            }
+            guard openedMessageURLs.count == count else { throw ReplayError("Selecting opened a link in " + surface) }
+            for (index, link) in links.enumerated() {
+                let center = try point(in: link.1)
+                try post(.leftMouseDown, at: center)
+                try post(.leftMouseUp, at: center)
+                try await wait("Missing web handoff in " + surface) { openedMessageURLs.count == count + index + 1 }
+            }
+            let opened = openedMessageURLs.dropFirst(count).map(\.absoluteString)
+            guard opened == expected, presentation.selected == nil else { throw ReplayError("Wrong web handoff in " + surface) }
+            webVisits.append([surface: opened])
+        }
         func visit(from start: NativeOverviewFilter, to end: NativeOverviewFilter, reader: ApplicationThreadRef,
                    history: Bool = true, bare: Bool = false, fromRunning: Bool = false, missingRun: Bool = false,
                    linkTitle: String? = nil) async throws {
@@ -1383,12 +1477,16 @@ private final class WheelSample: NSEvent {
                 }
                 let screenshot = directory.appending(path: surface + "-capsules.png")
                 try await capture(window, to: screenshot)
-                let lines = try recognizedLines(in: screenshot, languages: ["en-US"]).map(\.text)
-                for label in ["Linked task", "Earlier run", "Deleted"] {
-                    guard lines.contains(where: { $0.localizedCaseInsensitiveContains(label) }) else {
-                        throw ReplayError("Capsule title wrapped or clipped in \(surface): \(label); visible text: \(lines)")
+                // Vision startup can take longer than the live notification.
+                // Read the captured frame independently of its click deadline.
+                screenshotChecks.append(Task.detached(priority: .utility) {
+                    let lines = try recognizedLines(in: screenshot, languages: ["en-US"]).map(\.text)
+                    for label in ["Linked task", "Earlier run", "Deleted"] {
+                        guard lines.contains(where: { $0.localizedCaseInsensitiveContains(label) }) else {
+                            throw ReplayError("Capsule title wrapped or clipped in \(surface): \(label); visible text: \(lines)")
+                        }
                     }
-                }
+                })
             }
             try await click(title, history: history)
             try await wait("Destination reader did not mount") { presentation.mountedReadingThread == reader }
@@ -1461,8 +1559,16 @@ private final class WheelSample: NSEvent {
         try await visit(from: design, to: design, reader: source)
         try await visit(from: other, to: other, reader: source, fromRunning: true)
 
+        try await install(revision: 3, text: "通知\n" + body)
+        try await checkWebLinks(prefix: "通知\n", surface: "notification")
+        scene.openConversation()
+        try await checkWebLinks(prefix: "发送\n", surface: "outgoing")
+        try await checkWebLinks(prefix: "收到\n", surface: "incoming")
+        try JSONEncoder().encode(webVisits).write(to: directory.appending(path: "message-web-links.json"))
+        scene.closeConversation()
+
         let shortText = "回放完成"
-        try await install(revision: 3, text: shortText)
+        try await install(revision: 4, text: shortText)
         try await wait("Short Talk did not settle") {
             scene.talkPresentation.presented && scene.talkPresentation.message?.text == shortText
                 && scene.capsuleFrame.height == 58
@@ -1470,13 +1576,15 @@ private final class WheelSample: NSEvent {
         try await Task.sleep(for: .milliseconds(550))
         let shortCapture = directory.appending(path: "notification-short.png")
         try await capture(window, to: shortCapture)
-        guard try recognizedLines(in: shortCapture, languages: ["zh-Hans"]).contains(where: {
-            $0.text.replacingOccurrences(of: " ", with: "").contains(shortText)
-        }) else { throw ReplayError("Short Talk text is missing") }
+        screenshotChecks.append(Task.detached(priority: .utility) {
+            guard try recognizedLines(in: shortCapture, languages: ["zh-Hans"]).contains(where: {
+                $0.text.replacingOccurrences(of: " ", with: "").contains(shortText)
+            }) else { throw ReplayError("Short Talk text is missing") }
+        })
         let shortHeight = scene.capsuleFrame.height
 
         let prose = "已修复切换标签时出现的显示问题。窗口回放中，选择第一个标签可以看到对应任务，切换到第二个标签后可以查看另一组任务。两个标签的阅读状态分别保存，完整结果见下方记录。"
-        try await install(revision: 4, text: prose + "\n[修复与回放](chief://execution?threadId=linked-task&executionId=cited-run)")
+        try await install(revision: 5, text: prose + "\n[修复与回放](chief://execution?threadId=linked-task&executionId=cited-run)")
         try await wait("Chinese Talk link did not appear") { linkFrame("修复与回放") != nil }
         try await Task.sleep(for: .milliseconds(550))
         guard let content = window.contentView,
@@ -1505,13 +1613,16 @@ private final class WheelSample: NSEvent {
         let savedProse = "属性测试复现并修复了设置问题。后台发现代理时，编辑已保存的设置可能发生冲突。现在可以保存推理强度和路由偏好。\n\n"
             + String(repeating: "Codex、Claude、Pi、OpenCode 的设置页通过了随机轨迹和固定回归。Runtime 的属性检查覆盖了并发更新。探测响应由测试控制。", count: 6)
         let savedReport = savedProse + "\n[完整记录](chief://execution?threadId=linked-task&executionId=cited-run)"
-        try await install(revision: 5, text: savedReport)
+        func mountedCapsuleHeight() -> CGFloat? {
+            conversationElements(in: window).first { $0.id == "moku-capsule" }?.frame.height
+        }
+        try await install(revision: 6, text: savedReport)
         try await wait("Saved long Talk did not settle at the compact height limit") {
-            scene.talkPresentation.presented && scene.talkPresentation.message?.text == savedReport && scene.capsuleFrame.height == 129
+            scene.talkPresentation.presented && scene.talkPresentation.message?.text == savedReport && mountedCapsuleHeight() == 129
         }
         try await Task.sleep(for: .milliseconds(550))
         guard let savedText = descendant(MarkdownTextView.self, in: content, matching: { $0.string.contains(savedProse) }),
-              let scroll = savedText.enclosingScrollView, scroll.documentVisibleRect.minY <= 1,
+              let scroll = savedText.enclosingScrollView, scroll.contentView.bounds.height == 111, scroll.documentVisibleRect.minY <= 1,
               linkFrame("完整记录") == nil else {
             throw ReplayError("Saved Talk did not start at the top with the final link below the fold")
         }
@@ -1527,12 +1638,12 @@ private final class WheelSample: NSEvent {
             return visible.minY > 0 && abs(document.bounds.maxY - visible.maxY) <= 1 && clip.contains(link)
         }
         try await capture(window, to: directory.appending(path: "notification-overflow-link.png"))
-        let overflow = ["capsuleHeight": scene.capsuleFrame.height, "viewportHeight": scroll.contentView.bounds.height,
+        let overflow = ["capsuleHeight": mountedCapsuleHeight() ?? 0, "viewportHeight": scroll.contentView.bounds.height,
                         "scrolledDistance": scroll.documentVisibleRect.minY, "sourceCodePoints": CGFloat(savedReport.unicodeScalars.count)]
         try JSONEncoder().encode(overflow).write(to: directory.appending(path: "notification-overflow.json"))
         try await visit(from: design, to: design, reader: source, history: false, linkTitle: "完整记录")
 
-        try await install(revision: 6, text: "[Missing run](chief://execution?threadId=linked-task&executionId=removed-run)")
+        try await install(revision: 7, text: "[Missing run](chief://execution?threadId=linked-task&executionId=removed-run)")
         try await visit(from: design, to: design, reader: source, history: false, missingRun: true)
         let report = ApplicationThreadRef(threadID: "linked-report", typeID: "report.document")
         var fields = reportFixtures([report.threadID])[0].objectValue!
@@ -1542,12 +1653,7 @@ private final class WheelSample: NSEvent {
         fields["view"] = .object(view)
         fields["presentations"] = .array([.object(["id": .text("mokusei.overview"), "apiVersion": .integer(1),
             "schemaVersion": .integer(1), "value": .object(["coversExecutions": related])])])
-        // Observe notification expiry in isolation from real desktop clicks. The
-        // pointer visits before and after this idle interval use a normal window.
-        let ignoresMouse = window.ignoresMouseEvents
-        window.ignoresMouseEvents = true
-        defer { window.ignoresMouseEvents = ignoresMouse }
-        try await install(revision: 7, reports: [.object(fields)])
+        try await install(revision: 8, reports: [.object(fields)])
         // A fresh operation gets one real minute. The same message remains a
         // usable navigation source in the conversation after the compact bar folds.
         try await wait("Notification did not start its lease") { scene.talkPresentation.presented && scene.talkPresentation.deadline != nil }
@@ -1562,7 +1668,6 @@ private final class WheelSample: NSEvent {
         try await Task.sleep(until: deadline + .milliseconds(100), clock: .continuous)
         try await wait("Notification outlived its lease") { scene.talkPresentation.message == nil }
         let elapsed = leaseStart.duration(to: .now).components
-        window.ignoresMouseEvents = ignoresMouse
         try await visit(from: design, to: project, reader: report)
         scene.openConversation()
         try await wait("Saved message did not show its malformed URL as ordinary text") {
@@ -1574,6 +1679,7 @@ private final class WheelSample: NSEvent {
         try await wait("Missing Thread did not show its unavailable notice") {
             workspace.localizedOperationError?.contains(workspace.locale.text("不可用", "unavailable")) == true && presentation.selected == nil
         }
+        for check in screenshotChecks { try await check.value }
         let receipt: [String: Any] = ["visits": visits, "expirySeconds": Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18,
             "sourceCodePoints": message.unicodeScalars.count, "missingThreadAlert": true]
         try JSONSerialization.data(withJSONObject: receipt, options: [.prettyPrinted, .sortedKeys])

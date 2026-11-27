@@ -238,8 +238,14 @@ public struct NativeMokuDock: View {
             .allowsHitTesting(false).accessibilityHidden(true)
     }
 
+    @Environment(\.openURL) private var openURL
+
     private var talkLinkAction: OpenURLAction {
         OpenURLAction { url in
+            if NativeMessageText.isWebURL(url) {
+                openURL(url)
+                return .handled
+            }
             guard let reference = ApplicationExecutionLink.parse(url), let openExecution else { return .discarded }
             openExecution(reference)
             return .handled

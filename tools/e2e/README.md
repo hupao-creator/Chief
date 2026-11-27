@@ -563,6 +563,8 @@ In an isolated workspace, send a Talk message with links to two different runs. 
 
 The [mounted two-surface replay](../../demos/moku-landing/README.md#talk-execution-links) uses window-addressed mouse events, an isolated catalog and cached execution content. It checks full visibility for a short multiline reply and the scroll-to-link path for a saved report above the current submission limit. The [live conversation replay](../../demos/moku-landing/verify_conversation.py) checks native Return, public dialogue and restart against a private Runtime and loopback provider.
 
+The same mounted replay checks [message web links](../../app/macos/Sources/Host/MokuScene/README.md#talk-execution-links) in a compact reply and in sent and received bubbles. It compares displayed text, accessible web capsule labels, appearance selection and exact link handoffs. It checks that dragging selects the capsules without dispatching a link and that punctuation and unsupported syntax stay visible. The callback observes the system-open request inside the replay window. Browser launch and page loading are outside this fixture.
+
 ### Chief Bar opening
 
 The [mounted opening replay](../../demos/moku-landing/README.md#chief-bar-opening)
