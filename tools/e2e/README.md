@@ -774,6 +774,27 @@ and Simplified Chinese. Record the build identity, observed sizes, language,
 events, frame samples and capture limitations. `E2E-READ-001` checks mounted
 navigation, while the window recording supplies the geometry evidence.
 
+### Agent detail title wrapping
+
+In an isolated native window, open an Agent detail from its Overview card.
+Use a mixed Chinese and English title near the single-line width limit, such
+as `为什么是 branch not protected?` in a 626pt reading panel. Check that it
+fits on one line there. Enlarge the panel and check that the title returns to
+the standard size. Narrow it further and check that it wraps within the column
+with the author and first reply below it. Repeat with a short title, a long
+title and an unnamed historical run whose instruction contains line breaks.
+Long headings occupy at most two lines. Hover over a truncated heading and
+check that the tooltip and accessible heading contain the full title.
+
+Open an earlier run from Conversation contents and return to the current run.
+Check that each page uses its own title and that keyboard focus follows the
+existing history route. Inspect the flying title and the first settled frame
+at the same width to check for a jump at handoff. Record the build revision,
+panel and title widths, current and history frames, focus and accessibility
+observations. An in-process fixture can exercise the mounted reader and native
+animation. VoiceOver speech and system keyboard delivery require a system run.
+[Reading contract](../../design/reading.md#content-and-execution-identity)
+
 ## Fact sources
 
 Expectations follow these current production contracts, not removed replays:

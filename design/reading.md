@@ -49,8 +49,13 @@ native field types, permitted answers and response identity. [Adapter paths](../
 Current and historical documents resolve the title and author for their exact
 execution. Missing historical titles use its instruction or timestamp, never the
 mutable current Thread title. Outgoing and incoming title/author ink follows the
-same vertical document ownership. Deferred data and optional detail loaders update
-at one stable renderer site so loader availability does not replace the reader.
+same vertical document ownership. Detail headings use the same layout for the
+current document, history and opening title ink. The heading uses the largest
+single-line size that fits at 40pt or 36pt. When neither fits, or the title
+has explicit line breaks, it uses 40pt with up to two lines and tail
+truncation. The tooltip and accessible heading expose the full title.
+Deferred data and optional detail loaders update at one stable renderer site
+so loader availability does not replace the reader.
 
 Source: [ThreadConversation](../app/macos/Sources/Shared/PluginUI/Conversation/ThreadConversation.swift),
 [execution groups](../app/macos/Sources/Shared/PluginUI/Conversation/ThreadExecutionGroups.swift),

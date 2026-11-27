@@ -342,11 +342,34 @@ private struct NativeThreadHeadingInk: View {
         if element == "emoji" {
             Text(text).font(.system(size: 44))
         } else {
-            Text(text).font(NativeTypography.inter(size: 40, weight: 650))
-                .tracking(-0.8).lineLimit(2).truncationMode(.tail)
-                .foregroundStyle(NativePalette.thread.inkStrong.swiftUI)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            NativeThreadTitle(text: text)
         }
+    }
+}
+
+struct NativeThreadTitle: View {
+    let text: String
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            if !text.contains(where: \.isNewline) {
+                title(size: 40).lineLimit(1).fixedSize()
+                // Measure the unwrapped line before accepting a smaller size.
+                title(size: 36).lineLimit(1).fixedSize()
+            }
+            // An unnamed execution can still be displaying its full prompt.
+            title(size: 40).lineLimit(2).truncationMode(.tail)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(NativePalette.thread.inkStrong.swiftUI)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(text))
+    }
+
+    private func title(size: CGFloat) -> some View {
+        Text(text).font(NativeTypography.inter(size: size, weight: 650))
+            .tracking(-0.8)
     }
 }
 
