@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,7 +25,7 @@ type PreparedLaunch struct {
 // but retires configuration on every Close. Credentials stay in the source
 // native account; isolated processes receive only ephemeral access credentials.
 // A one-shot prompt has no owner and its entire home is removed on process close.
-func PrepareIsolatedLaunch(ctx context.Context, executable string, env []string, dataRoot, ownerThreadID, cwd string) (PreparedLaunch, error) {
+func PrepareIsolatedLaunch(ctx context.Context, executable string, env []string, dataRoot, ownerThreadID, cwd string) (_ PreparedLaunch, err error) {
 	if err := ctx.Err(); err != nil {
 		return PreparedLaunch{}, err
 	}
@@ -62,7 +63,7 @@ func PrepareIsolatedLaunch(ctx context.Context, executable string, env []string,
 	complete := false
 	defer func() {
 		if !complete {
-			_ = dispose()
+			err = joinCleanupError(err, dispose())
 		}
 	}()
 	if err = cpPrivateDirectory(directory); err != nil {
@@ -83,11 +84,8 @@ func PrepareIsolatedLaunch(ctx context.Context, executable string, env []string,
 		}
 		configuration, e := ReadThreadConfiguration(ctx, source, cwd)
 		closeErr := source.Close()
-		if e != nil {
-			return PreparedLaunch{}, e
-		}
-		if closeErr != nil {
-			return PreparedLaunch{}, closeErr
+		if e != nil || closeErr != nil {
+			return PreparedLaunch{}, errors.Join(e, closeErr)
 		}
 		if len(configuration) > 0 {
 			text, e := cpTOMLDocument(configuration)

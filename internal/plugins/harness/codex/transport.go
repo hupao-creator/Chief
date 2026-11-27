@@ -33,6 +33,18 @@ type appServerClosedError struct{ cause error }
 func (e *appServerClosedError) Error() string { return e.cause.Error() }
 func (e *appServerClosedError) Unwrap() error { return e.cause }
 
+var errNativeCleanup = errors.New("retiring Codex native resources")
+
+func joinCleanupError(err, cleanup error) error {
+	if cleanup == nil {
+		return err
+	}
+	if !errors.Is(cleanup, errNativeCleanup) {
+		cleanup = fmt.Errorf("%w: %w", errNativeCleanup, cleanup)
+	}
+	return errors.Join(err, cleanup)
+}
+
 type rpcReply struct {
 	result Map
 	err    error
@@ -62,7 +74,6 @@ type AppServer struct {
 	notifications      chan Map
 	done               chan struct{}
 	closeOnce          sync.Once
-	cleanupOnce        sync.Once
 	launch             LaunchOptions
 	stderr             string
 	handler            func(string, Map, any)
@@ -80,13 +91,13 @@ type AppServer struct {
 
 const codexClientName = "chief_desktop"
 
-func StartAppServer(ctx context.Context, opt LaunchOptions) (*AppServer, error) {
+func StartAppServer(ctx context.Context, opt LaunchOptions) (_ *AppServer, err error) {
 	transferred := false
 	defer func() {
 		// Prepared isolated homes already contain private configuration.
 		// Until an AppServer owns them, every startup exit must dispose them.
 		if !transferred && opt.Dispose != nil {
-			_ = opt.Dispose()
+			err = joinCleanupError(err, opt.Dispose())
 		}
 	}()
 	if err := ctx.Err(); err != nil {
@@ -140,8 +151,7 @@ func StartAppServer(ctx context.Context, opt LaunchOptions) (*AppServer, error) 
 		_ = stdout.Close()
 		_ = stderr.Close()
 		_ = stdin.Close()
-		s.cleanup()
-		return nil, err
+		return nil, joinCleanupError(err, s.cleanup())
 	}
 	_ = stdoutWriter.Close()
 	_ = stderrWriter.Close()
@@ -243,8 +253,7 @@ func StartAppServer(ctx context.Context, opt LaunchOptions) (*AppServer, error) 
 		err = s.initializeIsolatedAuthentication(initCtx)
 	}
 	if err != nil {
-		_ = s.Close()
-		return nil, err
+		return nil, errors.Join(err, s.Close())
 	}
 	return s, nil
 }
@@ -440,16 +449,17 @@ func (s *AppServer) fail(e error) {
 		go s.terminate()
 	})
 }
-func (s *AppServer) cleanup() {
-	s.cleanupOnce.Do(func() {
-		s.authCancel()
-		s.auth.Lock()
-		s.auth.credentials = nativeAccessCredentials{}
-		s.auth.Unlock()
-		if s.launch.Dispose != nil {
-			_ = s.launch.Dispose()
-		}
-	})
+
+// Startup owns cleanup until the process starts. After that, terminateOnce owns it.
+func (s *AppServer) cleanup() error {
+	s.authCancel()
+	s.auth.Lock()
+	s.auth.credentials = nativeAccessCredentials{}
+	s.auth.Unlock()
+	if s.launch.Dispose != nil {
+		return s.launch.Dispose()
+	}
+	return nil
 }
 func (s *AppServer) terminate() error {
 	s.terminateOnce.Do(func() {
@@ -475,8 +485,9 @@ func (s *AppServer) terminate() error {
 		}
 		s.authWorkers.Wait()
 		if s.terminateErr == nil {
-			s.cleanup()
+			s.terminateErr = s.cleanup()
 		}
+		s.terminateErr = joinCleanupError(nil, s.terminateErr)
 	})
 	<-s.terminated
 	return s.terminateErr

@@ -18,13 +18,17 @@ import (
 
 type historyPeer struct {
 	harness
+	retirementErr error
 }
 
-func (*historyPeer) Open(ctx context.Context, open plugin.OpenContext) (plugin.Handle, error) {
-	return &historyHandle{&handle{ctx: ctx, open: open}}, nil
+func (p *historyPeer) Open(ctx context.Context, open plugin.OpenContext) (plugin.Handle, error) {
+	return &historyHandle{&handle{ctx: ctx, open: open}, p.retirementErr}, nil
 }
 
-type historyHandle struct{ *handle }
+type historyHandle struct {
+	*handle
+	retirementErr error
+}
 
 func (h *historyHandle) Read(ctx context.Context, question string) (string, error) {
 	if question == "silent" {
@@ -33,7 +37,7 @@ func (h *historyHandle) Read(ctx context.Context, question string) (string, erro
 		}
 		<-ctx.Done()
 		// A late answer racing retirement must not become a successful read.
-		return "late answer", nil
+		return "late answer", h.retirementErr
 	}
 	return question, nil
 }
@@ -43,23 +47,27 @@ func (h *historyHandle) Read(ctx context.Context, question string) (string, erro
 func TestHistoryReadDeadlineProperties(t *testing.T) {
 	rapidcheck.Check(t, func(rt *rapid.T) {
 		budgets := rapid.SliceOfN(rapid.IntRange(1, 89), 1, 10).Draw(rt, "waiter-seconds")
+		var retirementErr error
+		if rapid.Bool().Draw(rt, "native-retirement-error") {
+			retirementErr = errors.New("fixture history owner retirement failed")
+		}
 		root := t.TempDir()
 		var err error
-		synctest.Test(t, func(*testing.T) { err = checkHistoryReads(root, budgets) })
+		synctest.Test(t, func(*testing.T) { err = checkHistoryReads(root, budgets, retirementErr) })
 		if err != nil {
 			rt.Fatal(err)
 		}
 	})
 }
 
-func checkHistoryReads(root string, budgets []int) error {
+func checkHistoryReads(root string, budgets []int, retirementErr error) error {
 	db, err := store.Open(filepath.Join(root, "state.sqlite"))
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 	ctx := context.Background()
-	r, err := core.New(ctx, core.Config{Store: db, DataDir: root, DefaultCwd: root, Harnesses: map[string]plugin.Harness{"fixture": &historyPeer{}}})
+	r, err := core.New(ctx, core.Config{Store: db, DataDir: root, DefaultCwd: root, Harnesses: map[string]plugin.Harness{"fixture": &historyPeer{retirementErr: retirementErr}}})
 	if err != nil {
 		return err
 	}
@@ -73,6 +81,10 @@ func checkHistoryReads(root string, budgets []int) error {
 	results := make(chan error, len(budgets)+1)
 	read := func(ctx context.Context, question string, budget time.Duration) {
 		answer, err := r.ReadThread(ctx, id, question)
+		if retirementErr != nil && errors.Is(err, retirementErr) != (question == "silent") {
+			results <- fmt.Errorf("%s read reported the wrong retirement cause: %v", question, err)
+			return
+		}
 		if answer != "" || !errors.Is(err, context.DeadlineExceeded) || time.Since(start) != budget {
 			results <- fmt.Errorf("%s read with budget %s returned %q, %v after %s", question, budget, answer, err, time.Since(start))
 			return
