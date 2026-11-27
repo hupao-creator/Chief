@@ -41,25 +41,61 @@ struct ReaderFrame: Equatable {
     let pixels: SHA256.Digest
 }
 
-@MainActor func readerFrame(_ view: NSView, saveTo url: URL? = nil, onCapture: () -> Void = {}) throws -> ReaderFrame {
-    view.displayIfNeeded()
-    guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
-        throw ReplayError(description: "Missing mounted reader bitmap")
+@MainActor struct ReaderCapture {
+    let instant: ContinuousClock.Instant
+    private let bitmap: NSBitmapImageRep
+    private let image: CGImage
+
+    init(_ view: NSView, region: CGRect? = nil) throws {
+        view.layoutSubtreeIfNeeded()
+        view.displayIfNeeded()
+        let rect = region?.intersection(view.bounds) ?? view.bounds
+        guard !rect.isEmpty, let bitmap = view.bitmapImageRepForCachingDisplay(in: rect) else {
+            throw ReplayError(description: "Missing mounted reader bitmap")
+        }
+        view.cacheDisplay(in: rect, to: bitmap)
+        guard let image = bitmap.cgImage else { throw ReplayError(description: "Missing reader pixels") }
+        self.bitmap = bitmap; self.image = image; instant = .now
     }
-    view.cacheDisplay(in: view.bounds, to: bitmap)
-    guard let image = bitmap.cgImage else { throw ReplayError(description: "Missing reader pixels") }
-    onCapture()
-    if let url { try bitmap.representation(using: .png, properties: [:])?.write(to: url) }
-    let request = VNRecognizeTextRequest()
-    request.recognitionLanguages = ["en-US"]
-    request.minimumTextHeight = 0.005
-    try VNImageRequestHandler(cgImage: image).perform([request])
-    guard let data = bitmap.bitmapData else { throw ReplayError(description: "Missing bitmap data") }
-    let pixels = SHA256.hash(data: Data(bytes: data, count: bitmap.bytesPerRow * bitmap.pixelsHigh))
-    let text = (request.results ?? []).compactMap { observation in
-        observation.topCandidates(1).first.map { ($0.string, observation.boundingBox) }
+
+    func save(to url: URL) throws {
+        try bitmap.representation(using: .png, properties: [:])?.write(to: url)
     }
-    return ReaderFrame(labels: text.map(\.0), bounds: text.map(\.1), pixels: pixels)
+
+    func recognize() async throws -> ReaderFrame {
+        guard let data = bitmap.bitmapData else { throw ReplayError(description: "Missing bitmap data") }
+        let pixels = SHA256.hash(data: Data(bytes: data, count: bitmap.bytesPerRow * bitmap.pixelsHigh))
+        let text = try await recognizeReaderText(image)
+        return ReaderFrame(labels: text.map(\.0), bounds: text.map(\.1), pixels: pixels)
+    }
+}
+
+private func recognizeReaderText(_ image: CGImage) async throws -> [(String, CGRect)] {
+    try await Task.detached {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLanguages = ["en-US"]
+        request.minimumTextHeight = 0.005
+        try VNImageRequestHandler(cgImage: image).perform([request])
+        return (request.results ?? []).compactMap { observation in
+            observation.topCandidates(1).first.map { ($0.string, observation.boundingBox) }
+        }
+    }.value
+}
+
+@MainActor func prepareReaderRecognition() async throws {
+    let sample = "Receipt replay"
+    let image = NSImage(size: .init(width: 440, height: 88), flipped: false) { bounds in
+        NSColor.white.setFill()
+        bounds.fill()
+        (sample as NSString).draw(at: .init(x: 16, y: 16), withAttributes: [
+            .font: NSFont.systemFont(ofSize: 36), .foregroundColor: NSColor.black
+        ])
+        return true
+    }
+    guard let pixels = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
+          try await recognizeReaderText(pixels).contains(where: { $0.0 == sample }) else {
+        throw ReplayError(description: "English reader OCR failed its startup check")
+    }
 }
 
 @MainActor func checkSteerReader(workspace: NativeWorkspaceModel, mode: (String) throws -> Void) async throws {
@@ -128,8 +164,7 @@ struct ReaderFrame: Equatable {
         var labels: [String] = []
         repeat {
             try await Task.sleep(for: .milliseconds(20))
-            view.layoutSubtreeIfNeeded()
-            let frame = try readerFrame(view)
+            let frame = try await ReaderCapture(view).recognize()
             labels = frame.labels
             if labels.filter({ $0 == expected }).count == count && !labels.isEmpty { return frame }
         } while ContinuousClock.now < deadline

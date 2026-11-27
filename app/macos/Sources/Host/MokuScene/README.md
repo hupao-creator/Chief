@@ -610,9 +610,10 @@ A direct send to the current running execution publishes its captured user input
 to that reader on the same main-actor turn. Agent and Report readers share the
 [send identity contract](../../../../../design/composer.md#send-identity-and-ownership).
 Sending from the latest finished result opens Conversation on local capture,
-before the command or catalog returns. Its pending column places the pinned
-composer beneath the card. The receipt identifies the accepted execution and
-the catalog and index determine where its live reader belongs. Failure retires
+including when the draft addresses that exact execution. Its pending column
+places the pinned composer beneath the card. The source reader stays mounted
+while the receipt identifies the accepted execution and the catalog and index
+determine where its live reader belongs. Failure retires
 the provisional opening. A later card choice or reading visit owns its selection.
 Navigation resets retained editor ink, selection and completion ownership before
 admitting the replacement draft. Returning to Overview or Git restores the existing Moku send route.
@@ -697,8 +698,15 @@ and error/recovery path intact. Accepted continuation keeps its pending feedback
 while waiting for a new Thread's catalog event. Confirmed execution activity can continue the
 same orbit clock; unrelated Moku execution updates cannot restart it.
 
-An accepted exact-execution continuation retains the previous Dock column,
-expanded shell and Harness logo seat while its new reading visit prepares. Native column
+An accepted same-thread continuation binds exact input to the successor within
+the current Agent visit. Edits made while the send waits remain in the Dock
+when that successor takes over. The pinned Dock keeps the native text view,
+keyboard focus and selection as it binds the accepted draft. In a latest
+visit the same Thread draft stays editable while the incoming main reader
+publishes its input target. Send and Stop wait for that publication.
+A fork opens the destination Thread and retains
+the previous Dock column, expanded shell and Harness logo seat while its new
+reading visit prepares. Native column
 markers belong to a route and publish only after auxiliary layout admission;
 retained outgoing Report markers cannot overwrite the destination. The Dock
 travels directly to that committed column with monotone easing, without

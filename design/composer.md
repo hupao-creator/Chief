@@ -131,6 +131,24 @@ accepted branch. Runtime's `expectedExecutionId` rejects a changed target before
 reservation/dispatch. Only a proven pre-admission change can enter the historical
 fork path once; uncertain outcomes query their original durable receipt.
 
+When an exact Agent result continues in the same Thread and reading visit, the
+source draft settles its receipt before the Dock moves the editable next draft
+to the accepted execution. Both Dock layouts identify the same mounted editor
+so it retains focus and its selection while SwiftUI replaces the source layout.
+Existing destination text precedes the new edits and shifts the caret with them.
+The focused editor applies a pending directory selection in its source text,
+then reads and writes the accepted draft from the moment ownership moves.
+The editor ignores queued source updates to its text, selection and actions.
+With no source edits to move, the Dock reads the destination's saved revision
+and pins its attachments before binding the editor, without advancing the
+other writer's revision. If the destination file still records another window’s
+pending send, receipt cleanup or file import, input stays on the source.
+The combined draft keeps both sets of attachments and directory references.
+Its editor pins the merged files in the same transaction that moves the draft.
+If another window saves the newest source draft before the receipt arrives,
+that draft stays on its original result for the window that edited it.
+Leaving the visit before handoff keeps those edits with their original result.
+
 Codex removes only a positively unadmitted input identity from the captured
 execution; generic transport failures retain it. OpenCode keeps private submitted
 message/session/execution associations until a prompt receipt or matching native

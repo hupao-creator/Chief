@@ -767,7 +767,7 @@ public struct NativeMokuDock: View {
                         // A route can replace the draft or unmount the entire row
                         // before it receives the hidden state. An implicit removal
                         // fade would keep the outgoing text in the shrinking shell.
-                        .id(ObjectIdentifier(draft))
+                        .id(state.editorIdentity(for: draft))
                         .transition(.identity)
                 }
             }

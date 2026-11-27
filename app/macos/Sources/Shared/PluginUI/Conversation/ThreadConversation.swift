@@ -82,15 +82,18 @@ public struct ThreadConversationInputTarget: Equatable, Sendable {
     public let followsLatest: Bool
     public let ready: Bool
     public let displayedExecutionID: JSONText?
+    /// The same mounted follow-latest reader's full manifest order at display time.
+    public let conversationIndex: ThreadConversationIndex?
 
     init(threadID: JSONText, requestID: JSONText?, executionID: JSONText?, followsLatest: Bool,
-         ready: Bool, displayedExecutionID: JSONText? = nil) {
+         ready: Bool, displayedExecutionID: JSONText? = nil, conversationIndex: ThreadConversationIndex? = nil) {
         self.threadID = threadID
         self.requestID = requestID
         self.executionID = executionID
         self.followsLatest = followsLatest
         self.ready = ready
         self.displayedExecutionID = displayedExecutionID
+        self.conversationIndex = conversationIndex
     }
 }
 
@@ -99,6 +102,10 @@ public struct ThreadConversationInputTargetKey: PreferenceKey {
     public static func reduce(value: inout ThreadConversationInputTarget?, nextValue: () -> ThreadConversationInputTarget?) {
         if let next = nextValue() { value = next }
     }
+}
+public extension EnvironmentValues {
+    @Entry var threadRetainedMainExecution: JSONText? = nil
+    @Entry var threadContinuationRequestID: JSONText? = nil
 }
 private struct HistoryVisitID: Hashable {
     let row: JSONText?
@@ -124,6 +131,8 @@ public struct ThreadConversation: View {
     public let renderRow: ((JSONText) -> AnyView)?
     @Environment(\.locale) private var locale
     @Environment(\.nativeReadingContentHandoff) private var contentHandoff
+    @Environment(\.threadRetainedMainExecution) private var retainedMainExecution
+    @Environment(\.threadContinuationRequestID) private var continuationRequestID
     @Environment(\.threadDetailNavigation) private var navigation
     @Environment(\.threadDetailRootNavigation) private var rootNavigation
     @State private var authors: [JSONText: JSONValue] = [:]
@@ -135,7 +144,9 @@ public struct ThreadConversation: View {
     @Environment(\.nativeReportSidecards) private var reportSidecards
     @State private var manualWork: Bool?
     @State private var destination: ConversationDestination = .document(inline: nil)
-    @State private var consumedRequest: JSONText?
+    @State private var displayedTarget: ThreadConversationReadingTarget?
+    @State private var focusReadingTarget = true
+    private var consumedRequest: JSONText? { displayedTarget?.requestId }
     @State private var inputEntryRequest: JSONText?
     @State private var requestedDestination: ConversationDestination?
     @State private var acceptedAnchor: JSONText?
@@ -162,7 +173,14 @@ public struct ThreadConversation: View {
         if case .execution = context?.presentation { return true }; return false
     }
     private var excluded: Set<JSONText> {
-        if case let .main(ids) = context?.presentation { return Set(ids) }; return []
+        guard case let .main(ids) = context?.presentation else { return [] }
+        var result = Set(ids)
+        // The manifest can append a successor before the receipt or catalog
+        // identifies it. The full index still reports those rows to the Sidecard.
+        if let retainedMainExecution, let source = rows.lastIndex(where: { $0.execution?.id == retainedMainExecution }) {
+            result.formUnion(rows.suffix(from: source + 1).compactMap { $0.execution?.id })
+        }
+        return result
     }
     private var visibleRows: [ThreadConversationRow] {
         if case let .execution(id) = context?.presentation { return rows.filter { $0.execution?.id == id } }
@@ -189,16 +207,24 @@ public struct ThreadConversation: View {
         return documentRow
     }
     private var selectedRowID: JSONText? { selectedRow?.id }
-    private var effectiveRunningID: JSONText? {
-        guard let runningTurnId, !excluded.contains(runningTurnId) else { return nil }
-        if case let .execution(id) = context?.presentation, id != runningTurnId { return nil }
-        return runningTurnId
+    private func visibleActivity(_ id: JSONText?) -> JSONText? {
+        guard let id else { return nil }
+        switch context?.presentation {
+        case .main(let excludedIDs):
+            // Public activity can arrive before its manifest row. Only the
+            // retained source can change this reader's work or scrolling.
+            if let retainedMainExecution, retainedMainExecution != id { return nil }
+            return excludedIDs.contains(id) ? nil : id
+        case .execution(let execution): return execution == id ? id : nil
+        case nil: return id
+        }
     }
+    private var effectiveRunningID: JSONText? { visibleActivity(runningTurnId) }
     private var documentIsRunning: Bool {
         running && effectiveRunningID != nil && documentRow?.execution?.id == effectiveRunningID
     }
-    private var selectedIsActive: Bool {
-        guard let execution = selectedRow?.execution else { return false }
+    private func isActive(_ execution: ThreadConversationExecution?) -> Bool {
+        guard let execution else { return false }
         // Either stream may arrive first at startup or termination. Match IDs
         // before using catalog activity; a newer execution cannot hide history.
         return execution.isActive || execution.id == activeExecutionId
@@ -210,20 +236,33 @@ public struct ThreadConversation: View {
         return !executionCard
     }
     private var relatedSendTitle: NativeReportSidecardPresentation.SendTitle? {
-        guard relatedExecution, selectedIsActive, let id = documentRow?.execution?.id else { return nil }
+        // Naming is committed separately from completion. Keep the submitted
+        // heading intact until the exact run has both a result and a name.
+        guard relatedExecution, let execution = documentRow?.execution,
+              execution.title == nil || isActive(execution) || contentStatus.executionSettled[execution.id] != true
+        else { return nil }
         return reportSidecards?.sendTitles[ApplicationExecutionRef(
-            thread: .init(threadID: threadId, typeID: "agent"), executionID: id)]
+            thread: .init(threadID: threadId, typeID: "agent"), executionID: execution.id)]
     }
-    private var allowsJumpToLatest: Bool {
-        guard let activeExecutionId, !excluded.contains(activeExecutionId) else { return false }
-        if case let .execution(id) = context?.presentation, id != activeExecutionId { return false }
-        return true
+    private var allowsJumpToLatest: Bool { visibleActivity(activeExecutionId) != nil }
+    /// A nil value lets the reader toggle work. Automatic visibility follows
+    /// the mounted turn even when its catalog or manifest updates first.
+    private var fixedWorkVisibility: Bool? {
+        if relatedExecution {
+            guard let execution = documentRow?.execution else { return false }
+            let settled = contentStatus.executionSettled[execution.id] ?? !isActive(execution)
+            if settled { return false }
+            let waitingForInput = execution.id == activeExecutionId && !running
+            return waitingForInput && !executionCard ? nil : true
+        }
+        return executionCard || documentIsRunning ? true : nil
     }
-    private var work: Bool { (!relatedExecution || selectedIsActive) && (executionCard || documentIsRunning || (manualWork ?? (effectiveRunningID != nil))) }
+    private var work: Bool { fixedWorkVisibility ?? manualWork ?? (effectiveRunningID != nil) }
     private var visibility: ThreadDetailVisibility {
-        ThreadDetailVisibility(userMessages: !agentDetail && (executionCard || userMessages), work: work,
-                               workTurnID: executionCard || manualWork == true ? nil : effectiveRunningID,
-                               messageAnchorID: destination == requestedDestination ? acceptedAnchor : nil)
+        let workID = executionCard || manualWork == true ? nil : effectiveRunningID
+        return ThreadDetailVisibility(userMessages: !agentDetail && (executionCard || userMessages), work: work,
+                                      workTurnID: relatedExecution ? documentRow?.execution?.id : workID,
+                                      messageAnchorID: destination == requestedDestination ? acceptedAnchor : nil)
     }
     private var inlineRow: JSONText? {
         if case let .document(inline) = destination { return inline }; return nil
@@ -236,7 +275,7 @@ public struct ThreadConversation: View {
         return nil
     }
     private var pinnedExecutionVisit: Bool {
-        readingTarget?.position.pinsExecution == true && destination == requestedDestination
+        displayedTarget?.position.pinsExecution == true && destination == requestedDestination
     }
     // A requested document is the host route's entry, regardless of scroll
     // position. The retained current document is not a previous visit until
@@ -245,37 +284,42 @@ public struct ThreadConversation: View {
         requestedDestination != nil && destination == requestedDestination && rootNavigation != nil
     }
     private var runningStartVisit: Bool {
-        agentDetail && running && effectiveRunningID != nil && readingTarget?.executionId == effectiveRunningID
-            && readingTarget?.position == .start && readingTarget?.hasMessageTarget == false && readingTarget?.anchorId == nil
+        agentDetail && running && effectiveRunningID != nil && displayedTarget?.executionId == effectiveRunningID
+            && displayedTarget?.position == .start && displayedTarget?.hasMessageTarget == false && displayedTarget?.anchorId == nil
     }
     private var scrollTarget: ThreadTimelineReadingTarget? {
-        guard destination == requestedDestination, let consumedRequest else { return nil }
+        guard destination == requestedDestination, let displayedTarget else { return nil }
         // A default execution link has no message anchor. Register its row while
         // the scoped body loads, then keep following all subsequent layout growth.
         let anchor = runningStartVisit ? visibleRows.first { $0.execution?.id == effectiveRunningID }?.id : acceptedAnchor
         guard let anchor else { return nil }
-        return ThreadTimelineReadingTarget(requestId: consumedRequest, anchorId: anchor,
-            follow: runningStartVisit || (readingTarget?.position == .result && readingTarget?.follow == true))
+        let followsResult = displayedTarget.position == .result && displayedTarget.follow
+            && displayedTarget.executionId == activeExecutionId
+        return ThreadTimelineReadingTarget(requestId: displayedTarget.requestId, anchorId: anchor,
+            follow: runningStartVisit || followsResult, requestsFocus: focusReadingTarget)
     }
-    private var inputTarget: ThreadConversationInputTarget? {
-        if executionCard { return nil }
+    private func inputTarget(in index: ThreadConversationIndex) -> ThreadConversationInputTarget? {
+        guard !executionCard, initializedThread == threadId else { return nil }
         if case .row = context?.content { return nil }
         // An explicitly requested active execution can live in the Sidecard
         // and be excluded from main. Keep its input exact until TOC navigation
         // relinquishes the entry, just as a result document does.
-        let sidecardEntry = readingTarget.flatMap { target in
-            inputEntryRequest == target.requestId && excluded.contains(target.executionId) ? target.executionId : nil
+        let sidecardEntry = readingTarget.flatMap { target -> JSONText? in
+            if retainsContinuationSource, consumedRequest != target.requestId { return target.executionId }
+            return inputEntryRequest == target.requestId && excluded.contains(target.executionId) ? target.executionId : nil
         }
         let followsLatest = !relatedExecution && destination == .document(inline: nil) && sidecardEntry == nil
         let selectedExecution = selectedRow?.execution
         let executionID = sidecardEntry ?? (relatedExecution && selectedExecution?.readable == false ? nil : selectedExecution?.id)
+        let displayed = selectedExecution.flatMap {
+            readerActive && contentStatus.ready && contentStatus.executionSettled[$0.id] == true ? $0.id : nil
+        }
         return ThreadConversationInputTarget(threadID: threadId, requestID: readingTarget?.requestId, executionID: followsLatest ? nil : executionID,
-            followsLatest: followsLatest, ready: initializedThread == threadId && !pageMotion.active,
-            displayedExecutionID: selectedExecution.flatMap {
-                readerActive && contentStatus.ready && contentStatus.settledExecutions.contains($0.id) ? $0.id : nil
-            })
+            followsLatest: followsLatest, ready: !pageMotion.active, displayedExecutionID: displayed,
+            conversationIndex: followsLatest && displayed != nil ? index : nil)
     }
     public var body: some View {
+        let index = self.index
         Group {
             if case let .row(id) = context?.content {
                 if let row = visibleRows.first(where: { $0.id == id }) { row.node.nativeReadingContentReady() }
@@ -300,17 +344,21 @@ public struct ThreadConversation: View {
         .environment(\.nativeInteractionQuestionInDocument, true)
         .foregroundStyle(NativePalette.thread.ink.swiftUI)
         .background(NativePalette.thread.canvas.swiftUI)
-        .preference(key: ThreadConversationInputTargetKey.self, value: inputTarget)
+        .preference(key: ThreadConversationInputTargetKey.self, value: inputTarget(in: index))
         .onChange(of: threadId, initial: true) { _, _ in
             userMessages = false; manualWork = nil
             hasMountedCurrentDocument = false
-            destination = .document(inline: nil); consumedRequest = nil; requestedDestination = nil; acceptedAnchor = nil; locatedRequest = nil
+            destination = .document(inline: nil); displayedTarget = nil; requestedDestination = nil; acceptedAnchor = nil; locatedRequest = nil
             inputEntryRequest = readingTarget?.requestId
             consumeReadingTarget()
             initializedThread = threadId
         }
         .onChange(of: effectiveRunningID) { _, _ in manualWork = nil }
-        .onChange(of: readingTarget) { _, target in inputEntryRequest = target?.requestId; consumeReadingTarget() }
+        .onChange(of: readingTarget) { previous, target in
+            if previous?.requestId != target?.requestId { inputEntryRequest = target?.requestId }
+            consumeReadingTarget()
+        }
+        .onChange(of: retainsContinuationSource) { _, _ in consumeReadingTarget() }
         .onChange(of: visibleRows.map(\.id)) { _, _ in promoteCurrentPage(); consumeReadingTarget() }
         .onChange(of: visibleRows.map { $0.execution?.readable }) { _, _ in consumeReadingTarget() }
         .onChange(of: readingPage && !entryRoute, initial: true) { _, open in
@@ -434,24 +482,21 @@ public struct ThreadConversation: View {
     private func documentHeader() -> some View {
         VStack(alignment: .leading, spacing: 0) {
             if showsDocumentHeading {
-                heading(relatedSendTitle?.text ?? documentTitle, emoji: relatedSendTitle?.emoji ?? icon ?? "📝")
+                let submitted = relatedSendTitle
+                heading(submitted?.text ?? documentTitle, emoji: submitted?.emoji ?? icon ?? "📝")
             }
             if let actions { actions.padding(.top, 15) }
             if !rows.isEmpty {
                 let authorID = documentRow?.execution?.id
                 ThreadReadingHeader(author: authorID.flatMap { authors[$0] },
                     authorResolved: authorID.map { authors[$0] != nil } ?? false, showsAuthor: authorID != nil,
-                    showsFilters: !executionCard, showsWorkFilter: !documentIsRunning && (!agentDetail || hasDisplayableWork), users: userMessages, work: work,
+                    showsFilters: !executionCard,
+                    showsWorkFilter: fixedWorkVisibility == nil && (!agentDetail || workAvailability.values.contains(true)),
+                    users: userMessages, work: work,
                     toggleUsers: { userMessages.toggle() }, toggleWork: { manualWork = !work })
                     .padding(.top, showsDocumentHeading ? 12 : 0).padding(.bottom, executionCard ? 12 : 16)
             } else { Color.clear.frame(height: 16) }
         }
-    }
-    private var hasDisplayableWork: Bool {
-        let historical = historicalIDs
-        let ids = visibleRows.filter { !$0.history && (!historical.contains($0.id) || $0.id == inlineRow) }
-            .compactMap { $0.execution?.id }
-        return ids.isEmpty || ids.contains { workAvailability[$0] != false } || workAvailability.values.contains(true)
     }
     private var documentTitle: String {
         if relatedExecution, let row = documentRow {
@@ -459,8 +504,8 @@ public struct ThreadConversation: View {
         }
         // Main can retain an older execution while the newest one lives in a
         // Sidecard. Its heading must not borrow the newest catalog title.
-        if agentDetail, let row = documentRow,
-           row.execution != nil, row.execution?.id != rows.last(where: { $0.execution != nil })?.execution?.id {
+        if agentDetail, let row = documentRow, let execution = row.execution,
+           execution.id == retainedMainExecution || execution.id != rows.last(where: { $0.execution != nil })?.execution?.id {
             return row.executionTitle
         }
         return title
@@ -488,15 +533,15 @@ public struct ThreadConversation: View {
     }
     private func historyPage() -> some View {
         ThreadHistoryDocument(threadId: threadId, page: selectedPage, rowContent: selectedPage.map(content),
-                              active: pinnedExecutionVisit ? readingTarget?.follow == true : selectedPage?.execution?.id == effectiveRunningID,
+                              active: pinnedExecutionVisit ? isActive(selectedPage?.execution) : effectiveRunningID != nil && selectedPage?.execution?.id == effectiveRunningID,
                               running: running && effectiveRunningID != nil && selectedPage?.execution?.id == effectiveRunningID,
                               allowsJumpToLatest: allowsJumpToLatest && selectedPage?.execution?.id == activeExecutionId,
-                              hidesHeading: executionCard && !relatedExecution && agentDetail && selectedIsActive,
+                              hidesHeading: executionCard && !relatedExecution && agentDetail && isActive(selectedRow?.execution),
                               pinnedExecution: pinnedExecutionVisit, readingTarget: scrollTarget,
                               readingVisitId: destination == requestedDestination ? consumedRequest : nil,
                               locatedRequestId: locatedRequest, onLocated: { locatedRequest = $0 },
                               backLabel: (entryRoute ? rootNavigation?.label : nil) ?? localize("返回当前会话"),
-                              focusHeading: destination == requestedDestination && contentHandoff == nil, onBack: closeHistory)
+                              focusHeading: destination == requestedDestination && contentHandoff == nil && focusReadingTarget, onBack: closeHistory)
         .id(HistoryVisitID(row: selectedPage?.id, request: consumedRequest, revision: navigationRevision))
         .nativeReadingScope("history")
         .nativeReadingActive(!pageMotion.active)
@@ -528,6 +573,7 @@ public struct ThreadConversation: View {
         // turn; its delayed completion must not replace the new destination.
         pageMotion.cancel()
         inputEntryRequest = nil
+        if retainsContinuationSource { displayedTarget = readingTarget }
         setPageDirection(toward: id, returning: id == currentRow?.id && readingPage)
         requestedDestination = nil; acceptedAnchor = nil
         // The last visible main row is still historical when a newer execution
@@ -556,18 +602,31 @@ public struct ThreadConversation: View {
         pageDirection = returning ? -incoming : incoming
     }
     private func localize(_ value: String) -> String { NativePluginLocalization.localize(value, locale: locale) }
+    private var retainsContinuationSource: Bool {
+        guard !executionCard, let target = readingTarget, target.requestId == continuationRequestID else { return false }
+        return retainedMainExecution != nil || excluded.contains(target.executionId) ||
+            (consumedRequest != target.requestId && !rows.contains { $0.execution?.id == target.executionId })
+    }
     private func consumeReadingTarget() {
+        // The accepted exact target already owns input in its Sidecard. Leave
+        // the source document, including its history visit and scroll position, mounted.
+        if retainsContinuationSource { return }
         guard let target = readingTarget, !excluded.contains(target.executionId) else {
             // A removed public request returns to the current document. An
             // already-absent request leaves manually opened history alone.
             if consumedRequest != nil {
-                consumedRequest = nil; requestedDestination = nil; acceptedAnchor = nil; locatedRequest = nil
+                displayedTarget = nil; requestedDestination = nil; acceptedAnchor = nil; locatedRequest = nil
                 destination = .document(inline: nil); navigationRevision += 1
             }
             return
         }
         let index = visibleRows.firstIndex { $0.execution?.id == target.executionId && $0.execution?.readable != false }
-        if consumedRequest == target.requestId {
+        let sameRequest = consumedRequest == target.requestId
+        // A local send changes what to show while the editor keeps focus.
+        // A late result anchor still belongs to this visit after reveal retires.
+        if !sameRequest { focusReadingTarget = target.requestId != continuationRequestID }
+        displayedTarget = target
+        if sameRequest {
             guard destination == requestedDestination else { return }
             // Lifecycle delivery can precede the reader's manifest. Reconcile
             // availability without inventing a new visit or changing its target.
@@ -578,7 +637,6 @@ public struct ThreadConversation: View {
                 return
             }
         }
-        consumedRequest = target.requestId
         acceptedAnchor = target.position == .result ? threadExecutionResultAnchor(target.executionId) : target.anchorId
         if let index {
             let id = visibleRows[index].id
@@ -684,7 +742,8 @@ private struct ThreadHistoryDocument: View {
                 ThreadReadingHeader(author: page?.execution.flatMap { authors[$0.id] },
                     authorResolved: page?.execution.map { authors[$0.id] != nil } ?? false,
                     showsAuthor: page?.execution != nil,
-                    showsWorkFilter: !running && (!agentDetail || page?.execution.map { workAvailability[$0.id] != false } != false), users: users, work: work, toggleUsers: { users.toggle() }, toggleWork: toggleWork)
+                    showsWorkFilter: !running && (!agentDetail || workAvailability.values.contains(true)),
+                    users: users, work: work, toggleUsers: { users.toggle() }, toggleWork: toggleWork)
                 Divider().overlay(NativePalette.thread.lineSoft.swiftUI)
             }
         }.padding(.bottom, 28)

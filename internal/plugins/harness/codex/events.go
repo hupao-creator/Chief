@@ -28,15 +28,23 @@ func DecodeNotification(method string, p Map) []Map {
 		if str(r["id"]) == "" {
 			return []Map{}
 		}
+		activity := Map{"id": r["id"], "kind": "hook", "label": first(str(r["name"]), "运行 Hook")}
+		detail := hookOutput(r)
 		if method == "hook/started" {
-			return []Map{{"type": "activity-start", "activity": Map{"id": r["id"], "kind": "hook", "label": first(str(r["name"]), "运行 Hook"), "status": "running"}}}
+			activity["status"] = "running"
+			if detail != "" {
+				activity["detail"] = detail
+			}
+			return []Map{{"type": "activity-start", "activity": activity}}
 		}
 		status := "completed"
-		if r["status"] == "failed" {
-			status = "failed"
+		switch r["status"] {
+		case "failed", "blocked":
+			status, detail = "failed", compact(r)
+		case "stopped":
+			status, detail = "cancelled", compact(r)
 		}
-		return []Map{{"type": "activity-end", "activityId": r["id"], "status": status, "detail": compact(r),
-			"activity": Map{"id": r["id"], "kind": "hook", "label": first(str(r["name"]), "运行 Hook")}}}
+		return []Map{{"type": "activity-end", "activityId": r["id"], "status": status, "detail": detail, "activity": activity}}
 	case "thread/tokenUsage/updated":
 		u := obj(p["tokenUsage"])
 		last := obj(u["last"])
@@ -53,6 +61,20 @@ func DecodeNotification(method string, p Map) []Map {
 	}
 	return nil
 }
+
+func hookOutput(run Map) string {
+	var lines []string
+	if message := str(run["statusMessage"]); strings.TrimSpace(message) != "" {
+		lines = append(lines, message)
+	}
+	for _, entry := range arr(run["entries"]) {
+		if text := str(obj(entry)["text"]); strings.TrimSpace(text) != "" {
+			lines = append(lines, text)
+		}
+	}
+	return strings.ReplaceAll(strings.Join(lines, "\n"), "\x00", "␀")
+}
+
 func ParseActivity(i Map) Map {
 	id := str(i["id"])
 	if id == "" {

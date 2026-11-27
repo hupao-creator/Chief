@@ -309,7 +309,6 @@ func (n *NativeSession) Start(ctx context.Context, o NativeOptions, executionID 
 	if tier, ok := settings["serviceTier"]; ok {
 		n.publish(Map{"type": "runtime-service-tier", "serviceTier": tier})
 	}
-	n.publish(Map{"type": "status", "label": "正在连接 Codex"})
 	params := turnSettings(o.Settings, o.WritableRoots)
 	params["threadId"] = id
 	params["clientUserMessageId"] = executionID
@@ -327,13 +326,11 @@ func (n *NativeSession) Start(ctx context.Context, o NativeOptions, executionID 
 		n.finish(Map{"status": "failed", "error": Map{"message": err.Error()}})
 		return err
 	}
-	n.mu.Lock()
-	if n.turnID != "" && n.turnID != turnID {
-		n.mu.Unlock()
+	if !n.confirmTurnStart(turnID) {
 		_ = n.server.Close()
 		return errors.New("Codex turn identity mismatch")
 	}
-	n.turnID = turnID
+	n.mu.Lock()
 	failure := n.failure
 	terminal := n.terminal
 	n.mu.Unlock()
@@ -344,6 +341,31 @@ func (n *NativeSession) Start(ctx context.Context, o NativeOptions, executionID 
 	}
 	return nil
 }
+
+// The turn/start reply and turn/started notification can arrive in either order.
+// Publish the first confirmation to the execution that owned that native turn.
+func (n *NativeSession) confirmTurnStart(turnID string) bool {
+	n.mu.Lock()
+	if n.turnID != "" {
+		matches := n.turnID == turnID
+		n.mu.Unlock()
+		return matches
+	}
+	n.turnID = turnID
+	if n.terminal {
+		// Completion can beat both confirmations. Fence late notifications on reuse.
+		n.retiredTurns[turnID] = true
+		n.mu.Unlock()
+		return true
+	}
+	emit, executionID := n.emit, n.executionID
+	n.mu.Unlock()
+	if emit != nil {
+		emit(Map{"type": "turn-started", "_nativeExecutionId": executionID})
+	}
+	return true
+}
+
 func (n *NativeSession) publish(e Map) {
 	n.mu.Lock()
 	emit := n.emit
@@ -544,11 +566,10 @@ func (n *NativeSession) notification(method string, p Map, wireID any) {
 	}
 
 	if method == "turn/started" {
-		n.mu.Lock()
-		if !n.terminal && n.turnID == "" {
-			n.turnID = nativeTurn
+		if nativeTurn != "" {
+			n.confirmTurnStart(nativeTurn)
 		}
-		n.mu.Unlock()
+		return
 	}
 	if method == "thread/status/changed" {
 		if n.activity != nil {

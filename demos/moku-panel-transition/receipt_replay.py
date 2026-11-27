@@ -4,9 +4,12 @@ from contextlib import closing
 from http.client import HTTPConnection
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
+import tempfile
 from threading import Thread
 import time
 from urllib.parse import unquote
@@ -121,7 +124,38 @@ try:
                 (replay.workspace / "peer.json").write_text(json.dumps({**upstream, "port": server.server_port}))
                 Thread(target=server.serve_forever, daemon=True).start()
                 try:
-                    subprocess.run([str(replay.executable)], cwd=replay.workspace, check=True, timeout=50)
+                    evidence = Path(os.environ.get("CHIEF_REPORT_REPLAY_EVIDENCE", replay.workspace / "evidence"))
+                    evidence.mkdir(parents=True, exist_ok=True)
+                    env = dict(os.environ, NSUnbufferedIO="YES", CHIEF_REPORT_REPLAY_EVIDENCE=str(evidence.resolve()))
+                    with subprocess.Popen([str(replay.executable)], cwd=replay.workspace, env=env) as process:
+                        try:
+                            ready = replay.workspace / "reader-ocr-ready"
+                            startup_deadline = time.monotonic() + 120
+                            while not ready.exists():
+                                if process.poll() is not None:
+                                    raise RuntimeError(f"Reader OCR startup exited with status {process.returncode}")
+                                if time.monotonic() >= startup_deadline:
+                                    raise subprocess.TimeoutExpired("English reader OCR startup", 120)
+                                time.sleep(.05)
+                            status = process.wait(timeout=50)
+                            if status:
+                                raise subprocess.CalledProcessError(status, process.args)
+                        except (RuntimeError, subprocess.SubprocessError):
+                            if process.poll() is None:
+                                try:
+                                    subprocess.run(["/usr/bin/sample", str(process.pid), "2", "1", "-file",
+                                                    str(evidence / "timeout-sample.txt")], timeout=8)
+                                except (OSError, subprocess.SubprocessError) as error:
+                                    print("Receipt replay process sample unavailable:", error, flush=True)
+                                finally:
+                                    process.kill()
+                                    process.wait(timeout=5)
+                            if evidence == replay.workspace / "evidence":
+                                retained = Path(tempfile.mkdtemp(prefix="chief-receipt-failure-"))
+                                shutil.copytree(evidence, retained, dirs_exist_ok=True)
+                                evidence = retained
+                            print("Receipt replay failure evidence:", evidence, flush=True)
+                            raise
                 finally:
                     server.shutdown()
             for channel in ("moku:submit", "thread:follow-up"):

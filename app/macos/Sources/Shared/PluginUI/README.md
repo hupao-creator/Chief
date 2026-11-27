@@ -80,7 +80,7 @@ entry temporarily excluded into the active Sidecard. Row-only renders and
 execution Sidecards do not publish another input owner. Unavailable or aggregate
 history without an execution identity cannot silently become current input.
 
-The target also identifies the displayed result when the active page has finished preparing and its selected execution has a mounted, settled Harness body. This identity can be present when input follows the latest run.
+The target also identifies the displayed result when the active page has finished preparing and its selected execution has a mounted, settled Harness body. When input follows latest, the same target carries the full execution order from that reader's manifest, including rows excluded from main into a Sidecard. The Host can use that order to recognize a displayed successor to a locally accepted execution.
 
 The resident Dock captures the submitted draft and its route
 together. The shared draft persists each pending send under its initial
@@ -271,17 +271,18 @@ semantic palette and locale follow the reader. This is presentation state only:
 content acquisition, decoding, caching and resource release are unchanged.
 See the [recording review and validation limits](../../../../../design/reading.md).
 
-The Agent reader hides its work visibility control when the mounted execution
-content reports no displayable work. Missing reports during scoped loading remain
-unknown, and later content updates can restore the control. Summary admission
-and background terminal/task presence determine availability independently of the
-current work toggle.
+The Agent reader offers its work visibility control when visibility is adjustable
+and a mounted turn or background section reports displayable work. Pending
+scoped content can enable the control once it reports work. Summary admission
+and background terminal/task presence determine availability independently of
+the current work toggle.
 
 Agent execution summaries suppress a group only when every member explicitly
 reports no summary content and no positive reasoning usage is reported for that
-group. Empty reasoning and completed Hooks without output qualify; tool calls,
-other activity kinds, running/failed/cancelled Hooks, interactions and unknown
-rows remain admitted. Classification follows content and native identity rather
+group. Empty reasoning and completed Hooks without output qualify. Codex also
+treats a running Hook with no output or tool identity as bookkeeping. Hook
+output, failures, cancellations, tool calls, other activity kinds, interactions
+and unknown rows remain admitted. Classification follows content and native identity rather
 than position or zero counts. Lightweight Codex/Claude history carries output
 presence independently of stripped detail. Agent summary rows use the lightweight projection. See the [contract](../../../../../design/reading.md)
 for the current execution-summary admission rules.
@@ -521,11 +522,18 @@ conversation viewports.
 
 [Conversation/ThreadConversation.swift](Conversation/ThreadConversation.swift) and [ThreadTimeline.swift](Conversation/ThreadTimeline.swift) organize reading from the Harness's public turn index. [ThreadExecutionGroups.swift](Conversation/ThreadExecutionGroups.swift) presents adjacent execution rows under a summary with reasoning/tool counts and reported reasoning usage. Only the latest process summary in the running execution carries a left-to-right text highlight, and only while it is also the final message-stream group. Harnesses classify the native tail before withholding streaming replies; a later assistant reply stops the sweep immediately, including before its text is mounted. OpenCode checks the last native part because replies, reasoning and tools can share a message. The 64pt band uses opaque strong reading ink with a broad center and soft edges. Only while motion is admitted, its text base uses 55% muted ink so both sides of the band visibly recede; the wrench keeps normal ink. Inactive scenes and pending entrance restore normal static ink. Colors follow the light/dark palette; earlier groups, history, completed/interrupted/failed executions and waiting-for-user states stay static. Harnesses supply execution-running state separately from reader activity. The text mask clips a [native gradient layer](Conversation/ThreadExecutionLoadingSweep.swift). Its position animation holds off the far edge for 250 ms per cycle. Removing the running or entrance gate, losing the active scene or detaching the view retires the sweep. The decoration adds no accessibility content or hit target. The highlight travels at roughly 180pt/s with a short gap between passes, without animating the wrench or changing text layout. In Agent detail, the reading header's execution visibility control shows only this summary: nested Used tools group titles, Hooks, tool calls, commands, reasoning bodies and failed-tool diagnostics are details and never mount. Agent-only background terminal/task sections likewise show static counts/status rather than commands or descriptions, and hide with work; task failure is not a standalone Harness error. Summary-only historical groups do not acquire the scoped loader in [ThreadDeferredExecution.swift](Conversation/ThreadDeferredExecution.swift). The full member-row presentation uses scoped historical demand when explicitly selected. Execution membership takes precedence over attention styling, so a tool failure cannot escape the visibility group. Standalone errors and pending interactions keep their own timeline rows; a visible nonmember splitting a native run receives distinct summary identities. The summary itself has no disclosure arrow, hover treatment, keyboard focus or accessibility/reading action. Individual activity disclosures on other conversation surfaces retain their existing behavior.
 
-Pending connection/status text in an otherwise empty active execution reuses
-the summary's `ThreadLoadingTextStyle`, including its 64pt band, 180pt/s travel,
-250ms gap and motion/entrance gates. All Harnesses use the shared turn renderer;
-settled, failed, interrupted and waiting states remain static. Real content
-replaces the pending label and removes its animation without changing admission.
+The Report submission page's connection label and an otherwise empty turn's
+inline status use the same 16pt Inter text style. When a running Agent's only
+visible row is its first reply, that status fills the reply's place until its
+Markdown is ready to draw. If completion arrives during preparation, the
+reader keeps the last displayed status and admits the footer once that reply
+is drawable. The localized connection
+phrase and the Harness display name form one text element. Both surfaces reuse
+the summary's `ThreadLoadingTextStyle`, including its light/dark ink, 64pt band,
+180pt/s travel, 250ms gap and motion/entrance gates. All Harnesses use the shared
+turn renderer. Settled, failed, interrupted and waiting states remain static.
+Real content replaces the pending label and removes its animation without
+changing admission.
 
 [ThreadSteerMessage.swift](Conversation/ThreadSteerMessage.swift) presents explicit
 ordinary follow-ups in Agent detail as one line of literal text and one line of
@@ -1553,19 +1561,23 @@ Running, waiting and completed references keep the exact execution title
 (instruction, then timestamp fallback) and the Harness's thread emoji. The
 heading waits for the selected row rather than borrowing the latest catalog
 title while loading; ordinary Agent execution Sidecards keep their heading policy.
-Completed references keep the final reply and ordinary non-work facts while
-hiding execution work and its process summary. Active references show the
-shared live process summary. After an accepted send from a Super Thread,
-its active referenced execution shows the submitted text and a random emoji.
+In the current document, the mounted turn determines when its live work ends.
+While the turn loads, activity comes from its exact manifest row and catalog
+execution. Running references show live work automatically. Waiting references
+in the full reader can offer the work control. Completed references keep the
+final reply, footer and ordinary non-work facts. After an accepted send from a
+Super Thread, its active referenced execution shows the submitted text and a random emoji.
 The Report visit retains that emoji by exact Thread/execution identity, including
 same-execution steering, folding and catalog refresh. Later accepted sends to the
 same execution replace only the text. Whitespace is collapsed for the heading;
 blank text uses the exact execution's ordinary title/instruction/timestamp fallback.
 The shared heading truncates long text to two lines and exposes its full text on
 hover. Only the still-current composer/selection visit may install this title;
-other active readers keep their existing heading policy. Completion restores the
-ordinary execution title and Thread emoji; no catalog or historical title is
-written. Leaving the Report retires these visit-local send titles. See the [Report admission contract](../../../../../design/reading.md)
+other active readers keep their existing heading policy. The submitted heading
+stays in place through completion until naming supplies a title for that exact
+execution. The reader then displays the title and Thread emoji together. A
+missing name keeps the visit-local heading, and leaving the Report retires it.
+See the [Report admission contract](../../../../../design/reading.md)
 for lifecycle details.
 
 The outer reading stack can accept a `panelFrontIdentity` for a route-retaining

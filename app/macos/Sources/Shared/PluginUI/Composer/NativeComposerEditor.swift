@@ -70,7 +70,13 @@ struct NativeComposerEditor: NSViewRepresentable {
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         let coordinator = context.coordinator
-        if coordinator.parent.draft !== draft { coordinator.parent.draft?.editors.remove(coordinator) }
+        // A render of the submitting scope can arrive after its focused editor
+        // moved. Its empty draft and completion requests belong to that old scope.
+        if let source = coordinator.continuedFrom, draft === source { return }
+        if coordinator.parent.draft !== draft {
+            coordinator.parent.draft?.editors.remove(coordinator)
+            coordinator.continuedFrom = nil
+        }
         draft?.editors.add(coordinator)
         coordinator.parent = self
         guard let editor = scroll.documentView as? ComposerTextView else { return }
@@ -80,6 +86,9 @@ struct NativeComposerEditor: NSViewRepresentable {
             coordinator.schedulePublish()
         }
         let active = focusEnabled && !unavailable
+        // A queued destination binding can predate the first native keystroke
+        // after the move. Use its live draft while the continued editor is active.
+        let modelText = active && coordinator.continuedFrom != nil ? draft?.inputText ?? value : value
         // Closing keeps the native view alive during travel. Capture before
         // AppKit disables selection or resigns focus, not from a later report.
         if preservesSelection, coordinator.active == true, !active, !editor.hasMarkedText() {
@@ -87,19 +96,19 @@ struct NativeComposerEditor: NSViewRepresentable {
         }
         if preservesSelection, coordinator.active == false, active,
            let saved = coordinator.suspendedSelection {
-            coordinator.pendingSelection = saved.text.utf16.elementsEqual(value.utf16)
-                ? saved.range : NSRange(location: value.utf16.count, length: 0)
+            coordinator.pendingSelection = saved.text.utf16.elementsEqual(modelText.utf16)
+                ? saved.range : NSRange(location: modelText.utf16.count, length: 0)
             coordinator.suspendedSelection = nil
         }
         coordinator.active = active
         var restoredSelection = false
         var replacedText = false
         // Remember ignored model updates too: they must not be replayed after commit.
-        if coordinator.lastModel?.utf16.elementsEqual(value.utf16) != true {
-            coordinator.lastModel = value
-            if !editor.hasMarkedText(), !editor.string.utf16.elementsEqual(value.utf16) {
+        if coordinator.lastModel?.utf16.elementsEqual(modelText.utf16) != true {
+            coordinator.lastModel = modelText
+            if !editor.hasMarkedText(), !editor.string.utf16.elementsEqual(modelText.utf16) {
                 let oldSelection = editor.selectedRange()
-                editor.string = value
+                editor.string = modelText
                 replacedText = true
                 editor.setSelectedRange(coordinator.clamped(oldSelection))
             }
@@ -148,6 +157,7 @@ struct NativeComposerEditor: NSViewRepresentable {
     @MainActor final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: NativeComposerEditor
         weak var editor: ComposerTextView?
+        weak var continuedFrom: NativeComposerDraft?
         var updating = false
         var lastModel: String?
         var fontSize: CGFloat?
@@ -160,6 +170,27 @@ struct NativeComposerEditor: NSViewRepresentable {
         private var lastState: NativeComposerEditorState?
         private var publishScheduled = false
         init(_ parent: NativeComposerEditor) { self.parent = parent }
+
+        var isEditingDraft: Bool {
+            guard active == true, let editor, let window = editor.window else { return false }
+            return window.firstResponder === editor && !editor.hasMarkedText()
+        }
+
+        func continueEditing(in draft: NativeComposerDraft) {
+            applySelectionRequest()
+            continuedFrom = parent.draft
+            continuedFrom?.editors.remove(self)
+            parent.draft = draft
+            parent._value = Binding(get: { draft.inputText }, set: { draft.inputText = $0 })
+            draft.editors.add(self)
+            // The next native text event can precede SwiftUI's updateNSView.
+            // Only its editable text is bound early. Actions need the new visit.
+            parent.selectionRequest = nil; parent.focusRequest = nil
+            parent.onKeyDown = nil; parent.onSubmit = {}; parent.onEscape = nil; parent.onState = nil
+            lastState = nil
+            editor?.pasteOwnerID = nil; editor?.pasteAttachments = nil
+            applyDraft(draft)
+        }
 
         /// Sends and receipts change the editing buffer between AppKit events.
         /// Install the projection before another native edit can publish stale text.
@@ -233,7 +264,7 @@ struct NativeComposerEditor: NSViewRepresentable {
             }
             if parent.selection != state.selection { parent.selection = state.selection }
             if parent.focused != state.focused { parent.focused = state.focused }
-            if state != lastState { lastState = state; parent.onState?(state) }
+            if let onState = parent.onState, state != lastState { lastState = state; onState(state) }
         }
         func textDidChange(_ notification: Notification) { publish(synchronizeText: true, nativeEdit: true) }
         func textViewDidChangeSelection(_ notification: Notification) { publish() }

@@ -71,6 +71,14 @@ supply the exact ready attachment identities; text-only stores supply an empty
 array. The Go attachment repository can retain saved input without interpreting
 the native value schema. Unreadable ownership records stop collection.
 
+A same-Thread execution continuation can move an editable draft between exact
+execution scopes under the same exclusive ownership lock. Publishing the
+destination commits the move. If the client exits during the transfer, readers
+can still locate the draft in the source or the committed destination. Its
+attachment references remain visible to collection throughout. The move pins
+the merged attachments for the destination editor before releasing the lock,
+so another process can replace its saved draft immediately.
+
 `loadRetainingAttachments` reads and pins saved files under the shared
 `ownership.lock` gate. Each restored draft and pending submission holds an
 independent token; a process reference file aggregates only its live tokens.

@@ -234,11 +234,11 @@ func stActivityHasSummaryOutput(activity Map) bool {
 	if detail == "" {
 		return false
 	}
-	if activity["kind"] != "hook" || activity["status"] != "completed" {
+	if activity["kind"] != "hook" || !stOneOf(stString(activity["status"]), "running", "completed") {
 		return true
 	}
 	var metadata Map
-	if json.Unmarshal([]byte(detail), &metadata) != nil || metadata["id"] != activity["id"] || metadata["status"] != "completed" || !stOnly(metadata, "id", "status", "name") {
+	if json.Unmarshal([]byte(detail), &metadata) != nil || metadata["id"] != activity["id"] || metadata["status"] != activity["status"] || !stOnly(metadata, "id", "status", "name") {
 		return true
 	}
 	name, named := metadata["name"]

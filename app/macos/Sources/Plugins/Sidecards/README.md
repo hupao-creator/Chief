@@ -128,8 +128,12 @@ Moku bar. Follow-up suggestions from Harness/Application reading routes append
 to that Thread's Moku-bar draft and open its editor, preserving existing text and
 attachments. Generic compose/send intents do not open it; the detail composer's
 explicit, visit-scoped reveal opens the card as soon as the local draft is
-captured. Its column hosts the Dock during the wait. The card shows opening
-progress until it can display the exact accepted execution. A steer to a running execution appears immediately in its owning reader.
+captured. Its column hosts the Dock during the wait. Opening progress ends
+when the card can display the exact accepted execution or the catalog and
+conversation index place its result in main. After admission, a follow-latest
+reader may already display a later result. See the
+[main reader handoff](../../../../../design/reading.md#report-and-execution-sidecards).
+A steer to a running execution appears immediately in its owning reader.
 An eligible execution sidecard opens with the live conversation. A first
 active execution keeps the message in main.
 Failure or an unresolved receipt restores the previous selection while the send
