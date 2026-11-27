@@ -44,6 +44,8 @@ When archiving leaves the collection open, the archived card briefly fades away.
 
 For tasks in projects that use Git, the card can show the branch, number of changed files, and lines added or removed. These figures describe the working folder the task uses. Several tasks using the same folder can show the same changes. The summary is hidden when both line counts are zero. If files changed but Chief couldn't count the lines, the card shows that the count is unavailable.
 
+Below the summary, look for up to three recently edited files with lines added or removed. Each row shows the file name, its folder within the project, and its own `+` and `−` counts. This includes uncommitted changes. Hover over a file row to see its full path. Files with a known edit time appear first. If Chief can only read the totals, the card shows the summary by itself.
+
 Click the card to open the conversation and ask the agent about its changes.
 
 [Back to the product guide](README.md)

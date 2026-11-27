@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hupao-creator/Chief/internal/core/plugin"
@@ -14,8 +16,14 @@ import (
 // Statistics never load patches or run text conversion. The separate budget
 // prevents large new directories from delaying status/diff observation indefinitely.
 const maxStatsFiles = 256
+const maxRecentCandidates = 1024
 
-func (c *client) lineStats(ctx context.Context, p plugin.ApplicationProcessCapability, snapshot Snapshot, files []ChangedFile) (int, int, error) {
+type lineStatistics struct {
+	additions, deletions int
+	byPath               map[string]FileLineStats
+}
+
+func (c *client) lineStats(ctx context.Context, p plugin.ApplicationProcessCapability, snapshot *Snapshot, files []ChangedFile) error {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	current := map[string]bool{}
@@ -29,78 +37,88 @@ func (c *client) lineStats(ctx context.Context, p plugin.ApplicationProcessCapab
 		}
 	}
 	if len(current) > maxStatsFiles {
-		return 0, 0, readFailure("too-large")
+		return readFailure("too-large")
 	}
 	// An index-deleted path recreated as untracked is not a simple addition to
 	// the HEAD diff. Do not present a double-counted delete/add pair as net work.
 	if snapshot.Head != nil {
 		for path := range current {
 			if tracked[path] {
-				return 0, 0, readFailure("inaccessible")
+				return readFailure("inaccessible")
 			}
 		}
 	}
-	added, deleted := 0, 0
+	stats := lineStatistics{byPath: make(map[string]FileLineStats)}
 	flags := []string{"--numstat", "-z", "--no-ext-diff", "--no-textconv", "--no-color", "--no-relative", "--ignore-submodules=all", "--find-renames"}
 	if snapshot.Head != nil && snapshot.Changed > 0 {
 		result, err := c.run(ctx, p, snapshot.Root, maxStatus, append(append([]string{"diff", *snapshot.Head}, flags...), "--")...)
 		if err != nil {
-			return 0, 0, err
+			return err
 		}
 		if result.ExitCode != 0 {
-			return 0, 0, readFailure("inaccessible")
+			return readFailure("inaccessible")
 		}
-		added, deleted, err = parseNumstat(result.Stdout)
+		if err := stats.addNumstat(result.Stdout, ""); err != nil {
+			return err
+		}
+	}
+	if len(current) > 0 {
+		root, err := os.OpenRoot(snapshot.Root)
 		if err != nil {
-			return 0, 0, err
+			return err
+		}
+		defer root.Close()
+		if err := c.addCurrentLineStats(ctx, p, root, flags, current, &stats); err != nil {
+			return err
 		}
 	}
-	if len(current) == 0 {
-		return added, deleted, nil
+	if len(stats.byPath) > 0 {
+		rootPath, changed := snapshot.Root, snapshot.Changed
+		snapshot.RecentFiles = runRecentRanking(ctx, func() []FileLineStats {
+			root, err := os.OpenRoot(rootPath)
+			if err != nil {
+				return nil
+			}
+			defer root.Close()
+			return stats.rankFiles(ctx, root, changed)
+		})
 	}
-	root, err := os.OpenRoot(snapshot.Root)
-	if err != nil {
-		return 0, 0, err
-	}
-	defer root.Close()
+	snapshot.Additions = &stats.additions
+	snapshot.Deletions = &stats.deletions
+	return nil
+}
+
+func (c *client) addCurrentLineStats(ctx context.Context, p plugin.ApplicationProcessCapability, root *os.Root,
+	flags []string, current map[string]bool, stats *lineStatistics) error {
 	for path := range current {
 		if err := ctx.Err(); err != nil {
-			return 0, 0, err
+			return err
 		}
 		info, err := root.Lstat(path)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
 		if err != nil {
-			return 0, 0, err
+			return err
 		}
 		if !info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
-			return 0, 0, readFailure("inaccessible")
+			return readFailure("inaccessible")
 		}
 		// Git handles binary attributes, symlink contents and missing final
 		// newlines consistently with the native reader, without following links.
 		args := append(append([]string{"diff", "--no-index"}, flags...), "--", "/dev/null", path)
-		result, err := c.run(ctx, p, snapshot.Root, maxStatus, args...)
+		result, err := c.run(ctx, p, root.Name(), maxStatus, args...)
 		if err != nil {
-			return 0, 0, err
+			return err
 		}
 		if result.ExitCode != 0 && result.ExitCode != 1 {
-			return 0, 0, readFailure("inaccessible")
+			return readFailure("inaccessible")
 		}
-		a, d, err := parseNumstat(result.Stdout)
-		if err != nil {
-			return 0, 0, err
-		}
-		added, err = addLines(added, a)
-		if err != nil {
-			return 0, 0, err
-		}
-		deleted, err = addLines(deleted, d)
-		if err != nil {
-			return 0, 0, err
+		if err := stats.addNumstat(result.Stdout, path); err != nil {
+			return err
 		}
 	}
-	return added, deleted, nil
+	return nil
 }
 
 func addLines(total, value int) (int, error) {
@@ -111,47 +129,126 @@ func addLines(total, value int) (int, error) {
 	return total + value, nil
 }
 
-// NUL framing is essential: filenames may contain tabs and newlines. Renames
-// (and --no-index paths) have an empty pathname followed by two NUL fields.
-func parseNumstat(output string) (int, int, error) {
+// NUL framing preserves tabs and newlines in filenames. Renames and --no-index
+// use an empty pathname followed by source and destination NUL fields.
+func (s *lineStatistics) addNumstat(output, currentPath string) error {
 	if output == "" {
-		return 0, 0, nil
+		return nil
 	}
 	if !strings.HasSuffix(output, "\x00") {
-		return 0, 0, readFailure("inaccessible")
+		return readFailure("inaccessible")
 	}
 	rows := strings.Split(strings.TrimSuffix(output, "\x00"), "\x00")
-	added, deleted := 0, 0
 	for i := 0; i < len(rows); i++ {
 		fields := strings.SplitN(rows[i], "\t", 3)
 		if len(fields) != 3 {
-			return 0, 0, readFailure("inaccessible")
+			return readFailure("inaccessible")
 		}
-		if fields[2] == "" {
-			if i+2 >= len(rows) || !validPath(rows[i+1]) || !validPath(rows[i+2]) {
-				return 0, 0, readFailure("inaccessible")
+		path := fields[2]
+		if path == "" {
+			if i+2 >= len(rows) || !validPath(rows[i+1]) {
+				return readFailure("inaccessible")
 			}
+			path = rows[i+2]
 			i += 2
-		} else if !validPath(fields[2]) {
-			return 0, 0, readFailure("inaccessible")
+		}
+		if !validPath(path) {
+			return readFailure("inaccessible")
 		}
 		if fields[0] == "-" && fields[1] == "-" {
 			continue
 		}
-		a, errA := strconv.Atoi(fields[0])
-		d, errD := strconv.Atoi(fields[1])
-		if errA != nil || errD != nil || a < 0 || d < 0 {
-			return 0, 0, readFailure("inaccessible")
+		added, errA := strconv.Atoi(fields[0])
+		deleted, errD := strconv.Atoi(fields[1])
+		if errA != nil || errD != nil || added < 0 || deleted < 0 {
+			return readFailure("inaccessible")
 		}
 		var err error
-		added, err = addLines(added, a)
+		s.additions, err = addLines(s.additions, added)
 		if err != nil {
-			return 0, 0, err
+			return err
 		}
-		deleted, err = addLines(deleted, d)
+		s.deletions, err = addLines(s.deletions, deleted)
 		if err != nil {
-			return 0, 0, err
+			return err
+		}
+		if currentPath != "" {
+			path = currentPath
+		}
+		if s.byPath != nil && (added > 0 || deleted > 0) && validRecentPath(path) {
+			file := s.byPath[path]
+			file.Path = path
+			file.Additions += added
+			file.Deletions += deleted
+			s.byPath[path] = file
+			if len(s.byPath) > maxRecentCandidates {
+				s.byPath = nil
+			}
 		}
 	}
-	return added, deleted, nil
+	return nil
+}
+
+// Filesystem metadata calls have no context-aware cancellation. A stalled
+// mount may hold this slot until its syscall returns, even across monitor restarts.
+var rankingSlot sync.Mutex
+
+func runRecentRanking(ctx context.Context, rank func() []FileLineStats) []FileLineStats {
+	if ctx.Err() != nil || !rankingSlot.TryLock() {
+		return nil
+	}
+	done := make(chan []FileLineStats, 1)
+	go func() {
+		files := rank()
+		rankingSlot.Unlock()
+		done <- files
+	}()
+	select {
+	case <-ctx.Done():
+		return nil
+	case files := <-done:
+		if ctx.Err() != nil {
+			return nil
+		}
+		return files
+	}
+}
+
+func (s lineStatistics) rankFiles(ctx context.Context, root *os.Root, changed int) []FileLineStats {
+	type candidate struct {
+		FileLineStats
+		modified time.Time
+	}
+	files := make([]candidate, 0, len(s.byPath))
+	for path, stats := range s.byPath {
+		if ctx.Err() != nil {
+			return nil
+		}
+		file := candidate{FileLineStats: stats}
+		if info, err := root.Lstat(path); err == nil {
+			file.modified = info.ModTime()
+		}
+		files = append(files, file)
+	}
+	if ctx.Err() != nil {
+		return nil
+	}
+	slices.SortFunc(files, func(a, b candidate) int {
+		if a.modified.IsZero() != b.modified.IsZero() {
+			if a.modified.IsZero() {
+				return 1
+			}
+			return -1
+		}
+		if order := b.modified.Compare(a.modified); order != 0 {
+			return order
+		}
+		return strings.Compare(a.Path, b.Path)
+	})
+	limit := min(len(files), changed, maxRecentFiles)
+	result := make([]FileLineStats, 0, limit)
+	for _, file := range files[:limit] {
+		result = append(result, file.FileLineStats)
+	}
+	return result
 }

@@ -26,6 +26,7 @@ final class NativeGitWorkspaceModel {
             upstream: s.upstream, ahead: s.ahead, behind: s.behind, changed: s.changed,
             staged: s.staged, unstaged: s.unstaged, untracked: s.untracked, conflicts: s.conflicts,
             additions: s.additions, deletions: s.deletions, lineStatsError: s.lineStatsError,
+            recentFiles: s.recentFiles,
             error: error ?? view.sync.error?.rawValue, observedAt: view.sync.observedAt)
         return result.isActive ? result : nil
     }
@@ -45,8 +46,18 @@ final class NativeGitWorkspaceModel {
                 do {
                     let domain = try host.domain(pluginID: "git", viewLifetime: lifetime)
                     var next: [NativeGitRepository] = [], cursor: JSONText?
+                    var includeRecentFiles = true
                     repeat {
-                        let page = try await domain.query(NativeGitContracts.repositories, input: cursor, lifetime: lifetime)
+                        let page: NativeGitRepositoryPage
+                        do {
+                            page = try await domain.query(NativeGitContracts.repositories,
+                                input: .init(cursor: cursor, includeRecentFiles: includeRecentFiles), lifetime: lifetime)
+                        } catch let error as RuntimeError where cursor == nil && error.message == "unknown value.includeRecentFiles" {
+                            // An already-running Runtime can predate the optional field.
+                            includeRecentFiles = false
+                            page = try await domain.query(NativeGitContracts.repositories,
+                                input: .init(cursor: nil, includeRecentFiles: false), lifetime: lifetime)
+                        }
                         next += page.repositories; cursor = page.nextCursor
                     } while cursor != nil
                     try lifetime.checkCancellation()

@@ -15,22 +15,31 @@ import (
 const Worktrees = "git.worktrees"
 const maxPatch = 2 * 1024 * 1024
 const maxStatus = 8 * 1024 * 1024
+const maxRecentFiles = 3
+const maxRecentPathBytes = 4096
+
+type FileLineStats struct {
+	Path      string `json:"path"`
+	Additions int    `json:"additions"`
+	Deletions int    `json:"deletions"`
+}
 
 type Snapshot struct {
-	Root           string  `json:"root"`
-	Branch         *string `json:"branch"`
-	Head           *string `json:"head"`
-	Upstream       *string `json:"upstream"`
-	Ahead          *int    `json:"ahead"`
-	Behind         *int    `json:"behind"`
-	Changed        int     `json:"changed"`
-	Additions      *int    `json:"additions"`
-	Deletions      *int    `json:"deletions"`
-	LineStatsError *string `json:"lineStatsError"`
-	Staged         int     `json:"staged"`
-	Unstaged       int     `json:"unstaged"`
-	Untracked      int     `json:"untracked"`
-	Conflicts      int     `json:"conflicts"`
+	Root           string          `json:"root"`
+	Branch         *string         `json:"branch"`
+	Head           *string         `json:"head"`
+	Upstream       *string         `json:"upstream"`
+	Ahead          *int            `json:"ahead"`
+	Behind         *int            `json:"behind"`
+	Changed        int             `json:"changed"`
+	Additions      *int            `json:"additions"`
+	Deletions      *int            `json:"deletions"`
+	LineStatsError *string         `json:"lineStatsError"`
+	RecentFiles    []FileLineStats `json:"recentFiles,omitempty"`
+	Staged         int             `json:"staged"`
+	Unstaged       int             `json:"unstaged"`
+	Untracked      int             `json:"untracked"`
+	Conflicts      int             `json:"conflicts"`
 }
 type SyncStatus struct {
 	AttemptedAt int64   `json:"attemptedAt"`
@@ -62,8 +71,9 @@ type SyncInput struct {
 	Observations []Observation `json:"observations"`
 }
 type PageInput struct {
-	Cursor string `json:"cursor,omitempty"`
-	Limit  int    `json:"limit"`
+	Cursor             string `json:"cursor,omitempty"`
+	Limit              int    `json:"limit"`
+	IncludeRecentFiles bool   `json:"includeRecentFiles,omitempty"`
 }
 type Page[T any] struct {
 	Items      []T    `json:"items"`
@@ -112,6 +122,22 @@ func validateSnapshot(s Snapshot) error {
 	if !validError(s.LineStatsError) || (s.Additions == nil) != (s.Deletions == nil) || s.LineStatsError != nil && s.Additions != nil {
 		return errors.New("invalid Git line statistics")
 	}
+	if len(s.RecentFiles) > min(s.Changed, maxRecentFiles) || len(s.RecentFiles) > 0 && s.Additions == nil {
+		return errors.New("invalid recent Git files")
+	}
+	if len(s.RecentFiles) > 0 {
+		seen := make(map[string]bool, len(s.RecentFiles))
+		remainingAdded, remainingDeleted := *s.Additions, *s.Deletions
+		for _, file := range s.RecentFiles {
+			if !validRecentPath(file.Path) || seen[file.Path] || file.Additions < 0 || file.Deletions < 0 ||
+				file.Additions == 0 && file.Deletions == 0 || file.Additions > remainingAdded || file.Deletions > remainingDeleted {
+				return errors.New("invalid recent Git file statistics")
+			}
+			seen[file.Path] = true
+			remainingAdded -= file.Additions
+			remainingDeleted -= file.Deletions
+		}
+	}
 	for _, v := range []*string{s.Branch, s.Head, s.Upstream} {
 		if v != nil && (!utf8.ValidString(*v) || len(*v) > 4096) {
 			return errors.New("invalid Git ref")
@@ -123,6 +149,10 @@ func validateSnapshot(s Snapshot) error {
 		}
 	}
 	return nil
+}
+
+func validRecentPath(path string) bool {
+	return len(path) <= maxRecentPathBytes && validPath(path) && path != "." && filepath.IsLocal(path) && filepath.Clean(path) == path
 }
 func validateDirectories(directories []string) error {
 	if directories == nil || len(directories) > 10000 {

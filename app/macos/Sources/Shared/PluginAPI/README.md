@@ -59,6 +59,9 @@ Host projection and card sizing, regardless of changed-file count or HEAD. Eithe
 positive total admits the extension; unknown/failed totals keep the existing
 changed-file/error presentation. The host validates paired totals and errors at the wire
 boundary before supplying these facts to Harnesses.
+The host also supplies any recent files in display order as repository-relative
+paths with known added and deleted line counts. The array can be empty when
+only summary facts are available.
 
 Presentation implementations use [PluginUI](../PluginUI/README.md). New plugins implement these boundaries and are composed explicitly rather than adding hidden global discovery.
 

@@ -809,6 +809,10 @@ known. A single neutral label explains unknown, limit, timeout or unavailable
 statistics; a separate stale label identifies retained observations. These states
 retain the file count and branch without changing extension order. The extension
 is read-only metadata with no dedicated diff action or button accessibility role.
+Recent-file observations use the same Git cell with a compact summary and up to
+three rows. JetBrains Mono presents each file name, its parent directory and
+right-aligned signed counts. Truncation preserves the filename suffix and the
+end of a long directory, while help and accessibility retain the complete path.
 
 For standard cards, equally ranked layouts favor Todo's upper row before the
 structural-key tie break, independently of Git visibility. With Todo and Git

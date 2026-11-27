@@ -26,7 +26,11 @@ func (*Service) Register(registry plugin.Registry) error {
 		return err
 	}
 	pageInput := contract("git.page", func(p *PageInput) error {
-		if p.Limit < 1 || p.Limit > 1000 {
+		maxLimit := 1000
+		if p.IncludeRecentFiles {
+			maxLimit = 100
+		}
+		if p.Limit < 1 || p.Limit > maxLimit {
 			return errors.New("invalid Git page limit")
 		}
 		if p.Cursor != "" {
@@ -59,7 +63,11 @@ func (*Service) Register(registry plugin.Registry) error {
 		}
 		page := Page[Activity]{Items: []Activity{}, NextCursor: next}
 		for _, row := range rows[start:end] {
-			page.Items = append(page.Items, Activity{row.ID, decode[Worktree](row.Value)})
+			worktree := decode[Worktree](row.Value)
+			if !input.IncludeRecentFiles {
+				worktree.Snapshot.RecentFiles = nil
+			}
+			page.Items = append(page.Items, Activity{row.ID, worktree})
 		}
 		return json.Marshal(page)
 	}}); err != nil {

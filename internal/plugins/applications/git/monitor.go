@@ -158,11 +158,7 @@ func (m *monitor) cycle(ctx context.Context) error {
 		} else {
 			snapshot, files, e := m.client.status(ctx, m.process, root)
 			if e == nil {
-				added, deleted, statsErr := m.client.lineStats(ctx, m.process, snapshot, files)
-				if statsErr == nil {
-					snapshot.Additions = &added
-					snapshot.Deletions = &deleted
-				} else {
+				if statsErr := m.client.lineStats(ctx, m.process, &snapshot, files); statsErr != nil {
 					snapshot.LineStatsError = ptr(readCode(statsErr))
 				}
 				o.Snapshot = &snapshot
