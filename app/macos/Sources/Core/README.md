@@ -2,6 +2,8 @@
 
 [RuntimeClient.swift](RuntimeClient.swift) owns connection authority and public state. [RuntimeProtocol.swift](RuntimeProtocol.swift), [RuntimeCommands.swift](RuntimeCommands.swift), [RuntimeState.swift](RuntimeState.swift) and [JSONDelta.swift](JSONDelta.swift) mirror the [Go protocol](../../../../internal/platform/transport/README.md). [JSONValue.swift](JSONValue.swift) preserves integer tokens separately from floating-point values, including cursors and revisions sent to Go integer DTOs.
 
+The [global voice module](../Voice/README.md) uses [RuntimeVoice](RuntimeVoice.swift) for a call-scoped authenticated SDP stream. The existing live client lease and service epoch fence the operation.
+
 Connection epochs and host identities fence callbacks. The client hydrates from a complete snapshot, applies valid deltas, and obtains a fresh snapshot after gaps. Catalog data is separate from [RuntimeContent](RuntimeContent.swift) subscriptions for full conversations, turns and execution bodies. A released ready subscription may remain live for 30 seconds in the bounded
 [reading retention cache](RuntimeReadingRetention.swift) (four entries, 8MiB
 accounting budget); the consumer ID retires immediately and its live wire can

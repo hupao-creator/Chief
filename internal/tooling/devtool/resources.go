@@ -109,7 +109,7 @@ func validatePackagedResources(app string) error {
 	if len(data) < 8 || string(data[:4]) != "icns" || int(binary.BigEndian.Uint32(data[4:8])) != len(data) {
 		return fmt.Errorf("invalid application icon")
 	}
-	for _, name := range []string{"Chief-LICENSE", "Go-LICENSE", "ThirdPartyNotices.txt"} {
+	for _, name := range []string{"Chief-LICENSE", "Go-LICENSE", "LiveKitWebRTC-LICENSE", "ThirdPartyNotices.txt"} {
 		if _, err = requiredResource(filepath.Join(resources, "licenses"), name, ""); err != nil {
 			return err
 		}

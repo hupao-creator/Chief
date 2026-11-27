@@ -1,0 +1,301 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["aiortc==1.14.0"]
+# ///
+"""Opt-in native account check. Send synthetic speech only, using a disposable Chief profile."""
+import argparse
+import array
+import asyncio
+from contextlib import nullcontext
+import fractions
+import hashlib
+import http.client
+import json
+import os
+import random
+import re
+import socket
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import wave
+
+from aiortc import AudioStreamTrack, RTCConfiguration, RTCPeerConnection, RTCSessionDescription
+from av import AudioFrame
+
+from pi_model import pi_model
+
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "tools/benchmarks"))
+from adapter import Runtime
+
+def words(text):
+    return re.findall(r"[\w]+", text.casefold())
+
+
+def target_sentence():
+    choose = random.SystemRandom().choice
+    return "The " + choose(["amber", "silver", "golden", "green"]) + " " + choose(
+        ["otter", "tiger", "rabbit", "badger"]) + " found the " + choose(["map", "compass", "lantern", "basket"]) + "."
+
+
+class SyntheticMic(AudioStreamTrack):
+    def __init__(self, samples):
+        super().__init__()
+        self.samples = samples
+        self.position = self.timestamp = 0
+        self.clock = None
+        self.enabled = False
+
+    async def recv(self):
+        rate, size = 24000, 480
+        now = asyncio.get_running_loop().time()
+        if self.clock is None:
+            self.clock = now
+        await asyncio.sleep(max(0, self.clock + self.timestamp / rate - now))
+        data = b""
+        if self.enabled:
+            data = self.samples[self.position:self.position + 2 * size]
+            self.position += len(data)
+        frame = AudioFrame(format="s16", layout="mono", samples=size)
+        frame.planes[0].update(data.ljust(2 * size, b"\0"))
+        frame.sample_rate, frame.pts, frame.time_base = rate, self.timestamp, fractions.Fraction(1, rate)
+        self.timestamp += size
+        return frame
+
+
+async def exercise(binary, root, harness, rounds, report, pi_home):
+    expected = target_sentence()
+    report["targetSentence"] = expected
+    wav = root / "request.wav"
+    subprocess.run(["say", "-v", "Samantha", "-o", str(wav), "--file-format=WAVE", "--data-format=LEI16@24000",
+                    "Chief, what is the workspace verification sentence in your private routing preferences? Please say only that exact sentence in English using your Talk tool."], check=True, timeout=20)
+    with wave.open(str(wav), "rb") as file:
+        assert (file.getsampwidth(), file.getnchannels(), file.getframerate()) == (2, 1, 24000)
+        track = SyntheticMic(file.readframes(file.getnframes()))
+    profile = root / "profile"
+    native_home = os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))
+    # Profile and Chief workspace live in this temporary tree. Native account
+    # access goes through the installed Codex executable and its own auth store.
+    env = dict(os.environ, HOME=str(root), CODEX_HOME=native_home, CHIEF_HEADLESS="1")
+    if pi_home:
+        env["PI_CODING_AGENT_DIR"] = str(pi_home)
+    process = subprocess.Popen([binary, "serve", "--data-dir", profile], cwd=root, env=env,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    rtc = RTCPeerConnection(RTCConfiguration(iceServers=[]))
+    events = lease = None
+    sockets = []
+    output = terminal = None
+    try:
+        discovery = profile / "runtime/connection.json"
+        async with asyncio.timeout(45):
+            while not discovery.is_file():
+                if process.poll() is not None:
+                    raise RuntimeError("isolated runtime exited during startup")
+                await asyncio.sleep(0.1)
+        service = Runtime(profile)
+        state = await asyncio.to_thread(service.state)
+        settings = state["settings"]
+        settings["moku"]["hostHarnessPreference"] = harness
+        # Only the selected Chief receives this value in its own system prompt.
+        settings["moku"]["routingPreset"] = "custom"
+        settings["moku"]["routingGuidance"] = (
+            "When asked for the workspace verification sentence, answer directly with the talk tool. "
+            f"For every such request, including a repeated one, use this exact English sentence once: {expected}")
+        for entry in settings["pluginSettings"]:
+            if entry["id"] in ("tag.settings", "report.settings"):
+                entry["value"]["enabled"] = False
+        result = await asyncio.to_thread(service.invoke, "app:update-settings",
+            [{"settings": settings, "expectedSettingsRevision": state["settingsRevision"]}])
+        if result.get("status") == "conflict":
+            raise RuntimeError("isolated profile setup conflicted")
+        connection = json.loads(discovery.read_text())
+        headers = {"Authorization": "Bearer " + connection["token"], "X-Mokusei-Epoch": connection["epoch"],
+                   "X-Mokusei-Protocol": str(connection["protocolVersion"]), "Content-Type": "application/json"}
+        events = http.client.HTTPConnection("127.0.0.1", connection["port"], timeout=120)
+        events.request("GET", "/events", headers=headers)
+        sockets.append(events.sock)
+        event_stream = events.getresponse()
+        hello = json.loads(event_stream.readline())
+        lease = http.client.HTTPConnection("127.0.0.1", connection["port"], timeout=120)
+        rtc.addTrack(track)
+        channel = rtc.createDataChannel("oai-events", ordered=True)
+        last_energy = 0
+        # The service can play a quick Talk in the same assistant turn as its
+        # acknowledgement. Track native append windows independently of turns.
+        appends = []
+        remote_turns = {}
+        event_types = set()
+
+        @channel.on("message")
+        def data_event(payload):
+            try:
+                event = json.loads(payload)
+            except (ValueError, TypeError):
+                return
+            kind = event.get("type")
+            event_types.add(kind)
+            if kind == "session.context.appended":
+                appends.append({})
+            elif kind == "output_transcript.added" and appends:
+                item = event.get("item", {})
+                if isinstance(item.get("id"), str) and isinstance(item.get("text"), str):
+                    appends[-1][item["id"]] = item["text"]
+            if kind in ("turn.created", "turn.done"):
+                turn = event.get("turn", {})
+                if turn.get("role") == "assistant":
+                    remote_turns[turn["id"]] = turn["transcript"]
+            elif kind == "turn.delta" and event.get("turn_id") in remote_turns:
+                remote_turns[event["turn_id"]] += event["delta"]
+
+        async def listen(receiver):
+            nonlocal last_energy
+            while True:
+                frame = await receiver.recv()
+                samples = array.array("h", bytes(frame.planes[0])[:frame.samples * 2])
+                if max((abs(v) for v in samples), default=0) > 300:
+                    last_energy = asyncio.get_running_loop().time()
+
+        @rtc.on("track")
+        def got_track(receiver):
+            nonlocal output
+            output = asyncio.create_task(listen(receiver))
+
+        await rtc.setLocalDescription(await rtc.createOffer())
+        lease.request("POST", "/voice/global", json.dumps({"clientId": hello["clientId"], "offer": rtc.localDescription.sdp}), headers)
+        sockets.append(lease.sock)
+        response = await asyncio.to_thread(lease.getresponse)
+        first = json.loads(await asyncio.to_thread(response.readline))
+        if "answer" not in first:
+            raise RuntimeError(first.get("error", {}).get("message", "missing SDP answer"))
+        terminal = asyncio.create_task(asyncio.to_thread(response.readline))
+        report["sdpAnswer"] = True
+        await rtc.setRemoteDescription(RTCSessionDescription(sdp=first["answer"], type="answer"))
+        async with asyncio.timeout(30):
+            while rtc.connectionState != "connected" or channel.readyState != "open":
+                await asyncio.sleep(0.1)
+        report["webrtcConnected"] = True
+        print("Native V3 returned SDP and opened the WebRTC data channel.", file=sys.stderr, flush=True)
+        await asyncio.sleep(1)
+        expected_words = words(expected)
+
+        def matching_appends():
+            occurrences = []
+            for window in appends:
+                segment = words("".join(window.values()))
+                mentions = sum(segment[i:i + len(expected_words)] == expected_words for i in range(len(segment)))
+                if mentions:
+                    occurrences.append(mentions)
+            return occurrences
+
+        admissions, inputs, rows, talks, talk_executions = {}, {}, {}, {}, {}
+        voice_session = None
+        for count in range(1, rounds + 1):
+            previous_handoffs, previous_talks = set(admissions), set(talks)
+            track.position = 0
+            track.enabled = True
+            talk_observed = None
+            async with asyncio.timeout(100):
+                while True:
+                    if terminal.done():
+                        final = terminal.result()
+                        message = json.loads(final).get("error", {}).get("message") if final else None
+                        raise RuntimeError(message or "voice connection ended without a result")
+                    state = await asyncio.to_thread(service.state)
+                    owner = next(t for t in state["threads"] if t.get("moku"))
+                    if owner["harnessId"] != harness:
+                        raise RuntimeError("wrong Chief execution owner")
+                    execution = owner.get("observation", {}).get("latestExecution") or {}
+                    report["destination"] = {key: execution[key] for key in ("executionId", "status", "error") if key in execution}
+                    for row in owner.get("transcript", []):
+                        if (row.get("role") == "user" and row.get("status") == "complete"
+                                and row.get("voiceHandoffId") and row.get("voiceSessionId") and row.get("executionId")):
+                            handoff = row["voiceHandoffId"]
+                            if voice_session is None:
+                                voice_session = row["voiceSessionId"]
+                            if (voice_session != row["voiceSessionId"] or rows.get(handoff, row["id"]) != row["id"]
+                                    or admissions.get(handoff, row["executionId"]) != row["executionId"]):
+                                raise RuntimeError("handoff was admitted more than once or changed ownership")
+                            if "workspace verification sentence" not in " ".join(words(row["content"])):
+                                raise RuntimeError("the destination did not receive the recorded request")
+                            admissions[handoff], inputs[handoff], rows[handoff] = row["executionId"], row["content"], row["id"]
+                        if (row.get("name") == "talk" and row.get("completedAt") and not row.get("isError")
+                                and row.get("result", {}).get("ok") and row.get("executionId") in admissions.values()):
+                            talks[row["id"]] = row["arguments"]["text"]
+                            talk_executions[row["id"]] = row["executionId"]
+                    new_handoffs = admissions.keys() - previous_handoffs
+                    new_talks = talks.keys() - previous_talks
+                    bound_talk = False
+                    if len(new_handoffs) == len(new_talks) == 1:
+                        hid, tid = next(iter(new_handoffs)), next(iter(new_talks))
+                        bound_talk = talks[tid] == expected and talk_executions[tid] == admissions[hid]
+                    if bound_talk and talk_observed is None:
+                        talk_observed = asyncio.get_running_loop().time()
+                    matches = matching_appends()
+                    report.update(audioSent=track.position == len(track.samples), admittedHandoffs=admissions,
+                                  voiceSessionId=voice_session, inputTranscripts=inputs,
+                                  committedTalk=list(talks.values()), talkExecutions=talk_executions, matchingSpeechAppends=matches,
+                                  outputTranscript=list(remote_turns.values()), dataEvents=sorted(event_types),
+                                  nonSilentAudioAfterTalk=talk_observed is not None and last_energy >= talk_observed)
+                    if (report["audioSent"] and len(admissions) == count and matches == [1] * count
+                            and bound_talk and report["nonSilentAudioAfterTalk"]):
+                        break
+                    await asyncio.sleep(0.15)
+            track.enabled = False
+            report["verifiedRounds"] = count
+            print(f"Round {count} confirmed destination admission, Talk and remote speech.", file=sys.stderr, flush=True)
+            await asyncio.sleep(1.5)
+        if matching_appends() != [1] * rounds:
+            raise RuntimeError("unexpected repeated or missing speech after output settled")
+        report["passed"] = True
+    finally:
+        for stream_socket in sockets:
+            try:
+                stream_socket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+        if lease:
+            lease.close()
+        if events:
+            events.close()
+        await rtc.close()
+        if output:
+            output.cancel()
+            await asyncio.gather(output, return_exceptions=True)
+        process.terminate()
+        try:
+            await asyncio.to_thread(process.wait, 15)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            await asyncio.to_thread(process.wait)
+        if terminal:
+            await asyncio.gather(terminal, return_exceptions=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--runtime", type=Path, required=True)
+    parser.add_argument("--harness", choices=("codex", "pi", "claude", "opencode"), default="codex")
+    parser.add_argument("--rounds", type=int, choices=(1, 2), default=1, help="repeat the identical recording on one call")
+    parser.add_argument("--pi-loopback", action="store_true", help="run the installed Pi with a deterministic local model")
+    args = parser.parse_args()
+    if args.pi_loopback and args.harness != "pi":
+        parser.error("--pi-loopback requires --harness pi")
+    binary = args.runtime.resolve()
+    report = {"revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+              "sourceDirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT)),
+              "runtimeSha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+              "harness": args.harness, "rounds": args.rounds, "targetModel": "loopback" if args.pi_loopback else "native account", "audioSource": "synthetic", "passed": False}
+    try:
+        with tempfile.TemporaryDirectory(prefix="chief-voice-live-") as root:
+            directory = Path(root)
+            with (pi_model(directory / "pi-agent") if args.pi_loopback else nullcontext()) as pi_home:
+                asyncio.run(exercise(binary, directory, args.harness, args.rounds, report, pi_home))
+    except Exception as error:
+        report["failure"] = str(error) or type(error).__name__
+    print(json.dumps(report, ensure_ascii=False))
+    return 0 if report["passed"] else 1
+
+if __name__ == "__main__":
+    sys.exit(main())

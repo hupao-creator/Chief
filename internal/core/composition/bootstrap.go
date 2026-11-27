@@ -28,6 +28,7 @@ import (
 	"github.com/hupao-creator/Chief/internal/plugins/contexts/artificialanalysis"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/claude"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/codex"
+	"github.com/hupao-creator/Chief/internal/plugins/harness/codex/voice"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/opencode"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/pi"
 	"github.com/hupao-creator/Chief/internal/services/attachments"
@@ -284,6 +285,7 @@ func (b *Bootstrap) open(ctx context.Context) error {
 		return err
 	}
 	config := b.mokuConfiguration(mokuCwd, stateRoot)
+	config.RunVoice = (voice.Relay{Codex: b.harnesses["codex"].(*codex.Adapter), TemporaryRoot: temporary}).Run
 	b.coordinator, err = moku.New(config)
 	if err != nil {
 		return err

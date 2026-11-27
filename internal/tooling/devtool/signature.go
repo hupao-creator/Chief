@@ -8,9 +8,14 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
+
+const voiceFrameworkName = "LiveKitWebRTC.framework"
+const voiceFrameworkIdentifier = "io.livekit.LiveKitWebRTC"
+const voiceFrameworkDependency = "@rpath/LiveKitWebRTC.framework/LiveKitWebRTC"
 
 type signingIdentity struct{ Hash, Name, Team, Keychain string }
 type Signature struct{ Identifier, Team, Requirement, Mode string }
@@ -67,7 +72,7 @@ func developmentIdentity(ctx context.Context) (signingIdentity, error) {
 	}
 	return identity, nil
 }
-func sign(ctx context.Context, path string, identity signingIdentity, identifier, entitlements string) error {
+func sign(ctx context.Context, path string, identity signingIdentity, identifier, entitlements string, options ...string) error {
 	args := []string{"--force", "--sign", identity.Hash, "--options", "runtime", "--timestamp=none"}
 	if identity.Keychain != "" {
 		args = append(args, "--keychain", identity.Keychain)
@@ -78,6 +83,7 @@ func sign(ctx context.Context, path string, identity signingIdentity, identifier
 	if entitlements != "" {
 		args = append(args, "--entitlements", entitlements)
 	}
+	args = append(args, options...)
 	args = append(args, path)
 	_, err := run(ctx, "", nil, "/usr/bin/codesign", args...)
 	return err
@@ -134,7 +140,7 @@ func machORPaths(ctx context.Context, path string) ([]string, error) {
 func portableRPath(path string) bool {
 	return path == "@executable_path/../Frameworks" || path == "@loader_path" || path == "/usr/lib/swift"
 }
-func assertPortableMachO(ctx context.Context, path string, allowUniversal bool) ([]string, error) {
+func assertPortableMachO(ctx context.Context, path, frameworks string, allowUniversal bool) ([]string, error) {
 	out, err := run(ctx, "", nil, "/usr/bin/lipo", "-archs", path)
 	if err != nil {
 		return nil, err
@@ -181,6 +187,20 @@ func assertPortableMachO(ctx context.Context, path string, allowUniversal bool) 
 		dependencies = append(dependencies, dep)
 		if strings.HasPrefix(dep, "/usr/lib/") || strings.HasPrefix(dep, "/System/Library/") {
 			continue
+		}
+		if frameworks != "" && dep == voiceFrameworkDependency {
+			root, err := filepath.EvalSymlinks(frameworks)
+			if err != nil {
+				return nil, err
+			}
+			target, err := filepath.EvalSymlinks(filepath.Join(root, voiceFrameworkName, "LiveKitWebRTC"))
+			if err != nil {
+				return nil, err
+			}
+			rel, err := filepath.Rel(root, target)
+			if err == nil && rel != ".." && !strings.HasPrefix(rel, "../") && !filepath.IsAbs(rel) {
+				continue
+			}
 		}
 		return nil, fmt.Errorf("non-system dynamic dependency in %s: %s", path, dep)
 	}

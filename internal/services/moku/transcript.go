@@ -184,6 +184,7 @@ func (c *Coordinator) committed(record model.ThreadRecord) {
 	// fact must still reach its own audit settlement below.
 	if record.Moku && record.ID == c.id && record.Revision > c.scopeRevision && execution != nil {
 		c.scopeRevision = record.Revision
+		c.voiceFailure(record)
 		for id, scope := range c.scopes {
 			if id != execution.ExecutionID || execution.Terminal() {
 				scope.cancel()

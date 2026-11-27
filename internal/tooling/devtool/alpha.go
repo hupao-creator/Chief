@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 )
 
 // Alpha publishes a complete, versioned release directory. Its staging tree is
@@ -41,6 +43,17 @@ func Alpha(ctx context.Context, repo, output, buildNumber string) (string, error
 	}
 	if err = Smoke(ctx, repo, app, "alpha", ""); err != nil {
 		return "", err
+	}
+	// Static signatures cannot show whether dyld admits an ad-hoc dependency.
+	// Exercise the privately staged executable before publishing the disk image.
+	linkageCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	linkage, err := run(linkageCtx, staging, nil, filepath.Join(app, "Contents/MacOS/Chief"), "--check-packaged-linkage")
+	cancel()
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(linkage) != "Chief loaded its packaged dependencies." {
+		return "", fmt.Errorf("the Alpha executable did not confirm packaged linkage")
 	}
 	data, err := os.ReadFile(filepath.Join(app, "Contents/Resources/build-provenance.json"))
 	if err != nil {
@@ -90,7 +103,7 @@ func Alpha(ctx context.Context, repo, output, buildNumber string) (string, error
 	receipt := map[string]any{
 		"build": provenance, "artifact": filepath.Base(image), "sha256": checksum,
 		"architecture": "arm64", "minimumMacOS": "26.0", "notarized": false,
-		"verification": "Disk image checksum; signed bundle metadata, portable binaries and packaged resources. No application launch or Gatekeeper acceptance is verified.",
+		"verification": "Disk image checksum, signed bundle metadata, resources and a headless launch of the packaged executable through dyld. Workspace startup and downloaded-file Gatekeeper acceptance require separate verification.",
 	}
 	data, err = json.MarshalIndent(receipt, "", "  ")
 	if err != nil {

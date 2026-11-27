@@ -13,6 +13,21 @@ content reads establish prerequisites and independent result evidence. Runtime
 invariants belong to PBT. Benchmarks own general UX timing, resource use and
 visual-performance measurements.
 
+## Global voice
+
+Build the runtime, then run the opt-in account replay on macOS with a signed-in native Codex installation, network access and a configured Chief Harness.
+
+```sh
+make runtime
+uv run --script tools/e2e/global-voice/live.py --runtime .build/go/chief-runtime --harness codex
+```
+
+The replay uses a disposable Chief profile and a synthetic microphone. Only the target Chief receives a randomly chosen sentence through its private routing preferences. The recording asks Chief for the sentence. The replay checks WebRTC, a handoff admitted by the selected owner, a successful Talk on its execution, the exact sentence once in the remote output after a native speech append, and decoded non-silent audio after Talk. The service can put an acknowledgement and a fast Talk in one assistant turn. The replay counts sentence occurrences in each append window. The JSON result identifies the revision, runtime hash and observed boundary on failure. Use `--rounds 2` to play the identical recording twice on one connection and require two independent receipts and two matching speech appends. Select `pi`, `claude` or `opencode` to exercise another configured target. For Pi, point `PI_CODING_AGENT_DIR` at its configured agent directory so the temporary HOME can use the native account. Native account access, available models and provider behavior can change between runs.
+
+For a repeatable destination, add `--harness pi --pi-loopback --rounds 2`. This runs the installed Pi CLI with an isolated model configuration and a deterministic local HTTP model peer. It still uses the live Codex voice service. Its result records the model boundary explicitly.
+
+The replay uses a software media peer. macOS permission dialogs, physical input, speaker playback and device changes require an operator using the signed [ChiefVoice host](../../app/macos/Sources/Voice/README.md).
+
 ## Claude thread permission selection
 
 For a live headless replay, use a signed-in Pi coordinator and Claude Code on

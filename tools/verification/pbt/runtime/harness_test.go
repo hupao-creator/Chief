@@ -170,9 +170,8 @@ func (h *injectedToolPeer) Open(ctx context.Context, o plugin.OpenContext) (plug
 	return &handle{open: o, ctx: ctx}, nil
 }
 
-func openChiefTool(t *rapid.T, ctx context.Context, r *core.Runtime, chiefCwd string, harnesses map[string]plugin.Harness, peer *injectedToolPeer, input model.AgentInput, toolName string) (*moku.Coordinator, plugin.ToolBinding) {
-	t.Helper()
-	coordinator, err := moku.New(moku.Configuration{
+func chiefToolConfiguration(r *core.Runtime, chiefCwd string, harnesses map[string]plugin.Harness) moku.Configuration {
+	return moku.Configuration{
 		DispatchOptions: r.DispatchOptions,
 		CreateThread: func(ctx context.Context, req moku.CreateThreadRequest) (moku.CreatedThread, error) {
 			v, err := r.CreateThread(ctx, core.CreateThreadRequest{HarnessID: req.HarnessID, Input: req.Input, Cwd: req.Cwd, Worktree: req.Worktree, ResolveSettings: req.ResolveSettings})
@@ -190,7 +189,12 @@ func openChiefTool(t *rapid.T, ctx context.Context, r *core.Runtime, chiefCwd st
 		ReplaceSession: func(context.Context, string, moku.SessionConfiguration) (model.ThreadRecord, error) {
 			return model.ThreadRecord{}, errors.New("unexpected replacement")
 		},
-	})
+	}
+}
+
+func openChiefTool(t *rapid.T, ctx context.Context, r *core.Runtime, chiefCwd string, harnesses map[string]plugin.Harness, peer *injectedToolPeer, input model.AgentInput, toolName string) (*moku.Coordinator, plugin.ToolBinding) {
+	t.Helper()
+	coordinator, err := moku.New(chiefToolConfiguration(r, chiefCwd, harnesses))
 	if err != nil {
 		t.Fatal(err)
 	}

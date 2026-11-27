@@ -218,6 +218,12 @@ Detailed work belongs in the ordinary Agent Thread. To point the user to a speci
 The injected schema sets `maxLength` and shares its [description](prompt.go) with the tool. The coordinator rejects blank text, NUL and extra line breaks. A failed call adds neither a replacement notification nor a Chief conversation reply. A successful call preserves the original text and links. The [compact bar](../../../app/macos/Sources/Host/MokuScene/README.md#talk-and-dispatch) opens the newest successful message at the top for 60 seconds, and the [Chief Bar conversation](../../core/runtime/README.md#chief-conversation) retains it.
 
 
+## Global voice
+
+One [voice relay](../../plugins/harness/codex/voice/README.md) can deliver input to the selected Chief. The owner is pinned at call startup. A handoff follows the same serialized input, configuration and execution admission as a typed submission. The destination admission callback persists the original utterance with `voiceSessionId`, `voiceHandoffId` (the completed native user segment ID) and the actual `executionId`, including when the Harness steers an existing execution.
+
+Only a Talk begun under the current voice binding and committed successfully to that execution's audit can enqueue speech. Two distinct Talk operations with the same text can be heard twice. Catalog refresh, restart and opening a new call never replay history. Starting a typed submission, starting a newer voice segment, replacing the Chief configuration or closing the call retires pending speech. When a follow-up steers the same execution, the binding identifies that execution and the input current when Talk began. The Harness supplies no per-utterance causal ID for the tool. If the bound execution fails, the call reports its public Harness failure. The same handoff fence discards a superseded failure. An accepted tool operation and execution keep their ordinary audit and lifetime.
+
 ## Context
 
 Moku collects registered [Context contributions](../../hosts/contexthost/README.md) at their declared hooks. Harness-native model/account facts retain their owners.

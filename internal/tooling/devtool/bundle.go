@@ -32,6 +32,15 @@ type bundleProvenance struct {
 	RuntimeInputSHA256    string `json:"runtimeInputSHA256"`
 }
 
+func bundleSource(ctx context.Context, repo string) (commit string, dirty bool, err error) {
+	out, err := run(ctx, repo, nil, "/usr/bin/git", "rev-parse", "HEAD")
+	if err != nil {
+		return "", false, err
+	}
+	status, err := run(ctx, repo, nil, "/usr/bin/git", "status", "--porcelain")
+	return strings.TrimSpace(out), strings.TrimSpace(status) != "", err
+}
+
 func sha256File(path string) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -126,6 +135,7 @@ func infoPlist(version, buildVersion, releaseVersion string, p Product) string {
 <key>LSMinimumSystemVersion</key><string>26.0</string>
 <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
 <key>NSHighResolutionCapable</key><true/>
+<key>NSMicrophoneUsageDescription</key><string>Chief uses your microphone when you start Voice Mode.</string>
 <key>NSPrincipalClass</key><string>NSApplication</string>
 <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/><key>NSAllowsArbitraryLoadsInWebContent</key><true/></dict>
 </dict></plist>
@@ -171,20 +181,18 @@ func Bundle(ctx context.Context, repo string, opts BundleOptions) (string, error
 		provenance.BuildVersion = opts.BuildNumber
 		provenance.ReleaseVersion = version + "-alpha." + opts.BuildNumber
 		provenance.Signing = "ad-hoc"
-		commit, err := run(ctx, repo, nil, "/usr/bin/git", "rev-parse", "HEAD")
-		if err != nil {
-			return "", err
-		}
-		status, err := run(ctx, repo, nil, "/usr/bin/git", "status", "--porcelain")
-		if err != nil {
-			return "", err
-		}
-		provenance.SourceCommit, provenance.SourceDirty = strings.TrimSpace(commit), strings.TrimSpace(status) != ""
 	} else {
 		if opts.BuildNumber != "" {
 			return "", fmt.Errorf("--build-number requires the alpha channel")
 		}
 		identity, err = developmentIdentity(ctx)
+		if err != nil {
+			return "", err
+		}
+	}
+	// Reused build outputs have no verified relationship to the packaging HEAD.
+	if !opts.SkipBuild && !opts.SkipRuntime && (product.Channel == "alpha" || exists(filepath.Join(repo, ".git"))) {
+		provenance.SourceCommit, provenance.SourceDirty, err = bundleSource(ctx, repo)
 		if err != nil {
 			return "", err
 		}
@@ -228,6 +236,16 @@ func Bundle(ctx context.Context, repo string, opts BundleOptions) (string, error
 		return "", err
 	}
 	provenance.ExecutableInputSHA256, provenance.RuntimeInputSHA256 = nativeHash, runtimeHash
+	if provenance.SourceCommit != "" {
+		commit, dirty, err := bundleSource(ctx, repo)
+		if err != nil {
+			return "", err
+		}
+		if commit != provenance.SourceCommit {
+			return "", fmt.Errorf("checkout changed during packaging")
+		}
+		provenance.SourceDirty = provenance.SourceDirty || dirty
+	}
 	provenanceJSON, _ := json.MarshalIndent(provenance, "", "  ")
 	if err = os.WriteFile(filepath.Join(resources, "build-provenance.json"), append(provenanceJSON, '\n'), 0644); err != nil {
 		return "", err
@@ -236,6 +254,11 @@ func Bundle(ctx context.Context, repo string, opts BundleOptions) (string, error
 		return "", err
 	}
 	if err = copyFile(filepath.Join(repo, "app/macos/build/AppIcon.icns"), filepath.Join(resources, "AppIcon.icns"), 0644); err != nil {
+		return "", err
+	}
+	frameworks := filepath.Join(app, "Contents/Frameworks")
+	framework, err := stageVoiceFramework(ctx, repo, frameworks, resources)
+	if err != nil {
 		return "", err
 	}
 	rpaths, err := machORPaths(ctx, executable)
@@ -263,10 +286,10 @@ func Bundle(ctx context.Context, repo string, opts BundleOptions) (string, error
 			return "", err
 		}
 	}
-	if _, err = assertPortableMachO(ctx, executable, false); err != nil {
+	if _, err = assertPortableMachO(ctx, executable, frameworks, false); err != nil {
 		return "", err
 	}
-	if _, err = assertPortableMachO(ctx, filepath.Join(executables, "chief-runtime"), false); err != nil {
+	if _, err = assertPortableMachO(ctx, filepath.Join(executables, "chief-runtime"), "", false); err != nil {
 		return "", err
 	}
 	// Copy the resource bundle declared by the native package, rather than
@@ -291,10 +314,23 @@ func Bundle(ctx context.Context, repo string, opts BundleOptions) (string, error
 	}
 	fmt.Printf("Signing native %s bundle with %s\n", opts.Channel, identity.Name)
 
+	if err = sign(ctx, framework, identity, voiceFrameworkIdentifier, ""); err != nil {
+		return "", err
+	}
 	if err = sign(ctx, filepath.Join(executables, "chief-runtime"), identity, product.BundleIdentifier+".runtime", ""); err != nil {
 		return "", err
 	}
-	if err = sign(ctx, app, identity, "", ""); err != nil {
+	entitlements := "entitlements.app.plist"
+	var signingOptions []string
+	if product.Channel == "alpha" {
+		constraint, err := alphaVoiceConstraint(ctx, staging, framework)
+		if err != nil {
+			return "", err
+		}
+		entitlements = "entitlements.alpha.plist"
+		signingOptions = []string{"--library-constraint", constraint, "--enforce-constraint-validity"}
+	}
+	if err = sign(ctx, app, identity, "", filepath.Join(repo, "app/macos/build", entitlements), signingOptions...); err != nil {
 		return "", err
 	}
 	if _, err = verifySignature(ctx, app, product.BundleIdentifier, identity.Team, product.Channel == "alpha"); err != nil {

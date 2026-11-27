@@ -8,6 +8,7 @@ let package = Package(
         .executable(name: "Chief", targets: ["Chief"]),
         .executable(name: "ChiefProbe", targets: ["ChiefProbe"]),
         .library(name: "ChiefCore", targets: ["ChiefCore"]),
+        .library(name: "ChiefVoice", targets: ["ChiefVoice"]),
         .library(name: "ChiefUI", targets: ["ChiefUI"]),
         .library(name: "ChiefPluginAPI", targets: ["ChiefPluginAPI"]),
         .library(name: "ChiefPluginUI", targets: ["ChiefPluginUI"]),
@@ -16,9 +17,11 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-markdown.git", exact: "0.8.0"),
         .package(url: "https://github.com/swiftlang/swift-cmark.git", exact: "0.9.0"),
-        .package(url: "https://github.com/karwa/swift-url.git", exact: "0.4.2")
+        .package(url: "https://github.com/karwa/swift-url.git", exact: "0.4.2"),
+        .package(url: "https://github.com/livekit/webrtc-xcframework.git", exact: "150.7871.02")
     ],
     targets: [
+        .target(name: "ChiefVoice", dependencies: ["ChiefCore", .product(name: "LiveKitWebRTC", package: "webrtc-xcframework")], path: "Sources/Voice", exclude: ["README.md"]),
         .target(name: "ChiefCore", path: "Sources/Core", exclude: ["README.md"]),
         .target(name: "ChiefPluginAPI", dependencies: ["ChiefCore"], path: "Sources/Shared/PluginAPI", exclude: ["README.md"]),
         .target(name: "ChiefPluginUI", dependencies: [
@@ -41,7 +44,7 @@ let package = Package(
             "WindowNavigation/README.md", "Interaction/README.md", "Git/README.md"
         ]),
         .target(name: "ChiefComposition", dependencies: ["ChiefCore", "ChiefUI", "ChiefPluginAPI", "ChiefPluginUI", "ChiefHarnessCodex", "ChiefHarnessPi", "ChiefHarnessClaude", "ChiefHarnessOpenCode", "ChiefApplications", "ChiefSidecardConversation", "ChiefSidecardBrowser"], path: "Sources/Composition"),
-        .executableTarget(name: "Chief", dependencies: ["ChiefComposition", "ChiefCore", "ChiefUI", "ChiefPluginUI"], path: "Sources/App",
+        .executableTarget(name: "Chief", dependencies: ["ChiefVoice", "ChiefComposition", "ChiefCore", "ChiefUI", "ChiefPluginUI"], path: "Sources/App",
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
         .executableTarget(name: "ChiefProbe", dependencies: ["ChiefCore"], path: "Sources/Tools/Probe"),
         .testTarget(name: "ChiefProperties", dependencies: ["ChiefComposition", "ChiefUI", "ChiefCore", "ChiefPluginAPI", "ChiefPluginUI", "ChiefApplications"], path: "Tests/Properties"),

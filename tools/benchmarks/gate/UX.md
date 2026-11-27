@@ -98,10 +98,10 @@ an interval. All other reasons block; unknown reasons cannot silently pass.
 Actual display, window, collector/toolchain, native CLI, stable power/thermal
 observations before/after each side, sampling schedule,
 workload and session identities must match within a pair. Full bundle hashes are
-checked before and after collection. Current production bundle provenance records
-channel/configuration/input hashes but no Git SHA. `bind-artifact` therefore makes
-an **explicit operator-attested revision binding**, preserved in reports, rather
-than claiming the signature proves a source commit. Use the build's known revision.
+checked before and after collection. When the signed production build receipt
+contains a Git SHA, `bind-artifact` requires a clean build matching the declared
+revision. For a bundle with no recorded commit, supply the build's known
+revision. Its report identifies the revision binding as operator-attested.
 
 ```sh
 python3 tools/benchmarks/performance.py bind-artifact --app /path/A.app \

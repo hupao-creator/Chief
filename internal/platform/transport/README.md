@@ -8,6 +8,8 @@ Protocol 11 shares its header names, attachment byte marker and presentation
 IDs across packaged clients and runtime processes. A client can reconnect to
 an already running service for its profile using those same identifiers.
 
+`POST /voice/global` accepts an authenticated JSON `{clientId, offer}` for a live event-stream client and epoch. The NDJSON response yields an `answer` or an error envelope. The request stays open through the call. Loss of either connection, runtime revocation or cancellation ends the lease. SDP and call control bypass the command journal. Audio travels over WebRTC. [Call contract](../../plugins/harness/codex/voice/README.md)
+
 Native imports also carry `X-Mokusei-Attachment-Lease`, a canonical UUID naming
 the importing process's private lock inside that same profile. Authentication
 precedes header validation; accepted command contexts preserve this owner after

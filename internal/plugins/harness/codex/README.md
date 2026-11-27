@@ -25,6 +25,8 @@ Codex publishes model choices, supported reasoning controls and service tiers.
 Ordinary task creation accepts explicit selectors and passes them to the native
 session. The live session checks the requested permission policy.
 
+The [global voice relay](voice/README.md) uses its own native app-server and account admission. Its media lifetime is independent of ordinary Codex task handles.
+
 ## Settings, tools and execution
 
 A staged execution reports **Connecting to Codex**. The first native turn ID

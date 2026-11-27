@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 // Smoke validates the signed bundle without launching its runtime.
@@ -31,11 +32,35 @@ func Smoke(ctx context.Context, repo, application, channel, report string) error
 	if err != nil {
 		return err
 	}
-	_, err = assertPortableMachO(ctx, filepath.Join(application, "Contents/MacOS/Chief"), false)
+	frameworks := filepath.Join(application, "Contents/Frameworks")
+	framework := filepath.Join(frameworks, voiceFrameworkName)
+	frameworkSignature, err := verifySignature(ctx, framework, voiceFrameworkIdentifier, signature.Team, product.Channel == "alpha")
 	if err != nil {
 		return err
 	}
-	if _, err = assertPortableMachO(ctx, binary, false); err != nil {
+	if _, err := assertPortableMachO(ctx, filepath.Join(framework, "LiveKitWebRTC"), "", false); err != nil {
+		return err
+	}
+	deps, err := assertPortableMachO(ctx, filepath.Join(application, "Contents/MacOS/Chief"), frameworks, false)
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(deps, voiceFrameworkDependency) {
+		return fmt.Errorf("missing embedded voice framework linkage")
+	}
+	entitlements, err := run(ctx, repo, nil, "/usr/bin/codesign", "-d", "--entitlements", "-", "--xml", application)
+	if err != nil {
+		return err
+	}
+	signedEntitlements := bytes.Join(bytes.Fields([]byte(entitlements)), nil)
+	if !bytes.Contains(signedEntitlements, []byte("<key>com.apple.security.device.audio-input</key><true/>")) {
+		return fmt.Errorf("signed application is missing the microphone entitlement")
+	}
+	teamException := bytes.Contains(signedEntitlements, []byte("<key>com.apple.security.cs.disable-library-validation</key><true/>"))
+	if teamException != (product.Channel == "alpha") {
+		return fmt.Errorf("unexpected team library validation policy for %s", product.Channel)
+	}
+	if _, err = assertPortableMachO(ctx, binary, "", false); err != nil {
 		return err
 	}
 	rpaths, err := machORPaths(ctx, filepath.Join(application, "Contents/MacOS/Chief"))
@@ -71,13 +96,14 @@ func Smoke(ctx context.Context, repo, application, channel, report string) error
 		return err
 	}
 	expected := map[string]string{
-		"CFBundleIdentifier":        product.BundleIdentifier,
-		"CFBundleName":              product.DisplayName,
-		"CFBundleDisplayName":       product.DisplayName,
-		"CFBundleDevelopmentRegion": "en",
-		"ChiefDataDirectoryName":    product.DataDirectoryName,
-		"LSMinimumSystemVersion":    "26.0",
-		"CFBundleExecutable":        "Chief",
+		"CFBundleIdentifier":           product.BundleIdentifier,
+		"CFBundleName":                 product.DisplayName,
+		"CFBundleDisplayName":          product.DisplayName,
+		"CFBundleDevelopmentRegion":    "en",
+		"ChiefDataDirectoryName":       product.DataDirectoryName,
+		"LSMinimumSystemVersion":       "26.0",
+		"CFBundleExecutable":           "Chief",
+		"NSMicrophoneUsageDescription": "Chief uses your microphone when you start Voice Mode.",
 	}
 	for key, value := range expected {
 		if info[key] != value {
@@ -106,6 +132,8 @@ func Smoke(ctx context.Context, repo, application, channel, report string) error
 		}
 	}
 	result := map[string]any{"application": application, "signature": signature, "runtimeSignature": runtimeSignature, "nodeFree": true, "headless": os.Getenv("CHIEF_HEADLESS") == "1", "scope": "Signed bundle, portable Go and Swift binaries, and packaged resources. No application processes are launched."}
+	result["voiceFrameworkSignature"] = frameworkSignature
+	result["signedAudioInput"] = true
 	data, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return err

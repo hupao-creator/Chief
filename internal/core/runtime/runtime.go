@@ -72,6 +72,7 @@ type Runtime struct {
 	mokuDeliveryEpoch         string
 	serviceMu                 sync.Mutex
 	serviceDraining           bool
+	voice                     *voiceLease
 	serviceAdmissions         int
 	mokuHarnessChanging       bool
 	threadCacheMu             sync.Mutex
