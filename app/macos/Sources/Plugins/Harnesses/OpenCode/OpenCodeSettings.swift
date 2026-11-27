@@ -82,7 +82,7 @@ func ocThinkingCapability(model: JSONValue, agent: JSONValue?) -> JSONValue {
     let variants = (model["variants"]?.arrayValue ?? []).filter { $0["id"] != .text("default") }
     if variants.isEmpty { return .object(["kind": .text("fixed")]) }
     let controls = variants.map { ocVariantControl(model, variant: $0) }
-    if controls.contains(where: { $0 == nil }) { return unknown("OpenCode returned a variant without a verified thinking encoding") }
+    if controls.contains(where: { $0 == nil }) { return unknown(ocUnverifiedThinkingReason) }
     let off = controls.contains { $0?["mode"] == .text("off") }
     let on = controls.contains { $0?["mode"] == .text("on") }
     var efforts: [JSONText] = []
@@ -172,7 +172,9 @@ private struct OpenCodeProfileFields: View {
                         .disabled(disabled || selected == nil || selected?["unavailableReason"] != nil)
                 }
             }
-            if capability?["kind"] == .text("unknown"), let reason = capability?["reason"]?.stringValue { NativeSettingsNotice(message: reason, kind: .warning) }
+            if capability?["kind"] == .text("unknown"), let reason = capability?["reason"]?.stringValue {
+                NativeSettingsNotice(message: t(reason), kind: .warning)
+            }
             if let exclusiveReason { NativeSettingsNotice(message: t(exclusiveReason), kind: .warning) }
         } advanced: {
             NativeSettingsRow(label: t("权限模式")) {
