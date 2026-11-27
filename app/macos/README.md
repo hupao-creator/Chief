@@ -16,6 +16,7 @@ gutter measurement, with a persistent knob whenever scrolling is possible.
 | Sources/App | Mac application entry, windows and application lifecycle |
 | [Sources/Composition](Sources/Composition/NativePlugins.swift) | Shared static Harness, Application and Sidecard registration |
 | [Sources/Core](Sources/Core/README.md) | Protocol, connections, public state, host files and offline recovery |
+| [Sources/Voice](Sources/Voice/README.md) | Workspace-level Codex voice session, microphone and WebRTC lifecycle |
 | [Sources/Host/Overview](Sources/Host/Overview/README.md) | Layout, camera, selection and filtering |
 | [Sources/Host/MokuScene](Sources/Host/MokuScene/README.md) | Chief Dock, Talk, dispatch and notes |
 | [Sources/Host/Onboarding](Sources/Host/Onboarding/README.md) | First-run admission, role configuration and handoff into the Chief Dock |

@@ -1,5 +1,8 @@
 [
   {"id":"PBT-GIT-RANKING-BUDGET","suite":"go","engine":"rapid","package":"internal/plugins/applications/git","test":"TestGitRankingBudgetProperties","doc":"internal/plugins/applications/git/README.md","cases":20},
+  {"id":"PBT-CODEX-VOICE-STARTUP","suite":"go","engine":"rapid","package":"internal/plugins/harness/codex/voice","test":"TestVoiceStartupProperties","doc":"internal/plugins/harness/codex/voice/README.md","cases":100},
+  {"id":"PBT-CODEX-VOICE-HANDOFF","suite":"go","engine":"rapid","package":"internal/plugins/harness/codex/voice","test":"TestVoiceHandoffProperties","doc":"internal/plugins/harness/codex/voice/README.md","cases":80},
+  {"id":"PBT-MOKU-GLOBAL-VOICE","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestGlobalVoiceAdmissionProperties","doc":"internal/services/moku/README.md","cases":20},
   {"id":"PBT-DISPATCH-ADMISSION","suite":"go","engine":"rapid","package":"tools/verification/pbt/runtime","test":"TestDispatchAdmissionProperties","doc":"internal/services/moku/README.md","cases":16},
   {"id":"PBT-DISPATCH-LIFECYCLE","suite":"go","engine":"rapid","package":"internal/services/moku","test":"TestDispatchLifecycleProperties","doc":"internal/services/moku/README.md","cases":60},
   {"id":"PBT-DISPATCH-PUBLICATION","suite":"go","engine":"rapid","package":"internal/services/dispatchconfig","test":"TestDispatchPublicationProperties","doc":"internal/services/dispatchconfig/README.md","cases":40},

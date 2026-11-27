@@ -84,6 +84,9 @@ func (r *Runtime) ServiceActivity() (model.RuntimeServiceActivity, error) {
 	r.serviceMu.Lock()
 	defer r.serviceMu.Unlock()
 	activity := model.RuntimeServiceActivity{Admissions: r.serviceAdmissions}
+	if r.voice != nil {
+		activity.Admissions++
+	}
 	if r.mokuHarnessChanging {
 		activity.Admissions++
 	}

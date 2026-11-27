@@ -37,6 +37,10 @@ public struct RuntimeTransport: Sendable {
     public func events(connection: RuntimeConnection,
                        receive: @escaping @Sendable (JSONValue) async throws -> Void) async throws {
         let channel = try RuntimeHTTPChannel(connection: connection, path: "/events", method: "GET", body: nil, timeout: 86400)
+        try await stream(channel, receive: receive)
+    }
+
+    func stream(_ channel: RuntimeHTTPChannel, receive: @Sendable (JSONValue) async throws -> Void) async throws {
         try await withTaskCancellationHandler {
             defer { channel.cancel() }
             var response: HTTPURLResponse?

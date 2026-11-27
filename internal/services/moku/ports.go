@@ -42,6 +42,7 @@ type SessionConfiguration struct {
 	PreserveHistory bool
 }
 type Configuration struct {
+	RunVoice                 func(context.Context, string, plugin.GlobalVoice) error
 	DispatchOptions          func([]string) json.RawMessage
 	SubscribeDispatchOptions func() (<-chan struct{}, func())
 	SteerDispatchOptions     func(context.Context, string, string, *plugin.Injection, plugin.ContextEntry) error

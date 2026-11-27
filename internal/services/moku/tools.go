@@ -69,6 +69,10 @@ func (c *Coordinator) tools(owner string, description ThreadCreationDescription)
 			if err != nil {
 				return nil, err
 			}
+			var speech *voiceBinding
+			if binding.Name == "talk" {
+				speech = c.voiceTalk(owner, execution.ExecutionID)
+			}
 			callID := newID()
 			operationID := newID()
 			created := time.Now().UnixMilli()
@@ -89,6 +93,12 @@ func (c *Coordinator) tools(owner string, description ThreadCreationDescription)
 			recordErr := c.completeTool(context.WithoutCancel(linked), owner, execution.ExecutionID, callID, result, invokeErr != nil)
 			if failure := toolInvocationFailure(invokeErr, recordErr); failure != nil {
 				return nil, failure
+			}
+			if speech != nil {
+				var talk struct{ Text string }
+				if json.Unmarshal(arguments, &talk) == nil {
+					speech.send(plugin.VoiceReply{Text: talk.Text})
+				}
 			}
 			return result, nil
 		}

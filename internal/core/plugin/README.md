@@ -27,6 +27,8 @@ native typed values, including defaults and conditional omission.
 
 模型和 thinking/effort 能力以原生 CLI 的明确声明为准，不以是否属于原生订阅账户作为准入条件。账户归因检查仍用于订阅额度和模型身份来源；普通会话不额外探测账户来覆盖原生模型目录。
 
+The call-scoped [global voice port](voice.go) connects one authenticated media relay to the selected Chief through destination admission and committed Talk. Each Harness uses its ordinary input and tool contracts. [Relay ownership](../../plugins/harness/codex/voice/README.md)
+
 ## Generated metadata
 
 [metadata.go](metadata.go) and [metadata_completion.go](metadata_completion.go) own the optional generated title/emoji policy. Successful input admission updates bounded initial/recent intent even if later native dispatch fails or the caller releases its request context. Rejected admission does not update metadata, and metadata persistence failures do not reject accepted input. Existing metadata stays visible until a replacement succeeds. Completion can steer to newer accepted input; results are fenced by metadata revision.

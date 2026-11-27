@@ -23,8 +23,9 @@ Its current scenario and policy definitions are [UX](UX.md) and the
 - Synthetic CLI PBT/e2e validates gate mechanics. Actual product observations are
   separate artifacts, identified by product/collector/policy/runner/session.
 
-The artifact format does not authenticate hostile authors. Operator revision
-bindings are explicit because the signed bundle provenance has no source SHA.
+The artifact format does not authenticate hostile authors. Revision bindings
+identify the signed build receipt or the operator attestation used for a bundle
+whose receipt omits the source SHA.
 The system does not change main, publish branches, configure remote required
 checks, infer performance from production logs or automatically promote baselines.
 

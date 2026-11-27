@@ -27,11 +27,16 @@ def artifact(app, revision):
     provenance = read(app / 'Contents/Resources/build-provenance.json')
     require(info.get('CFBundleIdentifier') == 'com.mokusei.desktop' and provenance.get('channel') == 'production'
             and provenance.get('configuration') == 'release', 'requires production Release artifact')
+    binding = 'operator-attested; bundle provenance does not contain a source revision'
+    if provenance.get('sourceCommit'):
+        require(provenance['sourceCommit'] == revision and provenance.get('sourceDirty') is False,
+                'bundle was not built from the declared clean source revision')
+        binding = 'signed bundle provenance'
     result = subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], capture_output=True, text=True, timeout=30)
     require(result.returncode == 0, 'artifact signature verification failed: ' + result.stderr)
     files = {str(p.relative_to(app)): digest(p) for p in sorted(app.rglob('*')) if p.is_file()}
     return {'schemaVersion': 1, 'kind': 'performance-artifact', 'revision': revision,
-            'revisionBinding': 'operator-attested; bundle provenance does not contain a source revision',
+            'revisionBinding': binding,
             'app': str(app), 'artifactSHA256': identity(files), 'files': files, 'provenance': provenance}
 
 

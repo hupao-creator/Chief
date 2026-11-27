@@ -14,6 +14,10 @@ import SwiftUI
 struct Chief {
     static func main() {
         let arguments = CommandLine.arguments
+        if Array(arguments.dropFirst()) == ["--check-packaged-linkage"] {
+            print("Chief loaded its packaged dependencies.")
+            return
+        }
         if Bundle.main.bundleIdentifier == "com.mokusei.desktop.demo" || arguments.dropFirst().contains("--demo") {
             DemoApp.main()
             return

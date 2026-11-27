@@ -1406,3 +1406,20 @@ func (a *Adapter) MokuContext(ctx context.Context, purpose string, r plugin.Sett
 	}
 	return formatTelemetry("codex", snapshot), nil
 }
+
+// OpenSubscriptionServer gives a non-task consumer an isolated, tools-restricted
+// native home and a freshly authenticated app-server. The caller owns Close.
+func (a *Adapter) OpenSubscriptionServer(ctx context.Context, cwd, configured string) (*AppServer, error) {
+	server, err := a.server(ctx, cwd, configured, "exclusive", "")
+	if err != nil {
+		return nil, err
+	}
+	ok, err := a.usesNativeAccount(ctx, server, cwd)
+	if err == nil && !ok {
+		err = errors.New("Voice Mode requires a native Codex ChatGPT account using the OpenAI provider")
+	}
+	if err != nil {
+		return nil, errors.Join(err, server.Close())
+	}
+	return server, nil
+}

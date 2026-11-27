@@ -38,6 +38,7 @@ type Coordinator struct {
 	config                 Configuration
 	mu                     sync.Mutex
 	queue                  admissionQueue
+	voice                  *voiceCall
 	running                bool
 	stopping               bool
 	ctx                    context.Context
@@ -365,6 +366,10 @@ func (c *Coordinator) current() (model.ThreadRecord, error) {
 	return model.ThreadRecord{}, errors.New("Chief session is not initialized")
 }
 func (c *Coordinator) Submit(ctx context.Context, request SubmitRequest) error {
+	return c.submit(ctx, request, nil)
+}
+
+func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *voiceBinding) error {
 	ctx, finish, err := c.begin(ctx)
 	if err != nil {
 		return err
@@ -427,6 +432,10 @@ func (c *Coordinator) Submit(ctx context.Context, request SubmitRequest) error {
 				return err
 			}
 
+			if err := c.startVoiceInput(voice, record.ID); err != nil {
+				return err
+			}
+
 			c.mu.Lock()
 			admission.entered = true
 			injection := c.injection
@@ -444,7 +453,22 @@ func (c *Coordinator) Submit(ctx context.Context, request SubmitRequest) error {
 				if rowID == "" {
 					rowID = newID()
 				}
-				return c.appendTranscript(context.WithoutCancel(admissionCtx), record.ID, userMessage(request.Input, rowID, time.Now().UnixMilli()))
+				row := userMessage(request.Input, rowID, time.Now().UnixMilli())
+				if voice != nil {
+					if result.ExecutionID == "" {
+						return errors.New("Chief did not confirm an execution for the voice handoff")
+					}
+					row["voiceSessionId"], row["voiceHandoffId"], row["executionId"] = voice.call.id, voice.handoff, result.ExecutionID
+				}
+				if err := c.appendTranscript(context.WithoutCancel(admissionCtx), record.ID, row); err != nil {
+					return err
+				}
+				if voice != nil {
+					c.mu.Lock()
+					voice.execution = result.ExecutionID
+					c.mu.Unlock()
+				}
+				return nil
 			})
 			if err == nil {
 				c.rememberDispatch(result.ExecutionID, entries)
@@ -740,6 +764,9 @@ func (c *Coordinator) installConfiguration(record model.ThreadRecord, configurat
 		c.scopeRevision = record.Revision
 	} else {
 		c.scopeRevision = max(c.scopeRevision, record.Revision)
+	}
+	if c.voice != nil && c.voice.owner != "" {
+		c.voice.cancel(errors.New("the coordinating Chief configuration changed; start a new voice call"))
 	}
 	c.id = record.ID
 	c.applied = &configuration

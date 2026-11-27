@@ -219,6 +219,7 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	overviewEndpoint := path == "/overview/context" || path == "/overview/ack" || path == "/overview/claim"
 	contentEndpoint := path == "/thread-content/subscription"
+	voiceEndpoint := path == "/voice/global"
 	channel := ""
 	if strings.HasPrefix(path, "/invoke/") {
 		encoded := strings.TrimPrefix(path, "/invoke/")
@@ -226,7 +227,7 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			channel, _ = url.PathUnescape(encoded)
 		}
 	}
-	if r.Method != http.MethodPost || (!overviewEndpoint && !contentEndpoint && (channel == "" || !s.host.HasChannel(channel))) {
+	if r.Method != http.MethodPost || (!voiceEndpoint && !overviewEndpoint && !contentEndpoint && (channel == "" || !s.host.HasChannel(channel))) {
 		s.send(w, 404, resultFailure(model.NewError("UNKNOWN_COMMAND", "Unknown runtime command")))
 		return
 	}
@@ -257,6 +258,9 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	if overviewEndpoint || contentEndpoint {
 		limit = MaxOverviewBytes
 	}
+	if voiceEndpoint {
+		limit = 256 * 1024
+	}
 	body, err := s.readBody(r, limit, &reserved)
 	if err != nil {
 		s.send(w, 400, resultFailure(err))
@@ -264,6 +268,10 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if !s.isAccepting() {
 		s.send(w, 503, resultFailure(model.NewError("SERVICE_STOPPING", "Runtime is stopping")))
+		return
+	}
+	if voiceEndpoint {
+		s.voice(w, r, body)
 		return
 	}
 	if contentEndpoint {

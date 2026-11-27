@@ -212,11 +212,16 @@ The tools do not reset or grant privacy consent.
 ```text
 Contents/MacOS/Chief
 Contents/MacOS/chief-runtime
+Contents/Frameworks/LiveKitWebRTC.framework
 Contents/Resources/ChiefNative_ChiefPluginUI.bundle
 Contents/Resources/AppIcon.icns
 Contents/Resources/build-provenance.json
 Contents/Resources/licenses/
 ```
+
+Packaging stages the pinned macOS WebRTC slice, embeds its license in `Contents/Resources/licenses/` and signs the framework before the runtime and application. The signed application carries `com.apple.security.device.audio-input` and `NSMicrophoneUsageDescription`. Smoke checks the arm64 image, embedded dependency, signatures, usage string and entitlement. The certificate-signed channels use hardened runtime's team-based library validation. The ad-hoc Alpha has no signing team. Its app signature includes a library constraint admitting the signed arm64 WebRTC code directory hash alongside macOS libraries. Alpha packaging starts the staged executable in linkage-check mode before creating the DMG. This checks dyld admission without opening a window, a profile or an audio device. [Apple library constraints](https://developer.apple.com/documentation/security/applying-launch-environment-and-library-constraints)
+
+A full bundle build from a Git checkout records its source commit and dirty status. Packaging with reused Swift or Go binaries omits the source commit. A physical microphone grant and audible playback require a run from the signed host. [Using the voice module](../Sources/Voice/README.md)
 
 Mermaid fences display source code. The built-in [Git card extension](../Sources/Host/Git/README.md) is part of the active native target.
 There is no content-renderer subprocess. WKWebView remains available for browser
@@ -273,7 +278,7 @@ For alpha bundles, pass `--channel alpha --app PATH` to `smoke`. Only this expli
 channel accepts ad-hoc signatures; production installation still requires a
 stable Apple Development identity. Alpha smoke also rejects either executable
 if it contains the current checkout or build account's home directory followed
-by a path separator. The alpha command runs this static check
+by a path separator. The alpha command runs this static check and the executable linkage check
 before image creation and runs `hdiutil verify` before publishing the image.
 These checks do not prove first-launch behavior, downloaded-file Gatekeeper
 acceptance or compatibility on another Mac.
