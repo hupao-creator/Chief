@@ -40,7 +40,7 @@ import SwiftUI
 /// Resolve only the public Threads named in this message. Their identifiers remain
 /// in the destination even when a title or Harness is unavailable.
 struct NativeMokuTalkLinks: View {
-    let content: NativeMokuTalkText
+    let content: NativeMessageText
     let workspace: NativeWorkspaceModel?
     let compact: Bool
     @Environment(\.locale) private var locale
@@ -51,7 +51,9 @@ struct NativeMokuTalkLinks: View {
             switch part {
             case .text(let text):
                 return (text, nil)
-            case .link(let label, let url, let reference):
+            case .web(let label, let url):
+                return (label, url)
+            case .execution(let label, let url, let reference):
                 let id = reference.thread.threadID
                 let target = workspace?.catalog.thread(id)
                 var title = label
@@ -63,7 +65,7 @@ struct NativeMokuTalkLinks: View {
                 return (title ?? fallback, url)
             }
         }
-        return NativeExecutionCapsuleText(runs: runs, harnesses: harnesses, compact: compact)
+        return NativeLinkedMessageText(runs: runs, harnesses: harnesses, compact: compact)
     }
 }
 

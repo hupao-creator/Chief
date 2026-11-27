@@ -9,6 +9,7 @@ enum MarkdownSourceMap {
     struct Region {
         let range: NSRange
         let cellEnd: Int?
+        var link: (label: String, destination: String)? = nil
     }
     private struct Coordinates {
         let count: Int
@@ -43,7 +44,7 @@ enum MarkdownSourceMap {
         }
     }
 
-    static func ranges(_ source: String, visibleText: Bool) -> [Region] {
+    static func ranges(_ source: String, visibleText: Bool, includeLinks: Bool = false) -> [Region] {
         let bytes = Array(source.utf8)
         let rows = bytes.split(separator: 10, omittingEmptySubsequences: false)
         var starts: [Int] = []; var position = 0
@@ -252,6 +253,18 @@ enum MarkdownSourceMap {
             return mapped
         }
         var result: [Region] = []
+        func linkLabel(_ node: UnsafeMutablePointer<cmark_node>) -> String {
+            if let literal = cmark_node_get_literal(node) { return String(cString: literal) }
+            let type = cmark_node_get_type(node)
+            if type == CMARK_NODE_SOFTBREAK || type == CMARK_NODE_LINEBREAK { return " " }
+            var label = ""
+            var child = cmark_node_first_child(node)
+            while let current = child {
+                label += linkLabel(current)
+                child = cmark_node_next(current)
+            }
+            return label
+        }
         func collect(_ node: UnsafeMutablePointer<cmark_node>, context: Block? = nil) {
             let type = String(cString: cmark_node_get_type_string(node))
             let context = type == "table_cell" ? cell(node)
@@ -286,7 +299,11 @@ enum MarkdownSourceMap {
                            let index = String.Index(source.utf8.index(source.utf8.startIndex, offsetBy: end), within: source) {
                             cellEnd = NSRange(source.startIndex..<index, in: source).length
                         }
-                        result.append(Region(range: NSRange(first..<last, in: source), cellEnd: cellEnd))
+                        var region = Region(range: NSRange(first..<last, in: source), cellEnd: cellEnd)
+                        if includeLinks, type == "link", let destination = cmark_node_get_url(node) {
+                            region.link = (linkLabel(node), String(cString: destination))
+                        }
+                        result.append(region)
                     }
                 }
                 return

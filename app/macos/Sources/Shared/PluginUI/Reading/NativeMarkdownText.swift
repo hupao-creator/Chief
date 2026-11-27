@@ -20,8 +20,10 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
     var code = false
     var images: [String: NativePlatformImage] = [:]
     var helpText: String? = nil
-    var executionLinkHarnesses: [JSONText: AnyHarnessPlugin]? = nil
-    var showsExecutionControls = true
+    var linkCapsuleHarnesses: [JSONText: AnyHarnessPlugin]? = nil
+    var showsLinkControls = true
+    var glassLinkCapsules = false
+    var messageInk: NSColor? = nil
     var openLink: (URL) -> Void
     @Environment(\.locale) private var locale
 
@@ -69,8 +71,8 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
     }
 
     func updateTextView(_ view: MarkdownTextView) {
-        if showsExecutionControls { view.admitExecutionControls() }
-        view.executionLocale = locale
+        if showsLinkControls { view.admitLinkControls() }
+        view.linkLocale = locale
         // Image failures use the existing native element, without adding a
         // separate SwiftUI help responder around every ordinary text block.
         if view.toolTip != helpText {
@@ -80,7 +82,8 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
         view.setContent(MarkdownTextInput(spans: spans, fontSize: fontSize, weight: weight,
             muted: muted, strongInk: strongInk, tracking: tracking, lineHeight: lineHeight,
             alignment: alignment, code: code, images: images.mapValues(MarkdownTextInput.Image.init),
-            executionHarnesses: executionLinkHarnesses?.mapValues(ObjectIdentifier.init)),
+            capsuleHarnesses: linkCapsuleHarnesses?.mapValues(ObjectIdentifier.init),
+            glassLinkCapsules: glassLinkCapsules, messageInk: messageInk),
             build: { width in attributedString(width: width) })
     }
 
@@ -95,6 +98,11 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
         return CGSize(width: width, height: view.measuredHeight(width: layoutWidth))
     }
 
+    private func capsuleKind(for url: URL, harnesses: [JSONText: AnyHarnessPlugin]) -> MarkdownLinkAttachment.Kind? {
+        if let reference = ApplicationExecutionLink.parse(url) { return .execution(harnesses[reference.thread.threadID]) }
+        return NativeMessageText.isWebURL(url) ? .web : nil
+    }
+
     private func attributedString(width: CGFloat) -> NSAttributedString {
         let output = NSMutableAttributedString(string: "")
         let paragraph = NSMutableParagraphStyle()
@@ -103,23 +111,25 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
         paragraph.lineBreakMode = .byWordWrapping
         if code { paragraph.defaultTabInterval = (" " as NSString).size(withAttributes: [.font: NativeMarkdownTypography.code(size: fontSize)]).width * 8 }
         switch alignment { case .left: paragraph.alignment = .left; case .center: paragraph.alignment = .center; case .right: paragraph.alignment = .right }
-        var hasExecutionAttachment = false
+        var hasCapsule = false
         for (index, span) in spans.enumerated() {
-            if let harnesses = executionLinkHarnesses, let url = MarkdownURLPolicy.url(span.link),
-               let reference = ApplicationExecutionLink.parse(url) {
+            let url = MarkdownURLPolicy.url(span.link)
+            if let harnesses = linkCapsuleHarnesses, let url, let kind = capsuleKind(for: url, harnesses: harnesses) {
                 let title = span.text
                 // Leave the immediately following punctuation on the capsule's
                 // line instead of consuming the entire line with a long title.
                 let punctuation = index + 1 < spans.count ? spans[index + 1].text.prefix(while: { $0.isPunctuation }) : ""
                 let trailingWidth = (String(punctuation) as NSString).size(withAttributes: [.font: NativeTypography.interPlatformFont(size: fontSize)]).width
-                let attachment = MarkdownExecutionAttachment(title: title, url: url,
-                    harness: harnesses[reference.thread.threadID], fontSize: 13, width: max(1, width - trailingWidth))
+                let attachment = MarkdownLinkAttachment(title: title, url: url,
+                    kind: kind, usesGlass: glassLinkCapsules, fontSize: 13, width: max(1, width - trailingWidth))
                 let value = NSMutableAttributedString(attachment: attachment)
-                value.addAttributes([.font: NativeTypography.interPlatformFont(size: fontSize),
-                    .paragraphStyle: paragraph, .nativeMarkdownExecution: url, .cursor: NSCursor.pointingHand,
-                    .accessibilityDescription: title], range: NSRange(location: 0, length: value.length))
+                var attributes: [NSAttributedString.Key: Any] = [.font: NativeTypography.interPlatformFont(size: fontSize),
+                    .paragraphStyle: paragraph, .nativeMarkdownLinkCapsule: url, .cursor: NSCursor.pointingHand,
+                    .accessibilityDescription: title]
+                if case .web = kind { attributes[.toolTip] = url.absoluteString }
+                value.addAttributes(attributes, range: NSRange(location: 0, length: value.length))
                 output.append(value)
-                hasExecutionAttachment = true
+                hasCapsule = true
                 continue
             }
             let size = span.superscript ? fontSize * 0.72 : span.code ? fontSize * 0.88 : fontSize
@@ -127,15 +137,16 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
             // family has no italic face, whereas the platform Menlo family does.
             let font = code || span.code ? NativeMarkdownTypography.code(size: size, weight: span.strong ? 700 : weight, italic: span.emphasis)
                 : NativeTypography.interPlatformFont(size: size, weight: span.strong ? 700 : weight)
+            let ink = muted ? NativePlatformPalette.thread.muted : strongInk ? NativePlatformPalette.thread.inkStrong : NativePlatformPalette.thread.ink
             var attributes: [NSAttributedString.Key: Any] = [
-                .font: font, .foregroundColor: muted ? NativePlatformPalette.thread.muted : strongInk ? NativePlatformPalette.thread.inkStrong : NativePlatformPalette.thread.ink,
+                .font: font, .foregroundColor: messageInk ?? ink,
                 .paragraphStyle: paragraph,
             ]
             if tracking != 0 { attributes[.kern] = tracking }
             if span.strikethrough { attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
             if span.code { attributes[.nativeMarkdownCode] = true }
             if span.superscript { attributes[.baselineOffset] = fontSize * 0.35 }
-            if let url = MarkdownURLPolicy.url(span.link) { attributes[.link] = url }
+            if let url { attributes[.link] = url }
             if let anchor = span.anchor { attributes[.init("ChiefMarkdownAnchor")] = anchor }
             if let title = span.title { attributes[.toolTip] = title }
             if let source = span.image, let image = images[source], image.size.width > 0 {
@@ -159,7 +170,7 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
                 if span.code { output.append(markdownCodePadding(attributes: attributes)) }
             }
         }
-        if hasExecutionAttachment {
+        if hasCapsule {
             paragraph.maximumLineHeight = 0
             output.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: output.length))
         }
@@ -170,11 +181,11 @@ struct MarkdownSelectableText: MarkdownPlatformRepresentable {
         var openLink: (URL) -> Void
         init(openLink: @escaping (URL) -> Void) { self.openLink = openLink }
         func textViewDidChangeSelection(_ notification: Notification) {
-            (notification.object as? MarkdownTextView)?.updateExecutionSurfaces()
+            (notification.object as? MarkdownTextView)?.updateLinkSurfaces()
         }
         func textView(_ textView: NSTextView, clickedOn cell: any NSTextAttachmentCellProtocol,
                       in cellFrame: NSRect, at charIndex: Int) {
-            guard let attachment = cell.attachment as? MarkdownExecutionAttachment else { return }
+            guard let attachment = cell.attachment as? MarkdownLinkAttachment else { return }
             _ = self.textView(textView, clickedOnLink: attachment.url, at: charIndex)
         }
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
@@ -241,7 +252,9 @@ struct MarkdownTextInput: Equatable {
     let alignment: MarkdownAlignment
     let code: Bool
     let images: [String: Image]
-    var executionHarnesses: [JSONText: ObjectIdentifier]? = nil
+    var capsuleHarnesses: [JSONText: ObjectIdentifier]? = nil
+    var glassLinkCapsules = false
+    var messageInk: NSColor? = nil
 
     struct Image: Equatable {
         let identity: ObjectIdentifier
@@ -264,32 +277,32 @@ final class MarkdownTextView: MarkdownPlatformTextView {
     }
 
     var ownedTextStorage: NSTextStorage?
-    var executionSurfaces: [Int: MarkdownExecutionHost] = [:]
-    private(set) var showsExecutionControls = false
+    var linkSurfaces: [Int: MarkdownLinkHost] = [:]
+    private(set) var showsLinkControls = false
 
-    func admitExecutionControls() {
-        guard !showsExecutionControls else { return }
-        showsExecutionControls = true
+    func admitLinkControls() {
+        guard !showsLinkControls else { return }
+        showsLinkControls = true
         needsLayout = true
     }
-    var executionLocale = Locale.current {
-        didSet { if executionLocale != oldValue { updateExecutionSurfaces() } }
+    var linkLocale = Locale.current {
+        didSet { if linkLocale != oldValue { updateLinkSurfaces() } }
     }
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        updateExecutionSurfaces()
+        updateLinkSurfaces()
     }
 
     override func accessibilityChildren() -> [Any]? {
         // NSTextView publishes its own links but omits embedded native views.
         // Publish the live capsule controls to the actual system AX tree too.
-        if !showsExecutionControls {
+        if !showsLinkControls {
             // Assistive navigation may request the real button before scrolling the row into view.
-            admitExecutionControls()
-            updateExecutionSurfaces()
+            admitLinkControls()
+            updateLinkSurfaces()
         }
-        return (super.accessibilityChildren() ?? []) + executionSurfaces.sorted { $0.key < $1.key }.flatMap {
+        return (super.accessibilityChildren() ?? []) + linkSurfaces.sorted { $0.key < $1.key }.flatMap {
             NSAccessibility.unignoredChildren(from: [$0.value])
         }
     }
@@ -298,7 +311,7 @@ final class MarkdownTextView: MarkdownPlatformTextView {
         let selection = selectedRange()
         if [36, 49, 76].contains(event.keyCode), selection.length == 1,
            event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty,
-           let url = textStorage?.attribute(.nativeMarkdownExecution, at: selection.location, effectiveRange: nil) as? URL {
+           let url = textStorage?.attribute(.nativeMarkdownLinkCapsule, at: selection.location, effectiveRange: nil) as? URL {
             _ = delegate?.textView?(self, clickedOnLink: url, at: selection.location)
             return
         }
@@ -340,18 +353,16 @@ final class MarkdownTextView: MarkdownPlatformTextView {
         guard input != next else { return }
         input = next
         buildText = build
-        // An opted-in Note also contains ordinary prose. Only actual attachments
-        // encode the proposed width in their attributed content.
-        widthDependent = !next.images.isEmpty || (next.executionHarnesses != nil && next.spans.contains {
-            MarkdownURLPolicy.url($0.link).flatMap(ApplicationExecutionLink.parse) != nil
-        })
+        // A linked message also contains ordinary prose. Only attachment
+        // layout depends on the proposed width.
+        widthDependent = !next.images.isEmpty || (next.capsuleHarnesses != nil && next.spans.contains { $0.link != nil })
         measurements.removeAll(keepingCapacity: true)
         renderedWidth = -1
         applyText(width: bounds.width > 0 ? bounds.width : NativeGeometry.readingWidth)
     }
 
     private func applyText(width: CGFloat) {
-        // Image and execution attachments encode available width in their content.
+        // Image and link attachments encode available width in their content.
         // Ordinary text needs a new container layout, never a new attributed string.
         guard renderedWidth < 0 || (widthDependent && renderedWidth != width),
               let next = buildText?(width) else { return }
@@ -419,7 +430,7 @@ final class MarkdownTextView: MarkdownPlatformTextView {
             let width = max(1, floor(bounds.width * scale) / scale)
             applyText(width: width)
             _ = layoutHeight(width: width, scale: scale)
-            updateExecutionSurfaces()
+            updateLinkSurfaces()
         }
     }
 

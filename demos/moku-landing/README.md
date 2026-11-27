@@ -134,10 +134,20 @@ opens at the top of the 129-point compact shell (111-point viewport).
 An AppKit scroll reveals its last link, which opens the cited run. The top
 and scrolled captures and `notification-overflow.json` record that visit.
 
-The replay clicks the native glass execution capsules in the compact notification and the Chief conversation with AppKit mouse events. It captures each surface before navigating. The message contains labeled and bare links to different runs, a deleted Thread and a malformed URL. The replay checks the destination filter, historical row, loaded content and top scroll position, plus the unavailable page for a missing run. During the one-minute expiry observation the window ignores physical desktop clicks. Pointer input is enabled again before the replay follows the saved link into a Super Thread that cites a newer run. `talk-links.json` identifies the source surface and execution for each visit. The catalog and reading data are fixtures in a private profile.
+The replay clicks the native execution capsules in the compact notification and the Chief conversation with window-addressed AppKit mouse events. The replay window ignores physical desktop clicks. It captures each surface before navigating. The message contains labeled and bare links to different runs, a deleted Thread and a malformed URL. The replay checks the destination filter, historical row, loaded content and top scroll position, plus the unavailable page for a missing run. It observes the one-minute notification expiry and follows the saved link into a Super Thread that cites a newer run. `talk-links.json` identifies the source surface and execution for each visit. The catalog and reading data are fixtures in a private profile.
 
 For a missing run, the replay checks that the history timeline contains no row and
 verifies both the unavailable heading and its explanation in `notification-missing-execution.png`.
+
+The same replay checks web links in the compact notification and both directions
+of the conversation. Its Chinese fixture includes adjacent punctuation, a comma
+in a URL query, a semicolon in a URL path, Markdown and angle-bracket links, two lines of prose, an unsupported
+scheme and a URL in code. It checks the displayed text, web capsule labels and
+targets, drags across capsules to select them, and clicks each with window-addressed AppKit
+events. `message-web-links.json` records the targets received by the replay's
+system-open callback. The replay checks capsule appearance selection and captures
+the matching dark capsules in both conversation bubbles and the compact glass
+variant. It does not launch a browser or load a remote site.
 
 ### Overview Bar swipe at actual size
 

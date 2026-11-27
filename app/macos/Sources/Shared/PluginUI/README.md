@@ -1138,9 +1138,9 @@ reading action immediately, even when the scroll position has not changed or a
 successor is running. This eligibility is separate from output following so final
 content layout and result-anchor positioning keep their existing behavior.
 Internal execution URLs are admitted by the shared Markdown parser but dispatched
-only through an explicitly supplied typed execution callback. Chief Talk uses the same [TextKit execution capsule](Reading/NativeMarkdownExecutionLink.swift) for labeled and bare links in both the conversation and compact bar. TextKit owns inline layout, selection and pointer tracking. The capsule exposes its Harness logo, title and arrow as a single accessible button.
+only through an explicitly supplied typed execution callback. Chief messages use the same [inline TextKit capsule](Reading/NativeMarkdownLinkCapsule.swift) for web and execution links in both conversation directions and the compact Bar. [Message link parsing](Reading/NativeMessageText.swift) uses the shared Markdown source map for link syntax and preserves the surrounding prose. TextKit owns inline layout and selection. An attachment anchors the text selection when a drag starts on a capsule. Each capsule is a single accessible button with a globe for a web link or the Harness icon for an execution. Copying a selected web capsule preserves its address or label as text and its destination in rich text.
 In Chief conversation history, TextKit measures the inline seat with the full
-page. Each message creates its native glass controls when it comes within one
+page. Each message creates its native capsule controls when it comes within one
 viewport of the reader or accessibility requests its children. Admitted controls
 remain with the mounted message, including during selection and scrolling.
 

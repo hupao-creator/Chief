@@ -106,6 +106,15 @@ extension MarkdownTextView {
             if value as? Bool == true { padding.append(range) }
         }
         for range in padding.reversed() { selected.deleteCharacters(in: range) }
+
+        // Preserve a web capsule's label and destination when pasting rich text.
+        var webLinks: [(NSRange, MarkdownLinkAttachment)] = []
+        selected.enumerateAttribute(.attachment, in: NSRange(location: 0, length: selected.length)) { value, range, _ in
+            if let link = value as? MarkdownLinkAttachment, case .web = link.kind { webLinks.append((range, link)) }
+        }
+        for (range, link) in webLinks.reversed() {
+            selected.replaceCharacters(in: range, with: NSAttributedString(string: link.title, attributes: [.link: link.url]))
+        }
         let copied = MarkdownPlatformActions.copy(selected.markdownPlainText())
         if let rich = try? selected.data(from: NSRange(location: 0, length: selected.length), documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]) {
             NSPasteboard.general.setData(rich, forType: .rtf)
