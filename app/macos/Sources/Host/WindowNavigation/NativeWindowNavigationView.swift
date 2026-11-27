@@ -15,11 +15,26 @@ public extension Scene {
 /// Keep the toolbar empty: even a clear placeholder creates a titlebar hit
 /// region over the content-hosted back button.
 public struct NativeWorkspaceWindowSurface: ViewModifier {
+    @State private var isFullScreen = false
+
     public init() {}
-    @ViewBuilder
+
     public func body(content: Content) -> some View {
         content
-            .background { NativeWindowControlPlacement().allowsHitTesting(false).accessibilityHidden(true) }
+            .background {
+                if isFullScreen {
+                    // The native window material samples the desktop in windowed mode.
+                    NativePalette.pair(0xe9e7df, 0x20211f).swiftUI
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+            .background {
+                NativeWindowControlPlacement(isFullScreen: $isFullScreen)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
             .ignoresSafeArea()
             .containerBackground(.ultraThinMaterial, for: .window)
             .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)

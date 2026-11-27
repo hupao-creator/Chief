@@ -222,9 +222,8 @@ public struct NativeOverviewChrome: View {
                 let active = isActive(filter)
                 let activitySuffix = filter.hasActiveTasks ? " · \(strings.containsActiveTasks)" : ""
                 let emoji = filter.isDirectory ? nil : filter.semanticEmoji
-                Button {
-                    onTagChange(filter)
-                } label: {
+                let select = { onTagChange(filter) }
+                Button(action: select) {
                     HStack(spacing: OverviewTagMetrics.chipContentSpacing) {
                         OverviewTagPrefix(emoji: emoji)
                             .background {
@@ -239,6 +238,10 @@ public struct NativeOverviewChrome: View {
                 .buttonStyle(OverviewTagButtonStyle(glass: .regular, selected: active, emoji: emoji))
                 .glassEffectID(filter.id, in: tagGlass)
                 .glassEffectTransition(.matchedGeometry)
+                .overlay {
+                    OverviewTagPointerPress(onClick: select)
+                        .accessibilityHidden(true)
+                }
                 .overviewTagAnchor(filter.id)
                 .accessibilityIdentifier(filter.id)
                 .accessibilityLabel(Text(filter.displayTag))

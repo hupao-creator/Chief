@@ -202,7 +202,7 @@ service. Settings presents its own connection guidance where configuration
 requires the service.
 
 `desktop-preferences.json` stores the selected thread, last Overview space,
-each directory's last tag (including an explicit Running choice), onboarding and reading activity. Saved appearance and language fields are ignored on read and omitted
+each directory's last tag (including an explicit Running choice), onboarding and reading activity. The profile's thread-reading directory also retains [recent Agent Thread visits](Sources/Host/Overview/README.md#recent-threads-at-empty-status-filters). Saved appearance and language fields are ignored on read and omitted
 from subsequent writes. A preexisting profile still establishes prior use unless
 the file explicitly marks onboarding as pending.
 

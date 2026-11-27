@@ -4,6 +4,8 @@ import SwiftUI
 /// Deliberate AppKit exception: SwiftUI does not expose placement of the real
 /// window controls. Their placement is in window points and follows reading offsets.
 struct NativeWindowControlPlacement: NSViewRepresentable {
+    @Binding var isFullScreen: Bool
+
     // Window layout and reading animation must use the same offset; otherwise
     // a deferred toolbar placement can put collapsed controls back on screen.
     private static let readingOffsets = NSMapTable<NSWindow, NSNumber>.weakToStrongObjects()
@@ -43,13 +45,14 @@ struct NativeWindowControlPlacement: NSViewRepresentable {
         placement.placeBackdrop(buttons: buttons.map { $0.1 }, hidden: hidden)
     }
 
-    func makeNSView(context: Context) -> PlacementView { PlacementView() }
+    func makeNSView(context: Context) -> PlacementView { PlacementView(isFullScreen: $isFullScreen) }
     func updateNSView(_ view: PlacementView, context: Context) {
         view.schedulePlacement()
     }
     static func dismantleNSView(_ view: PlacementView, coordinator: ()) { view.detach() }
 
     final class PlacementView: NSView {
+        private let isFullScreen: Binding<Bool>
         private var placementPending = false
         private var attached = false
         private weak var observedWindow: NSWindow?
@@ -59,6 +62,13 @@ struct NativeWindowControlPlacement: NSViewRepresentable {
             let postedFrameChanges: Bool
         }
         private var observedButtons: [ObservedButton] = []
+
+        init(isFullScreen: Binding<Bool>) {
+            self.isFullScreen = isFullScreen
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) { nil }
 
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
@@ -148,6 +158,8 @@ struct NativeWindowControlPlacement: NSViewRepresentable {
 
         private func placeControls() {
             guard attached, let window else { return }
+            let fullScreen = window.styleMask.contains(.fullScreen)
+            if isFullScreen.wrappedValue != fullScreen { isFullScreen.wrappedValue = fullScreen }
             NativeWindowControlPlacement.placeControls(in: window)
         }
     }

@@ -8,6 +8,7 @@
 | 目录 | 当前边界 |
 | --- | --- |
 | [chief-logo-loading](chief-logo-loading/README.md) | Chief 图标加载动效与四种颠勺候选，含整页加载与 Overview 空态的同窗原生回放 |
+| [empty-state-native-candidates](empty-state-native-candidates/README.md) | 复用睡锅，比较 Running 无结果时的最近完成会话与 Unread 无结果时的最近已读会话 |
 | [execution-handoff](execution-handoff/README.md) | 独立交互/材质方案 fixture；生产行为见所属模块 |
 | [landing-setup](landing-setup/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |
 | [moku-gradient-material](moku-gradient-material/README.md) | 链接生产组件的交互 fixture；不连接真实 Runtime/账户，无自动验收 |

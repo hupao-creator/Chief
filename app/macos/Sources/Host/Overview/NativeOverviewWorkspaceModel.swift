@@ -78,6 +78,42 @@ public final class NativeOverviewWorkspaceModel {
         content.isEmpty && globalConversationCount != nil && error == nil && canvasState.layoutError == nil
     }
     var showsStatusEmptyState: Bool { showsEmptyState && statusFilter != .all }
+    var recentStatusThreads: [NativeOverviewRecentThread] {
+        let status = statusFilter
+        guard showsEmptyState, status == .running || status == .unread else { return [] }
+        let reads = status == .unread ? workspace.preferences.threadReadHistory.recentAgentReads : [:]
+        guard status == .running || !reads.isEmpty else { return [] }
+
+        // Resolve the same pre-status membership as the selected Overview.
+        _ = workspace.catalog.revision
+        let membership = status == .unread ? unreadMembership : selectedFilter.flatMap { filterMembers[$0.selectionKey] }
+        let ids = membership?.threads ?? Array(globalThreadIDs)
+        let candidates = ids.compactMap { id -> (thread: HarnessThread, date: Double)? in
+            guard let thread = workspace.catalog.thread(id), thread.archived != true,
+                  thread.canOpenReader(at: nil) else { return nil }
+            let date: Double?
+            if status == .running {
+                guard membership != nil || thread.tags.isEmpty else { return nil }
+                date = thread.completedExecutionFinishedAt.map { $0 / 1_000 }
+            } else {
+                guard unreadVersions[.init(threadID: id, typeID: "agent")] == nil else { return nil }
+                date = reads[id]
+            }
+            guard let date, date.isFinite, date >= 0 else { return nil }
+            return (thread, date)
+        }.sorted {
+            if $0.date != $1.date { return $0.date > $1.date }
+            return $0.thread.id.codeUnits.lexicographicallyPrecedes($1.thread.id.codeUnits)
+        }
+        return Array(candidates.lazy.compactMap { candidate -> NativeOverviewRecentThread? in
+            let thread = candidate.thread
+            guard let harness = try? self.workspace.harnessHost.registry.require(thread.harnessID) else { return nil }
+            let title = thread.title.string
+            return .init(id: thread.id,
+                         title: title.isEmpty ? self.workspace.locale.text("未命名会话", "Untitled conversation") : title,
+                         harness: harness, date: Date(timeIntervalSince1970: candidate.date))
+        }.prefix(3))
+    }
     var railChoices: [NativeOverviewRailChoice] {
         let presets: [NativeOverviewRailChoice] = [.status(.running), .status(.unread)]
         guard selectedFilter != nil else {
@@ -314,6 +350,9 @@ public final class NativeOverviewWorkspaceModel {
     public func setPresentation(_ value: NativeOverviewPresentationFacts) {
         guard facts != value else { return }
         let becameVisible = !facts.overviewVisible && value.overviewVisible
+        if statusFilter == .unread && (becameVisible || (value.overviewVisible && value.focused && !facts.focused)) {
+            workspace.preferences.threadReadHistory.refreshRecentAgentReads()
+        }
         if facts.overviewVisible != value.overviewVisible {
             revisions.removeAll()
             // Leaving retains the committed canvas as the reading backdrop.
@@ -393,6 +432,7 @@ public final class NativeOverviewWorkspaceModel {
             selectTag(filter)
         case .status(.unread):
             guard !browsingUnread else { return }
+            workspace.preferences.threadReadHistory.refreshRecentAgentReads()
             browsingUnread = true
             reconcile(captureMutation: false, refreshSelection: false)
         case .status(let status):
@@ -1090,6 +1130,11 @@ public final class NativeOverviewWorkspaceModel {
     private func groupApplications(_ applications: [NativeOverviewApplicationEntry], in entries: inout [CardEntry]) throws {
         if projectedCollectionScene != browseSceneKey { collectionAgeSample = Date().timeIntervalSince1970 }
         projectedCollectionScene = browseSceneKey
+        if browsingUnread {
+            hasCollectionCandidates = false
+            collectionSources.removeAll()
+            return
+        }
         let now = collectionAgeSample
         var plans: [(group: NativeOverviewCollectionBudget, plugin: AnyApplicationThreadPlugin,
                      providesCardSurface: Bool, snapshots: [ApplicationOverviewSnapshot])] = []

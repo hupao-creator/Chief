@@ -269,8 +269,7 @@ The [Running, Unread and Completed empty states](NativeOverviewStatusPresentatio
 [sleeping Chief skillet](../../Shared/PluginUI/Resources/ChiefOverviewIdle.png)
 with its bowl on the title and viewport centerline and its handle extending fully
 to the right. They display the illustration at up to 195 × 85 pt directly on the
-canvas above the localized status title, with no panel or scroll hint. The
-skillet gently bobs while three lowercase z’s drift above it. Reduce Motion
+canvas above the localized status title. The skillet gently bobs while three lowercase z’s drift above it. Reduce Motion
 holds both still. Each title is exposed to accessibility and the empty
 presentation passes input through to Overview.
 
@@ -305,6 +304,39 @@ horizontal arrow navigation and Return available. Opening the Chief input
 explicitly hands focus to its editor.
 
 A superseded layout worker cannot pause input after a newer layout has settled or reused its geometry. Geometry reuse applies when the current membership and viewport are unchanged; a structural slot refresh then updates content without invoking the solver. Recovery from an interrupted entry, resize or exit samples the current poses and starts the latest presentation, so transparent entrants and retired snapshots are released. No reading-position edge seat is retained.
+
+### Recent threads at empty status filters
+
+Below the status title, an empty Running selection shows up to three eligible
+Agent Threads by their [latest successful execution finish](../../Shared/PluginAPI/HarnessThread.swift).
+An empty Unread selection uses the same top-level folder or tag membership as its
+unread count and orders eligible Agent Threads by the last time their ready
+execution was in the foreground. A Thread with an unread current result stays
+in Unread. Both lists use the current pre-status scope and its visibility,
+archive and Report coverage rules. The unscoped Running view uses untagged
+Threads. Completed and ordinary tag emptiness use their own presentations.
+
+The status title and recent-list heading use opaque, appearance-matched label
+backings. Rows share one tinted regular Liquid Glass surface. Reduce
+Transparency and Increase Contrast use a solid face. Each row has the owning
+Harness logo, the Thread title and the relevant relative time. The title and
+time use the same high-contrast ink and differ in size and weight. Hover and
+press tint the row through the list's rounded edge, including the top and
+bottom insets on the end rows.
+Keyboard focus draws an inset outline. Clicking a row or activating it via its
+button opens the ordinary Agent reader. The selected filter remains the return
+destination. The group fits between the header and Dock, with fewer rows or the
+standalone skillet when space is limited. The startup toss uses the same
+viewport center before following the skillet to its settled position.
+
+The profile's thread-reading directory keeps up to 512 Agent Thread visit
+times in a separate record. Shared clients merge visits under a stable lock
+and atomically replace that record. A foreground reader with admitted
+execution content can update a time once per displayed execution on that
+visit, including a Report's visible execution sidecard. Bookmark
+acknowledgement still uses immutable version receipts. Bulk acknowledgement
+clears bookmarks through those receipts. A foreground reading visit supplies
+the recency time. Missing visit times leave the Thread out of Recently read.
 
 ## Tags and filter transitions
 
@@ -425,8 +457,15 @@ The pointer can enter a rail button up to 12pt beyond its current horizontal edg
 Unselected buttons expand on hover and collapse on exit. Both transitions use the Chief Bar’s 420ms smooth Overview capsule animation with zero extra bounce. Reduce Motion applies the width change immediately.
 
 Project directories and Inbox tags use native regular interactive Liquid Glass
-and system primary foreground in the top row. The left filter buttons use native clear interactive Liquid Glass. Each selected button tints its glass. The unselected
-buttons keep the base material.
+and system primary foreground in the top row. Each top capsule receives its
+own pointer press, including the click that activates the window. If the
+window receives the release inside the capsule, it selects the space even
+after a key-window change or after moving out and back in.
+Releasing outside or starting a scroll cancels the click. Keyboard and
+accessibility activation use the same selection action.
+
+The left filter buttons use native clear interactive Liquid Glass. Each
+selected button tints its glass. The unselected buttons keep the base material.
 
 Semantic tags and status choices take their tint from the dominant color of
 the displayed emoji, including the 🏷️ fallback for a tag without its own
@@ -625,16 +664,18 @@ of the selected top-row folder or semantic tag. A folder includes its full
 membership even when a child tag was selected before entering Unread. Report
 coverage is resolved for that space before the unread filter. Each overlapping tag
 can include the same unread Thread. With no top-row space, all eligible unread
-versions are visible. Receipt and catalog changes update the preset’s membership.
+versions are visible. Unread uses individual cards for every eligible Super
+Thread, independent of reading history and window size. Each card opens its
+own document. Receipt and catalog changes update the preset’s membership.
 When the selected space has no unread versions, the preset shows the localized
 empty message with the sleeping skillet.
 
 ## Viewed application collections
 
-Report opts into one two-cell collection per selected space. The Host first applies
-visibility, archive, directory/tag selection and exact execution coverage. It
-uses the full individual footprints, including offscreen cards. A report with a
-cover costs two cells and a coverless report costs one.
+The Host can group Reports into one two-cell collection per selected space
+outside Unread. It first applies visibility, archive, directory/tag selection
+and exact execution coverage. It uses the full individual footprints, including
+offscreen cards. A report with a cover costs two cells and a coverless report costs one.
 
 When a Talk link targets a Report in a visible collection, the carousel pauses automatic
 advance and selects that member. The reader opens through the card’s ordinary

@@ -27,6 +27,10 @@ struct StartupSkilletChrome: ViewModifier {
 
 struct NativeOverviewStatusEmptyState: View {
     let title: String
+    var recent: NativeOverviewRecentThreadList? = nil
+    var recentInsets = EdgeInsets()
+    var recentInteractive = true
+    static let markHeight: CGFloat = 182
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.startupSkilletEntrance) private var entrance
     private let palette = NativePalette.overview
@@ -35,23 +39,53 @@ struct NativeOverviewStatusEmptyState: View {
 
     var body: some View {
         GeometryReader { viewport in
-            TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { context in
-                let progress = reduceMotion ? 1 : entrance?.progress ?? 1
-                let sleep = smoothStep((progress - 0.45) / 0.50)
-                let phase = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate
-                    .truncatingRemainder(dividingBy: 3.6) * 2 * .pi / 3.6
-                VStack(spacing: 8) {
-                    skillet(phase: phase, sleep: sleep, progress: progress, viewport: viewport.size)
-                    Text(title)
-                        .font(NativeTypography.inter(size: 15, weight: 650))
-                        .foregroundStyle(palette.ink.swiftUI)
-                        .modifier(OverviewCanvasLabelEdge())
-                        .opacity(sleep)
+            let width = min(NativeOverviewRecentThreadList.idealWidth,
+                            viewport.size.width - recentInsets.leading - recentInsets.trailing)
+            let height = viewport.size.height - recentInsets.top - recentInsets.bottom
+            let availableRows = max(0, Int((height - Self.markHeight - NativeOverviewRecentThreadList.verticalChrome)
+                                            / NativeOverviewRecentThreadList.rowHeight))
+            if let recent, !recent.threads.isEmpty, width >= NativeOverviewRecentThreadList.minimumWidth, availableRows > 0 {
+                VStack(spacing: 0) {
+                    mark(in: viewport.size).frame(height: Self.markHeight)
+                    NativeOverviewRecentThreadList(title: recent.title,
+                        threads: Array(recent.threads.prefix(availableRows)), open: recent.open)
+                        .frame(width: width)
+                        .modifier(StartupSkilletChrome())
+                        .nativeCanvasNavigationRegion()
+                        .disabled(!recentInteractive)
+                        .allowsHitTesting(recentInteractive)
+                        .accessibilityHidden(!recentInteractive)
                 }
-                .padding(16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, recentInsets.top)
+                .padding(.bottom, recentInsets.bottom)
+                .coordinateSpace(name: viewportSpace)
+            } else {
+                mark(in: viewport.size).coordinateSpace(name: viewportSpace)
             }
-            .coordinateSpace(name: viewportSpace)
+        }
+    }
+
+    private func mark(in size: CGSize) -> some View {
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { context in
+            let progress = reduceMotion ? 1 : entrance?.progress ?? 1
+            let sleep = smoothStep((progress - 0.45) / 0.50)
+            let phase = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate
+                .truncatingRemainder(dividingBy: 3.6) * 2 * .pi / 3.6
+            VStack(spacing: 8) {
+                skillet(phase: phase, sleep: sleep, progress: progress, viewport: size)
+                Text(title)
+                    .font(NativeTypography.inter(size: 15, weight: 650))
+                    .foregroundStyle(palette.ink.swiftUI)
+                    .background {
+                        Capsule().fill(palette.surface.swiftUI)
+                            .padding(.horizontal, -8)
+                            .padding(.vertical, -3)
+                    }
+                    .opacity(sleep)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)

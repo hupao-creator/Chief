@@ -7,7 +7,7 @@ struct OverviewTagPointerPress: NSViewRepresentable {
     @Environment(\.isEnabled) private var enabled
     @Environment(\.overviewSwipeActions) private var swipeActions
     let onClick: () -> Void
-    let onHold: () -> Void
+    var onHold: (() -> Void)? = nil
 
     func makeNSView(context: Context) -> PressView { PressView() }
 
@@ -25,10 +25,17 @@ struct OverviewTagPointerPress: NSViewRepresentable {
         weak var swipeRegions: NativeOverviewSwipeRegions?
         var enabled = true
         var onClick: () -> Void = {}
-        var onHold: () -> Void = {}
+        var onHold: (() -> Void)?
         private var down: NSEvent?
         private var monitor: Any?
         private var resignObserver: NSObjectProtocol?
+
+        override var mouseDownCanMoveWindow: Bool { false }
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+            // A window-activating click can select a space. Keep the rail's
+            // hold-to-clear action under its normal active-window policy.
+            onHold == nil || super.acceptsFirstMouse(for: event)
+        }
 
         override func hitTest(_ point: NSPoint) -> NSView? {
             guard enabled, !isHiddenOrHasHiddenAncestor,
@@ -52,14 +59,18 @@ struct OverviewTagPointerPress: NSViewRepresentable {
                 }
                 return event
             }
-            resignObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification,
-                object: window, queue: .main) { [weak self] _ in
+            // A hold can clear unread state. Cancel it on focus loss, while
+            // letting a space click finish if this window still gets the release.
+            if onHold != nil {
+                resignObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification,
+                    object: window, queue: .main) { [weak self] _ in
                     MainActor.assumeIsolated { self?.cancelPress() }
+                }
                 }
         }
 
         override func mouseDragged(with event: NSEvent) {
-            if down != nil && !continuesPress(event) { cancelPress() }
+            if onHold != nil && down != nil && !continuesPress(event) { cancelPress() }
         }
 
         override func mouseCancelled(with event: NSEvent) { cancelPress() }
@@ -74,7 +85,7 @@ struct OverviewTagPointerPress: NSViewRepresentable {
             let inside = continuesPress(event)
             cancelPress()
             guard inside else { return }
-            if event.timestamp - started.timestamp >= 0.5 { onHold() }
+            if let onHold, event.timestamp - started.timestamp >= 0.5 { onHold() }
             else { onClick() }
         }
 
@@ -86,10 +97,13 @@ struct OverviewTagPointerPress: NSViewRepresentable {
         }
 
         private func continuesPress(_ event: NSEvent) -> Bool {
-            guard enabled, let down, !isHiddenOrHasHiddenAncestor else { return false }
-            let start = down.locationInWindow
             let point = event.locationInWindow
-            return hypot(point.x - start.x, point.y - start.y) <= 10 && contains(convert(point, from: nil))
+            guard enabled, let down, let window, event.window === window, !isHiddenOrHasHiddenAncestor,
+                  contains(convert(point, from: nil)) else { return false }
+            // A normal button can be dragged out and back in before release.
+            guard onHold != nil else { return true }
+            let start = down.locationInWindow
+            return hypot(point.x - start.x, point.y - start.y) <= 10
         }
 
         private func contains(_ point: NSPoint) -> Bool {

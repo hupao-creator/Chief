@@ -20,11 +20,13 @@ When you switch to another folder at the top, Chief restores the last tag or **R
 
 Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find a task that’s running or waiting for your response. Choose that folder or Inbox tag, then click ⏳ on the left to see its running tasks. With **Reduce Motion** turned on in macOS, the dots stay still.
 
+If **Running** shows **No running conversations**, look under **Recently completed** for up to three Agent Threads in the current folder or tag. Move the pointer over a row to highlight it, then click to reopen the conversation. The time beside the title shows when the task finished.
+
 ## Find unread conversations
 
-Choose a folder or tag in the top row, then click 🔖 **Unread** next to **Running** on the left. You’ll see the conversations counted by that top button’s red number, including unread Super Thread documents. A folder includes all its tags and tasks still waiting for a tag. Click another top button to see its unread conversations. If there are no folders or tags in the top row, **Unread** shows all bookmarked conversations.
+Choose a folder or tag in the top row, then click 🔖 **Unread** next to **Running** on the left. You’ll see the conversations counted by that top button’s red number. Each unread Super Thread has its own card. Click it to open the report directly. A folder includes all its tags and tasks still waiting for a tag. Click another top button to see its unread conversations. If there are no folders or tags in the top row, **Unread** shows all bookmarked conversations.
 
-Open a card and wait for the result or document to appear. Close the reader to return to **Unread**. It fades in place, or closes immediately with Reduce Motion on. The card you just read is gone. A new completed result or document revision brings it back. If you’ve read everything in the current view, Overview shows **No unread conversations** and keeps **Unread** selected. Click **Running** to leave the unread view.
+Open a card and wait for the result or document to appear. Close the reader to return to **Unread**. It fades in place, or closes immediately with Reduce Motion on. The card you just read is gone. A new completed result or document revision brings it back. If you’ve read everything in the current view, Overview shows **No unread conversations** and keeps **Unread** selected. When **Recently read** appears, move the pointer over one of the last three Agent Threads you read in the current folder or tag. The row highlights and you can click it to reopen the conversation. The time beside the title shows when you last read it. Click **Running** when you want to see active work.
 
 A red number on a folder counts conversations with an unread completed result or Super Thread document among its cards. A red number on a tag counts unread conversations in that tag. Open a card with a red bookmark to read the result or document. Its count drops in every folder or tag that includes it, and disappears when you’ve read them all.
 
@@ -46,13 +48,15 @@ In a window or full screen, move two fingers up on a card or empty canvas to sel
 
 Resize the window to adjust how many cards you can see. Overview arranges cards across the window and centers them vertically. The folder and tag buttons at the top have a frosted glass background. The clear glass buttons on the left float over the cards. With **Reduce transparency** turned on in macOS, the filters have a solid background. Click a filter to select it, or click the visible part of a card between filters to open it. A wide task card can appear between two taller cards when there’s room for it there. Opening the Chief input box keeps the cards in place.
 
+Use the green window button to enter full screen. The canvas has a warm off-white background in Light appearance and a charcoal background in Dark appearance. Move the pointer to the top of the screen and click the green button again to return to the frosted window.
+
 Right-click Chief Bar to read your conversation with Chief and reply. Scroll inside a long reply to read more. Click a run link in the compact bar or your conversation to open that result.
 
 When the cards extend beyond the right edge, swipe left or right with two fingers on a trackpad, or scroll horizontally with a mouse. With keyboard focus on a card, use the Left and Right Arrow keys to scroll. In the Inbox **Completed** view, an outline marks the task card with keyboard focus. Click a task card, or press Return on a focused task, to open it.
 
 Overview keeps your place when you close a conversation or Settings. If you widen the window or choose a filter so all the cards fit, Overview centers them. Horizontal scrolling leaves a fitting grid centered. If some columns are still offscreen, you can scroll to the last one.
 
-If the cards in your current view would extend past the window, Overview can group Super Threads into a collection. Widen the window or choose a folder or tag with fewer cards. Super Threads reappear as individual cards as space opens up. Reports you haven’t visited for a day can stay grouped. Click a collection’s page count to browse its members. [Browse Super Threads in a collection](reports-tags-and-changes.md#browse-super-threads-in-a-collection)
+When you’re browsing outside **Unread**, Overview can group Super Threads into a collection if the cards extend past the window. Widen the window or choose a folder or tag with fewer cards. Super Threads reappear as individual cards as space opens up. Reports that have been idle for 30 minutes can stay grouped. Click a collection’s page count to browse its members. [Browse Super Threads in a collection](reports-tags-and-changes.md#browse-super-threads-in-a-collection)
 
 ## Check progress or respond
 

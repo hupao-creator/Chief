@@ -78,6 +78,7 @@ public final class NativeWorkspacePresentation {
     @ObservationIgnored private var sidecardComposerThread: JSONText?
     public private(set) var threadExecutionReveal: SidecardExecutionReveal?
     public private(set) var readingEntranceAdmitted = false
+    @ObservationIgnored private var recordedRecentAgentRead: ApplicationExecutionRef?
     @ObservationIgnored private var threadDrafts: [JSONText: NativeComposerDraft] = [:]
     @ObservationIgnored private var superThreadDrafts: [JSONText: NativeComposerDraft] = [:]
     public private(set) var selected: ApplicationThreadRef?
@@ -461,6 +462,7 @@ public final class NativeWorkspacePresentation {
         reportExecution = nil; reportInputReady = false; reportInputBack = nil; executionSendNavigation = nil
         agentInputTarget = nil; agentInputOwner = nil
         readingEntranceAdmitted = false
+        recordedRecentAgentRead = nil
         threadExecutionReveal = nil
         navigation = nil
         mountedReadingThread = nil
@@ -536,8 +538,16 @@ public final class NativeWorkspacePresentation {
                       reportSidecards.displayedExecutionID == reportExecution.executionID {
                 shown = reportExecution
             } else { shown = nil }
-            if let shown, workspace.catalog.thread(shown.thread.threadID)?.bookmarkVersion == shown.executionID {
-                try overview.markRead(shown.thread, version: shown.executionID)
+            if let shown, let thread = workspace.catalog.thread(shown.thread.threadID), thread.isOrdinaryAgent {
+                if thread.bookmarkVersion == shown.executionID {
+                    try overview.markRead(shown.thread, version: shown.executionID)
+                }
+                if recordedRecentAgentRead != shown {
+                    try workspace.preferences.threadReadHistory.recordRecentAgentRead(thread.id)
+                    recordedRecentAgentRead = shown
+                }
+            } else {
+                recordedRecentAgentRead = nil
             }
         } catch { workspace.report(error) }
     }
