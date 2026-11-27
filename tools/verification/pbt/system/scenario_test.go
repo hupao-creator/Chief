@@ -327,6 +327,9 @@ trace_exporter = "none"
 				}
 				mock.mu.Lock()
 				failures := append([]string{}, mock.failures...)
+				if mock.faultPlan["read"] == "stall" && mock.snapshotRecoveries != 1 {
+					failures = append(failures, fmt.Sprintf("expected one silent snapshot recovery, observed %d", mock.snapshotRecoveries))
+				}
 				for role := range mock.faultPlan {
 					if mock.faultHits[role] != 1 {
 						failures = append(failures, "fault was not exercised: "+role)
@@ -550,6 +553,10 @@ func parseFaults(value string) (map[string]string, error) {
 		}
 		switch mode {
 		case "429", "500", "truncate":
+		case "stall":
+			if role != "read" {
+				return nil, errors.New("only history reads support a stalled stream")
+			}
 		default:
 			return nil, fmt.Errorf("unknown fault mode %q", mode)
 		}

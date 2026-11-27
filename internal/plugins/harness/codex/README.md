@@ -58,8 +58,9 @@ startup, so isolated configuration does not outlive a rejected launch.
 
 Thread Read uses a separate ephemeral native fork when source history is
 available. The fork uses the source history home with exclusive tool configuration, no injected tools, read-only sandboxing and approvals disabled. It does not request a managed worktree write grant. Missing history or a failed fork read uses a snapshot fallback in an
-isolated read-only session and temporary workspace. Each temporary session is registered with the Handle and releases its own exact
-registration on return, even when a fallback replaces the current session. Handle Close cancels and joins in-flight reads before returning. Read answers
+isolated read-only session and temporary workspace. A read that completes without text or supplies no nonblank answer text for 30 seconds after turn acknowledgement or the last answer text fails that attempt. Reasoning and tool traffic do not extend the interval. A failed fork can retry once against the saved snapshot. If only a snapshot is available, one fresh snapshot attempt can retry a silent or empty answer. Both attempts share the Runtime read deadline and retire their native owners before returning or retrying. Moku records one tool operation.
+
+Each temporary session is registered with the Handle and releases its own registration on return. A cleanup failure stops retry. Handle Close cancels and joins in-flight reads before returning. Read answers
 are not projected into the source session; their native processes, temporary
 workspace and one-shot configuration homes are drained on successful cleanup. Ownership release, process exit, temporary-file cleanup and source-state
 preservation are implemented responsibilities of that read owner.
