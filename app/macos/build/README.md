@@ -18,6 +18,7 @@ make fast         # incremental Go/Swift build into a new development generation
 make watch-main   # rebuild each clean local main commit
 make build        # build Go runtime and release Swift application
 make pack         # sign app/macos/dist/Chief.app
+make pack ARGS='--channel demo --zip'  # sign and archive Chief Demo.app
 make dist         # also create Chief.app.zip
 make alpha        # build an ad-hoc signed alpha DMG without Apple credentials
 make smoke        # statically validate the packaged production app
@@ -37,7 +38,7 @@ builds. The version in `go.mod` is the required Go toolchain; `VERSION` supplies
 the application version.
 
 Building requires Apple Silicon and Xcode's macOS 26 SDK; `scripts/go.sh` provides
-the pinned Go toolchain. Production and development packaging also
+the pinned Go toolchain. Production, development and demo packaging also
 require one valid Apple Development identity with its private key. `CSC_NAME`
 selects an exact certificate name or SHA-1; `CSC_KEYCHAIN` selects its keychain.
 There is no automatic ad-hoc signing fallback. The explicit alpha channel needs
@@ -51,6 +52,10 @@ and the `Chief Native Dev` default profile. Production uses `com.mokusei.desktop
 `Chief.app` and the `Chief` default profile. The Go runtime
 binary is built at `.build/go/chief-runtime`. A raw Swift executable can use
 `--runtime /absolute/path/to/chief-runtime --data-dir /isolated/profile`.
+
+The demo bundle uses `com.mokusei.desktop.demo` and opens the
+[sample workspace](../README.md#read-only-demo-workspace) without admitting a runtime profile.
+`make smoke ARGS='--channel demo'` checks the packaged demo without launching it.
 
 Alpha uses `com.mokusei.desktop.alpha`, `Chief Alpha.app` and the `Chief Alpha`
 profile. Its default data directory is `~/Library/Application Support/Chief Alpha`.

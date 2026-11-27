@@ -1,11 +1,11 @@
 import ChiefPluginUI
 import SwiftUI
 
-enum NativeOverviewRailChoice: Identifiable, Equatable {
+public enum NativeOverviewRailChoice: Identifiable, Equatable {
     case tag(NativeOverviewFilter)
     case status(NativeOverviewStatusFilter)
 
-    var id: String {
+    public var id: String {
         switch self {
         case .tag(let filter): filter.id
         case .status(let status): status.rawValue
@@ -186,5 +186,25 @@ private struct OverviewRailLabelLayout: Layout {
         let titleX = bounds.minX + diameter
         subviews[1].place(at: CGPoint(x: titleX, y: bounds.midY),
                           anchor: .leading, proposal: .init(width: titleWidth, height: diameter))
+    }
+}
+
+extension NativeOverviewChrome {
+    static func railGeometry(viewportWidth: CGFloat, topSemantic: Bool) -> (inset: CGFloat, maximumWidth: CGFloat) {
+        let inset = min(12, viewportWidth * 0.015)
+        let width = topSemantic ? viewportWidth / 2 - inset : viewportWidth * 0.15 * OverviewTagMetrics.tagScale
+        return (inset, min(OverviewTagMetrics.railMaximumWidth, width))
+    }
+
+    public static func rail(choices: [NativeOverviewRailChoice], selectedID: String?, viewportWidth: CGFloat,
+                            topSemantic: Bool = false, strings: NativeOverviewChromeStrings,
+                            onSelect: @escaping (NativeOverviewRailChoice) -> Void,
+                            onClearUnread: @escaping (String) -> Void,
+                            interactions: NativeOverviewChromeInteractions? = nil) -> some View {
+        let geometry = railGeometry(viewportWidth: viewportWidth, topSemantic: topSemantic)
+        return NativeOverviewTagRail(choices: choices, selectedID: selectedID,
+            maximumWidth: geometry.maximumWidth, strings: strings,
+            onSelect: onSelect, onClearUnread: onClearUnread, interactions: interactions)
+            .padding(.leading, geometry.inset)
     }
 }

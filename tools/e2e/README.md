@@ -534,6 +534,16 @@ surfaces. Exit full screen and confirm the windowed material has returned.
 Record the commit, build, capture method and sampled coordinates.
 [Workspace window contract](../../app/macos/Sources/Host/WindowNavigation/README.md#window-and-reading-navigation)
 
+### Demo related execution draft
+
+Open a built Chief with `--demo` or launch **Chief Demo.app**. Open **Checkout release brief**, then
+select **Trace the discounted receipt** under **Related executions**. Wait for the Chief Bar below the
+execution to show its text editor. Type a distinctive draft. Return to the related list and confirm that
+the input closes. Reopen the same execution and check the text. Open a different report's execution
+and confirm its draft starts empty. Quit and reopen the demo, then check the first execution again.
+It should now have an empty draft. Record the commit, build, launch method and the visible text and
+Dock position at each step. [Demo reader contract](../../app/macos/README.md#read-only-demo-workspace)
+
 ### Settings factory reset
 
 Run `python3 tools/e2e/factory_reset.py /private/tmp/chief-reset-evidence-UNIQUE`

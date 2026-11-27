@@ -13,7 +13,7 @@
   <strong><a href="https://github.com/hupao-creator/Chief/releases?q=draft%3Afalse">Download latest release</a></strong> · <a href="docs/getting-started.md">Get started</a> · <a href="LICENSE">Apache 2.0</a>
 </p>
 
-[![Chief Overview filtered to bug fixes, with two illustrated reports above an active task](design/overview-readme-preview.webp)](design/overview-readme.png)
+[![Chief Overview showing project filters and API Platform tasks with reports, progress checklists, and file changes](design/overview-readme-preview.webp)](design/overview-readme.png)
 
 ## Attention Is All We Need
 

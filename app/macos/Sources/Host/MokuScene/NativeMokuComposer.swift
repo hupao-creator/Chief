@@ -7,7 +7,7 @@ import SwiftUI
 extension EnvironmentValues {
     /// Cached workspaces can edit device-local text while host actions remain
     /// unavailable. A disabled lifecycle or read-only history owner still stays inert.
-    @Entry var nativeOfflineDraftEditing = false
+    @Entry public var nativeOfflineDraftEditing = false
 }
 
 /// Shared completion chrome. The Dock mounts it above the fixed input row so

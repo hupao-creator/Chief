@@ -42,7 +42,7 @@ public enum NativeOverviewCardSnapshot {
     case collection(AnyApplicationThreadPlugin, [ApplicationOverviewSnapshot])
 }
 
-enum NativeOverviewStatusFilter: String {
+public enum NativeOverviewStatusFilter: String {
     case running, unread, all, completed
 
     func includes(_ thread: HarnessThread, unread: Bool = false) -> Bool {

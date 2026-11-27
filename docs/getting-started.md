@@ -11,6 +11,19 @@ You'll need a Mac with Apple silicon running macOS 26 or later.
 
 While Chief connects, you may see its skillet toss three agent icons. If Overview opens on **No running conversations**, the icons settle into the pan and the message appears beneath it. With Reduce Motion on, the skillet stays still while you wait and the message appears immediately when Overview opens. If Chief says it can't connect to its background service, click **Reconnect**. When the connection succeeds, Chief shows setup or your workspace. If the message returns, include it and the release version when you contact your inviter. Remove account details and private paths before sharing a screenshot.
 
+## Explore the demo workspace
+
+Double-click **Chief Demo.app** in Finder. If you're using the regular Chief app, choose **Help → Open Demo Workspace**. The sample workspace opens on **Checkout** with the same window controls, directory bar and Chief Dock as your workspace. You can explore it before connecting an agent.
+
+- Open **Checkout release brief** to read a Super Thread. Click **Trace the discounted receipt** in **Related executions** to see the original calculation beside the report. You can type a practice reply in the Chief Bar beneath the execution. Returning to the list closes the input. Opening the same execution again restores your text for this demo session.
+- **Keep the postal code** shows a Git branch, three changed files and the line counts. **Check the first tap on Safari** shows the conversation on the left and its checklist on the right. Open either card to read its conversation, then close the reading panel to return to the board.
+- Scroll horizontally in **Checkout** to find two more Super Threads. **Wallet retry reconciliation** follows two wallet attempts to one paid order. **Where the refund cent goes** shows how three partial refunds add up to €20. Choose **API Platform** or **Launch Desk** at the top to switch projects. Open **CSV export field notes** for a comparison of three export sizes, or **Launch desk handoff** for the decision on sending a translated announcement.
+- Hover over an emoji on the left to see its tag. In **Checkout**, choose **Address form** to see the postal code, pasted address and pickup tasks together. Switching folders remembers your tag for each folder. Click the current folder at the top to show all its cards again.
+
+All conversations, file changes and running statuses are samples. Browsing works locally without an agent connection. When you’re finished, press **Command-Q** or close the window to exit the demo. Opening it again starts at **Checkout**.
+
+For a screenshot with the translucent background, keep Chief in a regular window. Colors from the desktop show through the space between cards. Full screen uses a solid background. Press **Shift-Command-4**, press **Space**, then click the window to capture it.
+
 ## Connect an agent
 
 Chief opens in Simplified Chinese if Chinese is first in your Mac's preferred languages. For every other primary language, Chief opens in English. This guide uses the English labels. [Change appearance or language on your Mac](settings.md#change-appearance-or-language-on-your-mac)

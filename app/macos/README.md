@@ -29,6 +29,43 @@ gutter measurement, with a persistent knob whenever scrolling is possible.
 | Sources/Plugins/Applications | Report and Tag native contributions |
 | [Sources/Plugins/Sidecards](Sources/Plugins/Sidecards/README.md) | Conversation and browser |
 
+## Read-only demo workspace
+
+`make pack ARGS='--channel demo'` builds the signed native `app/macos/dist/Chief Demo.app`.
+Finder launches it directly into the demo. Its separate bundle identifier,
+`com.mokusei.desktop.demo`, selects the same SwiftUI App as `Chief --demo` before normal launch options, profile admission,
+factory-reset recovery or exit cleanup. All other workspace flags are inert on that path.
+Help → Open Demo Workspace requests a new instance of the same app bundle with this argument.
+The demo uses the production window style, dimensions, traffic lights and full-content surface.
+The Overview leaves the space between cards transparent so the window material can sample the desktop.
+The shared window surface supplies the opaque backdrop in native full screen.
+Exit Demo is in the application menu (Command-Q). Closing the window also terminates that instance.
+The demo owns its directory, per-directory tag and reader selection in memory and disables window restoration.
+
+[Demo composition](Sources/Composition/Demo/) supplies synthetic Codex public observations,
+materialized turns, per-worktree Git metadata and report catalog entries to the registered native plugins.
+Checkout adapts address validation, receipt pricing and browser-check scenarios from the
+collected Orca examples. API Platform adapts scoped access and usage notifications from the
+Multica ship board. Launch Desk adapts onboarding, localization and support work from its launch and triage boards. Checkout has three reports covering receipt totals, wallet retries and partial refunds. API Platform and Launch Desk each have one report. Each report covers its own cited execution, and each folder also has nine standalone threads across four semantic tags. The catalog passes the production Overview column budget to both plugin projectors. A lone Git or Todo extension shares a two-column, one-row card with its thread identity. The executable contains the rewritten examples and local report HTML.
+Sample paths are display values. The demo constructs no Runtime client, profile preferences,
+automation server, provider discovery or Git service. Report reads resolve only fixture
+documents and their cited executions. Agent commands and external navigation have no live implementation.
+The Overview uses the production canvas, directory controls, semantic and status rails, and Dock clearances.
+The same Moku scene and Dock own the bottom edge. Agent and Report readers open in the production reading panel stack.
+The Agent sidecard workspace receives a materialized conversation and bound actions through its reading host.
+Demo composer drafts and Settings edits live in memory. The Settings diagram reads a sample Codex installation and model catalog.
+Opening a cited execution uses the same history reader and input target as a live Report. The Dock moves
+to the execution column and opens its in-memory draft once the column settles. Returning to the related
+list closes the input. Running plans are recorded states.
+[Demo reader and draft replay](../../tools/e2e/README.md#demo-related-execution-draft)
+
+To edit the boards, change the entries in [DemoBoards.swift](Sources/Composition/Demo/DemoBoards.swift).
+Each entry supplies a topic, prompt and reply. Its optional Git observation, plan and report story
+determine the card the plugins project. Folder and tag filters derive their membership from those same entries.
+Run `make smoke ARGS='--channel demo'` after packaging to verify the bundle, its signature and resources without opening a window.
+
+## Isolated benchmark launch
+
 The explicit `--benchmark-scenario overview` launch requires an isolated
 `--data-dir` and automation socket, completes onboarding before workspace creation
 and disables scene restoration. `--benchmark-agent-emoji-badge flat|liquid-glass`

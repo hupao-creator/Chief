@@ -6,6 +6,7 @@ To return to this guide from the app, choose **Help → Chief User Guide**.
 
 ## Set up your workspace
 
+- Try the sample cards and conversations. [Explore the demo workspace](getting-started.md#explore-the-demo-workspace)
 - Install Chief Alpha, connect an agent, and send your first request. [Getting started](getting-started.md)
 - Choose which agents can take tasks and set up Tag Agent and Super Thread Agent. [Settings](settings.md)
 

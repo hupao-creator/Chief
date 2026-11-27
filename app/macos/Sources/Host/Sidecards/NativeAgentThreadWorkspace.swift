@@ -7,7 +7,7 @@ import SwiftUI
 /// Plugin identities and contents are supplied by the active registry.
 @MainActor
 public struct NativeAgentThreadWorkspace: View {
-    private let harnessHost: NativeHarnessHost
+    private let harnessHost: any NativeThreadReadingHost
     private let thread: HarnessThread
     private let registry: SidecardPluginRegistry
     private let executionDisabled: Bool
@@ -25,7 +25,7 @@ public struct NativeAgentThreadWorkspace: View {
     @State private var nestedNavigation: ThreadDetailBackAction?
     @State private var navigation: ThreadDetailBackAction
 
-    public init(harnessHost: NativeHarnessHost, thread: HarnessThread, registry: SidecardPluginRegistry,
+    public init(harnessHost: any NativeThreadReadingHost, thread: HarnessThread, registry: SidecardPluginRegistry,
                 executionDisabled: Bool = false, readingTarget: HarnessReadingTarget? = nil,
                 sidecardsSuppressed: Bool = false,
                 enabledSidecardIDs: Set<JSONText>? = nil, services: NativeSidecardWorkspaceServices,
@@ -68,13 +68,13 @@ private extension EnvironmentValues {
 }
 
 extension EnvironmentValues {
-    @Entry var nativeAgentPanelClose: (() -> Void)?
+    @Entry public var nativeAgentPanelClose: (() -> Void)?
     @Entry var nativeAgentInputTargetChanged: ((UUID, ThreadConversationInputTarget?) -> Void)?
 }
 
 @MainActor
 private struct NativeThreadWorkspaceBody: View {
-    let harnessHost: NativeHarnessHost
+    let harnessHost: any NativeThreadReadingHost
     let thread: HarnessThread
     let registry: SidecardPluginRegistry
     let executionDisabled: Bool
@@ -338,7 +338,7 @@ struct NativeSidecardWorkspaceLayout: View {
     private var mainConversation: some View {
         VStack(spacing: 0) {
             NativeThreadPreparedReader(bodyLayoutReady: snapshot.entranceReady) {
-                NativeHarnessThreadView(host: model.harnessHost, input: snapshot.input,
+                model.harnessHost.conversation(input: snapshot.input,
                 presentation: .main(excludedExecutionIDs: snapshot.excludedExecutionIDs),
                 routes: model.routes, onIndexChange: model.receiveIndex)
                 .environment(\.threadRetainedMainExecution, snapshot.cards.lazy.compactMap(\.view.retainedMainExecutionID).first)

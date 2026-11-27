@@ -229,7 +229,6 @@ private struct NativeApplicationHTMLCapabilityView: View {
 private struct NativeApplicationReferencedExecution: View {
     let host: NativeApplicationHost
     let reference: ApplicationExecutionRef
-    @Environment(\.nativeReportSidecards) private var sidecards
     @State private var catalogRevision = 0
     @State private var lifetime = PluginLifetime()
     @State private var unsubscribe: (() -> Void)?
@@ -237,36 +236,63 @@ private struct NativeApplicationReferencedExecution: View {
         Group {
             let _ = catalogRevision
             if let thread = host.workspace.catalog.thread(reference.thread.threadID), thread.isOrdinaryAgent {
-                if let sidecards {
-                    reportConversation(thread, sidecards: sidecards)
-                } else {
-                    NativeHarnessThreadView(host: host.workspace.harnessHost, input: HarnessThreadInput(thread: thread),
-                        presentation: .execution(reference.executionID))
-                }
+                NativeReferencedExecutionReader(host: host.workspace.harnessHost, thread: thread, reference: reference)
             } else {
                 Text(host.workspace.locale.text("关联执行不可用", "Related execution unavailable"))
                     .foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
                     .nativeReadingContentReady()
             }
         }
-            .environment(\.threadRelatedExecution, true)
-            .environment(\.nativeReadingNavigation, nil)
             .id(reference)
             .onAppear { subscribeReference() }
             .onChange(of: reference) { _, _ in subscribeReference() }
             .onDisappear { unsubscribe?(); unsubscribe = nil }
     }
 
-    private func reportConversation(_ thread: HarnessThread, sidecards: NativeReportSidecardPresentation) -> some View {
+    private func subscribeReference() {
+        unsubscribe?()
+        unsubscribe = host.subscribeReferences([reference], listener: { catalogRevision += 1 }, lifetime: lifetime)
+    }
+}
+
+/// Bind a cited execution and its Dock to the same reader visit, including in a fixture-backed workspace.
+@MainActor public struct NativeReferencedExecutionReader: View {
+    private let host: any NativeThreadReadingHost
+    private let thread: HarnessThread
+    private let reference: ApplicationExecutionRef
+    @Environment(\.nativeReportSidecards) private var sidecards
+    @Environment(\.locale) private var locale
+
+    public init(host: any NativeThreadReadingHost, thread: HarnessThread, reference: ApplicationExecutionRef) {
+        self.host = host
+        self.thread = thread
+        self.reference = reference
+    }
+
+    public var body: some View {
+        Group {
+            if let sidecards {
+                reportConversation(sidecards)
+            } else {
+                host.conversation(input: .init(thread: thread), presentation: .execution(reference.executionID),
+                                  routes: .init(), onIndexChange: { _ in })
+            }
+        }
+        .environment(\.threadRelatedExecution, true)
+        .environment(\.nativeReadingNavigation, nil)
+    }
+
+    private func reportConversation(_ sidecards: NativeReportSidecardPresentation) -> some View {
         let visit = sidecards.executionVisit
         let request = HarnessReadingTarget(executionID: reference.executionID, requestID: JSONText(visit.uuidString),
             mode: .history, position: sidecards.entryPosition)
-        let back = ThreadDetailBackAction(label: host.workspace.locale.text("返回关联执行", "Back to related executions")) {
+        let label = locale.language.languageCode?.identifier == "zh" ? "返回关联执行" : "Back to related executions"
+        let back = ThreadDetailBackAction(label: label) {
             if sidecards.executionVisit == visit { sidecards.selectExecution(nil) }
         }
         return ThreadDetailFrame(navigation: back, onNavigationChange: { _ in }, isolatedNavigation: true) {
-            NativeHarnessThreadView(host: host.workspace.harnessHost,
-                input: HarnessThreadInput(thread: thread, readingTarget: request))
+            host.conversation(input: .init(thread: thread, readingTarget: request),
+                              presentation: .main(excludedExecutionIDs: []), routes: .init(), onIndexChange: { _ in })
                 .onPreferenceChange(ThreadConversationInputTargetKey.self) { target in
                     if let target, target.threadID != reference.thread.threadID || target.requestID != request.requestID { return }
                     let displayed = target?.executionID.map { ApplicationExecutionRef(thread: reference.thread, executionID: $0) }
@@ -274,10 +300,5 @@ private struct NativeApplicationReferencedExecution: View {
                                           displayedExecutionID: target?.displayedExecutionID, visit: visit)
                 }
         }
-    }
-
-    private func subscribeReference() {
-        unsubscribe?()
-        unsubscribe = host.subscribeReferences([reference], listener: { catalogRevision += 1 }, lifetime: lifetime)
     }
 }

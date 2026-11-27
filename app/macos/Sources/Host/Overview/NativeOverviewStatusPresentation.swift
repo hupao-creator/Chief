@@ -25,11 +25,11 @@ struct StartupSkilletChrome: ViewModifier {
     }
 }
 
-struct NativeOverviewStatusEmptyState: View {
+public struct NativeOverviewStatusEmptyState: View {
     let title: String
-    var recent: NativeOverviewRecentThreadList? = nil
-    var recentInsets = EdgeInsets()
-    var recentInteractive = true
+    private let recent: NativeOverviewRecentThreadList?
+    private let recentInsets: EdgeInsets
+    private let recentInteractive: Bool
     static let markHeight: CGFloat = 182
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.startupSkilletEntrance) private var entrance
@@ -37,7 +37,18 @@ struct NativeOverviewStatusEmptyState: View {
     private let scale: CGFloat = 1.25
     @Namespace private var viewportSpace
 
-    var body: some View {
+    public init(title: String) {
+        self.init(title: title, recent: nil, recentInsets: EdgeInsets(), recentInteractive: true)
+    }
+
+    init(title: String, recent: NativeOverviewRecentThreadList?, recentInsets: EdgeInsets, recentInteractive: Bool) {
+        self.title = title
+        self.recent = recent
+        self.recentInsets = recentInsets
+        self.recentInteractive = recentInteractive
+    }
+
+    public var body: some View {
         GeometryReader { viewport in
             let width = min(NativeOverviewRecentThreadList.idealWidth,
                             viewport.size.width - recentInsets.leading - recentInsets.trailing)

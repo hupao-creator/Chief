@@ -63,10 +63,7 @@ public struct NativeOverviewWorkspaceView: View {
             let hasFilters = !filters.isEmpty
             let viewport = Self.viewport(in: geometry.size, hasFilters: hasFilters,
                                          hasDock: model.workspace.catalog.hasMoku)
-            let railEdgeInset = min(12, geometry.size.width * 0.015)
-            let railWidth = model.isTopSemanticSelected ? geometry.size.width / 2 - railEdgeInset
-                : geometry.size.width * 0.15 * OverviewTagMetrics.tagScale
-            let headerBottom = OverviewTagMetrics.headerBottom(in: geometry.size, hasFilters: !landing && hasFilters)
+            let headerBottom = NativeOverviewChrome.headerBottom(in: geometry.size, hasFilters: !landing && hasFilters)
             // The last card can make the Dock switch to landing before the
             // canvas admits its empty layout. Keep that exit drawable while
             // landing and its input take over immediately.
@@ -97,7 +94,9 @@ public struct NativeOverviewWorkspaceView: View {
                 if !landing && model.showsEmptyState {
                     switch model.statusFilter {
                     case .running, .unread:
-                        let sideInset = model.railChoices.isEmpty ? 16 : min(OverviewTagMetrics.railMaximumWidth, railWidth) + railEdgeInset + 12
+                        let rail = NativeOverviewChrome.railGeometry(
+                            viewportWidth: geometry.size.width, topSemantic: model.isTopSemanticSelected)
+                        let sideInset = model.railChoices.isEmpty ? 16 : rail.maximumWidth + rail.inset + 12
                         let recent = NativeOverviewRecentThreadList(
                             title: model.statusFilter == .running
                                 ? locale.text("最近完成", "Recently completed") : locale.text("最近阅读", "Recently read"),
@@ -141,11 +140,10 @@ public struct NativeOverviewWorkspaceView: View {
             }
             .overlay(alignment: .leading) {
                 if !landing {
-                    NativeOverviewTagRail(choices: model.railChoices, selectedID: model.selectedRailID,
-                        maximumWidth: min(OverviewTagMetrics.railMaximumWidth, railWidth),
+                    NativeOverviewChrome.rail(choices: model.railChoices, selectedID: model.selectedRailID,
+                        viewportWidth: geometry.size.width, topSemantic: model.isTopSemanticSelected,
                         strings: chromeStrings, onSelect: model.selectRailChoice, onClearUnread: model.clearUnread(inTag:),
                         interactions: model.chromeInteractions)
-                        .padding(.leading, railEdgeInset)
                         .modifier(chromePresentation(edge: .leading))
                         .modifier(StartupSkilletChrome())
                 }
@@ -170,8 +168,7 @@ public struct NativeOverviewWorkspaceView: View {
             }
             .onChange(of: geometry.size, initial: true) { _, size in model.setCollectionWindowSize(size) }
         }
-        .coordinateSpace(name: OverviewTagActivityIndicator.Space.workspace)
-        .environment(\.overviewTagActivityVisible, chromeVisible && !landing && model.facts.overviewVisible
+        .nativeOverviewActivity(visible: chromeVisible && !landing && model.facts.overviewVisible
             && model.facts.documentVisible && !model.facts.settingsOpen)
         .environment(\.nativeCanvasInputRegions, inputRegions)
         .environment(\.locale, Locale(identifier: locale.rawValue))
@@ -184,7 +181,7 @@ public struct NativeOverviewWorkspaceView: View {
                                    reduceMotion: reduceMotion)
     }
 
-    static func viewport(in size: CGSize, hasFilters: Bool, hasDock: Bool) -> NativeOverviewViewport {
+    public static func viewport(in size: CGSize, hasFilters: Bool, hasDock: Bool) -> NativeOverviewViewport {
         // Visibility probes measure the persistent header and idle Dock extents.
         let dock = NativeMokuCapsuleLayout.idleSurface(in: CGRect(origin: .zero, size: size))
         return .init(width: size.width, height: size.height,
@@ -202,22 +199,7 @@ public struct NativeOverviewWorkspaceView: View {
         }
         return locale.text("没有 \(model.selectedFilter?.tag ?? model.selectedTag) 会话", "No \(model.selectedFilter?.tag ?? model.selectedTag) conversations")
     }
-    private var chromeStrings: NativeOverviewChromeStrings {
-        var strings = NativeOverviewChromeStrings()
-        if locale == .english {
-            strings.settings = "Settings"; strings.restart = "Restart development app"; strings.actions = "Overview actions"
-            strings.runningOnly = "Running"
-            strings.unreadOnly = "Unread"
-            strings.allStatuses = "All statuses"
-            strings.completedOnly = "Completed"
-            strings.statusFilter = "Filter by status"
-            strings.filter = "Filter by tag"
-            strings.containsActiveTasks = "Contains active tasks"
-            strings.unread = "unread"
-            strings.clearUnread = "Mark all in tag as read"
-        }
-        return strings
-    }
+    private var chromeStrings: NativeOverviewChromeStrings { .init(locale: locale) }
 }
 
 private struct OverviewChromePresentation: ViewModifier {
@@ -398,5 +380,13 @@ private struct NativeOverviewWorkspaceCard: View {
                 Text(error.localizedDescription).font(NativeTypography.inter(size: 11)).foregroundStyle(NativePalette.overview.danger.swiftUI)
             }.padding(18).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading))
         }
+    }
+}
+
+
+public extension View {
+    func nativeOverviewActivity(visible: Bool) -> some View {
+        coordinateSpace(name: OverviewTagActivityIndicator.Space.workspace)
+            .environment(\.overviewTagActivityVisible, visible)
     }
 }

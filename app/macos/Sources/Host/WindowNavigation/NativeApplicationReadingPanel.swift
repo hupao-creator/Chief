@@ -4,13 +4,13 @@ import ChiefPluginUI
 import SwiftUI
 
 extension EnvironmentValues {
-    @Entry var nativeApplicationReadingPanel = false
+    @Entry public var nativeApplicationReadingPanel = false
     @Entry var nativeApplicationOpenLinkCard: ((URL) -> Void)?
     @Entry var nativeApplicationCloseLinkCard: (() -> Bool)?
-    @Entry var nativeReportExecutionInputChanged: ((ApplicationExecutionRef?, Bool, (() -> Void)?) -> Void)?
+    @Entry public var nativeReportExecutionInputChanged: ((ApplicationExecutionRef?, Bool, (() -> Void)?) -> Void)?
 }
 
-struct NativeApplicationReadingPanel: ViewModifier {
+public struct NativeApplicationReadingPanel: ViewModifier {
     let enabled: Bool
     var suppressed = false
     var returnsToCollection = false
@@ -18,7 +18,16 @@ struct NativeApplicationReadingPanel: ViewModifier {
     let onClose: () -> Void
     @Environment(\.locale) private var locale
 
-    func body(content: Content) -> some View {
+    public init(enabled: Bool, suppressed: Bool = false, returnsToCollection: Bool = false,
+                dismissToOverview: (() -> Void)? = nil, onClose: @escaping () -> Void) {
+        self.enabled = enabled
+        self.suppressed = suppressed
+        self.returnsToCollection = returnsToCollection
+        self.dismissToOverview = dismissToOverview
+        self.onClose = onClose
+    }
+
+    public func body(content: Content) -> some View {
         if enabled {
             let chinese = locale.language.languageCode?.identifier == "zh"
             let isBack = dismissToOverview == nil && returnsToCollection
