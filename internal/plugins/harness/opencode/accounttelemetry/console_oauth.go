@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -18,14 +19,27 @@ type ConsoleAccount struct {
 	OrgID       string    `json:"-"`
 	ExpiresAt   time.Time `json:"-"`
 }
+
+const (
+	consoleAPI              = "https://opencode.ai/console/api"
+	consoleWorkspaceURL     = consoleAPI + "/orgs/current"
+	consoleGoStatusURL      = consoleAPI + "/go/status"
+	ConsoleZenBillingSource = consoleAPI + "/billing/status"
+)
+
+var organizationPattern = regexp.MustCompile(`^(org|wrk)_[A-Za-z0-9_-]+$`)
+var microCentPattern = regexp.MustCompile(`^-?\d{1,30}$`)
+
 type consoleWorkspaceClient struct {
 	client HTTPClient
 	org    string
 }
 
 func (c consoleWorkspaceClient) Do(r *http.Request) (*http.Response, error) {
-	if r.URL.Scheme != "https" || r.URL.Host != "opencode.ai" || !strings.HasPrefix(r.URL.Path, "/console/api/") {
-		return nil, errors.New("Console OAuth telemetry refuses a foreign route")
+	switch r.URL.String() {
+	case consoleWorkspaceURL, consoleGoStatusURL, ConsoleZenBillingSource:
+	default:
+		return nil, errors.New("Console OAuth telemetry refuses an unrecognized route")
 	}
 	request := r.Clone(r.Context())
 	request.Header.Set("x-org-id", c.org)
@@ -33,37 +47,100 @@ func (c consoleWorkspaceClient) Do(r *http.Request) (*http.Response, error) {
 	return c.client.Do(request)
 }
 
+func readConsoleWorkspace(ctx context.Context, host ClientOptions, credentials ConsoleAccount, endpoint string) (object, error) {
+	org := credentials.OrgID
+	if !organizationPattern.MatchString(org) || strings.TrimSpace(credentials.AccessToken) == "" {
+		return nil, errors.New("Console OAuth telemetry requires a live workspace lease")
+	}
+	host.HTTP = consoleWorkspaceClient{host.HTTP, org}
+	const timeout = 2500 * time.Millisecond
+	bounded, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	read := func(endpoint string) (object, error) {
+		if !credentials.ExpiresAt.After(host.Now()) {
+			return nil, errors.New("Console OAuth telemetry requires a live workspace lease")
+		}
+		status, payload, err := readJSON(bounded, host, endpoint, credentials.AccessToken, timeout)
+		if err != nil {
+			return nil, err
+		}
+		if status < 200 || status >= 300 {
+			return nil, fmt.Errorf("OpenCode Console returned HTTP %d", status)
+		}
+		return record(payload), nil
+	}
+	current, err := read(consoleWorkspaceURL)
+	if err != nil {
+		return nil, err
+	}
+	if text(record(current["org"])["id"]) != org {
+		return nil, errors.New("OpenCode Console workspace could not be verified")
+	}
+	return read(endpoint)
+}
+
 // ReadConsoleGoTelemetry keeps Console OAuth distinct from workspace API-key
 // usage. Only server-reported access meters establish subscription windows.
 func ReadConsoleGoTelemetry(ctx context.Context, host ClientOptions, credentials ConsoleAccount) (json.RawMessage, error) {
 	host = normalizeOptions(host)
-	org := credentials.OrgID
-	if !organizationPattern.MatchString(org) || strings.TrimSpace(credentials.AccessToken) == "" || !credentials.ExpiresAt.After(host.Now()) {
-		return nil, errors.New("Console OAuth telemetry requires a live workspace lease")
-	}
-	host.HTTP = consoleWorkspaceClient{host.HTTP, org}
-	account, statusPayload, err := readGoConsole(ctx, host, credentials.AccessToken, org)
+	status, err := readConsoleWorkspace(ctx, host, credentials, consoleGoStatusURL)
 	if err != nil {
 		return nil, err
 	}
-	result := object{"source": "OpenCode Console OAuth", "observedAt": host.Now().UnixMilli(), "availability": "unknown", "windows": []object{}, "limitReached": nil,
-		"note": "Console subscription meters are unknown. No API-key usage endpoint or other login was consulted."}
-	if account != nil {
-		result["plan"] = account["plan"]
-		if balance := account["balance"]; balance != nil {
-			result["balances"] = []any{balance}
-		}
-		result["console"] = account
-		if account["accessActive"] == true && account["plan"] != nil {
-			windows := consoleGoWindows(statusPayload, org, host.Now())
-			result["windows"] = windows
-			if len(windows) > 0 {
-				result["availability"] = "available"
-				result["note"] = "Server-reported Console Go subscription meters for this workspace. Subscription exhaustion does not establish exhaustion of free models or account balance. No API-key usage endpoint or other login was consulted."
-			}
+	now := host.Now()
+	var plan, useBalance, endsAt, active any
+	if value := text(status["product"]); value == "go" || value == "go-plus" {
+		plan = value
+	}
+	if value, ok := status["useBalance"].(bool); ok {
+		useBalance = value
+	}
+	access := record(status["access"])
+	start, startOK := telemetryTime(text(access["startsAt"]))
+	end, endOK := telemetryTime(text(access["endsAt"]))
+	if endOK {
+		endsAt = end.UTC().Format("2006-01-02T15:04:05.000Z")
+	}
+	if value, exists := status["access"]; exists && value == nil {
+		active = false
+	} else if startOK && endOK && start.Before(end) {
+		active = !now.Before(start) && now.Before(end)
+	}
+	result := object{"source": "OpenCode Console OAuth", "observedAt": now.UnixMilli(), "availability": "unknown", "windows": []object{}, "limitReached": nil,
+		"note": "Console Go subscription meters are unknown."}
+	if plan != nil || useBalance != nil || active != nil || endsAt != nil {
+		result["plan"] = plan
+		result["console"] = object{"source": consoleGoStatusURL, "observedAt": now.UTC().Format("2006-01-02T15:04:05.000Z"),
+			"plan": plan, "useBalance": useBalance, "accessEndsAt": endsAt, "accessActive": active}
+	}
+	if active == true && plan != nil {
+		windows := consoleGoWindows(status, credentials.OrgID, now)
+		result["windows"] = windows
+		if len(windows) > 0 {
+			result["availability"] = "available"
+			result["note"] = "Server-reported Console Go subscription meters for this workspace. Free models and prepaid credits have separate availability."
 		}
 	}
 	return jsonValue(result), nil
+}
+
+// ReadConsoleZenBalance returns a decimal USD amount only for the verified
+// workspace's prepaid pay-as-you-go ledger. An empty amount means unknown.
+func ReadConsoleZenBalance(ctx context.Context, host ClientOptions, credentials ConsoleAccount) (string, error) {
+	billing, err := readConsoleWorkspace(ctx, normalizeOptions(host), credentials, ConsoleZenBillingSource)
+	if err != nil {
+		return "", err
+	}
+	if billing["billingMode"] != "prepaid" || billing["mode"] != "pay-as-you-go" {
+		return "", nil
+	}
+	s := text(billing["balanceMicroCents"])
+	if !microCentPattern.MatchString(s) {
+		return "", nil
+	}
+	amount, _ := new(big.Int).SetString(s, 10)
+	usd := new(big.Rat).SetFrac(amount, big.NewInt(100000000)).FloatString(8)
+	return strings.TrimRight(strings.TrimRight(usd, "0"), "."), nil
 }
 
 // Console uses decimal integer strings, not the percentages returned by the

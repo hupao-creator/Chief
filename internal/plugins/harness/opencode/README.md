@@ -190,11 +190,31 @@ routes and ambiguous organization overrides leave capacity unknown. Required
 request failures produce an error reading with empty windows. Execution token
 counts cannot supply a missing window.
 
-The account reading is independent of the default model, build agent and
-variant. It represents the Go subscription only. Model discovery and admission
-check the model's own route and credentials. Before each Moku message the
-adapter resolves the local catalog source, including the native credential
-selection and revision. An unreadable configuration dependency prevents reuse.
+Chief reads Zen prepaid credits through a separate reading for the native
+`opencode` provider. It requires a unique official Zen route and an active
+Console OAuth workspace bound to that provider. The adapter verifies the
+workspace through `/console/api/orgs/current`, then reads
+`/console/api/billing/status` with the same bearer and workspace header. Each
+request checks that the lease is still valid before sending the bearer. A
+`prepaid` / `pay-as-you-go` reply with an integer-string `balanceMicroCents`
+exposes an exact decimal USD amount in `zen.balance.total`. Explicit zero is a
+valid reading. Failed authentication, unverified workspaces, other billing modes
+and missing or malformed amounts produce `zen.availability: unknown` and a null
+balance. With an inference API key, account telemetry can use the Go usage
+endpoint. Console billing uses native OAuth, with no browser session or cookie.
+
+The `zen` reading has its own availability and provenance. It can succeed with
+no Go provider or when Go status fails. Go meters and its paid overflow setting
+remain Go facts. A local Go usage ledger read or write failure marks Go usage
+as unavailable and preserves the verified Zen balance. A Console spending
+budget cannot supply a Zen balance. Zen-only
+telemetry contributes no subscription windows to the usage ledger.
+
+The readings are independent of the default model, build agent and variant.
+Model discovery and admission check the model's own route and credentials.
+Before each Moku message the adapter resolves the local catalog source,
+including the native credential selection and revision. An unreadable
+configuration dependency prevents reuse.
 A source change drops the cached reading immediately.
 The background probe uses the captured launch environment and rechecks its
 source before publishing. Only the current source can replace the cache.
@@ -242,8 +262,9 @@ a global cache invalidation; execution admission remains native-owned.
 
 The account phase belongs to SettingsAPI after native publication, retains its
 existing bounded budgets, and is cancelled/joined on Close. Billing cannot mutate
-an already published native projection. Refresh replaces only the matching
-cwd/configuration-cwd/executable/environment/file-generation flight; obsolete
+an already published native projection. Only a verified native Console OAuth
+workspace can supply remote billing evidence for model exclusion. Refresh
+replaces only the matching cwd/configuration-cwd/executable/environment/file-generation flight; obsolete
 results cannot publish. No disk snapshot or credentials enter UI/cache persistence.
 
 Form string defaults use the same model validator as public answers. External URLs use no-base WHATWG parsing, including nonfatal percent-encoding errors. An empty native form title displays “OpenCode request”; form/session identities remain required.

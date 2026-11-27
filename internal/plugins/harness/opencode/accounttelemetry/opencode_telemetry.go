@@ -4,10 +4,8 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
-	"math/big"
 	"reflect"
 	"regexp"
 	"slices"
@@ -134,13 +132,11 @@ func (reader *goTelemetryReader) read(ctx context.Context, baseURL, key string) 
 		return usage.Telemetry, err
 	}
 	var usage GoUsage
-	var account object
 	var prices goPrices
-	var usageErr, accountErr, pricesErr error
+	var usageErr, pricesErr error
 	var workers sync.WaitGroup
-	workers.Add(3)
+	workers.Add(2)
 	go func() { defer workers.Done(); usage, usageErr = ReadOpenCodeGoUsage(ctx, reader.host, baseURL, key) }()
-	go func() { defer workers.Done(); account, _, accountErr = readGoConsole(ctx, reader.host, key, "") }()
 	go func() { defer workers.Done(); prices, pricesErr = reader.prices.read(ctx, reader.host) }()
 	workers.Wait()
 	if err := ctx.Err(); err != nil {
@@ -156,133 +152,8 @@ func (reader *goTelemetryReader) read(ctx context.Context, baseURL, key string) 
 	if err := json.Unmarshal(usage.Telemetry, &snapshot); err != nil {
 		return nil, err
 	}
-	if account != nil {
-		if plan := account["plan"]; plan != nil {
-			snapshot["plan"] = plan
-		}
-		if balance := account["balance"]; balance != nil {
-			snapshot["balances"] = []any{balance}
-		}
-	}
-	console := account
-	if console == nil {
-		console = object{"plan": nil, "useBalance": nil, "balance": nil, "note": "The selected credential could not expose verified Console account facts. No other login was consulted."}
-	}
-	if accountErr != nil {
-		console["note"] = accountErr.Error()
-	}
-	snapshot["note"] = strings.Join([]string{text(snapshot["note"]), "Console account facts: " + string(jsonValue(console)), goBillingContext(prices)}, "\n")
+	snapshot["note"] = strings.Join([]string{text(snapshot["note"]), goBillingContext(prices)}, "\n")
 	return jsonValue(snapshot), nil
-}
-
-var organizationPattern = regexp.MustCompile(`^(org|wrk)_[A-Za-z0-9_-]+$`)
-var microCentPattern = regexp.MustCompile(`^-?\d{1,30}$`)
-
-func readGoConsole(ctx context.Context, host ClientOptions, key, expectedOrg string) (object, object, error) {
-	bounded, cancel := context.WithTimeout(ctx, 2500*time.Millisecond)
-	defer cancel()
-	paths := []string{"/api/orgs/current", "/api/go/status", "/api/billing/status"}
-	values := make([]any, len(paths))
-	failures := make([]error, len(paths))
-	var workers sync.WaitGroup
-	for i, path := range paths {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
-			status, payload, err := readJSON(bounded, host, "https://opencode.ai/console"+path, key, 2500*time.Millisecond)
-			switch {
-			case err != nil:
-				failures[i] = err
-			case status < 200 || status >= 300:
-				failures[i] = fmt.Errorf("OpenCode Console %s returned HTTP %d", path, status)
-			default:
-				values[i] = payload
-			}
-		}()
-	}
-	workers.Wait()
-	if err := ctx.Err(); err != nil {
-		return nil, nil, err
-	}
-	org := text(record(record(values[0])["org"])["id"])
-	if failures[0] != nil {
-		return nil, nil, failures[0]
-	}
-	if expectedOrg != "" && org != expectedOrg {
-		return nil, nil, errors.New("OpenCode Console workspace could not be verified")
-	}
-	if failures[1] != nil && expectedOrg != "" {
-		return nil, nil, failures[1]
-	}
-	if !organizationPattern.MatchString(org) {
-		return nil, nil, nil
-	}
-	status := record(values[1])
-	billing := record(values[2])
-	var plan, useBalance, endsAt, active any
-	if value := text(status["product"]); value == "go" || value == "go-plus" {
-		plan = value
-	}
-	if value, ok := status["useBalance"].(bool); ok {
-		useBalance = value
-	}
-	access := record(status["access"])
-	start, startOK := telemetryTime(text(access["startsAt"]))
-	end, endOK := telemetryTime(text(access["endsAt"]))
-	if endOK {
-		endsAt = end.UTC().Format("2006-01-02T15:04:05.000Z")
-	}
-	if accessValue, exists := status["access"]; exists && accessValue == nil {
-		active = false
-	} else if startOK && endOK && start.Before(end) {
-		active = !host.Now().Before(start) && host.Now().Before(end)
-	}
-	total := ""
-	if billing["billingMode"] == "prepaid" && billing["mode"] == "pay-as-you-go" {
-		total = microCentsToUSD(billing["balanceMicroCents"])
-	}
-	if plan == nil && useBalance == nil && total == "" {
-		if expectedOrg == "" {
-			return nil, nil, errors.Join(failures[1], failures[2])
-		}
-		return nil, nil, nil
-	}
-	result := object{"source": "https://opencode.ai/console/api/go/status + /api/billing/status", "observedAt": host.Now().UTC().Format("2006-01-02T15:04:05.000Z"), "plan": plan, "useBalance": useBalance, "accessEndsAt": endsAt, "accessActive": active}
-	if total != "" {
-		result["balance"] = object{"currency": "USD", "total": total}
-	}
-	if failures[1] != nil {
-		result["note"] = failures[1].Error()
-	} else if failures[2] != nil {
-		result["note"] = failures[2].Error()
-	}
-	return result, status, nil
-}
-func microCentsToUSD(value any) string {
-	s := text(value)
-	if !microCentPattern.MatchString(s) {
-		return ""
-	}
-	amount, ok := new(big.Int).SetString(s, 10)
-	if !ok {
-		return ""
-	}
-	negative := amount.Sign() < 0
-	amount.Abs(amount)
-	divisor := big.NewInt(100000000)
-	whole, remainder := new(big.Int), new(big.Int)
-	whole.QuoRem(amount, divisor, remainder)
-	result := whole.String()
-	fraction := remainder.String()
-	fraction = strings.Repeat("0", 8-len(fraction)) + fraction
-	fraction = strings.TrimRight(fraction, "0")
-	if fraction != "" {
-		result += "." + fraction
-	}
-	if negative {
-		result = "-" + result
-	}
-	return result
 }
 
 type goPrices struct {
