@@ -168,7 +168,7 @@ private struct OpenCodeProfileFields: View {
                     }), options: thinkingOptions, presentation: .reasoning).nativeSettingsControl("thinking").disabled(disabled || choices.isEmpty)
                 }
             } else {
-                NativeSettingsRow(label: variantLabel ?? t("OpenCode 模型变体")) {
+                NativeSettingsRow(label: variantLabel ?? t("OpenCode 模型预设")) {
                     NativeModelSelector(value: binding("variant") { change(ocReplacing(value, key: "variant", value: $0)) }, options: variantOptions).nativeSettingsControl("variant")
                         .disabled(disabled || selected == nil || selected?["unavailableReason"] != nil)
                 }
@@ -208,7 +208,7 @@ private struct OpenCodeProfileFields: View {
     private func thinkingLabel(_ value: JSONValue) -> String { value["mode"] == nil ? t("未选择") : ocThinkingLabel(value) }
     private var variantOptions: [NativeSettingsOption] {
         var result: [NativeSettingsOption] = [.init(id: "", label: t(executionSnapshot ? "请选择" : "OpenCode 原生默认"), disabled: executionSnapshot)]
-        if executionSnapshot { result.append(.init(id: "default", label: t("基础模型变体"))) }
+        if executionSnapshot { result.append(.init(id: "default", label: t("模型默认配置"))) }
         let variants = selected?["variants"]?.arrayValue ?? []
         if let variant = value.ocText("variant"), !(executionSnapshot && variant == "default"), !variants.contains(where: { $0.ocText("id") == variant }) { result.append(.init(id: variant, label: variant.string + " · " + t("目录中不可用"))) }
         return result + variants.filter { !executionSnapshot || $0["id"] != .text("default") }.map { .init(id: $0.ocID("id"), label: $0.ocID("id").string) }
