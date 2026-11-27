@@ -12,6 +12,7 @@ struct NativeGitSnapshot: Hashable, Sendable {
     let additions: Int?
     let deletions: Int?
     let lineStatsError: HarnessGitReadError?
+    let recentFiles: [HarnessGitFileChange]
     let changed: Int
     let staged: Int
     let unstaged: Int
@@ -19,7 +20,7 @@ struct NativeGitSnapshot: Hashable, Sendable {
     let conflicts: Int
 
     init(_ json: JSONValue) throws {
-        let r = try GitRecord(json, "Git snapshot", keys: ["root", "branch", "head", "upstream", "ahead", "behind", "changed", "staged", "unstaged", "untracked", "conflicts", "additions", "deletions", "lineStatsError"])
+        let r = try GitRecord(json, "Git snapshot", keys: ["root", "branch", "head", "upstream", "ahead", "behind", "changed", "staged", "unstaged", "untracked", "conflicts", "additions", "deletions", "lineStatsError"], optionalKeys: ["recentFiles"])
         root = try r.text("root", minimum: 1, maximum: 32_768)
         branch = try r.nullableText("branch"); head = try r.nullableText("head"); upstream = try r.nullableText("upstream")
         ahead = try r.nullableCount("ahead"); behind = try r.nullableCount("behind")
@@ -30,6 +31,30 @@ struct NativeGitSnapshot: Hashable, Sendable {
         }
         changed = try r.count("changed"); staged = try r.count("staged"); unstaged = try r.count("unstaged")
         untracked = try r.count("untracked"); conflicts = try r.count("conflicts")
+        recentFiles = try Self.decodeRecentFiles(r, changed: changed, additions: additions, deletions: deletions)
+    }
+
+    private static func decodeRecentFiles(_ snapshot: GitRecord, changed: Int, additions: Int?, deletions: Int?) throws -> [HarnessGitFileChange] {
+        guard snapshot.object["recentFiles"] != nil else { return [] }
+        let values = try snapshot.array("recentFiles")
+        guard values.count <= min(changed, 3) else { throw PluginContractError("Too many recent Git files") }
+        var remainingAdded = additions ?? 0
+        var remainingDeleted = deletions ?? 0
+        var seen: Set<JSONText> = []
+        return try values.map { value in
+            let file = try GitRecord(value, "Git file statistics", keys: ["path", "additions", "deletions"])
+            let path = try file.text("path", minimum: 1, maximum: 4096)
+            let bytes = path.string.utf8
+            let added = try file.count("additions"), deleted = try file.count("deletions")
+            guard bytes.count <= 4096, !bytes.contains(0), bytes.split(separator: 47, omittingEmptySubsequences: false)
+                .allSatisfy({ !$0.isEmpty && !$0.elementsEqual([46]) && !$0.elementsEqual([46, 46]) }),
+                seen.insert(path).inserted, added > 0 || deleted > 0, added <= remainingAdded, deleted <= remainingDeleted else {
+                throw PluginContractError("Invalid recent Git file statistics")
+            }
+            remainingAdded -= added
+            remainingDeleted -= deleted
+            return HarnessGitFileChange(path: path, additions: added, deletions: deleted)
+        }
     }
 }
 
@@ -61,8 +86,9 @@ struct NativeGitView: Hashable, Sendable {
 private struct GitRecord {
     let object: [JSONText: JSONValue]
     let path: String
-    init(_ json: JSONValue, _ path: String, keys: Set<JSONText>) throws {
-        guard case .object(let object) = json, Set(object.keys) == keys else { throw PluginContractError("Malformed \(path) fields") }
+    init(_ json: JSONValue, _ path: String, keys: Set<JSONText>, optionalKeys: Set<JSONText> = []) throws {
+        guard case .object(let object) = json, keys.isSubset(of: object.keys),
+              Set(object.keys).isSubset(of: keys.union(optionalKeys)) else { throw PluginContractError("Malformed \(path) fields") }
         self.object = object; self.path = path
     }
     func require(_ key: JSONText) throws -> JSONValue {
@@ -132,13 +158,20 @@ struct NativeGitRepositoryPage: Sendable {
         } else { nextCursor = nil }
     }
 }
+struct NativeGitPageInput {
+    let cursor: JSONText?
+    let includeRecentFiles: Bool
+}
+
 @MainActor enum NativeGitContracts {
-    static var repositories: ApplicationOperation<JSONText?, NativeGitRepositoryPage> {
+    static var repositories: ApplicationOperation<NativeGitPageInput, NativeGitRepositoryPage> {
         .init(id: "git.list", ownerPluginID: "git", kind: .query,
-              input: .init(decode: { json in json["cursor"]?.stringValue.map { JSONText($0) } },
-                           encode: { cursor in
-                               var fields: [JSONText: JSONValue] = ["limit": .number(1000)]
-                               fields["cursor"] = cursor.map(JSONValue.string)
+              input: .init(decode: { json in NativeGitPageInput(cursor: json["cursor"]?.stringValue.map { JSONText($0) },
+                            includeRecentFiles: json["includeRecentFiles"] == .bool(true)) },
+                           encode: { input in
+                               var fields: [JSONText: JSONValue] = ["limit": .number(input.includeRecentFiles ? 100 : 1000)]
+                               fields["cursor"] = input.cursor.map(JSONValue.string)
+                               if input.includeRecentFiles { fields["includeRecentFiles"] = .bool(true) }
                                return .object(fields)
                            }),
               output: .init(decode: NativeGitRepositoryPage.init, encode: { _ in throw PluginContractError("Git repository pages are read-only") }))

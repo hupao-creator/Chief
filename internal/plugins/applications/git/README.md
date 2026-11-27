@@ -19,10 +19,10 @@ attempt, including after a monitor restart or wall-clock rollback. This keeps
 fresh observations and deletions moving forward while rejecting late batches
 from earlier attempts.
 
-The extension displays only the changed-file count, signed added/deleted line
-counts and branch name. It has no Git title/logo, repository name/path, category
-counts or upstream row. Numbers reuse the token count's rolling-digit animation;
-health is available through opacity and accessible help.
+The extension displays changed-file count, signed added/deleted line totals,
+branch name and up to three recent files with their own line counts. Aggregate
+numbers reuse the token count's rolling-digit animation. Health is available
+through opacity and accessible help.
 
 Line counts use a net tracked diff against the observed HEAD plus current
 untracked text. Binary files contribute no text lines; submodule contents are
@@ -39,6 +39,18 @@ The native card shows the failure reason or an explicit unknown label when
 changed files have unknown totals. Known zero added/deleted totals hide the
 entire extension, including binary-only, pure rename, empty-file and mode-only
 changes; there are no file-type exceptions.
+
+The same numstat read supplies nonzero text line counts for recent files. The
+destination path represents a rename. Present worktree entries sort by descending
+filesystem modification time. Entries without a readable timestamp, including
+missing deleted files, sort after dated paths. Path order breaks ties. At most
+1,024 distinct candidate paths are retained for ranking, with at most 4,096 UTF-8
+bytes per displayed path. Ranking runs within the remaining statistics deadline.
+One optional ranking worker can be active across worktrees. If filesystem
+metadata blocks past the deadline, the monitor publishes the completed totals.
+Other observations keep their totals while that worker drains. The candidate
+bound also falls back to totals alone. The monitor stores at most three rows and reads no patch
+text for cards.
 
 File membership follows Git's ignore rules; generated files are not heuristically
 filtered by the monitor. This repository ignores root `.scratch/`, where native
@@ -65,6 +77,11 @@ and excluded from the user plugin catalog. Current observations are stored in
 Git facts into every shipped Harness's shared card composer. Diffs remain
 on-demand external queries rather than catalog contents.
 
+`git.list` includes recent files when requested via `includeRecentFiles`. The
+field is optional in stored snapshots, so a saved summary is readable before its
+next successful observation. Callers without the option receive the summary
+shape.
+
 Git commands remain read-only, cancellable, timeout/output limited, with a shared
 concurrency limit of two. No fetch, index write, commit, checkout or reset feature
 is exposed. Paths are authorized against fresh NUL-framed status, use literal
@@ -72,5 +89,8 @@ pathspecs, and disable external diff, text conversion and fsmonitor hooks.
 
 See the [native card extension](../../../../app/macos/Sources/Host/Git/README.md).
 
-No Git correctness replay is configured in this source tree. File statistics
-remain bounded production observations, including explicit unavailable totals.
+`PBT-GIT-RANKING-BUDGET` exercises the statistics reader with generated
+tracked-file numstat rows and a real temporary directory. A held metadata
+operation simulates a stalled mount and checks cancellation, totals and
+recovery after the operation completes. Native Git output, actual mount
+latency and mounted card interaction are outside the generated domain.

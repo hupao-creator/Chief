@@ -9,23 +9,28 @@ public extension EnvironmentValues {
 extension View {
     func cardFont(size: CGFloat, weight: CGFloat = 400, monospaced: Bool = false,
                   lineSpacing: CGFloat = 0) -> some View {
-        modifier(CardFont(size: size, weight: weight, monospaced: monospaced, spacing: lineSpacing))
+        modifier(CardFont(size: size, spacing: lineSpacing) { scaledSize in
+            monospaced ? .system(size: scaledSize, weight: .regular, design: .monospaced)
+                : NativeTypography.inter(size: scaledSize, weight: weight)
+        })
+    }
+
+    func cardMonoFont(size: CGFloat, weight: CGFloat = 400) -> some View {
+        modifier(CardFont(size: size, spacing: 0) { NativeTypography.mono(size: $0, weight: weight) })
     }
 }
 
 private struct CardFont: ViewModifier {
     let size: CGFloat
-    let weight: CGFloat
-    let monospaced: Bool
     let spacing: CGFloat
+    let font: (CGFloat) -> Font
     @Environment(\.threadCardTextRasterScale) private var resolution
 
     func body(content: Content) -> some View {
         let scale = resolution.isFinite ? min(32, max(1, resolution)) : 1
         CardTextLayout(scale: scale) {
             content
-                .font(monospaced ? .system(size: size * scale, weight: .regular, design: .monospaced)
-                    : NativeTypography.inter(size: size * scale, weight: weight))
+                .font(font(size * scale))
                 .lineSpacing(spacing * scale)
                 .scaleEffect(1 / scale, anchor: .topLeading)
         }
