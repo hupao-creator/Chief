@@ -206,8 +206,6 @@ public struct NativeApplicationBackgroundEditor: View {
                 chiefPresentation: inherited ? nil : chiefConfiguration(id),
                 value: Binding(get: { effective.harnesses[id] ?? .object([:]) },
                                set: { updateHarness(id, settings: $0) }))
-                .environment(\.nativeSettingsOpenCodeVariantLabel,
-                             onboardingHarnessIDs != nil && !inherited ? locale.text("思考强度", "OpenCode model variant") : nil)
                 .id(id).environment(\.nativeSettingsInteractionScope, settingID.string + "." + id.string)
         case .failure(let error):
             NativeSettingsNotice(message: error.localizedDescription, kind: .error)

@@ -130,7 +130,6 @@ private struct OpenCodeProfileFields: View {
     var disabled = false
     let change: (JSONValue) -> Void
     @Environment(\.nativeSettingsModelLabel) private var modelLabel
-    @Environment(\.nativeSettingsOpenCodeVariantLabel) private var variantLabel
     @Environment(\.locale) private var locale
     private var presentation: OpenCodeSettingsPresentationData? { if case .ready(let data) = resource.state { data } else { nil } }
     private var models: [JSONValue] { presentation?.models ?? [] }
@@ -168,7 +167,7 @@ private struct OpenCodeProfileFields: View {
                     }), options: thinkingOptions, presentation: .reasoning).nativeSettingsControl("thinking").disabled(disabled || choices.isEmpty)
                 }
             } else {
-                NativeSettingsRow(label: variantLabel ?? t("OpenCode 模型预设")) {
+                NativeSettingsRow(label: t("思考强度")) {
                     NativeModelSelector(value: binding("variant") { change(ocReplacing(value, key: "variant", value: $0)) }, options: variantOptions).nativeSettingsControl("variant")
                         .disabled(disabled || selected == nil || selected?["unavailableReason"] != nil)
                 }

@@ -88,8 +88,9 @@ Below the independent Harness picker, basic and expanded advanced fields use
 the shared Settings form rhythm. The field stacks get their spacing from each
 row's vertical padding. **Advanced options** starts collapsed, and
 conditional fields only occupy space while visible.
-In Simplified Chinese, the independent OpenCode form labels the variant picker
-“思考强度”.
+The independent OpenCode form shares its variant picker with Settings. In
+Simplified Chinese the field is “思考强度”, with “模型默认配置” as the option
+that uses the selected model's settings without a named preset.
 See the [form spacing replay](../../../../../tools/e2e/README.md#onboarding-agent-configuration-form-spacing).
 
 Tag and Super Thread share Settings' Agent off, Use Chief and Configure separately
