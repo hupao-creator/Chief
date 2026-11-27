@@ -22,6 +22,8 @@ def bundle(app, session, receipt="operator-bundle.json"):
     shutil.copy2(app, executable)
     for source in app.parent.glob("*.bundle"):
         shutil.copytree(source, resources / source.name)
+    for source in app.parent.glob("*.framework"):
+        shutil.copytree(source, contents / "Frameworks" / source.name, symlinks=True)
     (contents / "Info.plist").write_bytes(plistlib.dumps({
         "CFBundleExecutable": "ChiefE2E", "CFBundleIdentifier": "com.chief.e2e." + session.nonce,
         "CFBundleName": "Chief E2E Isolated", "CFBundlePackageType": "APPL",

@@ -81,6 +81,7 @@ public struct NativeMokuDock: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.nativeExecutionDockPlacement) private var executionPlacement
     @Environment(\.nativeMokuHorizontalTravel) private var travelHost
+    @Environment(\.chiefVoiceDock) private var voice
     @State private var hovered = false
     @State private var hoverTask: Task<Void, Never>?
     @FocusState private var stopFocused: Bool
@@ -418,10 +419,16 @@ public struct NativeMokuDock: View {
             let dockViewport = column.flatMap { $0.isNull || $0.isEmpty ? nil : $0 } ?? viewport
             let baseFrame = NativeMokuCapsuleLayout.frame(in: dockViewport, landing: landing,
                 reading: readingSeat && !state.settingsOpen)
+            // Reserve only the space the orb would actually overrun. Keep the
+            // left editor margin and the ordinary compact Bar's center.
+            let fitsOrb = voice?.phase.connected == true && rowExpanded && !state.settingsOpen
+            let trailingLimit = dockViewport.maxX - 12 - VoiceDock.gap - VoiceDock.diameter
+            let fittedFrame = fitsOrb ? CGRect(x: baseFrame.minX, y: baseFrame.minY,
+                width: max(0, min(baseFrame.maxX, trailingLimit) - baseFrame.minX), height: baseFrame.height) : baseFrame
             let restingFrame = NativeMokuCapsuleLayout.frame(in: dockViewport, landing: landing)
             let readingOffset = baseFrame.maxY - restingFrame.maxY
-            let messageWidth = displayedMessage?.dispatch != nil ? min(400, baseFrame.width) : baseFrame.width
-            let frame = baseFrame.insetBy(dx: displayedMessage?.dispatch != nil ? max(0, (baseFrame.width - 400) / 2) : 0, dy: 0)
+            let messageWidth = displayedMessage?.dispatch != nil ? min(400, fittedFrame.width) : fittedFrame.width
+            let frame = fittedFrame.insetBy(dx: displayedMessage?.dispatch != nil ? max(0, (fittedFrame.width - 400) / 2) : 0, dy: 0)
             let settingsSize = CGSize(width: min(780, max(0, viewport.width - 48)), height: min(settingsPreferredHeight, max(0, viewport.height - 48)))
             let width = state.settingsExpanded ? settingsSize.width : frame.width
             let rowHeight = rowExpanded && !state.settingsExpanded
@@ -449,6 +456,10 @@ public struct NativeMokuDock: View {
                     dy: surface.height * (1 - residentScale) / 2), scale: residentScale)
             let panel = NativeMokuCapsuleLayout.panel(in: viewport, above: placement.surface,
                                                      question: interactionIsQuestion)
+            let accessory = voice?.phase.connected == true && !state.settingsOpen
+                ? VoiceDock.hitFrame(placement.surface, scale: placement.scale) : nil
+            let hitRects = [placement.surface.insetBy(dx: -5, dy: -5)]
+                + [accessory, interaction != nil && !state.settingsOpen ? panel : nil].compactMap { $0 }
             let destination = NativeMokuHorizontalDestination(offset: placement.surface.midX - geometry.size.width / 2,
                 verticalOffset: readingOffset,
                 frame: executionFrame, revision: executionPlacement?.travelRevision ?? 0, viewport: geometry.size,
@@ -515,8 +526,7 @@ public struct NativeMokuDock: View {
             }
             .background {
                 NativeMokuHorizontalTravelCommand(destination: destination,
-                    hitRects: [placement.surface.insetBy(dx: -5, dy: -5)]
-                        + (interaction != nil && !state.settingsOpen ? [panel] : []),
+                    hitRects: hitRects,
                     onSettled: { arrived in
                         settledDestination = arrived
                         guard arrived.frame == requestedFrame,
@@ -535,15 +545,14 @@ public struct NativeMokuDock: View {
             .onPreferenceChange(NativeSettingsHeaderScrollKey.self) { offset in
                 settingsHeaderScroll = offset
             }
-            .onChange(of: HitLayout(surface: placement.surface, panel: panel, interaction: interaction != nil && !state.settingsOpen), initial: true) { _, layout in
+            .onChange(of: HitLayout(surface: placement.surface, hitRects: hitRects), initial: true) { _, layout in
                 guard state.dockRouteVisible else {
                     state.dockHitRects = []
                     state.dockMentionHitRect = nil
                     return
                 }
                 state.capsuleFrame = layout.surface
-                state.dockHitRects = [layout.surface.insetBy(dx: -5, dy: -5)]
-                if layout.interaction { state.dockHitRects.append(layout.panel) }
+                state.dockHitRects = layout.hitRects
             }
             .onChange(of: interaction != nil, initial: true) { _, visible in
                 state.setDockInteractionVisible(state.dockRouteVisible && visible, question: interactionIsQuestion)
@@ -711,8 +720,8 @@ public struct NativeMokuDock: View {
     }
 
     private struct HitLayout: Equatable {
-        var surface, panel: CGRect
-        var interaction: Bool
+        var surface: CGRect
+        var hitRects: [CGRect]
     }
     private func capsule(width: CGFloat, room: CGFloat, surface: CGRect, sizesRow: Bool, messageWidth: CGFloat, rowHeight: CGFloat,
                          decorationPadding: CGFloat, settingsSize: CGSize,
@@ -885,6 +894,7 @@ public struct NativeMokuDock: View {
                 onSettled: { state.completeInputIdentity(generation: generation) }) {
                 face(characterInput)
             }
+                .modifier(VoiceGlance(preparing: !state.settingsOpen && voice?.phase == .connecting, inTask: showsHarness))
                 .onChange(of: returning) { _, returning in
                     if returning, threadID != nil { state.retireInputIdentity(generation: generation) }
                 }
@@ -927,11 +937,12 @@ public struct NativeMokuDock: View {
         }
         .background {
             ZStack {
-                NativeMokuCapsuleGlass(regular: conversationVisible)
-                    .opacity(state.settingsExpanded ? 0 : 1)
+                if voice == nil || state.settingsOpen {
+                    NativeMokuCapsuleGlass(regular: conversationVisible)
+                        .opacity(state.settingsExpanded ? 0 : 1)
+                }
                 if state.settingsOpen {
-                    NativeSettingsPanelBackground()
-                        .opacity(state.settingsExpanded ? 1 : 0)
+                    NativeSettingsPanelBackground().opacity(state.settingsExpanded ? 1 : 0)
                 }
             }
         }.clipShape(RoundedRectangle(cornerRadius: NativeMokuCapsuleLayout.cornerRadius))
@@ -963,6 +974,15 @@ public struct NativeMokuDock: View {
                            "Click to type or right-click for messages")
                 : localize("点击打开输入框", "Click to type"))
         .accessibilityIdentifier("moku-capsule")
+        .modifier(VoiceDock(voice: voice, scene: state,
+            pressArea: voicePressArea(center: CGPoint(x: faceCenter.x, y: surface.height - faceCenter.y)),
+            conversation: conversationVisible))
+    }
+
+    private func voicePressArea(center: CGPoint) -> VoiceBarPress.Area? {
+        guard state.windowVisible, !state.dockCovered, state.dockRouteVisible, interaction == nil else { return nil }
+        if composerVisible || (rowControlAvailable && displayedMessage != nil) { return .identity(center: center) }
+        return rowControlAvailable ? .bar(reservesStop: stopControlPresent) : nil
     }
 
     private func dispatchHarness(_ dispatch: NativeMokuDispatch) -> AnyHarnessPlugin? {

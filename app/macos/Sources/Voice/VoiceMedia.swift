@@ -11,10 +11,17 @@ final class VoiceMedia {
     private var peer: LKRTCPeerConnection?
     private var channel: LKRTCDataChannel?
     private var track: LKRTCAudioTrack?
+    private var sender: LKRTCRtpSender?
+    private var remoteTrack: LKRTCAudioTrack?
+    private let playback = VoicePlaybackActivity()
     private var pending: (() -> Void)?
     private var health: Task<Void, Never>?
+    private var metering: Task<Void, Never>?
+    private var muted = false
     private var closed = false
     var onFailure: (() -> Void)?
+    var onRemoteSpeaking: ((Bool) -> Void)?
+    private(set) var isRemoteSpeaking = false
     private(set) var failure: String?
 
     func offer() async throws -> String {
@@ -33,9 +40,14 @@ final class VoiceMedia {
         let factory = LKRTCPeerConnectionFactory(audioDeviceModuleType: .audioEngine, bypassVoiceProcessing: false,
                                                  encoderFactory: nil, decoderFactory: nil, audioProcessingModule: nil)
         self.factory = factory
+        // Apple's duplex Voice Processing I/O couples input to output. WebRTC's
+        // software echo cancellation lets the system output run on its own.
+        guard factory.audioDeviceModule.setPlatformVoiceProcessingAllowed(false) == 0 else {
+            throw VoiceFailure("Could not configure independent microphone and speaker I/O.")
+        }
         // Negotiate the track with both hardware gates shut until the sideband
         // has confirmed the remote session and the media channel is connected.
-        try setAudio(false)
+        try setAudio(input: false, output: false)
         let config = LKRTCConfiguration()
         config.sdpSemantics = .unifiedPlan
         let empty = LKRTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
@@ -44,14 +56,18 @@ final class VoiceMedia {
         }
         self.peer = peer
         let track = factory.audioTrack(with: factory.audioSource(with: empty), trackId: "chief-microphone")
+        guard track.setAudioProcessingOptions(.communication()).isSuccess else {
+            throw VoiceFailure("Could not configure voice echo cancellation.")
+        }
         self.track = track
         track.isEnabled = false
         let channelConfig = LKRTCDataChannelConfiguration()
         channelConfig.isOrdered = true
-        guard peer.add(track, streamIds: ["chief-voice"]) != nil,
+        guard let sender = peer.add(track, streamIds: ["chief-voice"]),
               let channel = peer.dataChannel(forLabel: "oai-events", configuration: channelConfig) else {
             throw VoiceFailure("Could not create the voice track and data channel.")
         }
+        self.sender = sender
         self.channel = channel
         let offer: String = try await operation("Could not generate a voice offer.") { finish in
             peer.offer(for: LKRTCMediaConstraints(mandatoryConstraints: ["OfferToReceiveAudio": "true"], optionalConstraints: nil)) { sdp, err in
@@ -72,18 +88,33 @@ final class VoiceMedia {
         guard let peer, let channel, let adm = factory?.audioDeviceModule else { throw CancellationError() }
         try await setDescription(answer, remote: true)
         try await wait("The voice media connection timed out.") { peer.connectionState == .connected && channel.readyState == .open }
-        try setAudio(true)
+        guard let remote = peer.receivers.compactMap({ $0.track as? LKRTCAudioTrack }).first else {
+            throw VoiceFailure("The voice connection did not provide a remote audio track.")
+        }
+        remoteTrack = remote
+        remote.add(playback)
+        try setAudio(input: true, output: true)
         track?.isEnabled = true
         try await wait("Could not start the microphone or speaker.") { adm.isRecording && adm.isPlaying && adm.isEngineRunning }
+        metering = Task { [weak self] in
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(80)) } catch { return }
+                guard let self, !self.closed else { return }
+                let speaking = self.playback.isAudible
+                if speaking != self.isRemoteSpeaking {
+                    self.isRemoteSpeaking = speaking
+                    self.onRemoteSpeaking?(speaking)
+                }
+            }
+        }
         health = Task { [weak self] in
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
                 guard let self, !self.closed else { return }
                 guard peer.connectionState == .connected, channel.readyState == .open,
-                      Self.deviceAvailable(input: true), Self.deviceAvailable(input: false),
-                      adm.isRecording, adm.isPlaying, adm.isEngineRunning else {
-                    self.failure = "The voice connection or audio device disconnected."
-                    self.onFailure?()
+                      Self.deviceAvailable(input: false), adm.isPlaying, adm.isEngineRunning,
+                      self.muted ? !adm.isRecording : (adm.isRecording && Self.deviceAvailable(input: true)) else {
+                    self.fail("The voice connection or audio device disconnected.")
                     return
                 }
             }
@@ -91,12 +122,45 @@ final class VoiceMedia {
     }
 
     private static let permissionMessage = "Allow Chief to use the microphone in System Settings → Privacy & Security → Microphone."
-    private func setAudio(_ enabled: Bool) throws {
+    func setMicrophoneMuted(_ muted: Bool) throws {
+        try checkOpen()
+        guard self.muted != muted else { return }
+        guard let adm = factory?.audioDeviceModule, let sender, let track else { throw CancellationError() }
+        if muted {
+            // Keep the negotiated transceiver and receiver alive while removing the microphone source.
+            track.isEnabled = false
+            sender.track = nil
+            try setAudio(input: false, output: true)
+            guard sender.track == nil, !adm.isRecording || adm.stopRecording() == 0, !adm.isRecording else {
+                throw VoiceFailure("Could not release the microphone.")
+            }
+        } else {
+            guard Self.deviceAvailable(input: true) else { throw VoiceFailure("The microphone is unavailable.") }
+            try setAudio(input: true, output: true)
+            sender.track = track
+            guard sender.track?.trackId == track.trackId,
+                  adm.isRecording || adm.initAndStartRecording() == 0, adm.isRecording else {
+                throw VoiceFailure("Could not restart the microphone.")
+            }
+            track.isEnabled = true
+        }
+        self.muted = muted
+    }
+
+    private func setAudio(input: Bool, output: Bool) throws {
         guard let adm = factory?.audioDeviceModule,
-              adm.setEngineAvailability(LKRTCAudioEngineAvailability(isInputAvailable: ObjCBool(enabled),
-                                                                      isOutputAvailable: ObjCBool(enabled))) == 0 else {
+              adm.setEngineAvailability(LKRTCAudioEngineAvailability(isInputAvailable: ObjCBool(input),
+                                                                     isOutputAvailable: ObjCBool(output))) == 0 else {
             throw VoiceFailure("Could not change microphone and speaker availability.")
         }
+    }
+
+    func fail(_ message: String) {
+        guard !closed else { return }
+        failure = message
+        let notify = onFailure
+        close()
+        notify?()
     }
 
     private func setDescription(_ sdp: String, remote: Bool) async throws {
@@ -116,9 +180,14 @@ final class VoiceMedia {
         guard !closed else { return }
         closed = true
         health?.cancel(); health = nil
+        metering?.cancel(); metering = nil
+        remoteTrack?.remove(playback); remoteTrack = nil
+        isRemoteSpeaking = false
+        onRemoteSpeaking = nil
         pending?(); pending = nil
         track?.isEnabled = false
-        try? setAudio(false)
+        sender?.track = nil; sender = nil
+        try? setAudio(input: false, output: false)
         channel?.close(); channel = nil
         peer?.close(); peer = nil
         _ = factory?.audioDeviceModule.stopRecording()
@@ -144,16 +213,20 @@ final class VoiceMedia {
         start: (@escaping @Sendable (Result<T, VoiceFailure>) -> Void) -> Void) async throws -> T {
         try checkOpen()
         defer { pending = nil }
-        return try await withCheckedThrowingContinuation { continuation in
-            let gate = VoiceCompletion(continuation)
-            pending = { gate.finish(.failure(CancellationError())) }
-            if let timeout {
-                gate.timeout = Task {
-                    do { try await Task.sleep(for: timeout) } catch { return }
-                    gate.finish(.failure(VoiceFailure(message)))
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                let gate = VoiceCompletion(continuation)
+                pending = { gate.finish(.failure(CancellationError())) }
+                if let timeout {
+                    gate.timeout = Task {
+                        do { try await Task.sleep(for: timeout) } catch { return }
+                        gate.finish(.failure(VoiceFailure(message)))
+                    }
                 }
+                start { result in Task { @MainActor in gate.finish(result.mapError { $0 as Error }) } }
             }
-            start { result in Task { @MainActor in gate.finish(result.mapError { $0 as Error }) } }
+        } onCancel: {
+            Task { @MainActor [weak self] in self?.close() }
         }
     }
     private static func deviceAvailable(input: Bool) -> Bool {
@@ -169,6 +242,11 @@ final class VoiceMedia {
         size = UInt32(MemoryLayout<UInt32>.size)
         return AudioObjectGetPropertyData(device, &address, 0, nil, &size, &alive) == noErr && alive != 0
     }
+}
+
+struct VoiceFailure: LocalizedError, Sendable {
+    let errorDescription: String?
+    init(_ message: String) { errorDescription = message }
 }
 
 @MainActor

@@ -11,6 +11,8 @@ public final class GlobalVoiceSession {
         case failed(String)
     }
     public private(set) var state: State = .idle
+    public private(set) var isMicrophoneMuted = false
+    public private(set) var isRemoteSpeaking = false
     private let client: RuntimeClient
     @ObservationIgnored private var operation: Task<Void, Never>?
     @ObservationIgnored private var media: VoiceMedia?
@@ -21,6 +23,14 @@ public final class GlobalVoiceSession {
         guard operation == nil else { return }
         let media = VoiceMedia()
         self.media = media
+        media.onRemoteSpeaking = { [weak self, weak media] speaking in
+            guard let self, let media, self.media === media, self.state == .listening else { return }
+            self.isRemoteSpeaking = speaking
+        }
+        media.onFailure = { [weak self, weak media] in
+            guard let self, let media, self.media === media else { return }
+            self.stop()
+        }
         state = .connecting
         operation = Task { [weak self, client] in
             var failure: String?
@@ -40,16 +50,27 @@ public final class GlobalVoiceSession {
             guard let self, self.media === media else { return }
             self.media = nil
             self.operation = nil
+            self.isMicrophoneMuted = false
+            self.isRemoteSpeaking = false
             self.state = (media.failure ?? failure).map(State.failed) ?? .idle
-        }
-        media.onFailure = { [weak self, weak media] in
-            guard let self, let media, self.media === media else { return }
-            self.stop()
         }
     }
 
     private func listening(_ media: VoiceMedia) {
-        if self.media === media, state == .connecting { state = .listening }
+        guard self.media === media, state == .connecting else { return }
+        isRemoteSpeaking = media.isRemoteSpeaking
+        state = .listening
+    }
+
+    /// Mute releases the input device and sender. Incoming audio keeps playing.
+    public func setMicrophoneMuted(_ muted: Bool) {
+        guard state == .listening, let media, isMicrophoneMuted != muted else { return }
+        do {
+            try media.setMicrophoneMuted(muted)
+            isMicrophoneMuted = muted
+        } catch {
+            media.fail(error.localizedDescription)
+        }
     }
 
     /// Releases the microphone synchronously. The stopping state covers the
@@ -57,14 +78,11 @@ public final class GlobalVoiceSession {
     public func stop() {
         guard let operation else { return }
         state = .stopping
+        isMicrophoneMuted = false
+        isRemoteSpeaking = false
         media?.close()
         operation.cancel()
     }
 
     isolated deinit { media?.close(); operation?.cancel() }
-}
-
-struct VoiceFailure: LocalizedError, Sendable {
-    let errorDescription: String?
-    init(_ message: String) { errorDescription = message }
 }

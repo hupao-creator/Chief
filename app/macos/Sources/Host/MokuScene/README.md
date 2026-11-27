@@ -24,6 +24,16 @@ Chief communicates through the Dock. Historical tool records stay in the audit. 
 
 ## Dock and composer
 
+### Global Voice Mode
+
+The [workspace presentation](../Shell/NativeWorkspaceView.swift) retains one [GlobalVoiceSession](../../Voice/README.md) for its connected runtime. An ordinary change of reader preserves the call. Runtime disconnect, window release and explicit end release its media. When a covering page hides the Bar, the active window's Voice Mode menu command can still end the call.
+
+The [Bar press target](VoiceBarPress.swift) recognizes a half-second hold. A short click opens or focuses the existing editor. An expanded editor or Talk reserves just the identity seat for the gesture. Text selection, links, attachments, Send, Stop and the Bar's own secondary-click conversation keep their targets. The voice path receives no draft or reading Thread.
+
+While connecting, Chief glances toward the right cap. The [joined glass surfaces](VoiceDock.swift) share a material container and a horizontal center. Only a ready call mounts the orb, with an expanded editor reserving space at the right of its viewport as needed. The travel host and the outside-click monitor include the orb's swept hit region. Clicking the orb toggles the input, secondary click ends the call, and the workspace reports connection failures through its operation notice. The [cloud disk](VoiceOrb.swift) responds to received audio and microphone state. Reduce Motion settles the orb directly and Reduce Transparency uses an opaque surface.
+
+The [mounted interaction replay](../../../../../demos/global-voice-mode/README.md) drives these production surfaces with fixture audio. The [live replay](../../../../../tools/e2e/README.md#global-voice) identifies the account, destination and audio boundaries it exercises.
+
 ### State and transition map
 
 The [workspace](../Shell/NativeWorkspaceView.swift) supplies the route, draft,

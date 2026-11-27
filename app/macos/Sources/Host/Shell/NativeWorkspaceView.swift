@@ -1,5 +1,6 @@
 import Observation
 import ChiefCore
+import ChiefVoice
 import ChiefPluginAPI
 import ChiefPluginUI
 import SwiftUI
@@ -8,6 +9,7 @@ import SwiftUI
 @MainActor @Observable
 public final class NativeWorkspacePresentation {
     public let workspace: NativeWorkspaceModel
+    let voice: GlobalVoiceSession
     public let settingsNavigation = NativeSettingsNavigation()
     public let canvas = NativeOverviewCanvasState()
     @ObservationIgnored lazy var collectionPanel = NativeCollectionPanelPresentation { [weak self] in
@@ -125,6 +127,7 @@ public final class NativeWorkspacePresentation {
 
     public init(workspace: NativeWorkspaceModel) {
         self.workspace = workspace
+        voice = GlobalVoiceSession(client: workspace.client)
         executionContinuation = NativeExecutionContinuation(workspace: workspace)
         mokuSubmission = NativeMokuSubmission(workspace: workspace)
         draft = NativeComposerDraft(services: workspace.services.composer(receipts: mokuSubmission.receipts),
@@ -184,6 +187,7 @@ public final class NativeWorkspacePresentation {
             guard let self else { return }
             self.overview.receive(.connection(status)); self.moku.receive(.connection(status))
             if status != .connected {
+                self.voice.stop()
                 self.scene.settle(); NativeReadingPageMotion.cancelAll(finishingClose: true)
             }
             self.publishPresence()
@@ -193,6 +197,28 @@ public final class NativeWorkspacePresentation {
             overview.receive(.snapshot(state, authority: authority)); moku.refresh(); reconcileSelection()
         }
         publishPresence()
+    }
+
+    fileprivate var canStartVoice: Bool {
+        workspace.runtimeAvailable && !onboarding.blocksWorkspace && workspace.catalog.hasMoku
+            && scene.dockRouteVisible && !scene.dockCovered && !browsingCollection
+    }
+
+    fileprivate var voiceDockControls: VoiceDockControls {
+        let phase: VoicePhase = switch voice.state {
+        case .idle, .stopping, .failed: .idle
+        case .connecting: .connecting
+        case .listening: voice.isRemoteSpeaking ? .speaking : voice.isMicrophoneMuted ? .muted : .listening
+        }
+        return VoiceDockControls(phase: phase, microphoneMuted: voice.isMicrophoneMuted,
+            start: startVoice, toggleMute: { [voice] in voice.setMicrophoneMuted(!voice.isMicrophoneMuted) },
+            end: voice.stop)
+    }
+
+    fileprivate func startVoice() {
+        guard canStartVoice else { return }
+        if case let .failed(reason) = voice.state, workspace.operationError == reason { workspace.dismissOperationError() }
+        voice.start()
     }
 
     public func setScenePhase(_ phase: ScenePhase) {
@@ -967,6 +993,7 @@ public final class NativeWorkspacePresentation {
     public func release(runtimeStopped: Bool = false) async {
         if let releaseTask { await releaseTask.value; return }
         guard started else { return }
+        voice.stop()
         overview.recordApplicationClose()
         started = false
         clearSidecardComposer()
@@ -1028,6 +1055,9 @@ public struct NativeWorkspaceView: View {
         .coordinateSpace(name: "workspace")
         .onChange(of: scenePhase, initial: true) { _, phase in presentation.setScenePhase(phase) }
         .onChange(of: controlActiveState, initial: true) { _, state in presentation.setReadingWindowActive(state == .key) }
+        .onChange(of: presentation.voice.state) { _, state in
+            if case let .failed(reason) = state { model.report(PluginContractError(reason)) }
+        }
         .focusedSceneValue(\.workspacePresentation, presentation)
         .onAppear { presentation.start() }
         .task(id: presentation.talkSourcePreparation) { [request = presentation.talkSourcePreparation] in
@@ -1044,7 +1074,10 @@ public struct NativeWorkspaceView: View {
         .onChange(of: presentation.collectionPanel.owner) { _, owner in
             if owner != nil { presentation.scene.cancelPendingTalkReading() }
         }
-        .onChange(of: model.stopping) { _, _ in presentation.publishPresence() }
+        .onChange(of: model.stopping) { _, stopping in
+            if stopping { presentation.voice.stop() }
+            presentation.publishPresence()
+        }
         .onChange(of: presentation.onboarding.blocksWorkspace) { _, _ in presentation.publishPresence() }
         .onChange(of: presentation.onboarding.step) { _, _ in presentation.publishPresence() }
     }
@@ -1117,6 +1150,8 @@ public struct NativeWorkspaceView: View {
                         }
                         else { presentation.cancelMoku(observed: thread) }
                     })
+                    .environment(\.chiefVoiceDock, presentation.canStartVoice || presentation.voiceDockControls.phase != .idle
+                        ? presentation.voiceDockControls : nil)
                     .opacity(presentation.collectionPanel.parentVisible || presentation.selected != nil ? 1 : 0)
                     .animation(NativeReadingPageTiming.openingAnimation, value: presentation.collectionPanel.parentVisible)
                     .modifier(StartupSkilletChrome())
@@ -1353,6 +1388,19 @@ public struct NativeWorkspaceCommands: Commands {
                 .disabled(presentation?.onboarding.blocksWorkspace == true)
             Button(locale.text("输入", "Compose")) { presentation?.scene.toggleInput(focusOnOpening: true) }
                 .keyboardShortcut("b", modifiers: [.command, .shift]).disabled(presentation?.onboarding.blocksWorkspace == true || presentation?.scene.dockRouteVisible != true || presentation?.scene.inputInteractionReady != true || presentation?.scene.settingsOpen == true)
+            Button(presentation?.voiceDockControls.phase.menuTitle(locale) ?? VoicePhase.idle.menuTitle(locale)) {
+                guard let presentation else { return }
+                if presentation.voiceDockControls.phase == .idle { presentation.startVoice() }
+                else { presentation.voice.stop() }
+            }
+            .keyboardShortcut("v", modifiers: [.command, .shift])
+            .disabled(presentation == nil || (presentation?.voiceDockControls.phase == .idle && presentation?.canStartVoice != true)
+                || presentation?.voice.state == .stopping)
+            if let presentation, presentation.voiceDockControls.phase.connected {
+                Button(presentation.voice.isMicrophoneMuted ? locale.text("恢复收音", "Unmute Microphone")
+                                                           : locale.text("静音", "Mute Microphone"),
+                       action: presentation.voiceDockControls.toggleMute)
+            }
         }
         CommandGroup(replacing: .appSettings) {
             Button(locale.text("设置…", "Settings…")) { presentation?.openSettings() }.keyboardShortcut(",")
