@@ -14,7 +14,7 @@ import ChiefPluginUI
     /// such as the Overview's Return to Automatic View button.
     /// One registry spans the canvas and its overlaid Moku surfaces. A drag
     /// over the capsule must retain control ownership on touch and pointer.
-    let canvasInputRegions = NativeCanvasInputRegions()
+    public let canvasInputRegions = NativeCanvasInputRegions()
     let swipeRegions = NativeOverviewSwipeRegions()
     let executionDockPlacement = NativeExecutionDockPlacement()
     private var landingActive = false

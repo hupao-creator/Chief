@@ -13,7 +13,7 @@ func Usage() {
 
 build       Build the Go runtime and native Swift product (--configuration debug|release)
 runtime     Build .build/go/chief-runtime
-bundle      Create and verify a signed bundle (--channel production|development|alpha, --zip)
+bundle      Create and verify a signed bundle (--channel production|development|demo|alpha, --zip)
 alpha       Build an isolated ad-hoc signed Release DMG (--build-number 1, --output PATH)
 smoke       Verify signed bundle metadata, linkage and resources (--app PATH)
 dev         Build, package and launch the isolated development channel (--fresh)
@@ -22,7 +22,7 @@ watch-main  Rebuild each clean local main commit (--no-open)
 install     Install a signed production bundle; refuses to replace a running app
 open        Open the installed production app (--app PATH)
 
-Requires Go and Xcode/macOS 26. Production/development packaging requires an
+Requires Go and Xcode/macOS 26. Production, development and demo packaging require an
 Apple Development identity. Alpha uses explicit ad-hoc signing without an Apple account.
 Node is needed only by external harnesses that independently require it.`)
 }

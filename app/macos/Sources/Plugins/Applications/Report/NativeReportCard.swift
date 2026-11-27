@@ -82,9 +82,11 @@ import SwiftUI
         }.buttonStyle(ReportCardButtonStyle()).foregroundStyle(NativePalette.overview.ink.swiftUI)
             .environment(\.threadCardUsesFlatMaterials, true)
             .contextMenu {
-                Button(archiveLabel) {
-                    Task { await archive() }
-                }.disabled(archivePending || !allowsActions())
+                if (try? props.context.capabilities.require(ApplicationCapabilities.threadUserActions)) != nil {
+                    Button(archiveLabel) {
+                        Task { await archive() }
+                    }.disabled(archivePending || !allowsActions())
+                }
             }
     }
     private var metadata: some View {

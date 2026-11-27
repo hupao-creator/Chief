@@ -65,7 +65,7 @@ struct NativeSidecardWorkspaceSnapshot {
 @MainActor @Observable
 final class NativeSidecardWorkspaceModel {
     private(set) var snapshot: NativeSidecardWorkspaceSnapshot?
-    @ObservationIgnored let harnessHost: NativeHarnessHost
+    @ObservationIgnored let harnessHost: any NativeThreadReadingHost
     @ObservationIgnored private let registry: SidecardPluginRegistry
     @ObservationIgnored private var services: NativeSidecardWorkspaceServices
     @ObservationIgnored private var configuration: NativeSidecardWorkspaceConfiguration
@@ -92,7 +92,7 @@ final class NativeSidecardWorkspaceModel {
     @ObservationIgnored private var handoff: NativeSidecardExecutionHandoff?
     @ObservationIgnored private var focusLauncherOnClose = true
 
-    init(harnessHost: NativeHarnessHost, registry: SidecardPluginRegistry,
+    init(harnessHost: any NativeThreadReadingHost, registry: SidecardPluginRegistry,
          configuration: NativeSidecardWorkspaceConfiguration, services: NativeSidecardWorkspaceServices,
          onBack: @escaping () -> Void, onVisibilityChange: @escaping (Bool) -> Void) {
         self.harnessHost = harnessHost; self.registry = registry; self.configuration = configuration
@@ -310,14 +310,14 @@ final class NativeSidecardWorkspaceModel {
         let stageAttachments = services.stageAttachments
         let discardAttachments = services.discardAttachments
         return SidecardContext(thread: input.thread, conversationIndex: conversationIndex,
-            actions: harnessHost.actions(for: input.thread, routes: routes), readingTarget: input.readingTarget,
+            actions: harnessHost.readingActions(for: input.thread, routes: routes), readingTarget: input.readingTarget,
             executionDisabled: disabled, expanded: selected == id, transitioning: transitioning,
             suppressed: configuration.suppressed || !configuration.entranceReady || dragging || transitioning || selected != id,
             conversation: { [weak self] executionID, target in
                 guard let self else { return AnyView(EmptyView()) }
-                return AnyView(NativeHarnessThreadView(host: harnessHost,
+                return AnyView(harnessHost.conversation(
                     input: HarnessThreadInput(thread: input.thread, readingTarget: target),
-                    presentation: .execution(executionID), routes: routes)
+                    presentation: .execution(executionID), routes: routes, onIndexChange: { _ in })
                     .disabled(disabled))
             },
             open: { [weak self] in self?.choose(id) ?? 0 },
@@ -345,7 +345,7 @@ final class NativeSidecardWorkspaceModel {
             }, discardAttachments: discardAttachments,
             backToOverview: { [weak self] in self?.onBack() },
             translate: { [weak self] in self?.translate($0) ?? $0 },
-            draftStorageDirectory: harnessHost.client.storageDirectory, attachmentImport: services.attachmentImport,
+            draftStorageDirectory: harnessHost.draftStorageDirectory, attachmentImport: services.attachmentImport,
             executionReveal: configuration.suppressed || !configuration.entranceReady ? nil : configuration.executionReveal,
             executionHandoff: handoff?.cardID == id ? handoff?.executionID : nil,
             restoreSelection: { [weak self, previous = selected] revision in

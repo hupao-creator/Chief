@@ -14,6 +14,10 @@ import SwiftUI
 struct Chief {
     static func main() {
         let arguments = CommandLine.arguments
+        if Bundle.main.bundleIdentifier == "com.mokusei.desktop.demo" || arguments.dropFirst().contains("--demo") {
+            DemoApp.main()
+            return
+        }
         if arguments.count == 4, arguments[1] == "--finish-runtime", arguments[2].hasPrefix("/") {
             Task.detached {
                 await NativeRuntimeExitCleanup.finish(directory: URL(fileURLWithPath: arguments[2]), epoch: arguments[3])
@@ -45,6 +49,12 @@ private struct WorkspaceApp: App {
         .commands {
             NativeWorkspaceCommands(locale: session.locale)
             CommandGroup(replacing: .help) {
+                Button(session.locale.text("打开演示工作区", "Open Demo Workspace")) {
+                    Task {
+                        do { try await DemoApp.open() }
+                        catch { session.error = error.localizedDescription }
+                    }
+                }
                 Link(session.locale.text("Chief 使用指南（英文）", "Chief User Guide"),
                      destination: URL(string: "https://github.com/hupao-creator/Chief/blob/main/docs/README.md")!)
                     .keyboardShortcut("?")

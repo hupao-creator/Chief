@@ -84,6 +84,10 @@ public struct NativeOverviewChrome: View {
         self.onSettingsWithOrigin = onSettingsWithOrigin; self.onSettingsFrameChange = onSettingsFrameChange
     }
 
+    public static func headerBottom(in size: CGSize, hasFilters: Bool) -> CGFloat {
+        OverviewTagMetrics.headerBottom(in: size, hasFilters: hasFilters)
+    }
+
     public var body: some View {
         let showsFilters = !presentedFilters.isEmpty
         let stackedFilterTop = OverviewTagMetrics.stackedFilterTop(viewportHeight: viewportHeight ?? .infinity)
@@ -352,6 +356,21 @@ public struct NativeOverviewChromeStrings: Sendable {
         count > 0 ? " · \(count) \(unread)" : ""
     }
     public init() {}
+    public init(locale: DesktopLocale) {
+        self.init()
+        if locale == .english {
+            self.settings = "Settings"; self.restart = "Restart development app"; self.actions = "Overview actions"
+            self.runningOnly = "Running"
+            self.unreadOnly = "Unread"
+            self.allStatuses = "All statuses"
+            self.completedOnly = "Completed"
+            self.statusFilter = "Filter by status"
+            self.filter = "Filter by tag"
+            self.containsActiveTasks = "Contains active tasks"
+            self.unread = "unread"
+            self.clearUnread = "Mark all in tag as read"
+        }
+    }
 }
 
 /// Noninteractive empty-state guidance for the current Overview filter.

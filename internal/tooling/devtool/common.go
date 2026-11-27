@@ -33,6 +33,8 @@ func ProductConfiguration(channel string) (Product, error) {
 		return Product{channel, "com.mokusei.native.dev", "Chief Native Dev.app", "Chief Native Dev", "Chief Native Dev"}, nil
 	case "production":
 		return Product{channel, "com.mokusei.desktop", "Chief.app", "Chief", "Chief"}, nil
+	case "demo":
+		return Product{channel, "com.mokusei.desktop.demo", "Chief Demo.app", "Chief Demo", "Chief Demo"}, nil
 	case "alpha":
 		return Product{channel, "com.mokusei.desktop.alpha", "Chief Alpha.app", "Chief Alpha", "Chief Alpha"}, nil
 	default:
