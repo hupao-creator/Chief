@@ -1,5 +1,7 @@
 <h1 align="center"><img src="design/chief-logo.webp" width="115" height="115" align="absmiddle" hspace="6" alt="">Chief</h1>
 
+<p align="center"><strong>English</strong> / <a href="README.zh-CN.md">简体中文</a></p>
+
 <p align="center">Chief brings your AI agents together and gets them cooking.</p>
 
 <p align="center">
