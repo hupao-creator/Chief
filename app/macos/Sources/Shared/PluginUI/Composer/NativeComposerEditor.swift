@@ -32,6 +32,7 @@ struct NativeComposerEditor: NSViewRepresentable {
     var emphasizedInsertionPoint = false
     var onPaste: (([NSItemProvider], NSRange) -> Void)? = nil
     var textInsets = EdgeInsets()
+    var onEditorHold: (() -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeNSView(context: Context) -> NSScrollView {
@@ -68,12 +69,17 @@ struct NativeComposerEditor: NSViewRepresentable {
         return scroll
     }
 
+    static func dismantleNSView(_ scroll: NSScrollView, coordinator: Coordinator) {
+        coordinator.updateEditorHold(enabled: false)
+    }
+
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         let coordinator = context.coordinator
         // A render of the submitting scope can arrive after its focused editor
         // moved. Its empty draft and completion requests belong to that old scope.
         if let source = coordinator.continuedFrom, draft === source { return }
         if coordinator.parent.draft !== draft {
+            coordinator.updateEditorHold(enabled: false)
             coordinator.parent.draft?.editors.remove(coordinator)
             coordinator.continuedFrom = nil
         }
@@ -143,6 +149,7 @@ struct NativeComposerEditor: NSViewRepresentable {
         editor.pasteOwnerID = pasteOwnerID
         editor.pasteAttachments = unavailable ? nil : onPaste
         editor.emphasizedInsertionPoint = emphasizedInsertionPoint
+        coordinator.updateEditorHold(enabled: active && onEditorHold != nil)
         scroll.hasVerticalScroller = showsScroller
         coordinator.applySelectionRequest()
         if active { coordinator.applyFocusRequest() }
@@ -154,9 +161,10 @@ struct NativeComposerEditor: NSViewRepresentable {
         if restoredSelection { editor.scrollRangeToVisible(editor.selectedRange()) }
     }
 
-    @MainActor final class Coordinator: NSObject, NSTextViewDelegate {
+    @MainActor final class Coordinator: NSObject, NSTextViewDelegate, NSGestureRecognizerDelegate {
         var parent: NativeComposerEditor
         weak var editor: ComposerTextView?
+        private var editorHold: NativeComposerHoldGesture?
         weak var continuedFrom: NativeComposerDraft?
         var updating = false
         var lastModel: String?
@@ -170,6 +178,40 @@ struct NativeComposerEditor: NSViewRepresentable {
         private var lastState: NativeComposerEditorState?
         private var publishScheduled = false
         init(_ parent: NativeComposerEditor) { self.parent = parent }
+
+        func updateEditorHold(enabled: Bool) {
+            if let press = editorHold {
+                if press.isEnabled != enabled { press.isEnabled = enabled }
+            } else if enabled, let editor {
+                let press = NativeComposerHoldGesture(target: self, action: #selector(editorHeld(_:)))
+                press.delaysPrimaryMouseButtonEvents = true
+                press.delegate = self
+                editor.addGestureRecognizer(press)
+                editorHold = press
+            }
+        }
+
+        private var canHoldEditor: Bool {
+            guard let editor, let window = editor.window else { return false }
+            return active == true && parent.onEditorHold != nil && !editor.hasMarkedText()
+                && window.isKeyWindow && window.attachedSheet == nil && NSApp.modalWindow == nil
+                && !editor.isHiddenOrHasHiddenAncestor
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: NSGestureRecognizer, shouldAttemptToRecognizeWith event: NSEvent) -> Bool {
+            event.type == .leftMouseDown && event.clickCount == 1
+                && event.modifierFlags.intersection([.control, .shift, .option, .command]).isEmpty
+                && canHoldEditor
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: NSGestureRecognizer) -> Bool {
+            canHoldEditor
+        }
+
+        @objc private func editorHeld(_ press: NSGestureRecognizer) {
+            guard press.isEnabled, press.state == .ended, canHoldEditor else { return }
+            parent.onEditorHold?()
+        }
 
         var isEditingDraft: Bool {
             guard active == true, let editor, let window = editor.window else { return false }
@@ -187,6 +229,8 @@ struct NativeComposerEditor: NSViewRepresentable {
             // Only its editable text is bound early. Actions need the new visit.
             parent.selectionRequest = nil; parent.focusRequest = nil
             parent.onKeyDown = nil; parent.onSubmit = {}; parent.onEscape = nil; parent.onState = nil
+            parent.onEditorHold = nil
+            updateEditorHold(enabled: false)
             lastState = nil
             editor?.pasteOwnerID = nil; editor?.pasteAttachments = nil
             applyDraft(draft)

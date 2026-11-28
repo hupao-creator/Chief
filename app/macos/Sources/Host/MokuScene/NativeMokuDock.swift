@@ -328,6 +328,19 @@ public struct NativeMokuDock: View {
     private var composerCanFocus: Bool {
         state.inputInteractionReady && state.dockRouteVisible && state.inputOpen && !state.dockCovered
     }
+    private var composerAcceptsVoiceHold: Bool {
+        ordinaryOverviewDock && composerVisible && composerCanFocus && state.windowVisible
+            && !state.conversationOpen && !state.inputLeaving && !disabled
+    }
+    private var composerVoiceStart: (() -> Void)? {
+        guard composerAcceptsVoiceHold, let voice, voice.phase == .idle else { return nil }
+        let generation = state.composerGeneration
+        return {
+            guard state.composerGeneration == generation, state.ownsComposer(draft),
+                  composerAcceptsVoiceHold else { return }
+            voice.start()
+        }
+    }
     private var explicitFocusRequest: NativeMokuSceneState.ComposerFocusRequest? {
         guard inputPresent, composerCanFocus, state.ownsComposer(draft),
               let request = state.composerFocusRequest, request.generation == state.composerGeneration else { return nil }
@@ -1011,6 +1024,7 @@ public struct NativeMokuDock: View {
         return NativeMokuComposerInput(draft: draft, cwd: cwd, disabled: disabled,
             awaitingContinuation: sidecardComposer == nil && awaitingContinuation,
             targetsThread: threadID != nil, sidecardComposer: sidecardComposer,
+            onEditorHold: composerVoiceStart,
             readOnly: state.inputLeaving, focusEnabled: composerCanFocus && (sidecardComposer?.ready ?? true),
             automaticFocus: false,
             // Keep the Compose key through the input's lifetime so installing
