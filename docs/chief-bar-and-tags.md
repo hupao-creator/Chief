@@ -6,13 +6,15 @@ Press **⌘K** to open **Overview**. Look for the pair of eyes at the bottom of 
 
 ## Click Chief Bar to type a request
 
-Click Chief’s eyes once. The bar expands and the cursor appears in **Type a message…**. Type your request, then press **Return** or click the up arrow to send it. The bar folds back to the eyes.
+Click Chief’s eyes once. The bar expands and the cursor appears in the text box. Type your request, then press **Return** or click the up arrow to send it. The bar folds back to the eyes.
 
 ![Chief Bar expands into a text field, a weather question is typed, and the bar folds after sending.](images/chief-bar-input.gif)
 
 ## Hold Chief Bar to speak
 
-Press and hold the bar for half a second. If the text box is open, hold the eyes or agent icon at its left edge. Chief glances to the right while it connects. The first time, allow Chief to use your microphone when macOS asks. When the blue orb separates from the bar, you can release the mouse and speak. The call continues until you end it.
+Press and hold the bar for half a second. In Overview, you can also hold the empty text box for half a second and release. Look for **Hold for Voice Mode or type a message…**. If you’ve already typed something, you can still hold the eyes or agent icon at the left edge.
+
+Chief glances to the right while it connects. The first time, allow Chief to use your microphone when macOS asks. When the blue orb separates from the bar, you can speak. The call continues until you end it.
 
 Speak and watch the white ring inside the orb brighten with your voice. The cloud band rises and falls with incoming audio. With Reduce Motion on, the ring and cloud brighten in place.
 
