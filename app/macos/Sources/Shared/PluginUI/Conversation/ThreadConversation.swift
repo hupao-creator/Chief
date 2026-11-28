@@ -730,12 +730,9 @@ private struct ThreadHistoryDocument: View {
         VStack(alignment: .leading, spacing: 18) {
             if !hidesHeading {
                 if let page { Text(emoji(page.id)).font(.system(size: 44)).accessibilityHidden(true) }
-                Text(historyTitle)
-                    .font(NativeTypography.inter(size: 40, weight: 650)).tracking(-0.8)
-                    .lineLimit(2).truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                NativeThreadTitle(text: historyTitle)
                     .help(historyTitle)
-                    .foregroundStyle(NativePalette.thread.inkStrong.swiftUI).accessibilityAddTraits(.isHeader)
+                    .accessibilityAddTraits(.isHeader)
                     .focusable().focusEffectDisabled().focused($headingFocused)
             }
             if page != nil {

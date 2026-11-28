@@ -54,8 +54,13 @@ native field types, permitted answers and response identity. [Adapter paths](../
 Current and historical documents resolve the title and author for their exact
 execution. Missing historical titles use its instruction or timestamp, never the
 mutable current Thread title. Outgoing and incoming title/author ink follows the
-same vertical document ownership. Deferred data and optional detail loaders update
-at one stable renderer site so loader availability does not replace the reader.
+same vertical document ownership. Detail headings use the same layout for the
+current document, history and opening title ink. The heading uses the largest
+single-line size that fits at 40pt or 36pt. When neither fits, or the title
+has explicit line breaks, it uses 40pt with up to two lines and tail
+truncation. The tooltip and accessible heading expose the full title.
+Deferred data and optional detail loaders update at one stable renderer site
+so loader availability does not replace the reader.
 
 Source: [ThreadConversation](../app/macos/Sources/Shared/PluginUI/Conversation/ThreadConversation.swift),
 [execution groups](../app/macos/Sources/Shared/PluginUI/Conversation/ThreadExecutionGroups.swift),
@@ -75,11 +80,13 @@ admits hidden preparation of an ordinary Agent reader while travel continues.
 Drawing, input, accessibility, text entrance and secondary surfaces wait for
 arrival and their own readiness. Report and Collection entries mount their
 readers on arrival. The same Agent reader survives arrival. Both title anchors must exist;
-coalesced native layout supplies the opening geometry. If reserving an Execution
-Sidecard changes the horizontal landing during entry, the compositor can
-redirect the flying title and emoji once from their presented positions to
-the measured main-column anchors. Live window resizing admits the handoff
-when panel travel finishes.
+coalesced native layout supplies the opening geometry. The title starts at the
+Overview card's 15pt size before camera magnification. The compositor uses the
+point size of the text drawn into its opening bitmap to set that starting scale.
+If reserving an Execution Sidecard changes the horizontal landing during entry,
+the compositor can redirect the flying title and emoji once from their
+presented positions to the measured main-column anchors. Live window resizing
+admits the handoff when panel travel finishes.
 
 The history index uses row metadata. A scoped reader constructs the selected
 body through its Harness renderer. For inline content, copies of a row share
