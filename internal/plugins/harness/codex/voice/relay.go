@@ -241,9 +241,7 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 		case <-ctx.Done():
 			return context.Cause(ctx)
 		case now := <-watch.C:
-			if requests.stalled(now) {
-				return errors.New("Codex stopped finalizing user speech. Check the Chief conversation before trying again.")
-			}
+			requests.expireStalled(now)
 		case reply, open := <-call.Replies:
 			if !open {
 				return errors.New("the Chief voice destination disconnected")
