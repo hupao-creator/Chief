@@ -19,7 +19,6 @@ struct NativeOverviewRecentThreadList: View {
 
     let title: String
     let threads: [NativeOverviewRecentThread]
-    let usesTintedGlass: Bool
     let open: (JSONText) -> Void
 
     @Environment(\.locale) private var locale
@@ -52,14 +51,13 @@ struct NativeOverviewRecentThreadList: View {
             }
             .clipShape(shell)
             .background {
+                let surface = NativePalette.thread.surface.swiftUI
                 if !flatMaterials && !reduceTransparency && contrast != .increased {
-                    Color.clear.nativeRegularCardGlass(in: shell,
-                        opaque: NativePalette.overview.surface.swiftUI,
-                        tint: usesTintedGlass ? NativePalette.overview.surface.swiftUI.opacity(0.82) : nil)
+                    Color.clear.nativeRegularCardGlass(in: shell, opaque: surface)
                         .allowsHitTesting(false)
                 } else {
-                    shell.fill(NativePalette.overview.surface.swiftUI)
-                        .strokeBorder(NativePalette.overview.lineSoft.swiftUI)
+                    shell.fill(surface)
+                        .strokeBorder(.primary.opacity(0.16))
                 }
             }
         }
@@ -118,14 +116,13 @@ private struct NativeOverviewRecentThreadButtonStyle: ButtonStyle {
             .foregroundStyle(palette.ink.swiftUI)
             .background {
                 if hovered || configuration.isPressed {
-                    palette.accentSoft.swiftUI.opacity(0.62)
-                        .overlay(palette.ink.swiftUI.opacity(configuration.isPressed ? 0.06 : 0))
+                    Color.primary.opacity(configuration.isPressed ? 0.17 : 0.10)
                 }
             }
             .overlay {
                 if focused {
                     focusShape
-                        .strokeBorder(NativePalette.overviewAccentText.swiftUI, lineWidth: 2)
+                        .strokeBorder(.primary.opacity(0.75), lineWidth: 2)
                         .padding(1)
                         .allowsHitTesting(false)
                 }

@@ -531,16 +531,22 @@ check. Follow the [Overview presentation contract](../../app/macos/Sources/Host/
 
 1. In Light and Dark, capture the empty Unread and Running views. Cover solid
    and wallpaper-backed windows, then repeat with Reduce Transparency and
-   Increase Contrast. Sample the label and row ink and the adjacent fill in
-   sRGB. Use a 4.5:1 contrast floor for titles and timestamps.
+   Increase Contrast. On a neutral backdrop, check both lists for an idle face
+   and rim without gold coloring. Wallpaper can contribute color to the glass.
+   Sample the label and row ink and the adjacent fill in sRGB. Use a 4.5:1
+   contrast floor for titles and timestamps.
 2. Hover the single-row list, then the first, middle and last rows of a
    populated list. Include the top and bottom end insets when pointing.
    Check that only the active row changes fill, that the fill follows the
    panel corners with no strips of the idle face and that the text remains
-   readable. Check pressed and keyboard-focused rows, including the focus
-   outline at the outer corners.
+   readable. Check that hover, press and the inset keyboard focus outline
+   stay neutral, including at the outer corners.
 3. Activate a row with the pointer and with the keyboard. Confirm that each
    opens the indicated Thread and returns to the same filter after closing.
+4. In the isolated workspace, open the last unread Agent Thread and wait for
+   its result. Close it and check the first Recently read row as it appears.
+   Repeat with Reduce Motion and compare the row face and rim with the settled
+   empty state.
 
 Record the revision, fixture or profile, effective appearance, background,
 accessibility settings, input route, frames and contrast samples. A static
