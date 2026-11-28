@@ -317,7 +317,8 @@ archive and Report coverage rules. The unscoped Running view uses untagged
 Threads. Completed and ordinary tag emptiness use their own presentations.
 
 The status title and recent-list heading use opaque, appearance-matched label
-backings. Rows share one tinted regular Liquid Glass surface. Reduce
+backings. Rows share one regular Liquid Glass surface. Recently completed uses
+untinted glass and Recently read uses the Overview surface tint. Reduce
 Transparency and Increase Contrast use a solid face. Each row has the owning
 Harness logo, the Thread title and the relevant relative time. The title and
 time use the same high-contrast ink and differ in size and weight. Hover and
