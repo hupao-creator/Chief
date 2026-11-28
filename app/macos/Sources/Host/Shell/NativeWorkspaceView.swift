@@ -211,6 +211,7 @@ public final class NativeWorkspacePresentation {
         case .listening: voice.isRemoteSpeaking ? .speaking : voice.isMicrophoneMuted ? .muted : .listening
         }
         return VoiceDockControls(phase: phase, microphoneMuted: voice.isMicrophoneMuted,
+            levels: { [voice] in (voice.microphoneLevel, voice.playbackLevel) },
             start: startVoice, toggleMute: { [voice] in voice.setMicrophoneMuted(!voice.isMicrophoneMuted) },
             end: voice.stop)
     }

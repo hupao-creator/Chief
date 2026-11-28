@@ -7,6 +7,7 @@ import ChiefPluginUI
 struct VoiceDockControls {
     let phase: VoicePhase
     let microphoneMuted: Bool
+    let levels: @MainActor () -> (microphone: Double, playback: Double)
     let start, toggleMute, end: @MainActor () -> Void
 }
 
@@ -107,7 +108,7 @@ struct VoiceDock: ViewModifier {
                             .glassEffectTransition(.matchedGeometry)
                             .overlay {
                                 if let voice, voice.phase.connected {
-                                    VoiceOrb(phase: voice.phase, microphoneMuted: voice.microphoneMuted)
+                                    VoiceOrb(phase: voice.phase, microphoneMuted: voice.microphoneMuted, levels: voice.levels)
                                         .opacity(separated ? 1 : 0)
                                 }
                             }

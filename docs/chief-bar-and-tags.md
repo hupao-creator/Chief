@@ -14,6 +14,8 @@ Click Chief’s eyes once. The bar expands and the cursor appears in **Type a me
 
 Press and hold the bar for half a second. If the text box is open, hold the eyes or agent icon at its left edge. Chief glances to the right while it connects. The first time, allow Chief to use your microphone when macOS asks. When the blue orb separates from the bar, you can release the mouse and speak. The call continues until you end it.
 
+Speak and watch the light ring inside the orb brighten with your voice. The cloud band rises and falls with incoming audio. With Reduce Motion on, the cloud brightens in place.
+
 Click the orb to mute your microphone. Its blue color fades while you’re muted. Click again to speak, or right-click the orb to end the call. **Control-click** also ends it. **⇧⌘V** starts Voice Mode from the bar, cancels a pending connection or ends an active call.
 
 Voice goes to the **Chief Agent** selected in Settings, even when you open another task. Typing in that task still sends to the task, and opening Voice Mode keeps your draft and selection. You may hear a brief acknowledgement. Chief’s replies appear as text. Right-click Chief Bar to read them in the conversation. Ending the call lets accepted work continue. [Choose your Chief Agent](settings.md)

@@ -13,6 +13,8 @@ public final class GlobalVoiceSession {
     public private(set) var state: State = .idle
     public private(set) var isMicrophoneMuted = false
     public private(set) var isRemoteSpeaking = false
+    public private(set) var microphoneLevel = 0.0
+    public private(set) var playbackLevel = 0.0
     private let client: RuntimeClient
     @ObservationIgnored private var operation: Task<Void, Never>?
     @ObservationIgnored private var media: VoiceMedia?
@@ -24,6 +26,11 @@ public final class GlobalVoiceSession {
         guard operation == nil else { return }
         let media = VoiceMedia()
         self.media = media
+        media.onLevels = { [weak self, weak media] input, output in
+            guard let self, let media, self.media === media, self.state == .listening else { return }
+            self.microphoneLevel = input
+            self.playbackLevel = output
+        }
         media.onRemoteSpeaking = { [weak self, weak media] speaking in
             guard let self, let media, self.media === media, self.state == .listening else { return }
             self.isRemoteSpeaking = speaking
@@ -67,6 +74,8 @@ public final class GlobalVoiceSession {
             self.media = nil
             self.operation = nil
             self.isMicrophoneMuted = false
+            self.microphoneLevel = 0
+            self.playbackLevel = 0
             self.isRemoteSpeaking = false
             self.state = (media.failure ?? failure).map(State.failed) ?? .idle
             if case .failed = self.state { DevDiagnostics.event("voice.session", "failed", trace: trace) }
@@ -102,6 +111,8 @@ public final class GlobalVoiceSession {
         state = .stopping
         DevDiagnostics.event("voice.session", "stopping", trace: diagnosticTrace)
         isMicrophoneMuted = false
+        microphoneLevel = 0
+        playbackLevel = 0
         isRemoteSpeaking = false
         media?.close()
         operation.cancel()
