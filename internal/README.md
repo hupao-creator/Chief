@@ -37,9 +37,10 @@ notices still enter Moku's transcript; uncertain delivery is inspected through
 [Moku](services/moku/README.md). User-visible failures, CLI/Probe responses and
 `runtime/startup-error.json` remain their own output boundaries.
 
-The runtime and app have no private service/tool journal, settings diagnostics
-channel, layout/performance recorder or OSLog instrumentation. Business usage
-telemetry and retained measurement artifacts are separate from these channels.
+The packaged development runtime and app emit coarse local operational events
+through [development diagnostics](platform/diagnostics/README.md). Business
+records, usage telemetry and retained measurement artifacts keep their own
+ownership and verification boundaries.
 Development readiness uses a temporary one-shot PID receipt; native exit admits
 the epoch-fenced cleanup helper through atexit with a separate 750ms deadline.
 See [native lifecycle](../app/macos/README.md) and

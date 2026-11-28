@@ -235,16 +235,28 @@ func same(a, b any) bool {
 	right, e := json.Marshal(b)
 	return e == nil && bytes.Equal(left, right)
 }
-func auditPreview(items []json.RawMessage) []json.RawMessage {
+func auditPreview(items []json.RawMessage, execution *model.PublicExecution) []json.RawMessage {
 	result := []json.RawMessage{}
 	latest := ""
-	for _, raw := range items {
-		var item map[string]any
-		if json.Unmarshal(raw, &item) == nil {
-			if id, ok := item["executionId"].(string); ok {
-				latest = id
-			}
+	// A host opening failure has no execution. Its compact preview needs only
+	// this reply, even in Alpha histories full of unbound user messages.
+	for i := len(items) - 1; i >= 0; i-- {
+		var row struct {
+			ExecutionID *string
+			Type        string
+			CreatedAt   int64
 		}
+		if json.Unmarshal(items[i], &row) != nil || row.ExecutionID == nil {
+			continue
+		}
+		latest = *row.ExecutionID
+		if latest == "" && row.Type == "chief-failure" && (execution == nil ||
+			(execution.Terminal() && (execution.FinishedAt == nil || *execution.FinishedAt <= row.CreatedAt))) {
+			items = items[i : i+1]
+		} else if execution != nil {
+			latest = execution.ExecutionID
+		}
+		break
 	}
 	for _, raw := range items {
 		var item map[string]any
@@ -255,6 +267,7 @@ func auditPreview(items []json.RawMessage) []json.RawMessage {
 			continue
 		}
 		delete(item, "reasoning")
+		delete(item, "resendRequest")
 		if value, ok := item["content"].(string); ok && len([]rune(value)) > 600 {
 			item["content"] = string([]rune(value)[:600])
 		}

@@ -6,7 +6,8 @@ public struct RuntimeTransport: Sendable {
 
     public func request(connection: RuntimeConnection, path: String, method: String = "GET", body: Data? = nil,
                         timeout: TimeInterval = 30) async throws -> JSONValue {
-        let channel = try RuntimeHTTPChannel(connection: connection, path: path, method: method, body: body, timeout: timeout)
+        let channel = try RuntimeHTTPChannel(connection: connection, path: path, method: method, body: body, timeout: timeout,
+                                             diagnosticTrace: DevDiagnostics.trace)
         return try await response(channel)
     }
 
@@ -109,7 +110,7 @@ final class RuntimeHTTPChannel: NSObject, URLSessionDataDelegate, @unchecked Sen
     private var task: URLSessionTask?
     private let maximumResponseBytes: Int64
     init(connection: RuntimeConnection, path: String, method: String, body: Data?, timeout: TimeInterval,
-         uploadFile: URL? = nil, headers: [String: String] = [:],
+         uploadFile: URL? = nil, headers: [String: String] = [:], diagnosticTrace: DevDiagnostics.Trace? = nil,
          maximumResponseBytes: Int64 = Int64(RuntimeProtocol.maxResponseBytes)) throws {
         let port = connection.port, token = connection.token, epoch = connection.epoch
         self.maximumResponseBytes = maximumResponseBytes
@@ -143,6 +144,7 @@ final class RuntimeHTTPChannel: NSObject, URLSessionDataDelegate, @unchecked Sen
         request.setValue(epoch, forHTTPHeaderField: "X-Mokusei-Epoch")
         if let lease = connection.attachmentLease { request.setValue(lease, forHTTPHeaderField: "X-Mokusei-Attachment-Lease") }
         for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
+        if let diagnosticTrace { request.setValue(diagnosticTrace.token, forHTTPHeaderField: "X-Chief-Dev-Trace") }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(String(body.count), forHTTPHeaderField: "Content-Length")

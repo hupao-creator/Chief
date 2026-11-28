@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 var commandIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{16,128}$`)
@@ -36,10 +37,24 @@ func newCommandExecutor(host Host, path string, ctx context.Context) (*commandEx
 	close(done)
 	return &commandExecutor{accepting: true, drained: done, host: host, receipts: receipts, context: ctx}, nil
 }
-func (e *commandExecutor) execute(ctx context.Context, channel string, raw []byte) (Result, error) {
+func (e *commandExecutor) execute(ctx context.Context, channel string, raw []byte) (result Result, returned error) {
 	var request commandRequest
 	if err := json.Unmarshal(raw, &request); err != nil || request.Args == nil || len(request.Args) > 32 || !commandIDPattern.MatchString(request.CommandID) {
 		return Result{}, model.NewError("INVALID_REQUEST", "A valid commandId and args array are required")
+	}
+	if model.IsCommandChannel(channel) && !model.IsReadOnlyChannel(channel) {
+		ctx = diagnostics.EnsureTrace(ctx)
+	}
+	traced := model.IsCommandChannel(channel) && diagnostics.Traced(ctx)
+	if traced {
+		diagnostics.Event(ctx, channel, "received")
+		defer func() {
+			if result.Error != nil {
+				diagnostics.Event(ctx, channel, diagnosticCommandFailure(result.Error.Code))
+			} else {
+				diagnostics.End(ctx, channel, returned)
+			}
+		}()
 	}
 	e.mu.Lock()
 	if !e.accepting {
@@ -81,8 +96,12 @@ func (e *commandExecutor) execute(ctx context.Context, channel string, raw []byt
 			defer stop()
 			defer cancel()
 		}
-		if channel == "thread:follow-up" || channel == "moku:submit" {
+		if channel == "thread:follow-up" || channel == "moku:submit" || channel == "moku:resend" {
 			callContext = model.WithFollowUpCommand(callContext, request.CommandID)
+		}
+		callContext = diagnostics.CopyTrace(callContext, ctx)
+		if traced {
+			diagnostics.Event(callContext, channel, "invoking")
 		}
 		return e.host.Invoke(callContext, channel, request.Args)
 	}
@@ -113,6 +132,19 @@ func (e *commandExecutor) execute(ctx context.Context, channel string, raw []byt
 	hash.Write(args)
 	return e.receipts.Execute(ctx, request.CommandID, hex.EncodeToString(hash.Sum(nil)), run)
 }
+func diagnosticCommandFailure(code string) string {
+	switch code {
+	case "COMMAND_OUTCOME_INDETERMINATE", "COMMAND_OUTCOME_UNCERTAIN":
+		return "outcome_uncertain"
+	case "SERVICE_STOPPING", "SERVICE_DRAINING":
+		return "service_stopping"
+	case "INVALID_REQUEST":
+		return "invalid_request"
+	default:
+		return "rejected"
+	}
+}
+
 func (e *commandExecutor) revoke() { e.mu.Lock(); e.accepting = false; e.mu.Unlock() }
 func (e *commandExecutor) drain(ctx context.Context) error {
 	e.mu.Lock()

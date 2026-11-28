@@ -116,8 +116,11 @@ final class BrowserWebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKD
             return document.url.path.utf8.starts(with: prefix.utf8)
         }
     }
+    @ObservationIgnored private var navigationTrace: DevDiagnostics.Trace?
+
     private func begin(_ target: URL?, allowSameDocument: Bool = false) {
         generation += 1
+        navigationTrace = nil
         cancelPageDialog()
         historyStartPending = false
         cancelAnnotation()
@@ -250,6 +253,8 @@ final class BrowserWebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKD
         if let navigation, let owner = navigationGenerations.object(forKey: navigation)?.intValue, owner != generation, !historyStartPending { return }
         activeNavigation = navigation
         begin(pendingURL ?? webView.url)
+        navigationTrace = DevDiagnostics.makeTrace()
+        DevDiagnostics.event("browser.navigation", "started", trace: navigationTrace)
         if let navigation { navigationGenerations.setObject(NSNumber(value: generation), forKey: navigation) }
     }
     func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
@@ -277,6 +282,7 @@ final class BrowserWebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKD
         self.webView.synchronizeDocumentZoom()
         completedDocumentURL = ready ? webView.url : nil
         completedDocumentStatus = documentStatus
+        DevDiagnostics.event("browser.navigation", documentStatus >= 400 ? "http_error_document" : "finished", trace: navigationTrace)
     }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError failure: Error) { fail(navigation, failure) }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError failure: Error) { fail(navigation, failure) }
@@ -294,6 +300,7 @@ final class BrowserWebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKD
                 return
             }
         }
+        DevDiagnostics.failure("browser.navigation", failure, trace: navigationTrace)
         loading = false; ready = false; documentResponseDisplayable = false; error = failure.localizedDescription
         cancelAnnotation(); viewport?.setSuppressed(true)
     }
@@ -328,6 +335,7 @@ final class BrowserWebSession: NSObject, WKNavigationDelegate, WKUIDelegate, WKD
         return translate(source)
     }
     private func rejectNavigation(_ message: String) {
+        DevDiagnostics.event("browser.navigation", "policy_rejected", trace: DevDiagnostics.makeTrace())
         if completedDocumentURL != nil, !navigationCommitted || ready {
             if loading { finishCancelledNavigation() }
             notice = message

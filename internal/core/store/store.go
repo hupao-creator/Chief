@@ -12,6 +12,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 const MaxRecordBytes = 50 * 1024 * 1024
@@ -226,6 +228,7 @@ func (s *Store) execute(r request) (Snapshot, error) {
 	}
 	next := tx.snapshot()
 	if err := validateLifecycleChanges(tx, next); err != nil {
+		diagnostics.Event(r.ctx, "store.commit", "lifecycle_validation_failed")
 		return Snapshot{}, err
 	}
 	if before.Revision() == math.MaxInt64 {
@@ -233,6 +236,7 @@ func (s *Store) execute(r request) (Snapshot, error) {
 	}
 	next.data.revision = before.Revision() + 1
 	if err := s.db.commit(tx, next.Revision()); err != nil {
+		diagnostics.Event(r.ctx, "store.commit", "sqlite_commit_failed")
 		var fatal *fatalDatabaseError
 		if errors.As(err, &fatal) {
 			s.fatal = err

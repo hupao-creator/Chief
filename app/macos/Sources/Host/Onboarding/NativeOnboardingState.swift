@@ -141,6 +141,8 @@ enum NativeOnboardingStep: Int, CaseIterable {
 
     func advance() async {
         guard canAdvance else { return }
+        let trace = DevDiagnostics.makeTrace()
+        DevDiagnostics.event("onboarding.advance", "validating", trace: trace)
         busy = true; error = nil
         defer { busy = false }
         do {
@@ -165,7 +167,11 @@ enum NativeOnboardingStep: Int, CaseIterable {
             }
             step = NativeOnboardingStep(rawValue: step.rawValue + 1)!
             editors[step] = NativeSettingsReadiness()
-        } catch { self.error = error.localizedDescription }
+            DevDiagnostics.event("onboarding.advance", "advanced", trace: trace)
+        } catch {
+            DevDiagnostics.failure("onboarding.advance", error, trace: trace)
+            self.error = error.localizedDescription
+        }
     }
 
     func back() {

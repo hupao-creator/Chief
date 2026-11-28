@@ -150,6 +150,11 @@ accepted, and all generations already perform complete packaging verification.
 Old generations are retained while applications may still reference them. After
 closing development apps, remove `app/macos/dist/fast/` to reclaim disk space.
 
+Development bundles emit [local operational diagnostics](../../../internal/platform/diagnostics/README.md)
+to macOS unified logging. The signed development bundle identity and packaging
+provenance select the feature for both Swift and Go. Use the documented
+subsystem predicate to see events and correlate a request.
+
 `dev --fresh` and `fast --fresh` rotate the development profile to
 `<profile>.previous` before opening the application. Native startup and rotation
 share a nonblocking admission lock. A native client acquires a shared canonical

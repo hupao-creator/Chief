@@ -6,7 +6,7 @@ import "context"
 var commandReadOnly = map[string]bool{
 	"attachment:preview": true, "attachment:image-path": true, "attachment:discard": false,
 	"moku:deliveries": true, "moku:resolve-delivery": false,
-	"moku:submit": false, "moku:clear": false, "moku:stage-attachments": false, "moku:cancel": false,
+	"moku:submit": false, "moku:resend": false, "moku:clear": false, "moku:stage-attachments": false, "moku:cancel": false,
 	"history:clear": false, "history:prepare-reset": false, "thread:follow-up": false, "thread:interrupt": false,
 	"thread:interaction-respond": false, "thread:read": true, "thread:fork": false,
 	"thread:update-settings": false, "app:update-settings": false,
@@ -31,3 +31,12 @@ func FollowUpRowID(ctx context.Context) string {
 	id, _ := ctx.Value(followUpRowKey{}).(string)
 	return id
 }
+
+type chiefResendKey struct{}
+
+// A resend starts a new turn. Native wakeups can race the coordinator queue,
+// so Core checks this again while it owns the native admission reservation.
+func WithChiefResend(ctx context.Context) context.Context {
+	return context.WithValue(ctx, chiefResendKey{}, true)
+}
+func IsChiefResend(ctx context.Context) bool { return ctx.Value(chiefResendKey{}) == true }

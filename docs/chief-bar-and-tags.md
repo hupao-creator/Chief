@@ -6,19 +6,21 @@ Press **⌘K** to open **Overview**. Look for the pair of eyes at the bottom of 
 
 ## Click Chief Bar to type a request
 
-Click Chief’s eyes once. The bar expands and the cursor appears in **Type a message…**. Type your request, then press **Return** or click the up arrow to send it. The bar folds back to the eyes.
+Click Chief’s eyes once. The bar expands and the cursor appears in the text box. Type your request, then press **Return** or click the up arrow to send it. The bar folds back to the eyes.
 
 ![Chief Bar expands into a text field, a weather question is typed, and the bar folds after sending.](images/chief-bar-input.gif)
 
 ## Hold Chief Bar to speak
 
-Press and hold the bar for half a second. If the text box is open, hold the eyes or agent icon at its left edge. Chief glances to the right while it connects. The first time, allow Chief to use your microphone when macOS asks. When the blue orb separates from the bar, you can release the mouse and speak. The call continues until you end it.
+Press and hold the bar for half a second. In Overview, you can also press inside the text box, keep the pointer still for half a second, then release. This works even with a draft in the box. An empty box shows **Hold for Voice Mode or type a message…**. You can also hold the eyes or agent icon at the left edge.
 
-Speak and watch the light ring inside the orb brighten with your voice. The cloud band rises and falls with incoming audio. With Reduce Motion on, the cloud brightens in place.
+Chief glances to the right while it connects. The first time, allow Chief to use your microphone when macOS asks. When the blue orb separates from the bar, you can speak. The call continues until you end it.
 
-Click the orb to mute your microphone. Its blue color fades and you can still hear Chief’s reply. Click again to speak, or right-click the orb to end the call. **Control-click** also ends it. **⇧⌘V** starts Voice Mode from the bar, cancels a pending connection or ends an active call.
+As you speak, the white ring brightens and the blue cloud moves with your voice. Incoming audio also moves the cloud. With Reduce Motion on, the cloud brightens in place.
 
-Voice goes to the **Chief Agent** selected in Settings, even when you open another task. Typing in that task still sends to the task, and opening Voice Mode keeps your draft and selection. Chief speaks its replies without opening a transcript window. Ending the call lets accepted work continue. [Choose your Chief Agent](settings.md)
+Click the orb to mute your microphone. Its blue color fades while you’re muted. Click again to speak, or right-click the orb to end the call. **Control-click** also ends it. **⇧⌘V** starts Voice Mode from the bar, cancels a pending connection or ends an active call.
+
+Voice goes to the **Chief Agent** selected in Settings, even when you open another task. Typing in that task still sends to the task, and opening Voice Mode keeps your draft and selection. You may hear a brief acknowledgement. Chief’s replies appear as text. Right-click Chief Bar to read them in the conversation. Ending the call lets accepted work continue. [Choose your Chief Agent](settings.md)
 
 If transcription stalls for 30 seconds on one phrase, Chief skips it and keeps listening. You can say your next sentence in the same call. To check which requests reached Chief, open the Chief conversation and repeat any missing request.
 
@@ -33,6 +35,8 @@ Right-click the eyes, or hold **Control** and click. Your conversation opens abo
 ## Switch folders and tags at the top
 
 Click a project folder or an Inbox tag in the top row. The button you choose lights up and the cards below change. In the clip, clicking **股票行情** (stock prices) brings up a stock quote task. Clicking **天气预报** (weather forecast) brings back the weekend forecast.
+
+You can click a folder or tag while a compact reply or the Chief conversation is visible. The cards switch and the message stays visible. Click an empty part of Overview to dismiss it.
 
 From Overview, press **⇧⌘[** to move one space left or **⇧⌘]** to move one space right. The top row scrolls to show your selection, and the shortcuts stop at either end. Close Chief Bar’s input or return from a reader or Settings before using these shortcuts. If your keyboard layout requires **Option** to type brackets, click the folder or tag at the top.
 

@@ -74,12 +74,15 @@ extension RuntimeClient {
         let submittedRecord = commandRecords[id]
         // Receipt settlement is part of the shared operation, so no coalesced
         // waiter can return (and issue another command) before it is complete.
+        let operationTrace = DevDiagnostics.trace ?? (!readOnly || channel == "thread:read" ? DevDiagnostics.makeTrace() : nil)
         let task = Task { () throws -> JSONValue in
+            if let operationTrace { DevDiagnostics.event("runtime.command", "delivering", trace: operationTrace) }
             do {
-                let value: JSONValue
-                if readOnly { value = try await self.deliverRead(channel: channel, args: args, body: body, receiptID: id) }
-                else { value = try await self.deliverWrite(channel: channel, body: body, receiptID: id,
-                    alreadySubmitted: alreadySubmitted, explicitRetry: receiptID != nil) }
+                let value = try await DevDiagnostics.$trace.withValue(operationTrace) {
+                    if readOnly { return try await self.deliverRead(channel: channel, args: args, body: body, receiptID: id) }
+                    return try await self.deliverWrite(channel: channel, body: body, receiptID: id,
+                        alreadySubmitted: alreadySubmitted, explicitRetry: receiptID != nil)
+                }
                 self.activeCommands.removeValue(forKey: key)
                 if readOnly {
                     // Reads never own durable journal entries. Another client
@@ -92,8 +95,10 @@ extension RuntimeClient {
                     self.explicitReceipts.removeValue(forKey: id)
                     self.forgetCommand(id, matching: submittedRecord)
                 }
+                if let operationTrace { DevDiagnostics.event("runtime.command", "settled", trace: operationTrace) }
                 return value
             } catch {
+                if let operationTrace { DevDiagnostics.failure("runtime.command", error, trace: operationTrace) }
                 self.activeCommands.removeValue(forKey: key)
                 if readOnly {
                     self.explicitReceipts.removeValue(forKey: id)
@@ -183,6 +188,7 @@ extension RuntimeClient {
                               alreadySubmitted: Bool, explicitRetry: Bool) async throws -> JSONValue {
         guard !closed, status == .connected, let owner = connection else { throw RuntimeError.uncertain(receiptID) }
         if alreadySubmitted {
+            DevDiagnostics.event("runtime.command", "checking_prior_receipt")
             do {
                 if let result = try await lookupCommand(receiptID, owner: owner) { return try settledResult(result, id: receiptID) }
             } catch let failure as RuntimeError where failure.kind == .commandRejected || failure.kind == .uncertain { throw failure }

@@ -19,6 +19,7 @@ struct NativeOverviewRecentThreadList: View {
 
     let title: String
     let threads: [NativeOverviewRecentThread]
+    let usesTintedGlass: Bool
     let open: (JSONText) -> Void
 
     @Environment(\.locale) private var locale
@@ -54,7 +55,7 @@ struct NativeOverviewRecentThreadList: View {
                 if !flatMaterials && !reduceTransparency && contrast != .increased {
                     Color.clear.nativeRegularCardGlass(in: shell,
                         opaque: NativePalette.overview.surface.swiftUI,
-                        tint: NativePalette.overview.surface.swiftUI.opacity(0.82))
+                        tint: usesTintedGlass ? NativePalette.overview.surface.swiftUI.opacity(0.82) : nil)
                         .allowsHitTesting(false)
                 } else {
                     shell.fill(NativePalette.overview.surface.swiftUI)

@@ -4,6 +4,7 @@ struct ContentResource {
     let instanceID = UUID()
     let threadID: JSONText
     let scope: RuntimeContentScope
+    var diagnosticTrace = DevDiagnostics.trace
     var wireID: String?
     var acknowledged = false
     var retentionID: UUID?
@@ -38,6 +39,7 @@ extension RuntimeClient {
                 cached.revision != nil && cached.acknowledged && cached.wireID != nil && !cached.isRecovering
         }), var cached = takeIdleContent(id) {
             cached.retentionID = nil
+            cached.diagnosticTrace = DevDiagnostics.trace
             contentResources[subscriptionId] = cached
             emit(.threadContent(subscriptionId: subscriptionId, state: cached.value.map(RuntimeContentState.ready) ?? .loading))
             if let wire = previous?.wireID { await releaseWireContent(wire) }
@@ -128,9 +130,11 @@ extension RuntimeClient {
         if let oldWire { await releaseWireContent(oldWire) }
         guard contentResources[id]?.wireID == wire else { return }
         do {
-            _ = try await sessionPost("/thread-content/subscription", fields: [
-                "subscriptionId": .text(wire), "target": runtimeObject(["threadId": .string(resource.threadID), "scope": resource.scope.json])
-            ])
+            _ = try await DevDiagnostics.$trace.withValue(resource.diagnosticTrace) {
+                try await sessionPost("/thread-content/subscription", fields: [
+                    "subscriptionId": .text(wire), "target": runtimeObject(["threadId": .string(resource.threadID), "scope": resource.scope.json])
+                ])
+            }
             if contentResources[id]?.wireID == wire { contentResources[id]?.acknowledged = true }
             // A close/replacement can beat acknowledgement; revoke the accepted add again.
             if contentResources[id]?.wireID != wire { await releaseWireContent(wire) }
@@ -213,6 +217,7 @@ extension RuntimeClient {
     private func failContent(_ id: String, message: String) async {
         if idleContentCosts[id] != nil { await evictIdleContent(id); return }
         guard var resource = contentResources[id] else { return }
+        DevDiagnostics.event("runtime.content", "subscription_failed", trace: resource.diagnosticTrace)
         let wire = resource.wireID
         resource.timer?.cancel(); resource.timer = nil; resource.wireID = nil
         resource.value = nil; resource.revision = nil; resource.failure = message

@@ -910,6 +910,15 @@ keeps that reference; the runtime's independent Thread ownership protects
 accepted files after the chip is consumed.
 
 Native text bindings compare UTF-16 code units so canonically equivalent Unicode replacements remain real draft edits.
+`NativeComposerTextInput.onEditorHold` opts the Overview editor into an
+[AppKit hold](Composer/NativeComposerHoldGesture.swift). It recognizes on
+release after half a second within the visible editor and within three points
+of the press. Movement beyond that distance fails the gesture immediately,
+even after half a second, handing the press back to native selection tracking.
+Short clicks also return to AppKit. Modified clicks, multiple clicks and
+marked text retain native handling from the start. The hold action leaves
+the editing buffer and selected range in place.
+
 `NativeComposerTextInput.preservesSelection` opts Moku into native selection
 retention across temporary focus/availability suspension. It snapshots before
 selection is disabled, restores after selection is enabled, and reveals the

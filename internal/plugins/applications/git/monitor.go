@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 type monitor struct {
@@ -38,8 +39,13 @@ func (m *monitor) Start(ctx context.Context, _ plugin.RuntimeStartContext) error
 	done := m.done
 	go func() {
 		defer close(done)
+		var failed bool
 		for {
-			_ = m.cycle(ctx)
+			err := m.cycle(ctx)
+			if ctx.Err() == nil && failed != (err != nil) {
+				failed = err != nil
+				diagnostics.End(ctx, "git.monitor", err)
+			}
 			timer := time.NewTimer(5 * time.Second)
 			select {
 			case <-ctx.Done():

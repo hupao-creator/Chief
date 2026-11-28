@@ -287,6 +287,7 @@ public final class NativeWorkspacePresentation {
             threadIdentityVisit = ref.typeID == "agent" && (target == nil || sourceCardID != nil)
                 ? readingPanelSourceCardID.flatMap { threadIdentityRegistry.capture($0) } : nil
         }
+        DevDiagnostics.event("reading.route", ref.typeID == "agent" ? "agent_admitted" : "application_admitted")
         selected = ref; readingTarget = target
         if ref.typeID == "agent" { persistSelection(ref.threadID) }
         publishPresence()

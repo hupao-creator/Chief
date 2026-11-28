@@ -1,15 +1,12 @@
 package voice
 
 import (
-	"context"
 	"crypto/sha256"
 	"errors"
 	"slices"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/hupao-creator/Chief/internal/core/plugin"
 )
 
 type handoff struct{ id, text string }
@@ -33,12 +30,11 @@ type segment struct {
 // delegation is discretionary and has a different ID. Keep each source identity
 // until Stop so redelivery after an uncertain admission cannot repeat work.
 type handoffs struct {
-	mu           sync.Mutex
-	segments     map[string]segment
-	pending      []string
-	jobs         chan handoff
-	latest       string
-	cancelSpeech context.CancelFunc
+	mu       sync.Mutex
+	segments map[string]segment
+	pending  []string
+	jobs     chan handoff
+	latest   string
 }
 
 func (h *handoffs) observe(item map[string]any, complete bool) error {
@@ -59,9 +55,6 @@ func (h *handoffs) observe(item map[string]any, complete bool) error {
 		h.pending = append(h.pending, id)
 		h.segments[id] = segment{updated: time.Now()}
 		h.latest = id
-		if h.cancelSpeech != nil {
-			h.cancelSpeech()
-		}
 	}
 	if !complete || previous.state == expired {
 		return nil
@@ -110,9 +103,10 @@ func (h *handoffs) transcribing(id string) {
 	}
 }
 
-func (h *handoffs) expireStalled(now time.Time) {
+func (h *handoffs) expireStalled(now time.Time) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	skipped := false
 	h.pending = slices.DeleteFunc(h.pending, func(id string) bool {
 		s := h.segments[id]
 		if s.state != transcribing || now.Sub(s.updated) < 30*time.Second {
@@ -120,20 +114,16 @@ func (h *handoffs) expireStalled(now time.Time) {
 		}
 		// Retain the ID for the call so a late completion cannot submit old speech.
 		h.segments[id] = segment{state: expired}
+		skipped = true
 		return true
 	})
 	h.submitReady()
+	return skipped
 }
 
-// The native reader can revoke a queued or blocked append as soon as the
-// next user segment starts. An append already accepted remotely is never replayed.
-func (h *handoffs) speech(reply plugin.VoiceReply) (context.Context, context.CancelFunc, bool) {
+// A newer native segment supersedes a destination error even while it is transcribing.
+func (h *handoffs) current(id string) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if reply.HandoffID != h.latest || h.segments[h.latest].state != completed || reply.Context.Err() != nil {
-		return nil, nil, false
-	}
-	ctx, cancel := context.WithCancel(reply.Context)
-	h.cancelSpeech = cancel
-	return ctx, cancel, true
+	return id == h.latest && h.segments[id].state == completed
 }

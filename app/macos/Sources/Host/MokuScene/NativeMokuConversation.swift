@@ -26,12 +26,13 @@ struct NativeMokuConversationPage {
         let date: Date
         let text: String
         let attachments: [String]
+        let failure: NativeMokuFailure?
         let content: NativeMessageText
 
-        init(id: JSONText, fromUser: Bool, date: Date, text: String, attachments: [String]) {
+        init(id: JSONText, fromUser: Bool, date: Date, text: String, attachments: [String], failure: NativeMokuFailure? = nil) {
             self.id = id; self.fromUser = fromUser; self.date = date
             self.text = text; self.attachments = attachments
-            content = NativeMessageText(text)
+            self.failure = failure; content = NativeMessageText(text)
         }
     }
     var messages: [Message]
@@ -55,7 +56,7 @@ struct NativeMokuConversationPage {
                 return name
             }
             return Message(id: id, fromUser: role == "user", date: Date(timeIntervalSince1970: Double(ms) / 1000),
-                           text: text, attachments: files)
+                           text: text, attachments: files, failure: NativeMokuFailure(row))
         }
         if case .string(let cursor) = value["before"] { before = cursor } else { before = nil }
     }

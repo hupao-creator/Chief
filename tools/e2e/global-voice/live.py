@@ -124,15 +124,15 @@ async def exercise(binary, root, harness, rounds, report, model_environment, exe
         lease = http.client.HTTPConnection("127.0.0.1", connection["port"], timeout=120)
         rtc.addTrack(track)
         channel = rtc.createDataChannel("oai-events", ordered=True)
-        last_energy = 0
-        # The service can play a quick Talk in the same assistant turn as its
-        # acknowledgement. Track native append windows independently of turns.
-        appends = []
+        non_silent_audio = False
+        context_appends = 0
+        output_segments = {}
         remote_turns = {}
         event_types = set()
 
         @channel.on("message")
         def data_event(payload):
+            nonlocal context_appends
             try:
                 event = json.loads(payload)
             except (ValueError, TypeError):
@@ -140,11 +140,11 @@ async def exercise(binary, root, harness, rounds, report, model_environment, exe
             kind = event.get("type")
             event_types.add(kind)
             if kind == "session.context.appended":
-                appends.append({})
-            elif kind == "output_transcript.added" and appends:
+                context_appends += 1
+            elif kind == "output_transcript.added":
                 item = event.get("item", {})
                 if isinstance(item.get("id"), str) and isinstance(item.get("text"), str):
-                    appends[-1][item["id"]] = item["text"]
+                    output_segments[item["id"]] = item["text"]
             if kind in ("turn.created", "turn.done"):
                 turn = event.get("turn", {})
                 if turn.get("role") == "assistant":
@@ -153,12 +153,12 @@ async def exercise(binary, root, harness, rounds, report, model_environment, exe
                 remote_turns[event["turn_id"]] += event["delta"]
 
         async def listen(receiver):
-            nonlocal last_energy
+            nonlocal non_silent_audio
             while True:
                 frame = await receiver.recv()
                 samples = array.array("h", bytes(frame.planes[0])[:frame.samples * 2])
                 if max((abs(v) for v in samples), default=0) > 300:
-                    last_energy = asyncio.get_running_loop().time()
+                    non_silent_audio = True
 
         @rtc.on("track")
         def got_track(receiver):
@@ -183,14 +183,20 @@ async def exercise(binary, root, harness, rounds, report, model_environment, exe
         await asyncio.sleep(1)
         expected_words = words(expected)
 
-        def matching_appends():
-            occurrences = []
-            for window in appends:
-                segment = words("".join(window.values()))
-                mentions = sum(segment[i:i + len(expected_words)] == expected_words for i in range(len(segment)))
-                if mentions:
-                    occurrences.append(mentions)
-            return occurrences
+        def check_remote_output():
+            report.update(contextAppends=context_appends, outputTranscript=list(remote_turns.values()),
+                          outputSegments=list(output_segments.values()), dataEvents=sorted(event_types),
+                          nonSilentRemoteAudio=non_silent_audio)
+            if terminal.done():
+                final = terminal.result()
+                message = json.loads(final).get("error", {}).get("message") if final else None
+                raise RuntimeError(message or "voice connection ended during replay")
+            if context_appends:
+                raise RuntimeError("the voice session received an unexpected speech append")
+            for transcripts in (remote_turns, output_segments):
+                segment = words(" ".join(transcripts.values()))
+                if any(segment[i:i + len(expected_words)] == expected_words for i in range(len(segment))):
+                    raise RuntimeError("the private Talk appeared in the remote voice transcript")
 
         admissions, inputs, rows, talks, talk_executions = {}, {}, {}, {}, {}
         voice_session = None
@@ -198,13 +204,9 @@ async def exercise(binary, root, harness, rounds, report, model_environment, exe
             previous_handoffs, previous_talks = set(admissions), set(talks)
             track.position = 0
             track.enabled = True
-            talk_observed = None
             async with asyncio.timeout(100):
                 while True:
-                    if terminal.done():
-                        final = terminal.result()
-                        message = json.loads(final).get("error", {}).get("message") if final else None
-                        raise RuntimeError(message or "voice connection ended without a result")
+                    check_remote_output()
                     state = await asyncio.to_thread(service.state)
                     owner = next(t for t in state["threads"] if t.get("moku"))
                     if owner["harnessId"] != harness:
@@ -233,24 +235,17 @@ async def exercise(binary, root, harness, rounds, report, model_environment, exe
                     if len(new_handoffs) == len(new_talks) == 1:
                         hid, tid = next(iter(new_handoffs)), next(iter(new_talks))
                         bound_talk = talks[tid] == expected and talk_executions[tid] == admissions[hid]
-                    if bound_talk and talk_observed is None:
-                        talk_observed = asyncio.get_running_loop().time()
-                    matches = matching_appends()
                     report.update(audioSent=track.position == len(track.samples), admittedHandoffs=admissions,
                                   voiceSessionId=voice_session, inputTranscripts=inputs,
-                                  committedTalk=list(talks.values()), talkExecutions=talk_executions, matchingSpeechAppends=matches,
-                                  outputTranscript=list(remote_turns.values()), dataEvents=sorted(event_types),
-                                  nonSilentAudioAfterTalk=talk_observed is not None and last_energy >= talk_observed)
-                    if (report["audioSent"] and len(admissions) == count and matches == [1] * count
-                            and bound_talk and report["nonSilentAudioAfterTalk"]):
+                                  committedTalk=list(talks.values()), talkExecutions=talk_executions)
+                    if report["audioSent"] and len(admissions) == count and bound_talk:
                         break
                     await asyncio.sleep(0.15)
             track.enabled = False
-            report["verifiedRounds"] = count
-            print(f"Round {count} confirmed destination admission, Talk and remote speech.", file=sys.stderr, flush=True)
             await asyncio.sleep(1.5)
-        if matching_appends() != [1] * rounds:
-            raise RuntimeError("unexpected repeated or missing speech after output settled")
+            check_remote_output()
+            report["verifiedRounds"] = count
+            print(f"Round {count} confirmed destination admission and committed Talk.", file=sys.stderr, flush=True)
     finally:
         for stream_socket in sockets:
             try:

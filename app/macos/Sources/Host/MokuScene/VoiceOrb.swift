@@ -15,19 +15,25 @@ struct VoiceOrb: View {
 
     var body: some View {
         let levels = levels()
-        let input = microphoneMuted ? 0 : levels.microphone
-        let activity = (microphoneMuted ? 0 : 0.12) + 0.88 * levels.playback
+        // Give quiet speech more of the orb's visible range.
+        let input = microphoneMuted ? 0 : sqrt(levels.microphone)
+        let ringWidth = reduceMotion ? 3.0 : 2 + 2 * input
+        let level = max(input, levels.playback)
+        let activity = (microphoneMuted ? 0 : 0.12) + 0.88 * level
         CloudDisk(activity: reduceMotion ? 0 : activity, runs: !reduceMotion && activity > 0, origin: clockOrigin)
-            .brightness(reduceMotion ? 0.20 * levels.playback : 0)
-            .overlay {
-                Circle().strokeBorder(.white.opacity(input * 0.95), lineWidth: reduceMotion ? 3 : 1 + 3 * input)
-                    .padding(3)
-            }
+            .brightness(reduceMotion ? 0.20 * level : 0)
             // Fade the pigment into the round glass, leaving its refractive rim exposed.
             .mask(RadialGradient(stops: [.init(color: .white, location: 0.78),
                                           .init(color: .white.opacity(0.9), location: 0.90),
                                           .init(color: .clear, location: 1)],
                                  center: .center, startRadius: 0, endRadius: VoiceDock.diameter / 2))
+            .overlay {
+                Circle().strokeBorder(Color(red: 0.08, green: 0.16, blue: 0.36).opacity(input),
+                                      lineWidth: ringWidth + 2)
+                    .padding(3)
+                Circle().strokeBorder(.white.opacity(input), lineWidth: ringWidth)
+                    .padding(4)
+            }
             .saturation(microphoneMuted ? 0.26 : 1)
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.30), value: phase)
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.30), value: microphoneMuted)

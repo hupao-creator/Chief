@@ -217,6 +217,9 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 	case "moku:resolve-delivery":
 		allowed = []string{"id", "decision"}
 		required = allowed
+	case "moku:resend":
+		allowed = []string{"threadId", "failureId"}
+		required = allowed
 	case "moku:submit":
 		allowed = []string{"input", "directoryTag", "directoryScopeId", "superThreadId"}
 		required = []string{"input"}
@@ -242,7 +245,7 @@ func ValidateCommandArguments(channel string, args []json.RawMessage) (failure e
 	if err != nil {
 		return err
 	}
-	for _, key := range []string{"threadId", "executionId", "expectedExecutionId", "expectedCancellationId", "interactionId", "actionId", "method", "applicationSettings", "superThreadId"} {
+	for _, key := range []string{"threadId", "failureId", "executionId", "expectedExecutionId", "expectedCancellationId", "interactionId", "actionId", "method", "applicationSettings", "superThreadId"} {
 		if entry, exists := object[key]; exists {
 			if err = text(entry, 128); err != nil {
 				return err

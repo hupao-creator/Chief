@@ -222,7 +222,7 @@ The injected schema sets `maxLength` and shares its [description](prompt.go) wit
 
 One [voice relay](../../plugins/harness/codex/voice/README.md) can deliver input to the selected Chief. The owner is pinned at call startup. A handoff follows the same serialized input, configuration and execution admission as a typed submission. The destination admission callback persists the original utterance with `voiceSessionId`, `voiceHandoffId` (the completed native user segment ID) and the actual `executionId`, including when the Harness steers an existing execution.
 
-Only a Talk begun under the current voice binding and committed successfully to that execution's audit can enqueue speech. Two distinct Talk operations with the same text can be heard twice. Catalog refresh, restart and opening a new call never replay history. Starting a typed submission, starting a newer voice segment, replacing the Chief configuration or closing the call retires pending speech. When a follow-up steers the same execution, the binding identifies that execution and the input current when Talk began. The Harness supplies no per-utterance causal ID for the tool. If the bound execution fails, the call reports its public Harness failure. The same handoff fence discards a superseded failure. An accepted tool operation and execution keep their ordinary audit and lifetime.
+Talk follows the ordinary tool audit and the successful reply appears as text in the Chief conversation. The media relay receives a terminal Harness failure only for the current voice binding. An admitted typed input, a newer native voice segment, a replaced Chief configuration or the end of the call revokes the previous handoff’s authority to end the call. An accepted tool operation and execution keep their ordinary audit and lifetime.
 
 ## Context
 
@@ -393,3 +393,9 @@ for the public terminal execution and checks exact output through a scoped
 content subscription. `creation.json`, `initial-content.json` and
 `initial-oracle.json` retain these facts. This is setup for UI interaction,
 not a Moku property suite or evidence of real provider/model behavior.
+
+## Chief failure replies
+
+A failed Chief execution produces one durable failure row. An unavailable host configuration or a host that cannot open can fail before native admission. The coordinator records that public request and failure together. Cancellation and ordinary Agent Thread failures retain their own paths. The public reason comes from an allowlist, with a generic explanation for unclassified failures.
+
+`moku:resend` takes the current Chief thread ID and failure row ID. The coordinator uses the original structured input and its directory and Super Thread selections, revalidates attachments, and prepares the current host configuration. A failure without a saved public request remains readable. The coordinator serializes user admissions and records a claim before native handoff. An exact pre-consumption rejection releases the claim. An uncertain handoff remains fenced across restarts. A confirmed send keeps the historical error and creates its own user turn.

@@ -1,4 +1,5 @@
 import AppKit
+import ChiefCore
 import ChiefPluginUI
 import Observation
 import SwiftUI
@@ -508,6 +509,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         catch {
             // A canceled solver must not cover a newer scene's valid result.
             guard !Task.isCancelled, state.hostOwner == ownership, layoutToken == token else { return }
+            DevDiagnostics.failure("overview.layout", error)
             state.layoutError = error.localizedDescription
         }
     }
@@ -517,6 +519,8 @@ public struct NativeOverviewCanvas<Content: View>: View {
         try Task.checkCancellation()
         guard layoutToken == token, state.hostOwner == ownership else { throw CancellationError() }
         let replaceScene = mountedSelection != selectionID || mountedScene != sceneKey
+        let trace = replaceScene ? DevDiagnostics.makeTrace() : nil
+        if let trace { DevDiagnostics.event("overview.layout", "scene_requested", trace: trace) }
         let instantEntryIDs = revisions.reduce(into: Set<String>()) { $0.formUnion($1.instantEntryIDs) }
         let displayed = state.presentedPlacements
         let members = next.map(\.member)
@@ -552,6 +556,7 @@ public struct NativeOverviewCanvas<Content: View>: View {
         cardMotions.removeAll()
         cardPoses = oldPoses
         state.presentedPlacements = geometry.placements
+        if let trace { DevDiagnostics.event("overview.layout", "geometry_admitted", trace: trace) }
         // Empty targets keep the old camera until the last outgoing card has
         // retired; disposing it here would jump those cards before their exit.
         if !animated || !next.isEmpty {

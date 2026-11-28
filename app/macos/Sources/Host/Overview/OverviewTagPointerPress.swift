@@ -9,6 +9,14 @@ struct OverviewTagPointerPress: NSViewRepresentable {
     let onClick: () -> Void
     var onHold: (() -> Void)? = nil
 
+    static func ownsPrimaryPress(_ event: NSEvent) -> Bool {
+        guard !event.modifierFlags.contains(.control), let content = event.window?.contentView else { return false }
+        // Use the same native hit test as delivery, including the capsule and
+        // scroll clipping. The local event monitor runs before mouseDown.
+        let point = content.superview?.convert(event.locationInWindow, from: nil) ?? event.locationInWindow
+        return content.hitTest(point) is PressView
+    }
+
     func makeNSView(context: Context) -> PressView { PressView() }
 
     func updateNSView(_ view: PressView, context: Context) {

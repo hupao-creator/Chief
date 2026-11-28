@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"strings"
 	"sync"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 type contentTarget struct {
@@ -136,7 +138,7 @@ func parseContentSubscription(raw []byte) (string, string, *contentTarget, error
 	}
 	return clientID, subscriptionID, &target, nil
 }
-func (c *contentServer) update(raw []byte) error {
+func (c *contentServer) update(ctx context.Context, raw []byte) error {
 	clientID, id, target, err := parseContentSubscription(raw)
 	if err != nil {
 		return err
@@ -172,7 +174,7 @@ func (c *contentServer) update(raw []byte) error {
 		previous.cancel()
 		c.removeQueuedLocked(previous)
 	}
-	subscriptionContext, cancel := context.WithCancel(c.ctx)
+	subscriptionContext, cancel := context.WithCancel(diagnostics.CopyTrace(c.ctx, ctx))
 	subscriptions[id] = &contentSubscription{id: id, target: *target, ctx: subscriptionContext, cancel: cancel}
 	c.dirtyLocked(clientID, subscriptions[id])
 	c.mu.Unlock()
@@ -341,10 +343,7 @@ func (c *contentServer) publishOne(clientID string, subscription *contentSubscri
 	sourceRevision := snapshot.Revision
 	subscription.sourceRevision = &sourceRevision
 	if err = client.enqueue(encoded, subscription.id); err != nil {
-		delete(c.clients[clientID], subscription.id)
-		subscription.cancel()
-		client.cancelContent(subscription.id)
-		client.deliverContentError(subscription.id, err.Error())
+		c.failLocked(clientID, subscription, client, err)
 		return
 	}
 	subscription.revision = revision
@@ -359,13 +358,40 @@ func (c *contentServer) fail(clientID string, subscription *contentSubscription,
 	if c.closed || c.clients[clientID][subscription.id] != subscription {
 		return
 	}
+	c.failLocked(clientID, subscription, client, cause)
+}
+
+// The caller holds c.mu and has checked that this subscription is still current.
+func (c *contentServer) failLocked(clientID string, subscription *contentSubscription, client *eventStream, cause error) {
 	delete(c.clients[clientID], subscription.id)
 	subscription.cancel()
 	if client == nil {
 		return
 	}
 	client.cancelContent(subscription.id)
+	logContentFailure(subscription.ctx, cause)
 	client.deliverContentError(subscription.id, cause.Error())
+}
+
+func logContentFailure(ctx context.Context, cause error) {
+	if cause == errEventStreamClosed {
+		return
+	}
+	var failure *model.Error
+	if errors.As(cause, &failure) {
+		switch failure.Code {
+		case "CONTENT_BACKPRESSURE":
+			diagnostics.Event(ctx, "transport.content", "queue_backpressure")
+			return
+		case "CONTENT_TOO_LARGE":
+			diagnostics.Event(ctx, "transport.content", "content_too_large")
+			return
+		case "INVALID_RESPONSE":
+			diagnostics.Event(ctx, "transport.content", "invalid_response")
+			return
+		}
+	}
+	diagnostics.End(ctx, "transport.content", cause)
 }
 
 // minJSONValueBytes is a conservative lower bound for encoding one decoded

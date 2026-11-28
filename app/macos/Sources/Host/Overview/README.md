@@ -317,7 +317,8 @@ archive and Report coverage rules. The unscoped Running view uses untagged
 Threads. Completed and ordinary tag emptiness use their own presentations.
 
 The status title and recent-list heading use opaque, appearance-matched label
-backings. Rows share one tinted regular Liquid Glass surface. Reduce
+backings. Rows share one regular Liquid Glass surface. Recently completed uses
+untinted glass and Recently read uses the Overview surface tint. Reduce
 Transparency and Increase Contrast use a solid face. Each row has the owning
 Harness logo, the Thread title and the relevant relative time. The title and
 time use the same high-contrast ink and differ in size and weight. Hover and
@@ -638,6 +639,8 @@ does not change chip width, selection, ordering or the Runtime filter context.
 Receipt and catalog version changes update counts even for unselected spaces.
 
 A primary press on a left-side semantic tag selects it on a short release.
+The same native capsule hit boundary used by top-row and left-rail tag buttons
+keeps [Chief messages visible while browsing tags](../MokuScene/README.md#talk-and-dispatch).
 After at least half a second, releasing on that tag acknowledges the current
 unread versions in its browsing membership and preserves the selection.
 Dragging outside the capsule or more than 10pt, scrolling, pressing Escape,

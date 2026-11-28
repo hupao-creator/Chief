@@ -93,6 +93,11 @@ Host.Start 在全部定义冻结后创建一代 participants。Stop 先撤销工
 
 批次取消仍保留原生 Handle 的清理、回执与执行身份；真实失败仍按原有次数上限与退避重试。
 
+开发包的[本地诊断](../../platform/diagnostics/README.md)按每次已准入的后台批次尝试记录结果。
+成功保存下次尝试时间后记为 `retry_scheduled`，耗尽尝试并成功结算失败后记为
+`attempts_exhausted`，成功结算已处理的批次记为 `completed`。服务排空、取消或批次被替换时，
+已结束且未结算的尝试记为 `interrupted`；返回错误的尝试沿用通用失败、超时或取消标签。
+
 后台批次与工具读取 lifecycle 历史时，每一页开始前检查调用取消。已进入的单页读取仍由无 context 的 snapshot 能力完成；取消后不再继续读取后续页。
 
 ### Lifecycle batch delivery

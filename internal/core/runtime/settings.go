@@ -15,6 +15,7 @@ import (
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
 	"github.com/hupao-creator/Chief/internal/core/store"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"github.com/hupao-creator/Chief/internal/services/workspaces"
 )
 
@@ -25,6 +26,15 @@ type SettingsResult struct {
 }
 
 func (r *Runtime) UpdateSettings(ctx context.Context, expected int64, settings model.Settings) (result SettingsResult, err error) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "runtime.settings", "validating")
+	defer func() {
+		if result.Status == "conflict" {
+			diagnostics.Event(ctx, "runtime.settings", "revision_conflict")
+		} else {
+			diagnostics.End(ctx, "runtime.settings", err)
+		}
+	}()
 	if err := r.begin(); err != nil {
 		return SettingsResult{}, err
 	}

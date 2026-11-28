@@ -331,3 +331,5 @@ transfer and reversal. It tracks the red badge and glass edge as the capsule mov
 CJK text width and checks truncation of a longer title. The captured
 intervals bound the observed transition without measuring hardware
 refresh rate. This option can run alongside `--header-glass` in one command.
+
+Run `python3 demos/moku-landing/verify_conversation.py --failure-resend --output .build/e2e/failure-resend` after building the production artifacts with `python3 tools/e2e/build.py --go ./scripts/go.sh --with-app`. The private loopback peer fails two Chief turns. The mounted window clicks Resend in the compact Bar and conversation, checks that the button sits to the right of the reason at regular and minimum window sizes, captures both surfaces, then checks the successful Talk, restart, redaction and duplicate rejection.

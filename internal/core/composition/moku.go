@@ -47,6 +47,7 @@ func (b *Bootstrap) mokuConfiguration(cwd, data string) moku.Configuration {
 		},
 		SendThread: r.SendThread, AskThread: r.ReadThread, InterruptThread: r.InterruptThread, InterruptThreadFromMokuTool: r.InterruptThreadFromMokuTool, InterruptThreadTarget: r.InterruptThreadTarget, ClaimThreadInput: r.ClaimThreadInput, RespondThread: r.RespondThread,
 		CanonicalizeInput:  b.attachments.CanonicalizeInput,
+		RetainInput:        b.attachments.RetainInput,
 		SuperThreadContext: b.superThreadContext,
 		StageAttachments: func(ctx context.Context, raw json.RawMessage) (any, error) {
 			var imports []attachments.Import

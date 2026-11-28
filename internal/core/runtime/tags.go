@@ -17,6 +17,7 @@ import (
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
 	"github.com/hupao-creator/Chief/internal/core/store"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"github.com/hupao-creator/Chief/internal/services/directorytag"
 	"github.com/hupao-creator/Chief/internal/services/taglabel"
 )
@@ -210,7 +211,10 @@ func (c tagsWriteCapability) Execute(ctx context.Context, operation plugin.Seman
 	return c.execute(ctx, options, func(tx *store.Tx) (any, error) { return c.apply(tx, operation) })
 }
 
-func (c tagsWriteCapability) execute(ctx context.Context, options plugin.BackgroundWriteOptions, effect func(*store.Tx) (any, error)) (json.RawMessage, error) {
+func (c tagsWriteCapability) execute(ctx context.Context, options plugin.BackgroundWriteOptions, effect func(*store.Tx) (any, error)) (_ json.RawMessage, returned error) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "tags.mutation", "checking_scope")
+	defer func() { diagnostics.End(ctx, "tags.mutation", returned) }()
 	r := c.runtime
 	var output json.RawMessage
 	_, err := r.config.Store.Update(ctx, func(tx *store.Tx) error {

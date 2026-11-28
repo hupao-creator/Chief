@@ -20,7 +20,7 @@ When you switch to another folder at the top, Chief restores the last tag or **R
 
 Look for tiny dots sweeping diagonally behind a folder icon or tag emoji to find a task that’s running or waiting for your response. Choose that folder or Inbox tag, then click ⏳ on the left to see its running tasks. With **Reduce Motion** turned on in macOS, the dots stay still.
 
-If **Running** shows **No running conversations**, look under **Recently completed** for up to three Agent Threads in the current folder or tag. Move the pointer over a row to highlight it, then click to reopen the conversation. The time beside the title shows when the task finished.
+If **Running** shows **No running conversations**, look for **Recently completed** below the sleeping skillet. It shows up to three Agent Threads in the current folder or tag. With standard transparency and contrast settings, the panel uses glass without added color. Move the pointer over a row to highlight it, then click to reopen the conversation. The time beside the title shows when the task finished.
 
 ## Find unread conversations
 

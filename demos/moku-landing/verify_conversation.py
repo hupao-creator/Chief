@@ -43,7 +43,7 @@ def verify_layout(visit, stage):
                 raise AssertionError(f"{size} short conversation did not fit the date and message bubbles: {short}")
 
 
-def run(binary, output, send_refresh):
+def run(binary, output, send_refresh, failure_resend=False):
     output.mkdir(parents=True, exist_ok=False)
     save(output / "runtime.json", validate(binary))
     save(output / "native-build.json", validate(ROOT / "app/macos/.build/debug/Chief"))
@@ -117,6 +117,9 @@ def run(binary, output, send_refresh):
             return peer.response_events("Internal execution summary.", None)
 
         peer.respond = respond
+        if failure_resend:
+            run_failure_resend(session, replay, output, messages[0])
+            return
         session.runtime.invoke("moku:submit", [{"input": {"parts": [{"kind": "text", "text": messages[0]}]}}])
         threads = wait_for(session.runtime.state, lambda state: any(not t.get("moku") for t in state["threads"]), 50)["threads"]
         owner = next(t["id"] for t in threads if t.get("moku"))
@@ -174,11 +177,65 @@ def run(binary, output, send_refresh):
                 raise RuntimeError(f"Isolated replay cleanup failed: {cleanup}")
 
 
+def run_failure_resend(session, replay, output, prompt):
+    reply = "这次请求已完成。"
+    save(session.root / "conversation.json", {"messages": [prompt, reply], "attachment": "", "draft": "下一条消息的草稿"})
+    peer = session.peer
+    original = peer.respond
+    def page():
+        owner = next(t["id"] for t in session.runtime.state()["threads"] if t.get("moku"))
+        return content(session.runtime, owner, {"kind": "moku-conversation"})["value"]["messages"]
+
+    def respond(request):
+        talk = find_tool(declared_tools(request), "talk")
+        if not talk:
+            return original(request)
+        # Only a new, durably admitted user send advances this scenario.
+        turn = sum(row["role"] == "user" for row in page())
+        if turn < 3:
+            diagnostic = "401 Unauthorized" if turn < 2 else "429 Too Many Requests"
+            response = peer.response_events("", None)[0]
+            return [response, {"type": "response.failed", "response": {
+                **response["response"], "status": "failed", "error": {
+                    "code": "invalid_prompt", "message": diagnostic + ": PRIVATE-FIXTURE-DIAGNOSTIC"}}}]
+        if any(item.get("call_id") == "recovered" for item in request.get("input", [])):
+            return peer.response_events("Done.", None)
+        return peer.response_events("", {"type": "function_call", "call_id": "recovered",
+            "name": talk[0], "namespace": talk[1], "arguments": json.dumps({"text": reply})})
+
+    peer.respond = respond
+    session.runtime.invoke("moku:submit", [{"input": {"parts": [{"kind": "text", "text": prompt}]}}])
+    wait_for(page, lambda rows: any(row.get("resendState") == "ready" for row in rows), 40)
+    status = replay.run(["--live-conversation", session.profile, "--failure-resend"], timeout=100)
+    rows = page()
+    save(output / "failure-conversation.json", rows)
+    if status or len(rows) != 6 or [r["role"] for r in rows] != ["user", "chief"] * 3:
+        raise AssertionError("Window resend did not preserve the six expected conversation rows")
+    if ([r["text"] for r in rows[::2]] != [prompt] * 3 or rows[-1]["text"] != reply or
+            [r.get("resendState") for r in rows[1:4:2]] != ["sent", "sent"] or
+            [r["failureCode"] for r in rows[1:4:2]] != ["authentication", "rate-limit"] or
+            "PRIVATE-FIXTURE" in json.dumps(rows) or "resendRequest" in json.dumps(rows)):
+        raise AssertionError("Resend changed the original, leaked diagnostics, or lost its receipt")
+    session.stop(session.process, "runtime before restart")
+    session.start()
+    if page() != rows:
+        raise AssertionError("Restart changed the failure history")
+    for failure in rows[1:4:2]:
+        try:
+            session.runtime.invoke("moku:resend", [{"threadId": failure["threadId"], "failureId": failure["failureId"]}])
+        except ValueError as error:
+            if "no longer available to resend" in str(error):
+                continue
+            raise
+        raise AssertionError("A consumed retry was admitted twice")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", type=Path, default=ROOT / ".build/e2e/chief-runtime")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--send-refresh", action="store_true", help="hold admission and replies across panel and compact sends")
+    parser.add_argument("--failure-resend", action="store_true", help="resend Chief failures in the Bar and conversation")
     args = parser.parse_args()
     with lease(), native_lease():
-        run(args.runtime.resolve(), args.output.resolve(), args.send_refresh)
+        run(args.runtime.resolve(), args.output.resolve(), args.send_refresh, args.failure_resend)

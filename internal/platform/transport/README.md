@@ -10,6 +10,10 @@ an already running service for its profile using those same identifiers.
 
 `POST /voice/global` accepts an authenticated JSON `{clientId, offer}` for a live event-stream client and epoch. The NDJSON response yields an `answer` or an error envelope. The request stays open through the call. Loss of either connection, runtime revocation or cancellation ends the lease. SDP and call control bypass the command journal. Audio travels over WebRTC. [Call contract](../../plugins/harness/codex/voice/README.md)
 
+The development bundle accepts an optional diagnostic trace header after
+authentication. It has no admission or persistence authority.
+[Development diagnostics](../diagnostics/README.md)
+
 Native imports also carry `X-Mokusei-Attachment-Lease`, a canonical UUID naming
 the importing process's private lock inside that same profile. Authentication
 precedes header validation; accepted command contexts preserve this owner after
@@ -95,3 +99,8 @@ snapshot is authoritative on the same resource; the next patch uses that
 snapshot's revision as its base. Frame selection does not weaken queue
 backpressure: a representation that fits the frame can still fail with
 `CONTENT_BACKPRESSURE` for its client's bounded queue.
+
+When publication terminates a current subscription, the development Runtime
+distinguishes queue backpressure (`queue_backpressure`), a size limit
+(`content_too_large`) and an invalid response (`invalid_response`). Closing
+the event stream is routine teardown. [Development diagnostics](../diagnostics/README.md)

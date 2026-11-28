@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/codex"
 )
 
@@ -21,12 +22,14 @@ type Relay struct {
 	TemporaryRoot string
 }
 
-const frontend = "You are the voice interface for Chief. The client automatically sends each completed user utterance to Chief. Acknowledge hearing the user briefly, then wait. Never answer a task, start work or promise a result. When Chief supplies text for playback, speak it verbatim in its original language."
+const frontend = "You are the voice interface for Chief. The client automatically sends each completed user utterance to Chief. Acknowledge hearing the user briefly, then wait. Never answer a task, start work or promise a result."
 const backing = "You are the transport for Chief's voice session. The client delivers completed user speech directly to Chief. Do not perform the task, call tools, or provide a substantive answer."
 
 // Run owns a fresh native process and disposable native home for the entire call.
 // The returned error retains native startup, protocol, admission or exit detail.
 func (r Relay) Run(ctx context.Context, executable string, call plugin.GlobalVoice) (failure error) {
+	diagnostics.Event(ctx, "codex.voice_relay", "starting")
+	defer func() { diagnostics.End(ctx, "codex.voice_relay", failure) }()
 	dir, err := os.MkdirTemp(r.TemporaryRoot, "chief-voice-")
 	if err != nil {
 		return err
@@ -36,11 +39,13 @@ func (r Relay) Run(ctx context.Context, executable string, call plugin.GlobalVoi
 	defer finishStartup()
 	server, err := r.Codex.OpenSubscriptionServer(startup, dir, executable)
 	if err != nil {
+		diagnostics.Event(ctx, "codex.voice_relay", "native_start_failed")
 		return err
 	}
 	defer func() { failure = errors.Join(failure, server.Close()) }()
 	thread, err := prepareThread(startup, server, dir)
 	if err != nil {
+		diagnostics.Event(ctx, "codex.voice_relay", "native_admission_failed")
 		return err
 	}
 	return runSession(ctx, server, thread, call)
@@ -126,7 +131,6 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 	session := fmt.Sprintf("%x-%x-%x-%x-%x", id[:4], id[4:6], id[6:8], id[8:10], id[10:])
 	events := make(chan notification, 8)
 	requests := &handoffs{segments: make(map[string]segment), jobs: make(chan handoff, 32)}
-	output := newPlayback()
 	server.SetHandler(func(method string, p codex.Map, request any) {
 		if ctx.Err() != nil {
 			return
@@ -160,17 +164,10 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 			if item["type"] != "transcriptSegment" || item["realtimeSessionId"] != session {
 				return
 			}
-			complete := method == "thread/realtime/item/completed"
-			if item["role"] == "assistant" {
-				if err := output.observe(item, complete); err != nil {
-					cancel(err)
-				}
-				return
-			}
 			if item["role"] != "user" {
 				return
 			}
-			if err := requests.observe(item, complete); err != nil {
+			if err := requests.observe(item, method == "thread/realtime/item/completed"); err != nil {
 				cancel(err)
 			}
 			return
@@ -226,7 +223,11 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 				if ctx.Err() != nil {
 					return
 				}
+				diagnostics.Event(ctx, "codex.voice_relay", "utterance_ready")
 				if err := call.Submit(ctx, h.id, h.text); err != nil {
+					if ctx.Err() == nil {
+						diagnostics.Event(ctx, "codex.voice_relay", "handoff_admission_failed")
+					}
 					cancel(fmt.Errorf("Chief voice handoff %s: %w", h.id, err))
 					return
 				}
@@ -241,29 +242,16 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 		case <-ctx.Done():
 			return context.Cause(ctx)
 		case now := <-watch.C:
-			requests.expireStalled(now)
-		case reply, open := <-call.Replies:
-			if !open {
-				return errors.New("the Chief voice destination disconnected")
+			if requests.expireStalled(now) {
+				diagnostics.Event(ctx, "codex.voice_relay", "transcription_stalled")
 			}
+		case failure := <-call.Failures:
 			if ctx.Err() != nil {
 				return context.Cause(ctx)
 			}
-			speech, finish, ok := requests.speech(reply)
-			if !ok {
-				continue
-			}
-			if reply.Failure != nil {
-				finish()
-				return reply.Failure
-			}
-			stop := context.AfterFunc(ctx, finish)
-			err := output.say(speech, server, thread, reply.Text)
-			revoked := speech.Err() != nil
-			stop()
-			finish()
-			if err != nil && !revoked {
-				return fmt.Errorf("Chief speech was not confirmed: %w", err)
+			if failure.Context.Err() == nil && requests.current(failure.HandoffID) {
+				diagnostics.Event(ctx, "codex.voice_relay", "destination_failed")
+				return failure.Err
 			}
 		}
 	}

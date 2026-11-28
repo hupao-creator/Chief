@@ -105,6 +105,7 @@ public struct NativeMokuDock: View {
     @State private var conversationContentHeight: CGFloat = 0
     @State private var settingsPreferredHeight: CGFloat = 900
     @State private var settingsHeaderScroll: CGFloat = 0
+    @State private var failureContentHeight: CGFloat = 0
     @State private var linkedTalkHeight: CGFloat = NativeMokuTalkTypography.maximumHeight
     @State private var talkScrollbarStyle = NSScroller.preferredScrollerStyle
     @State private var character = NativeMokuCharacterMotion()
@@ -254,7 +255,14 @@ public struct NativeMokuDock: View {
     }
 
     @ViewBuilder private func rowMessage(_ message: NativeMokuTalkMessage, width: CGFloat) -> some View {
-        if let dispatch = message.dispatch {
+        if let failure = message.failure {
+            NativeMokuFailureContent(failure: failure, workspace: presentation?.workspace,
+                                     chinese: locale.language.languageCode?.identifier == "zh", fillsBar: true)
+                .id(failure.id)
+                .frame(width: max(1, width - NativeMokuTalkTypography.leading - (stopControlPresent ? 48 : NativeMokuTalkTypography.trailing)))
+                .fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { failureContentHeight = $0 }
+        } else if let dispatch = message.dispatch {
             NativeMokuDispatchContent(dispatch: dispatch, harness: dispatchHarness(dispatch))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(height: 32)
@@ -308,6 +316,9 @@ public struct NativeMokuDock: View {
         guard let message = displayedMessage else {
             return max(landing ? 76 : 58, capsuleHeight) + (completionVisible ? completionHeight : 0)
         }
+        if message.failure != nil {
+            return max(58, failureContentHeight + 2 * NativeMokuTalkTypography.verticalPadding)
+        }
         if message.dispatch != nil { return landing ? 76 : 58 }
         let maximumHeight = NativeMokuTalkTypography.maximumHeight
         if message.content.hasLinks {
@@ -327,6 +338,19 @@ public struct NativeMokuDock: View {
     }
     private var composerCanFocus: Bool {
         state.inputInteractionReady && state.dockRouteVisible && state.inputOpen && !state.dockCovered
+    }
+    private var composerAcceptsVoiceHold: Bool {
+        ordinaryOverviewDock && composerVisible && composerCanFocus && state.windowVisible
+            && !state.conversationOpen && !state.inputLeaving && !disabled
+    }
+    private var composerVoiceStart: (() -> Void)? {
+        guard composerAcceptsVoiceHold, let voice, voice.phase == .idle else { return nil }
+        let generation = state.composerGeneration
+        return {
+            guard state.composerGeneration == generation, state.ownsComposer(draft),
+                  composerAcceptsVoiceHold else { return }
+            voice.start()
+        }
     }
     private var explicitFocusRequest: NativeMokuSceneState.ComposerFocusRequest? {
         guard inputPresent, composerCanFocus, state.ownsComposer(draft),
@@ -708,7 +732,9 @@ public struct NativeMokuDock: View {
                         dockRects: state.dockHitRects)
                         || state.dockMentionHitRect?.contains(point) == true
                 },
-                click: { _ in
+                click: { event in
+                    if state.overviewVisible, state.conversationOpen || visibleTalk != nil,
+                       OverviewTagPointerPress.ownsPrimaryPress(event) { return }
                     if state.inputPinnedOpen, agentMentions?.dismiss() == true {
                         state.preserveInputForOwnedClick()
                     }
@@ -1009,6 +1035,7 @@ public struct NativeMokuDock: View {
         return NativeMokuComposerInput(draft: draft, cwd: cwd, disabled: disabled,
             awaitingContinuation: sidecardComposer == nil && awaitingContinuation,
             targetsThread: threadID != nil, sidecardComposer: sidecardComposer,
+            onEditorHold: composerVoiceStart,
             readOnly: state.inputLeaving, focusEnabled: composerCanFocus && (sidecardComposer?.ready ?? true),
             automaticFocus: false,
             // Keep the Compose key through the input's lifetime so installing

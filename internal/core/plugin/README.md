@@ -27,7 +27,7 @@ native typed values, including defaults and conditional omission.
 
 模型和 thinking/effort 能力以原生 CLI 的明确声明为准，不以是否属于原生订阅账户作为准入条件。账户归因检查仍用于订阅额度和模型身份来源；普通会话不额外探测账户来覆盖原生模型目录。
 
-The call-scoped [global voice port](voice.go) connects one authenticated media relay to the selected Chief through destination admission and committed Talk. Each Harness uses its ordinary input and tool contracts. [Relay ownership](../../plugins/harness/codex/voice/README.md)
+The call-scoped [global voice port](voice.go) connects one authenticated media relay to the selected Chief through destination admission and terminal failure reporting. Each Harness uses its ordinary input and tool contracts. [Relay ownership](../../plugins/harness/codex/voice/README.md)
 
 ## Generated metadata
 

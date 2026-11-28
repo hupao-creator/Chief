@@ -14,6 +14,7 @@ import (
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 type Paths struct{ MokuCwd, TemporaryRoot, RegistryPath string }
@@ -168,13 +169,19 @@ func collisionSuffix(effective, sanitized string) string {
 	return ""
 }
 
-func (m *Manager) PrepareForStart(ctx context.Context, baseCwd, threadID string, requested *model.WorktreeOptions, existing *model.Worktree) (Preparation, error) {
+func (m *Manager) PrepareForStart(ctx context.Context, baseCwd, threadID string, requested *model.WorktreeOptions, existing *model.Worktree) (_ Preparation, returned error) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "workspaces.prepare_worktree", "checking_ownership")
+	defer func() { diagnostics.End(ctx, "workspaces.prepare_worktree", returned) }()
 	p := Preparation{BaseCwd: baseCwd, OwnerThreadID: threadID}
 	if err := ownerID(threadID); err != nil {
 		return p, err
 	}
 	if existing != nil {
 		_, err := m.ValidateManaged(ctx, AuthorizationRequest{OwnerThreadID: threadID, BaseCwd: baseCwd, Worktree: *existing})
+		if err != nil {
+			diagnostics.Event(ctx, "workspaces.prepare_worktree", "managed_ownership_rejected")
+		}
 		p.Worktree = *existing
 		return p, err
 	}
@@ -192,6 +199,7 @@ func (m *Manager) PrepareForStart(ctx context.Context, baseCwd, threadID string,
 	}
 	repo, err := repositoryContext(ctx, cwd)
 	if err != nil {
+		diagnostics.Event(ctx, "workspaces.prepare_worktree", "repository_unavailable")
 		return p, fmt.Errorf("worktree mode requires a committed Git checkout: %w", err)
 	}
 	subdir, err := filepath.Rel(repo.Root, cwd)
@@ -245,6 +253,7 @@ func (m *Manager) PrepareForStart(ctx context.Context, baseCwd, threadID string,
 		return p, err
 	}
 	rollback := func(cause error) (Preparation, error) {
+		diagnostics.Event(ctx, "workspaces.prepare_worktree", "rolling_back")
 		return p, errors.Join(cause, cleanupAttempt(context.WithoutCancel(ctx), repo.Root, root, rootID))
 	}
 	if _, err = runGit(ctx, repo.Root, "worktree", "add", "--detach", root, expected); err != nil {

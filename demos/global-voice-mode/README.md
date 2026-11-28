@@ -24,7 +24,7 @@ python3 demos/global-voice-mode/build.py --open
 
 参考的是桌面 App 里与 Codex 交谈时的默认蓝色语音球。上半部为钴蓝，靠近下缘有一条柔和的浅蓝白色云带。聆听时云带缓缓起伏，回复时波峰升高并横向流动。这个 demo 用原生代码重新绘制，球缩到适合 Chief Bar 的尺寸。静音时降低饱和度，待回复结束后静止，是本原型的处理。[OpenAI 桌面 Voice 指南](https://learn.chatgpt.com/docs/features/voice) · [官方视频中的 Codex 演示](https://www.youtube.com/watch?v=E0ZMOschrTU&t=39s)
 
-外观对照来自本机桌面客户端 `26.1120.50957`（build `30866`）。在 `ChatGPT.app/Contents/Resources/app.asar` 内，`webview/assets/async/324381.d0f8b10e2b.js` 把语音状态交给 `317638.202af12185.js` 的 `HorizonVoiceOrbController`。对照帧由这个原版渲染器离线生成。demo 自行绘制纹理，用示例输入点亮内圈，用回复样例电平驱动云带幅度。[绘制代码](../../app/macos/Sources/Host/MokuScene/VoiceOrb.swift)
+外观对照来自本机桌面客户端 `26.1120.50957`（build `30866`）。在 `ChatGPT.app/Contents/Resources/app.asar` 内，`webview/assets/async/324381.d0f8b10e2b.js` 把语音状态交给 `317638.202af12185.js` 的 `HorizonVoiceOrbController`。对照帧由这个原版渲染器离线生成。demo 自行绘制纹理，用示例输入点亮内圈，云带随示例输入和回复中较强的电平起伏。[绘制代码](../../app/macos/Sources/Host/MokuScene/VoiceOrb.swift)
 
 ## 实现与回放
 

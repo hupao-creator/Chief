@@ -365,6 +365,53 @@ private final class WheelSample: NSEvent {
         func labels() -> [String] {
             spokenRows().map { $0.components(separatedBy: " — ")[0] }
         }
+        if CommandLine.arguments.contains("--failure-resend") {
+            func resend(_ surface: String) async throws {
+                try await wait("Missing resend on " + surface) { (try? filterButton("moku-failure-resend", in: window)) != nil }
+                try await Task.sleep(for: .milliseconds(350))
+                func captureRow(_ filename: String) async throws -> CGRect {
+                    let action = try filterButton("moku-failure-resend", in: window).frame
+                    let reasons = conversationElements(in: window).filter { $0.id == "moku-failure-reason" }
+                    guard action.width > 0, action.height > 0, reasons.contains(where: { node in
+                        node.frame.width > 0 && node.frame.maxX < action.minX &&
+                            node.frame.minY < action.midY && action.midY < node.frame.maxY
+                    }) else { throw ReplayError("Resend should sit beside the visible failure reason on " + surface) }
+                    try await capture(window, to: evidence.appending(path: filename + ".png"))
+                    return window.convertFromScreen(action)
+                }
+                try await resize(to: regularSize)
+                _ = try await captureRow(surface)
+                try await resize(to: CGSize(width: 860, height: 600))
+                let frame = try await captureRow(surface + "-small")
+                try await postClick(window, at: CGPoint(x: frame.midX, y: frame.midY))
+            }
+            func latestFailure() -> JSONValue? {
+                workspace.catalog.moku?.transcript?.arrayValue?.last(where: { $0["type"] == .string("chief-failure") })?["id"]
+            }
+            let first = latestFailure()
+            try await resend("failure-bar")
+            try await wait("First resend did not produce a second failed turn") {
+                latestFailure() != nil && latestFailure() != first
+            }
+            try await openHistory()
+            try await wait("Original and resent requests not present") {
+                labels().filter { $0.contains(fixture.messages[0]) }.count == 2
+            }
+            guard let editor = descendant(NSTextView.self, in: content, matching: { $0.isEditable && !$0.isHiddenOrHasHiddenAncestor }) else {
+                throw ReplayError("Missing native editor in failure history")
+            }
+            editor.insertText(fixture.draft, replacementRange: editor.selectedRange())
+            try await wait("Unrelated draft missing") { presentation.dockDraft.text == fixture.draft }
+            try await resend("failure-history")
+            try await wait("Resent request did not receive its Talk reply") {
+                labels().contains(where: { $0.contains(fixture.messages[1]) })
+            }
+            guard editor.string == fixture.draft, presentation.dockDraft.text == fixture.draft else {
+                throw ReplayError("Resend changed an unrelated draft")
+            }
+            try await capture(window, to: evidence.appending(path: "failure-resent.png"))
+            return
+        }
         let expected = fixture.messages.enumerated().map { index, text in
             (index == 0 || index == 2 ? workspace.locale.text("你, ", "You, ") : "Chief, ") + text + (index == 2 ? ", " + fixture.attachment : "")
         }

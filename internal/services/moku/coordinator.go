@@ -15,6 +15,7 @@ import (
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 type executionScope struct {
@@ -315,6 +316,23 @@ func (c *Coordinator) begin(ctx context.Context) (context.Context, func(), error
 }
 func (c *Coordinator) Invoke(ctx context.Context, channel string, args []json.RawMessage) (any, error) {
 	switch channel {
+	case "moku:resend":
+		var target failureTarget
+		if len(args) != 1 {
+			return nil, errors.New("missing Chief failure target")
+		}
+		if err := model.Unmarshal(args[0], &target); err != nil {
+			return nil, err
+		}
+		current, err := c.current()
+		if err != nil {
+			return nil, err
+		}
+		request, err := readFailure(current, target)
+		if err != nil {
+			return nil, err
+		}
+		return nil, c.submit(model.WithChiefResend(ctx), request, nil, &target)
 	case "moku:submit":
 		if len(args) != 1 {
 			return nil, errors.New("moku:submit expects one request")
@@ -366,10 +384,13 @@ func (c *Coordinator) current() (model.ThreadRecord, error) {
 	return model.ThreadRecord{}, errors.New("Chief session is not initialized")
 }
 func (c *Coordinator) Submit(ctx context.Context, request SubmitRequest) error {
-	return c.submit(ctx, request, nil)
+	return c.submit(ctx, request, nil, nil)
 }
 
-func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *voiceBinding) error {
+func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *voiceBinding, resend *failureTarget) (returned error) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "moku.submit", "admitting")
+	defer func() { diagnostics.End(ctx, "moku.submit", returned) }()
 	ctx, finish, err := c.begin(ctx)
 	if err != nil {
 		return err
@@ -384,6 +405,7 @@ func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *
 		return parseErr
 	}
 	request.Input = validated
+	publicRequest := request
 	if c.config.ClaimThreadInput != nil {
 		record, readErr := c.current()
 		if readErr != nil {
@@ -413,6 +435,15 @@ func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *
 		return err
 	}
 	defer c.queue.Unlock()
+	if resend != nil {
+		current, readErr := c.current()
+		if readErr != nil {
+			return readErr
+		}
+		if _, err = readFailure(current, *resend); err != nil {
+			return err
+		}
+	}
 	return c.admitSettings(admissionCtx, func(admissionCtx context.Context) error {
 		return retryConfigurationAdmission(func() error {
 			if err = admissionCtx.Err(); err != nil {
@@ -420,11 +451,16 @@ func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *
 			}
 			record, err := c.ensure(admissionCtx)
 			if err != nil {
+				var host hostUnavailable
+				if resend == nil && voice == nil && record.Moku && admissionCtx.Err() == nil && errors.As(err, &host) {
+					return c.recordHostFailure(admissionCtx, record, publicRequest, request.Input, host.code)
+				}
 				return err
 			}
 
 			entries, err := c.sendContext(admissionCtx, request.Input, request.DirectoryTag, request.DirectoryScopeID)
 			if err != nil {
+				diagnostics.Event(admissionCtx, "moku.submit", "context_failed")
 				return err
 			}
 			entries, err = c.withSuperThreadContext(admissionCtx, entries, request.SuperThreadID)
@@ -440,6 +476,11 @@ func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *
 			admission.entered = true
 			injection := c.injection
 			c.mu.Unlock()
+			if resend != nil {
+				if err := c.setResendState(admissionCtx, *resend, "ready", "unconfirmed"); err != nil {
+					return err
+				}
+			}
 			result, err := c.config.SendSession(admissionCtx, record.ID, request.Input, injection, entries, func(result SendResult) error {
 				current, readErr := c.current()
 				if readErr != nil {
@@ -454,6 +495,7 @@ func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *
 					rowID = newID()
 				}
 				row := userMessage(request.Input, rowID, time.Now().UnixMilli())
+				row["executionId"], row["resendRequest"] = result.ExecutionID, publicRequest
 				if voice != nil {
 					if result.ExecutionID == "" {
 						return errors.New("Chief did not confirm an execution for the voice handoff")
@@ -472,6 +514,13 @@ func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *
 			})
 			if err == nil {
 				c.rememberDispatch(result.ExecutionID, entries)
+				if resend != nil {
+					return c.setResendState(context.WithoutCancel(admissionCtx), *resend, "unconfirmed", "sent")
+				}
+			} else if _, rejected := err.(*plugin.MokuAdmissionRejectedError); resend != nil && (rejected || err == plugin.ErrMokuConfigurationPending) {
+				if releaseErr := c.setResendState(context.WithoutCancel(admissionCtx), *resend, "unconfirmed", "ready"); releaseErr != nil {
+					return errors.Join(err, releaseErr)
+				}
 			}
 			return err
 		})
@@ -666,6 +715,10 @@ func (c *Coordinator) ensurePrepared(ctx context.Context) (model.ThreadRecord, e
 			}
 		}
 		if configuration.HarnessID != current.HarnessID {
+			// A queued terminal notification must not lose its reply when this owner is archived.
+			if err := c.restoreFailure(ctx, current); err != nil {
+				return current, err
+			}
 			configuration.PreserveHistory = true
 			current, err = c.config.ReplaceSession(ctx, current.ID, configuration)
 			if err != nil {
@@ -741,7 +794,7 @@ func (c *Coordinator) ensurePrepared(ctx context.Context) (model.ThreadRecord, e
 			return c.validateTargetAdmission(ctx, ownerID, capturedSettings)
 		}, Instructions: instructions, ContextEntries: entries, Tools: &plugin.ToolInjection{Mode: "exclusive", Bindings: tools}}
 		if err = c.config.OpenSession(ctx, current.ID, injection); err != nil {
-			return current, err
+			return current, hostUnavailable{err, "startup"}
 		}
 
 		if err = ctx.Err(); err != nil {
@@ -813,7 +866,7 @@ func (c *Coordinator) resolveHost(ctx context.Context, settings model.Settings, 
 		merged := mergedSettings(settings, id, true)
 		if available, err := c.available(ctx, h, merged, "exclusive"); err != nil || !available.Available {
 			if available.RequiresExplicitSelection && id == current {
-				return SessionConfiguration{}, fmt.Errorf("当前 Chief Host 配置不可用（%s: %s）。请在设置中选择兼容的 Host 或模型。", id, available.Reason)
+				return SessionConfiguration{}, hostUnavailable{fmt.Errorf("当前 Chief Host 配置不可用（%s: %s）。请在设置中选择兼容的 Host 或模型。", id, available.Reason), "host"}
 			}
 			if err == nil {
 				err = errors.New(available.Reason)
@@ -840,7 +893,7 @@ func (c *Coordinator) resolveHost(ctx context.Context, settings model.Settings, 
 		}
 		return SessionConfiguration{HarnessID: id, Settings: resolved, AppliedSettings: settings, SettingsRevision: revision, Cwd: c.config.Workspace}, nil
 	}
-	return SessionConfiguration{}, errors.Join(append([]error{errors.New("Chief 没有可用的 Host Harness")}, failures...)...)
+	return SessionConfiguration{}, hostUnavailable{errors.Join(append([]error{errors.New("Chief 没有可用的 Host Harness")}, failures...)...), "host"}
 }
 func (c *Coordinator) available(ctx context.Context, h plugin.Harness, settings json.RawMessage, modes ...string) (plugin.Availability, error) {
 	mode := ""

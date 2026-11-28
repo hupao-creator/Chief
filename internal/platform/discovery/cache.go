@@ -7,6 +7,8 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 type entry[T any] struct {
@@ -127,6 +129,9 @@ func (c *Cache[T]) get(ctx context.Context, key string, refresh, allowStale bool
 		go func(f *flight[T]) {
 			value, err := probe(shared)
 			err = errors.Join(err, shared.Err())
+			if diagnostics.Traced(shared) || (err != nil && shared.Err() == nil) {
+				diagnostics.End(shared, "discovery.probe", err)
+			}
 			c.mu.Lock()
 			var cleanup cleanupError
 			if errors.As(err, &cleanup) {

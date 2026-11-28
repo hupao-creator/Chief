@@ -28,9 +28,11 @@ Chief communicates through the Dock. Historical tool records stay in the audit. 
 
 The [workspace presentation](../Shell/NativeWorkspaceView.swift) retains one [GlobalVoiceSession](../../Voice/README.md) for its connected runtime. An ordinary change of reader preserves the call. Runtime disconnect, window release and explicit end release its media. When a covering page hides the Bar, the active window's Voice Mode menu command can still end the call.
 
-The [Bar press target](VoiceBarPress.swift) recognizes a half-second hold. A short click opens or focuses the existing editor. An expanded editor or Talk reserves just the identity seat for the gesture. Text selection, links, attachments, Send, Stop and the Bar's own secondary-click conversation keep their targets. The voice path receives no draft or reading Thread.
+The [Bar press target](VoiceBarPress.swift) recognizes a half-second hold. A short click opens or focuses the existing editor. An expanded editor or Talk reserves the identity seat for this target.
 
-While connecting, Chief glances toward the right cap. The [joined glass surfaces](VoiceDock.swift) share a material container and a horizontal center. Only a ready call mounts the orb, with an expanded editor reserving space at the right of its viewport as needed. The travel host and the outside-click monitor include the orb's swept hit region. Clicking the orb toggles the input, secondary click ends the call, and the workspace reports connection failures through its operation notice. The [cloud disk](VoiceOrb.swift) uses a light inner ring for the microphone level and cloud-band amplitude for the received level, including while muted. The orb reads both levels in its own body. Reduce Motion uses a fixed ring width and stationary cloud with independent brightness cues, settles the orb directly and Reduce Transparency uses an opaque surface.
+In Overview's standalone expanded composer, hold the primary button for half a second and release within the native text view, with or without a draft. The empty placeholder advertises this path while a call can start. [Native editor tracking](../../Shared/PluginUI/README.md#cards-composer-and-forms) owns click, drag and composition arbitration. A recognized hold starts Voice Mode and leaves the draft and selection in place. The voice path receives no draft or reading Thread.
+
+While connecting, Chief glances toward the right cap. The [joined glass surfaces](VoiceDock.swift) share a material container and a horizontal center. Only a ready call mounts the orb, with an expanded editor reserving space at the right of its viewport as needed. The travel host and the outside-click monitor include the orb's swept hit region. Clicking the orb toggles the input, secondary click ends the call, and the workspace reports connection failures through its operation notice. The [cloud disk](VoiceOrb.swift) uses a white inner ring with a dark outline for the microphone level. The ring sits above the cloud mask and maps quiet input to more of its opacity range. Cloud-band amplitude follows the stronger of the visible microphone level and the playback level. When muted, only playback drives the cloud. The orb reads both levels in its own body. With Reduce Motion enabled, the orb settles directly, the ring keeps a fixed width and the stationary cloud brightens with the stronger signal. Reduce Transparency uses an opaque surface.
 
 The [mounted interaction replay](../../../../../demos/global-voice-mode/README.md) drives these production surfaces with fixture audio. The [live replay](../../../../../tools/e2e/README.md#global-voice) identifies the account, destination and audio boundaries it exercises.
 
@@ -384,6 +386,8 @@ their trace rendering.
 
 Opening Chief input marks the Dock’s reply as read.
 
+In Overview, primary presses on top-row folders and Inbox tags or left-rail semantic tags preserve the compact reply or open Chief conversation while the selection changes. The Dock's local mouse monitor uses the tag's native pointer hit test before delivering the press. Blank canvas and other outside targets, including status buttons, follow ordinary dismissal. A tag press leaves the compact reply's expiration deadline intact.
+
 [NativeMokuTalk](NativeMokuTalk.swift) shows the latest valid `talk` or `create_thread` operation. Talk is selectable text. Each message opens at the top and grows to a 111-point text viewport (about six lines). Scroll down to read overflow, including execution links. The compact audit reader admits saved successful Talk text up to 1,024 code points for Alpha compatibility. The [submission limits](../../../../../internal/services/moku/README.md#talk) apply at the coordinator, and conversation history renders saved text in full.
 
 The trailing control seat stays reserved for the whole message so retiring Stop does not shift centered text or change its wrapping. Talk does not edit the draft or grab focus. Clicking outside the capsule dismisses the presented notification without consuming the click, including clicks in another window or app. Clicks and scrolling inside retain it. Only windows accepting mouse input observe outside-window presses. The cross-app mouse observer is removed when the notification is hidden or the Dock unmounts. Dismissed/presented operation identity survives refresh and remount within its scene. A notification covered before presentation waits until it can actually be shown.
@@ -451,7 +455,7 @@ display string capped at 256 code points; oversized target keys are omitted
 instead of changing their identity. Other native options are not forwarded to
 the catalog. The full stored operation retains the caller's original request.
 
-Switching the coordinating Harness retains the previous conversation as a read-only Chief history session. The conversation shows successful Talk messages across these sessions until an explicit history reset.
+Switching the coordinating Harness retains the previous conversation as a read-only Chief history session. The conversation shows saved replies and failures across these sessions until an explicit history reset.
 
 ### Talk execution links
 
@@ -788,3 +792,7 @@ not certify IME, attachments, historical forks, Report input, Moku-wide cancel,
 uncertain receipts, restart recovery or real external-provider behavior. Runtime
 invariants remain PBT's responsibility; latency and animation quality belong to
 benchmarks. A scenario definition is not evidence that a particular commit ran.
+
+### Chief failure replies
+
+The compact Talk surface and the incoming conversation balloon share the failure content and resend action. A warning symbol leads the full localized reason. Resend or its receipt sits at the trailing edge, beside the wrapping text. The compact glass fits the measured row height. The compact failure has no expiry timer and follows Talk’s replacement and dismissal behavior. Reading history preserves the original request, failure and later replies. Resend passes the failure identity directly to the coordinator and leaves the composer draft alone. Ordinary task errors remain in the task reader.

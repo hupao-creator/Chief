@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/hupao-creator/Chief/internal/core/store"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 type Publication struct {
@@ -102,6 +103,9 @@ func (c *Configurations) Update(ctx context.Context, id, source string, acquire 
 }
 
 func (c *Configurations) acquire(ctx context.Context, id string, f *pending, load Acquire, current func(*store.Tx) bool) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "dispatchconfig.acquire", "loading")
+	defer func() { diagnostics.End(ctx, "dispatchconfig.acquire", f.err) }()
 	defer f.cancel()
 	raw, bench, err := load(ctx)
 	publication, ready := project(raw, bench)
@@ -121,7 +125,11 @@ func (c *Configurations) acquire(ctx context.Context, id string, f *pending, loa
 	if err != nil || !ready {
 		f.presentation, f.err = raw, err
 		if len(previous.Presentation) > 0 {
+			diagnostics.Event(ctx, "dispatchconfig.acquire", "using_previous_publication")
 			f.presentation, f.err = previous.Presentation, nil
+		}
+		if len(previous.Presentation) == 0 {
+			diagnostics.Event(ctx, "dispatchconfig.acquire", "publication_unavailable")
 		}
 		return
 	}

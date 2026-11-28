@@ -24,7 +24,7 @@ struct StatusWithRecentThreads<Status: View>: View {
                     threads: threads.map { activity in
                         .init(id: JSONText(activity.id), title: activity.thread.title,
                               harness: activity.thread.harness.plugin, date: activity.date)
-                    }) { id in
+                    }, usesTintedGlass: scenario == .unread) { id in
                         if let activity = threads.first(where: { JSONText($0.id) == id }) { open(activity.thread) }
                     }
                     .frame(width: NativeOverviewRecentThreadList.idealWidth)

@@ -17,6 +17,7 @@ import (
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
 	"github.com/hupao-creator/Chief/internal/core/store"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"github.com/hupao-creator/Chief/internal/services/workspaces"
 )
 
@@ -896,7 +897,10 @@ func (r *Runtime) sendThread(ctx context.Context, id string, input model.AgentIn
 func (r *Runtime) sendLocked(ctx context.Context, id string, input model.AgentInput, injection *plugin.Injection) (SendResult, error) {
 	return r.sendLockedAdmitted(ctx, id, input, injection, nil, nil)
 }
-func (r *Runtime) sendLockedAdmitted(ctx context.Context, id string, input model.AgentInput, injection *plugin.Injection, entries []plugin.ContextEntry, onAdmitted func(SendResult) error) (SendResult, error) {
+func (r *Runtime) sendLockedAdmitted(ctx context.Context, id string, input model.AgentInput, injection *plugin.Injection, entries []plugin.ContextEntry, onAdmitted func(SendResult) error) (_ SendResult, returned error) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "runtime.thread_send", "admitting")
+	defer func() { diagnostics.End(ctx, "runtime.thread_send", returned) }()
 	ctx, releaseClaim, err := r.claimSend(ctx, id)
 	if err != nil {
 		return SendResult{}, err
@@ -961,6 +965,11 @@ func (r *Runtime) sendLockedAdmitted(ctx context.Context, id string, input model
 	if err != nil {
 		unlockAdmission()
 		return SendResult{}, err
+	}
+	if model.IsChiefResend(ctx) && (t.Observation.BackgroundWork != nil ||
+		(t.Observation.LatestExecution != nil && !t.Observation.LatestExecution.Terminal())) {
+		unlockAdmission()
+		return SendResult{}, &plugin.MokuAdmissionRejectedError{Cause: errors.New("Chief is already working")}
 	}
 	if expected, _ := ctx.Value(expectedUserExecutionKey{}).(string); expected != "" &&
 		(t.Observation.LatestExecution == nil || t.Observation.LatestExecution.ExecutionID != expected) {
@@ -1096,7 +1105,15 @@ func (r *Runtime) sendLockedAdmitted(ctx context.Context, id string, input model
 			err = attempt()
 		}
 		if err == nil {
+			diagnostics.Event(ctx, "runtime.thread_send", "native_send")
+			switch t.HarnessID {
+			case "codex", "claude", "pi", "opencode":
+				diagnostics.Event(ctx, "harness.dispatch", t.HarnessID)
+			}
 			err = owner.native.Send(sendCtx, request)
+			if err != nil {
+				diagnostics.End(ctx, "harness.send", err)
+			}
 		}
 		// Only an untouched, unadmitted input may move to a new reservation.
 		// Exact equality deliberately excludes joined failures.
@@ -1128,6 +1145,7 @@ func (r *Runtime) sendLockedAdmitted(ctx context.Context, id string, input model
 		case <-admission.done:
 		default:
 			cancelSend()
+			diagnostics.Event(ctx, "runtime.thread_send", "native_admission_missing")
 			err = errors.New("harness returned without acknowledging input admission")
 			_ = finishAdmission(err, false)
 			if started {

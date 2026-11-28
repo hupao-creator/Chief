@@ -158,9 +158,11 @@ private struct ConversationBubble: View {
         let shape = ConversationBalloon(outgoing: user, tail: tail)
         let speaker = user ? (chinese ? "你" : "You") : "Chief"
         let content = message.content
-        let spoken = ([speaker, content.hasLinks ? "" : message.text] + message.attachments).filter { !$0.isEmpty }.joined(separator: ", ")
+        let spoken = ([speaker, content.hasLinks || message.failure != nil ? "" : message.text] + message.attachments).filter { !$0.isEmpty }.joined(separator: ", ")
         VStack(alignment: .leading, spacing: 4) {
-            if !message.text.isEmpty {
+            if let failure = message.failure {
+                NativeMokuFailureContent(failure: failure, workspace: workspace, chinese: chinese)
+            } else if !message.text.isEmpty {
                 if content.hasLinks {
                     NativeMokuTalkLinks(content: content, workspace: workspace, compact: false)
                 }
@@ -191,8 +193,8 @@ private struct ConversationBubble: View {
             }
         }
         .help(Text(message.date, format: .dateTime))
-        .accessibilityElement(children: content.hasLinks ? .contain : .ignore)
-        .accessibilityAddTraits(content.hasLinks ? [] : .isStaticText)
+        .accessibilityElement(children: content.hasLinks || message.failure != nil ? .contain : .ignore)
+        .accessibilityAddTraits(content.hasLinks || message.failure != nil ? [] : .isStaticText)
         .accessibilityLabel(Text("\(Text(verbatim: spoken)) — \(Text(message.date, format: .dateTime))"))
         .accessibilityIdentifier("moku-conversation-message")
     }

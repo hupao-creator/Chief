@@ -11,6 +11,8 @@ import (
 	"github.com/hupao-creator/Chief/internal/core/model"
 )
 
+var errEventStreamClosed = errors.New("event stream closed")
+
 type queuedEvent struct {
 	body         []byte
 	subscription string
@@ -53,7 +55,7 @@ func (c *eventStream) enqueueWithLimit(body []byte, subscription string, limit i
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.aborted || c.ending {
-		return errors.New("event stream closed")
+		return errEventStreamClosed
 	}
 	if len(body) > limit {
 		return model.NewError("CONTENT_TOO_LARGE", "This conversation turn exceeds the content transport limit")
