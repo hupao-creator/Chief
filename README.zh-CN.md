@@ -38,7 +38,7 @@ Chief 用**最多五个标签**归类每个项目中的对话。从 *Bug fixes�
 ## 功能一览
 
 - **原生 Mac 应用。** Chief 使用 **SwiftUI 和 AppKit** 构建，面向搭载 Apple 芯片的 Mac。
-- **集中使用你的 Agent。** 用你已有的账号和模型，把 **Codex、Claude、Pi Agent 和 OpenCode** 聚到一起。
+- **集中使用你的 Agent。** 用你已有的账号和模型，把 **Codex、Claude、Pi Agent、OpenCode 和 Antigravity** 聚到一起。
 - **统一委派任务。** 把任务交给 Chief，它可以协调**不同 Harness 和模型**的 Agent。比如，让 Codex 实现一项改动，再让 Claude Code 审查。
 - **实时任务概览。** 查看哪些任务正在运行、哪些文件有变更，以及**哪些 Agent 正在等你**。按项目文件夹或标签筛选，专注于当前的工作。
 - **采用 Liquid Glass 设计。** 在任务概览与单个对话之间切换时，半透明控件让工作内容始终可见。

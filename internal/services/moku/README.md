@@ -35,6 +35,8 @@ native failures cannot authorize replay or clear an uncertain outbox attempt.
 Fixed tool schemas compile once per installed binding and are reused for that
 configuration generation. Published option changes are delivered through context and preserve the installed bindings.
 
+For an ordinary Antigravity Thread, `target.agy.model` carries the exact published native ID. The destination handles authentication, permission requests and terminal observation. Further user inputs can resume the same native session. [Antigravity dispatch](../../plugins/harness/agy/README.md)
+
 The Codex Harness additionally places the original injected input schemas in
 native developer instructions, so its model can read the complete creation
 contract even when native tool-schema conversion drops composition details.

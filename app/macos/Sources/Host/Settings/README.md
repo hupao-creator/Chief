@@ -7,6 +7,8 @@ refresh retains the provider's previous choices across restarts. Thread and
 execution-profile editors use their own settings scopes.
 
 
+An enabled task-only target has its own disclosure below the Chief coordination map. Antigravity exposes its native authentication method there. The upper row uses the coordinating capability from the plugin descriptor.
+
 Settings form controls use system SwiftUI/AppKit controls on the existing macOS
 26 minimum. The page's `nativeSettingsFormPage` environment selects system
 popups, rounded text/secure fields, switches, bordered action buttons and AppKit

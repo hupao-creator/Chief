@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/plugins/harness/agy"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/claude"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/codex"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/opencode"
@@ -33,7 +34,8 @@ func TestDispatchOptionsProperties(t *testing.T) {
 			calls++
 			return "", errors.New("provider unavailable")
 		}}
-		for id, h := range map[string]plugin.Harness{"codex": codex.New(host), "claude": claude.New(host), "opencode": opencode.New(host), "pi": pi.New(host)} {
+		for _, h := range []plugin.Harness{codex.New(host), claude.New(host), opencode.New(host), pi.New(host), agy.New(host)} {
+			id := h.Descriptor().ID
 			if closer, ok := h.(interface{ Close() error }); ok {
 				defer closer.Close()
 			}
@@ -43,7 +45,10 @@ func TestDispatchOptionsProperties(t *testing.T) {
 			if choice == "effort" {
 				thinking["effort"] = "high"
 			}
-			request := map[string]any{"model": name, "thinking": thinking}
+			request := map[string]any{"model": name}
+			if id != "agy" { // Antigravity encodes effort in its native model ID.
+				request["thinking"] = thinking
+			}
 			if id == "codex" {
 				request["serviceTier"] = "default"
 			}
@@ -77,9 +82,17 @@ func TestDispatchOptionsProperties(t *testing.T) {
 					t.Fatalf("%s lost %s", id, key)
 				}
 			}
-			request["executablePath"] = "/unexpected"
-			if _, err := settings.ResolveThread(context.Background(), plugin.ResolveSettingsRequest{Dispatch: true, Merged: defaults, Requested: raw(request)}); err == nil {
-				t.Fatalf("%s accepted a launch override", id)
+			overrides := map[string]string{"executablePath": "/unexpected"}
+			if id == "agy" {
+				overrides["authMethod"] = "oauth-personal"
+				overrides["permissionMode"] = "accept-edits"
+			}
+			for key, override := range overrides {
+				request[key] = override
+				if _, err := settings.ResolveThread(context.Background(), plugin.ResolveSettingsRequest{Dispatch: true, Merged: defaults, Requested: raw(request)}); err == nil {
+					t.Fatalf("%s accepted a %s override", id, key)
+				}
+				delete(request, key)
 			}
 		}
 	})

@@ -18,6 +18,8 @@ If the agent asks a question or requests permission, respond to the prompt. The 
 
 When you ask Chief for a new Claude Code task, it normally uses your Claude thread permission setting. The initial setting is `auto`, which lets Claude Code review tool requests. You can ask for a specific mode, such as `acceptEdits`, when you create the task. If Claude Code reports that it started in a different mode after Chief requested `auto`, open the task conversation to see which mode it used.
 
+In an Antigravity conversation, check the command or file named in a permission request and choose one of the actions offered. Choose the one-time option to allow just that operation, or deny it. You can send another message in the same conversation when the run ends.
+
 To stop the current run, click **Stop this thread**. The button shares the **Send** position and appears when the run is active and the input box is empty. Keep any unsent draft you want before clearing the box. When the run stops, Chief receives a notification that you stopped it. You can send a new message to continue later. Closing the conversation or its **Execution** sidecard leaves the task running. [Watch a live run](sidecards.md#watch-a-run-in-progress)
 
 ## Send a follow-up or attachment

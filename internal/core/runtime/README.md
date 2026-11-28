@@ -158,6 +158,8 @@ The [global voice call](../../services/moku/README.md#global-voice) counts as se
 
 [settings.go](settings.go) separates saved settings revision from streaming thread revisions. `app:update-settings` checks the DTO, application schema and local Harness settings shapes, preserves retained execution profiles and compares `expectedSettingsRevision` in the store transaction. The save performs no native snapshot or catalog acquisition. A conflict returns the latest settings; invalid writes leave state unchanged. An unchanged save does not advance the revision.
 
+At startup a fresh profile receives defaults for every registered Harness at revision zero. An existing profile receives defaults for missing Harness keys in one store transaction. The revision advances once when any key is added. Saved target selections and existing configuration values are preserved.
+
 The [Settings DTO](../model/state.go) contains ordinary Harness defaults, Moku's separate concrete execution profiles, plugin settings and desired plugin enablement. Ordinary thread settings are saved session configuration, not a live reference to global defaults. Thread configuration has its own CAS revision. Moku and background agents retain the configuration of already admitted work; newer saved settings apply at their next admission boundary.
 
 Changing Moku's Harness preference requires idle ordinary Agent Threads and

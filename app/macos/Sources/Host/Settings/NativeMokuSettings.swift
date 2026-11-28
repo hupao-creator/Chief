@@ -133,6 +133,15 @@ import SwiftUI
                     ? locale.text("当前值不可用，请选择", "The current value is unavailable. Please choose one.")
                     : locale.text("当前 Chief provider 值不可用，请重新选择。", "The selected Chief provider is unavailable. Please choose another."), error: selectedHost != nil)
             }
+            ForEach(pickable.filter { !($0.descriptor.threadCapabilities.canHostMoku) && targets.contains($0.descriptor.id.string) },
+                    id: \.descriptor.id) { target in
+                DisclosureGroup(target.descriptor.displayName.string) {
+                    harnessSettings(NativeHarnessSettingsRequest(harnessID: target.descriptor.id, section: .cli,
+                        executionSnapshot: false, scopeID: nil, refreshSequence: 0,
+                        savedValue: model.savedSettings["harnesses"]?[target.descriptor.id.string] ?? .object([:]),
+                        value: model.harnessValueBinding(target.descriptor.id.string, execution: false)))
+                }
+            }
             if includesRoutingGuidance, !(rosterReady && !rosterPending && host != nil) {
                 routingGuidance
             }

@@ -239,7 +239,7 @@ placeholder icon retains its fixed square seat when the text is compressed.
 
 ## Harness transcript
 
-All four Harness plugins supply ordered semantic items to `ThreadTranscriptLayout`.
+The five Harness plugins supply ordered semantic items to `ThreadTranscriptLayout`.
 It selects the visible message anchors for live, terminal and historical views.
 `ThreadTranscriptBody` renders user and assistant Markdown, steer text, reasoning,
 reviews and diagnostics. `ThreadTranscriptActivities` builds grouped tool rows.

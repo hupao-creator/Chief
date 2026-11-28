@@ -25,6 +25,48 @@ type SettingsResult struct {
 	Settings         model.Settings `json:"settings"`
 }
 
+// Backfill newly registered harnesses in installed profiles without changing
+// the selected targets, execution profiles, or any existing harness settings.
+func (r *Runtime) initializeHarnessSettings(tx *store.Tx) error {
+	var settings model.Settings
+	exists, err := tx.Get("settings", &settings)
+	if err != nil {
+		return err
+	}
+	var revision int64
+	if !exists {
+		settings = model.DefaultSettings(r.harnessIDs())
+	} else {
+		if _, err = tx.Get("settings-revision", &revision); err != nil {
+			return err
+		}
+	}
+	changed := false
+	for id, h := range r.config.Harnesses {
+		if _, present := settings.Harnesses[id]; exists && present {
+			continue
+		}
+		if settings.Harnesses == nil {
+			settings.Harnesses = make(map[string]json.RawMessage)
+		}
+		settings.Harnesses[id] = h.DefaultSettings()
+		changed = true
+	}
+	if exists {
+		if !changed {
+			return nil
+		}
+		if revision >= model.MaximumSafeInteger {
+			return errors.New("settings revision exhausted")
+		}
+		revision++
+	}
+	if err := tx.Put("settings", settings); err != nil {
+		return err
+	}
+	return tx.Put("settings-revision", revision)
+}
+
 func (r *Runtime) UpdateSettings(ctx context.Context, expected int64, settings model.Settings) (result SettingsResult, err error) {
 	ctx = diagnostics.EnsureTrace(ctx)
 	diagnostics.Event(ctx, "runtime.settings", "validating")
