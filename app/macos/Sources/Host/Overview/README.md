@@ -215,9 +215,8 @@ Thread and Report archive, linked Threads hidden by Report archive, and
 visibility or coverage changes that remove a placement. Status and content
 updates that preserve membership keep the mounted card. When the final
 workspace card leaves, the Dock's landing composer takes input immediately
-while the empty canvas layout finishes the card's exit. **Clear all history**
-is a workspace reset under Settings, where the covered canvas coalesces
-catalog changes and resumes from the latest projection.
+while the empty canvas layout finishes the card's exit. The [Settings factory
+reset](../Settings/README.md) returns to first-time setup after restart.
 
 Card motion starts, interruption samples and display samples all use
 `ProcessInfo.systemUptime`. A MainActor clock shares one uptime sample for each

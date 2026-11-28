@@ -69,8 +69,6 @@ public final class NativeSettingsModel {
     public private(set) var installing: Set<String> = []
     public private(set) var detailRefreshSequences: [String: Int] = [:]
     public private(set) var probing = false
-    public private(set) var clearing = false
-    public var confirmClear = false
     public var operationError: String?
     public private(set) var defaultCwd = ""
     public var activeHostHarnessID: String?
@@ -78,7 +76,6 @@ public final class NativeSettingsModel {
     public var mokuInFlight = false
     public var runtimeAvailable: Bool { draft.runtimeAvailable }
     public var savedSettings: JSONValue { draft.saved }
-    @ObservationIgnored private let clearHistory: () async throws -> Void
     @ObservationIgnored private let loadInstallation: ((String) async throws -> JSONValue)?
     @ObservationIgnored private let loadInstallations: () async throws -> JSONValue
     @ObservationIgnored private let installHarness: (String) async throws -> Void
@@ -94,12 +91,11 @@ public final class NativeSettingsModel {
 
     public init(settings: JSONValue, revision: Int,
                 save: @escaping (JSONValue, Int) async throws -> NativeSettingsSaveResult,
-                clearHistory: @escaping () async throws -> Void,
                 loadInstallations: @escaping () async throws -> JSONValue,
                 installHarness: @escaping (String) async throws -> Void,
                 loadInstallation: ((String) async throws -> JSONValue)? = nil) {
         draft = NativeSettingsDraft(settings: settings, revision: revision, save: save)
-        self.clearHistory = clearHistory; self.loadInstallations = loadInstallations
+        self.loadInstallations = loadInstallations
         self.installHarness = installHarness; self.loadInstallation = loadInstallation
     }
 
@@ -265,14 +261,6 @@ public final class NativeSettingsModel {
         case .loaded: return .missing
         case .failed: return .error
         }
-    }
-
-    public func requestClear() async {
-        guard !retired, runtimeAvailable, !clearing, draft.status != .saving, draft.status != .pending else { return }
-        guard confirmClear else { confirmClear = true; return }
-        clearing = true; operationError = nil
-        do { try await clearHistory() } catch { if !retired { operationError = error.localizedDescription } }
-        confirmClear = false; clearing = false
     }
 
     public func harnessValueBinding(_ id: String, execution: Bool) -> Binding<JSONValue> {

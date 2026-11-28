@@ -1176,9 +1176,7 @@ public struct NativeWorkspaceView: View {
         }
         .overlay(alignment: .topLeading) {
             NativeWindowNavigationView(action: presentation.navigation, hidden: presentation.browsingCollection || presentation.nativeApplicationNavigation || presentation.usesReadingPanel,
-                suspended: presentation.scene.settingsOpen,
-                managesNativeButtons: !presentation.nativeApplicationNavigation || applicationSuppressed,
-                reading: presentation.readingNavigation)
+                suspended: presentation.scene.settingsOpen)
                 .allowsHitTesting(!presentation.scene.settingsOpen && !presentation.onboarding.blocksWorkspace)
                 .accessibilityHidden(presentation.scene.settingsOpen || presentation.onboarding.blocksWorkspace)
         }

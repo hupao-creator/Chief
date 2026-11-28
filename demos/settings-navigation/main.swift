@@ -31,7 +31,7 @@ import ChiefHarnessOpenCode
         let value = try JSONValue(data: Data(#"{"moku":{"hostHarnessPreference":"codex","targetHarnessIds":["codex","claude"],"routingGuidance":null}}"#.utf8))
         model = NativeSettingsModel(settings: value, revision: 0,
             save: { value, revision in .saved(settings: value, revision: revision + 1) },
-            clearHistory: {}, loadInstallations: {
+            loadInstallations: {
                 .object(["pi": .object(["status": .text("installed")]), "codex": .object(["status": .text("installed")]),
                          "claude": .object(["status": .text("installed")]), "opencode": .object(["status": .text("installed")])])
             }, installHarness: { _ in })

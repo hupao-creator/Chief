@@ -12,7 +12,7 @@ import SwiftUI
     let draft = NativeComposerDraft(services: .init(stageFiles: { _, _ in [] }, discardAttachments: { _ in }))
     let settings = NativeSettingsModel(settings: .object([:]), revision: 0,
         save: { value, revision in .saved(settings: value, revision: revision + 1) },
-        clearHistory: {}, loadInstallations: { .object([:]) }, installHarness: { _ in })
+        loadInstallations: { .object([:]) }, installHarness: { _ in })
     var request: PublicInteraction?
     var responses: [HarnessRespondRequest] = []
     var replyKey: JSONText?

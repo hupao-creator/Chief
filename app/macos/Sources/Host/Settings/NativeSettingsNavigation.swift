@@ -32,7 +32,6 @@ public final class NativeSettingsNavigation {
     }
 
     public func closeBlockReason(model: NativeSettingsModel) -> String? {
-        if model.clearing { return "Settings are clearing history" }
         if model.draft.firstInvalidField != nil { return "Settings contain an invalid field" }
         if model.draft.composing { return "Settings contain an active text composition" }
         if model.draft.incompleteEditorScope != nil { return "Settings contain an incomplete model configuration" }
@@ -41,7 +40,6 @@ public final class NativeSettingsNavigation {
 
     @discardableResult
     public func requestClose(model: NativeSettingsModel, onClose: (CGRect) -> Void) -> Bool {
-        guard !model.clearing else { return false }
         if model.draft.firstInvalidField != nil {
             section = "moku"; focusRequest += 1
             return false

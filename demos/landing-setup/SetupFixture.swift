@@ -143,7 +143,7 @@ struct SetupRole {
             "routingGuidance": .null
         ])]), revision: 0,
             save: { value, revision in .saved(settings: value, revision: revision + 1) },
-            clearHistory: {}, loadInstallations: {
+            loadInstallations: {
                 .object(Dictionary(uniqueKeysWithValues: SetupAgent.allCases.map { agent in
                     (JSONText(agent.rawValue), JSONValue.object(["status": .text(installed.contains(agent) ? "installed" : "missing")]))
                 }))

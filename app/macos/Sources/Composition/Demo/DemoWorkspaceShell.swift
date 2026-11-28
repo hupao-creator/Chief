@@ -25,7 +25,7 @@ final class DemoWorkspaceShell {
         draft = overviewDraft
         settings = NativeSettingsModel(settings: .object(["moku": .object([
             "hostHarnessPreference": .text("codex"), "targetHarnessIds": .array([.text("codex")])])]),
-            revision: 1, save: { .saved(settings: $0, revision: $1 + 1) }, clearHistory: { throw DemoThread.readOnly },
+            revision: 1, save: { .saved(settings: $0, revision: $1 + 1) },
             loadInstallations: { .object(["codex": .object(["status": .text("installed")])]) },
             installHarness: { _ in throw DemoThread.readOnly })
         settings.receive(snapshot: nil, runtimeAvailable: true)
