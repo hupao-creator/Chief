@@ -225,6 +225,9 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 				}
 				diagnostics.Event(ctx, "codex.voice_relay", "utterance_ready")
 				if err := call.Submit(ctx, h.id, h.text); err != nil {
+					if ctx.Err() == nil {
+						diagnostics.Event(ctx, "codex.voice_relay", "handoff_admission_failed")
+					}
 					cancel(fmt.Errorf("Chief voice handoff %s: %w", h.id, err))
 					return
 				}
@@ -239,7 +242,9 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 		case <-ctx.Done():
 			return context.Cause(ctx)
 		case now := <-watch.C:
-			requests.expireStalled(now)
+			if requests.expireStalled(now) {
+				diagnostics.Event(ctx, "codex.voice_relay", "transcription_stalled")
+			}
 		case failure := <-call.Failures:
 			if ctx.Err() != nil {
 				return context.Cause(ctx)

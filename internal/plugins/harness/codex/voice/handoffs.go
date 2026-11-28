@@ -103,9 +103,10 @@ func (h *handoffs) transcribing(id string) {
 	}
 }
 
-func (h *handoffs) expireStalled(now time.Time) {
+func (h *handoffs) expireStalled(now time.Time) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	skipped := false
 	h.pending = slices.DeleteFunc(h.pending, func(id string) bool {
 		s := h.segments[id]
 		if s.state != transcribing || now.Sub(s.updated) < 30*time.Second {
@@ -113,9 +114,11 @@ func (h *handoffs) expireStalled(now time.Time) {
 		}
 		// Retain the ID for the call so a late completion cannot submit old speech.
 		h.segments[id] = segment{state: expired}
+		skipped = true
 		return true
 	})
 	h.submitReady()
+	return skipped
 }
 
 // A newer native segment supersedes a destination error even while it is transcribing.

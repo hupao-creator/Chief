@@ -392,7 +392,15 @@ func (r *Runner) process(shutdown context.Context) (returned error) {
 	}
 	ctx = diagnostics.EnsureTrace(ctx)
 	diagnostics.Event(ctx, "background.batch", "admitted")
-	defer func() { diagnostics.End(ctx, "background.batch", returned) }()
+	// A handled attempt can return nil even when the batch is still pending.
+	phase := "interrupted"
+	defer func() {
+		if returned != nil {
+			diagnostics.End(ctx, "background.batch", returned)
+			return
+		}
+		diagnostics.Event(ctx, "background.batch", phase)
+	}()
 	counted := false
 	recovered := false
 	var plan BatchPlan
@@ -406,7 +414,15 @@ func (r *Runner) process(shutdown context.Context) (returned error) {
 				return err
 			}
 		}
-		return r.consumer.Settle(ctx, work.ID, outcome)
+		if err := r.consumer.Settle(ctx, work.ID, outcome); err != nil {
+			return err
+		}
+		if outcome == "failed" {
+			phase = "attempts_exhausted"
+		} else {
+			phase = "completed"
+		}
+		return nil
 	}
 	defer func() {
 		if returned == nil {
@@ -471,6 +487,9 @@ func (r *Runner) process(shutdown context.Context) (returned error) {
 			exponent = 5
 		}
 		returned = r.consumer.Update(shutdown, plugin.LifecycleWorkUpdate{ID: current.ID, EventIDs: current.EventIDs, Attempts: attempts, NextAttemptAt: time.Now().Add(5 * time.Second * time.Duration(1<<exponent)).UnixMilli(), ExecutionID: current.ExecutionID})
+		if returned == nil {
+			phase = "retry_scheduled"
+		}
 	}()
 	entries, err := r.ReadEvents(ctx, work.EventIDs)
 	if err != nil {
