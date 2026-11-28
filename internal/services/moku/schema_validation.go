@@ -44,22 +44,6 @@ func newToolJSONValidator(schema json.RawMessage) func(json.RawMessage) error {
 	}
 }
 
-func validateToolJSON(schema, jsonValue json.RawMessage) error {
-	definition, err := model.Decode(schema)
-	if err != nil {
-		return err
-	}
-	value, err := model.Decode(jsonValue)
-	if err != nil {
-		return err
-	}
-	compiled, err := compileToolSchema(definition)
-	if err != nil {
-		return err
-	}
-	return compiled.Validate(value)
-}
-
 // normalizeToolArguments repairs one narrow serialization fault before schema
 // validation: some Harnesses stringify an object or array argument even though
 // the published schema declares a container. Only values whose schema declares

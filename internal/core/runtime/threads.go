@@ -1282,7 +1282,7 @@ func (r *Runtime) settleSendFailure(owner *threadHandle, id string, cause error)
 	}
 	state, err := owner.harness.SessionState().Settle(plugin.SettleRequest{SessionState: t.SessionState, ExecutionID: id, Outcome: outcome, FinishedAt: time.Now().UnixMilli()})
 	if err == nil {
-		err = owner.Commit(context.WithoutCancel(r.ctx), state)
+		_ = owner.Commit(context.WithoutCancel(r.ctx), state)
 	}
 }
 func (r *Runtime) InterruptThread(ctx context.Context, id string) error {
