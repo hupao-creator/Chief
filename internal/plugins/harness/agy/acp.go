@@ -154,8 +154,8 @@ func (c *client) response(r *request, result any) error {
 		}
 	}
 	if f.Error != nil {
-		if f.Error.Code == -32000 || r.method == "authenticate" {
-			return fmt.Errorf("Antigravity authentication failed (ACP %d). Check your sign-in in agy and the authentication method in Chief Settings", f.Error.Code)
+		if f.Error.Code == -32000 {
+			return fmt.Errorf("Antigravity authentication failed (ACP %d). Check your sign-in in agy", f.Error.Code)
 		}
 		return fmt.Errorf("Antigravity %s failed (ACP error %d)", r.method, f.Error.Code)
 	}
@@ -222,17 +222,12 @@ type catalog struct {
 	} `json:"modes"`
 }
 
-type authMethod struct {
-	ID string `json:"id"`
-}
-
 type initialization struct {
 	Version int `json:"protocolVersion"`
 	Agent   struct {
 		Name    string `json:"name"`
 		Version string `json:"version"`
 	} `json:"agentInfo"`
-	Auth []authMethod `json:"authMethods"`
 	Caps struct {
 		Load     bool `json:"loadSession"`
 		Sessions struct {
@@ -268,16 +263,8 @@ func (c *client) initialize() (initialization, error) {
 	return info, nil
 }
 
-func (c *client) session(info initialization, cwd, sessionID, methodID string) (catalog, error) {
+func (c *client) session(info initialization, cwd, sessionID string) (catalog, error) {
 	var cat catalog
-	if methodID != "" {
-		if !slices.ContainsFunc(info.Auth, func(method authMethod) bool { return method.ID == methodID }) {
-			return cat, errors.New("this Antigravity CLI does not offer the selected authentication method")
-		}
-		if err := c.call("authenticate", object{"methodId": methodID}, nil); err != nil {
-			return cat, err
-		}
-	}
 	method := "session/new"
 	params := object{"cwd": cwd, "mcpServers": []any{}}
 	if sessionID != "" {

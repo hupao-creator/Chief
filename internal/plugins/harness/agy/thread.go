@@ -216,7 +216,7 @@ func (h *handle) Send(ctx context.Context, req plugin.SendRequest) (err error) {
 		if initErr != nil {
 			return initErr
 		}
-		h.native, err = c.session(info, cwd, sessionID, s.AuthMethod)
+		h.native, err = c.session(info, cwd, sessionID)
 		if err != nil {
 			return err
 		}

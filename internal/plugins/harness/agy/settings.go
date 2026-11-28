@@ -43,8 +43,7 @@ func (a *Adapter) Detect(ctx context.Context, cwd string) (plugin.Installation, 
 }
 
 type settings struct {
-	AuthMethod string `json:"authMethod,omitempty"`
-	Model      string `json:"model,omitempty"`
+	Model string `json:"model,omitempty"`
 }
 
 func validModelID(id string) bool {
@@ -52,17 +51,17 @@ func validModelID(id string) bool {
 }
 
 func parseSettings(raw json.RawMessage) (settings, error) {
-	var s settings
+	// Accept the retired field in saved defaults and Thread snapshots, then drop it.
+	var stored struct {
+		settings
+		LegacyAuthMethod string `json:"authMethod"`
+	}
 	if !model.IsNull(raw) {
-		if err := model.Unmarshal(raw, &s); err != nil {
-			return s, err
+		if err := model.Unmarshal(raw, &stored); err != nil {
+			return settings{}, err
 		}
 	}
-	switch s.AuthMethod {
-	case "", "oauth-personal", "oauth-business", "gemini-api-key", "agent-platform":
-	default:
-		return s, errors.New("unknown Antigravity authentication method")
-	}
+	s := stored.settings
 	if s.Model != "" && !validModelID(s.Model) {
 		return s, errors.New("invalid Antigravity model ID")
 	}
@@ -137,7 +136,7 @@ func (a *Adapter) PromptSettings(harness, thread json.RawMessage) (json.RawMessa
 }
 
 // Each discovery owns a short-lived peer. Installation needs only initialize,
-// so a signed-out user can still select the target and configure authentication.
+// so a signed-out user can still select the target before signing in through agy.
 func (a *Adapter) probe(ctx context.Context, cwd string, inspect func(*client, initialization) error) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
@@ -158,13 +157,12 @@ func (a *Adapter) probe(ctx context.Context, cwd string, inspect func(*client, i
 }
 
 func (a *Adapter) catalog(ctx context.Context, raw json.RawMessage, cwd string) (cat catalog, cli object, err error) {
-	s, err := parseSettings(raw)
-	if err != nil {
+	if _, err := parseSettings(raw); err != nil {
 		return cat, nil, err
 	}
 	err = a.probe(ctx, cwd, func(c *client, info initialization) error {
 		var err error
-		cat, err = c.session(info, cwd, "", s.AuthMethod)
+		cat, err = c.session(info, cwd, "")
 		if err != nil {
 			return err
 		}

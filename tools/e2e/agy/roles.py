@@ -45,6 +45,7 @@ def seed_legacy_roles(profile):
     with sqlite3.connect(database.as_uri() + "?mode=rw", uri=True) as db:
         settings = json.loads(db.execute("SELECT body FROM records WHERE key='settings'").fetchone()[0])
         saved = copy.deepcopy(settings)
+        settings["harnesses"]["agy"]["authMethod"] = "oauth-business"
         settings["moku"]["hostHarnessPreference"] = "agy"
         settings["moku"]["executionHarnesses"]["agy"] = {}
         codex = settings["moku"]["executionHarnesses"]["codex"]

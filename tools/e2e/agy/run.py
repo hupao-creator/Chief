@@ -277,7 +277,6 @@ supports_websockets = false
     state = runtime.state()
     settings = state["settings"]
     settings["moku"]["targetHarnessIds"] = ["codex"] if desktop else ["agy"]
-    settings["harnesses"]["agy"] = {"authMethod": "gemini-api-key"}
     runtime.invoke("app:update-settings", [{"settings": settings, "expectedSettingsRevision": state["settingsRevision"]}])
     check_role_admission(runtime)
     preferences = profile / "desktop-preferences.json"

@@ -26,14 +26,15 @@ public struct AgyHarnessPlugin: HarnessPlugin {
         Image(nsImage: Self.artwork.image).renderingMode(.original).resizable().interpolation(.high)
             .scaledToFit().frame(width: size, height: size).accessibilityLabel("Antigravity")
     }
-    public var harnessSettingsCodec: PluginValueCodec<JSONValue> { settingsCodec(["authMethod", "model"]) }
-    public var threadSettingsCodec: PluginValueCodec<JSONValue> { settingsCodec(["model"]) }
-    private func settingsCodec(_ keys: Set<String>) -> PluginValueCodec<JSONValue> {
+    public var harnessSettingsCodec: PluginValueCodec<JSONValue> { threadSettingsCodec }
+    public var threadSettingsCodec: PluginValueCodec<JSONValue> {
         let validate: (JSONValue) throws -> JSONValue = { value in
-            guard let fields = value.objectValue,
-                  fields.allSatisfy({ keys.contains($0.key.string) && $0.value.stringValue != nil })
+            guard var fields = value.objectValue else { throw PluginContractError("Invalid Antigravity settings") }
+            // Persisted defaults and Thread snapshots can include a retired sign-in preference.
+            fields.removeValue(forKey: "authMethod")
+            guard fields.allSatisfy({ $0.key == "model" && $0.value.stringValue != nil })
             else { throw PluginContractError("Invalid Antigravity settings") }
-            return value
+            return .object(fields)
         }
         return .init(decode: validate, encode: validate)
     }
@@ -87,29 +88,7 @@ public struct AgyHarnessPlugin: HarnessPlugin {
         AgyModelSettings(selected: input.thread.settings["model"]?.stringValue, resource: resource, update: update)
     }
     public func harnessSettings(props: HarnessSettingsProps<JSONValue, JSONValue>) -> some View {
-        AgyAuthentication(props: props)
-    }
-}
-
-private struct AgyAuthentication: View {
-    let props: HarnessSettingsProps<JSONValue, JSONValue>
-    @Environment(\.locale) private var locale
-    var body: some View {
-        let chinese = locale.language.languageCode?.identifier == "zh"
-        Picker(chinese ? "认证方式" : "Authentication", selection: Binding(get: { props.value["authMethod"]?.stringValue ?? "" }, set: { method in
-            var fields = props.value.objectValue ?? [:]
-            fields["authMethod"] = method.isEmpty ? nil : .text(method)
-            props.change(.object(fields))
-        })) {
-            Text(chinese ? "使用原生设置" : "Use native settings").tag("")
-            Text(chinese ? "Google 个人账号" : "Personal Google account").tag("oauth-personal")
-            Text(chinese ? "Google 企业账号" : "Business Google account").tag("oauth-business")
-            Text(chinese ? "Gemini API 密钥" : "Gemini API key").tag("gemini-api-key")
-            Text("Agent Platform").tag("agent-platform")
-        }
-        if case .ready(let value) = props.resource.state, let issue = AgyHarnessPlugin().settingsPresentationIssue(value) {
-            Text(issue).foregroundStyle(.secondary)
-        }
+        EmptyView()
     }
 }
 

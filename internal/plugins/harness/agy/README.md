@@ -1,6 +1,6 @@
 # Antigravity task Threads
 
-The Go adapter and macOS reader share the Harness ID `agy`. Antigravity declares the ordinary Agent Thread role. Its seat appears in the dispatch row of **Settings → Chief Agent**. Selecting it enables ordinary task dispatch. Its disclosure edits the authentication method. The Thread's model picker offers native model IDs, including effort variants. [User guide](../../../../docs/settings.md#choose-who-coordinates-and-who-can-take-tasks)
+The Go adapter and macOS reader share the Harness ID `agy`. Antigravity declares the ordinary Agent Thread role. Its seat appears in the dispatch row of **Settings → Chief Agent**. Selecting it enables ordinary task dispatch. The Thread's model picker offers native model IDs, including effort variants. [User guide](../../../../docs/settings.md#choose-who-coordinates-and-who-can-take-tasks)
 
 Settings, discovery and task cards use Google’s full-color Antigravity mark. The bundled transparent 216 × 216 PNG covers the largest 72-point mark at 3×. It is rasterized from the official 180-unit SVG with a centered `20 20 140 140` viewBox around the artwork. The source SVG SHA-256 is `d775965ea1f8060538c15f758a3e22487317211fcb6051333b5e023f35aa726f`. [Google press assets](https://antigravity.google/press) · [Original SVG](https://antigravity.google/assets/image/brand/antigravity-icon__full-color.svg)
 
@@ -8,7 +8,7 @@ Settings, discovery and task cards use Google’s full-color Antigravity mark. T
 
 The host resolves `agy` in its executable search path. Discovery runs `agy acp --stdio`, sends ACP v1 `initialize` with Chief's own client identity, and checks the returned agent name and version. Supported peers identify as `Antigravity ACP Server` and report a stable version from 1.5.1 onward. Installation discovery needs no model session. A signed-out user can configure an installed target. A catalog probe has a 20-second deadline and requests a separate native session.
 
-The default global settings are `{}`. With the native default, Antigravity uses its own account configuration. An explicit `authMethod` must appear in the server's advertised methods and is sent before creating or reopening a session. Chief stores the method ID. Credentials, OAuth and credential storage belong to the user's CLI.
+The default global settings are `{}`. Catalog probes and task sessions use the CLI’s own account configuration. Settings normalization ignores any stored `authMethod` while preserving the model. Credentials, OAuth and credential storage belong to the user's CLI.
 
 A successful probe publishes `cli.available`, version, executable path, model entries and current model through the workspace dispatch configuration. A successful empty list clears the choices. A failed refresh retains the previous publication. The static creation contract takes an explicit `target.agy.model`. The destination checks availability in its execution session and applies the selected ID before the prompt. The provider ultimately determines account access. [Settings](settings.go) · [Publication](../../../services/dispatchconfig/README.md)
 
