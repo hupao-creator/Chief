@@ -321,11 +321,15 @@ struct NativeMokuDockInteractionPanel: View {
     }
     private var actionButtons: some View {
         ForEach(intervention.request.actions.filter { !intervention.isQuestion || $0.id != intervention.submitActionID || lastStep }, id: \.id) { action in
-            Button(busyActionID == action.id ? localize("处理中…", "Working…") : action.label.string) { submit(action.id) }
+            let label = busyActionID == action.id ? localize("处理中…", "Working…") : action.label.string
+            let button = Button(label) { submit(action.id) }
+            button
                 .buttonStyle(NativeMokuInteractionButtonStyle(primary: action.intent == .allow || action.intent == .submit || action.id == intervention.submitActionID,
                     question: intervention.isQuestion))
-                .disabled(busy || (action.id == intervention.submitActionID && !questionnaire.canSubmit))
+                // The custom style dims its ink, but macOS needs a standard button to expose AXEnabled.
+                .accessibilityRepresentation { button.buttonStyle(.bordered) }
                 .accessibilityIdentifier("moku-interaction-action-\(action.id.string)")
+                .disabled(busy || (action.id == intervention.submitActionID && !questionnaire.canSubmit))
         }
     }
     private var previousButton: some View {

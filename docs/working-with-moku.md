@@ -16,7 +16,7 @@ When you ask what happened in an earlier task, Chief can consult that conversati
 
 When Chief's input is at the bottom of Overview, click outside it or press **Esc** to close it. Your unsent draft is there when you reopen the box. [Use Chief Bar for text, voice and chat](chief-bar-and-tags.md)
 
-When the bar is folded, watch the three dots beneath it while Chief thinks or uses a tool. They brighten in turn, lift off and circle the bar once as Chief’s eyes follow. The dots settle back into a row and Chief briefly squints before the sequence repeats. Switching tools keeps the rhythm. The dots fade out when the work ends. If Chief needs your permission or an answer, a request appears above the bar.
+When the bar is folded, watch the three dots beneath it while Chief thinks or uses a tool. They brighten in turn, lift off and circle the bar once as Chief’s eyes follow. The dots settle back into a row and Chief briefly squints before the sequence repeats. Switching tools keeps the rhythm. The dots fade out when the work ends. If Chief needs your permission or an answer, a request appears above the bar. For a question, fill in each required answer to enable **Submit**.
 
 To check your OpenCode account, ask Chief how much of your Go subscription is left or how much prepaid credit you have in Zen. You can keep your usual default model. For Zen, run `/connect` in OpenCode and choose your Console workspace in the browser. Chief can report the workspace's prepaid balance even if you have no Go subscription. With only an API key, Chief leaves the Zen balance unknown. [Connect OpenCode to a workspace](https://opencode.ai/docs/console/workspaces/#connect-opencode)
 

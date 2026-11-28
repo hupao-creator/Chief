@@ -24,7 +24,7 @@ func parentButtons(_ ids: [String], press: Bool) -> [[String: String]] {
         let role = attribute(kAXRoleAttribute) as? String
         let labels = [kAXDescriptionAttribute, kAXTitleAttribute].compactMap { attribute($0) as? String }.filter { !$0.isEmpty }
         if let id = ids.first(where: { $0 == identifier || (role == "AXButton" && labels.contains($0)) }) {
-            var match = ["id": id, "enabled": String(attribute(kAXEnabledAttribute) as? Bool ?? false),
+            var match = ["id": id, "enabled": (attribute(kAXEnabledAttribute) as? Bool).map { String($0) } ?? "unknown",
                          "role": role ?? "", "label": labels.first ?? ""]
             if let position = attribute(kAXPositionAttribute), let size = attribute(kAXSizeAttribute),
                CFGetTypeID(position) == AXValueGetTypeID(), CFGetTypeID(size) == AXValueGetTypeID() {

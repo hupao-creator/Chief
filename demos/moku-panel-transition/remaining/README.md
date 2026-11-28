@@ -16,7 +16,7 @@ collector and executable fingerprints.
   and during main-thread holds. Running or retiring orbit dots keep the shared display clock.
 - `routes` and `routes-reduced` mount a reply, permission and questionnaire
   controls. An external AX client restricted
-  to the fixture's own PID presses the controls. The visits check first-key
+  to the fixture's own PID presses the controls. Submit must report disabled for an unanswered required question, and pressing it must produce no response. After selection, Submit must report enabled and deliver the chosen answer. The visits check first-key
   delivery, UTF-16 selection, marked-text commit and draft restoration across
   reversal and retirement. A Talk visit opens Settings, interrupts its close and uses the restored close control. The fixture supplies the projected requests. `routes-offscreen` runs the same normal-motion
   interaction checks entirely beyond the desktop and records AppKit view
