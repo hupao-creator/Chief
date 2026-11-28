@@ -38,7 +38,7 @@ Bind to the observable `session.state`. Call `start()` on an explicit request fr
 
 During `.listening`, `isMicrophoneMuted` and `isRemoteSpeaking` are independent observable values. The audio engine uses WebRTC software echo cancellation and noise suppression so the input and output can run independently. Muting detaches the microphone track from its negotiated RTP sender, closes the audio engine's input gate and stops recording. The receiver, output device, data channel and connection health checks stay active. Unmuting reattaches the same local track and confirms the audio device module is recording before publishing the change. A device transition that fails ends the call with its reason.
 
-`isRemoteSpeaking` follows audible PCM on the negotiated remote track. The meter samples signed 16-bit audio, retains the time of the latest buffer above approximately −48 dBFS, and returns to quiet after 240 ms without audible samples. The main actor samples that timestamp every 80 ms. The UI receives only changes to the boolean and never receives PCM or transcripts. System volume and the level at the listener's ear are outside this measurement.
+`isRemoteSpeaking` follows audible PCM on the negotiated remote track. The meter samples signed 16-bit audio, retains the time of the latest buffer above approximately −48 dBFS, and returns to quiet after 240 ms without audible samples. The default WebRTC audio processing module also taps the processed local capture buffer. Each audio callback measures per-buffer RMS, gates levels below approximately −48 dBFS and publishes the strongest normalized window since the last UI sample. The main actor samples every 40 ms, with faster attack than release. The UI observes separate microphone and playback levels and the held remote-speaking flag. PCM stays inside the audio callbacks. Muting clears the microphone level immediately. System volume and the level at the listener's ear are outside this measurement.
 
 `stop()` is valid during permission, negotiation or listening. Repeated starts during a call or its drain are idempotent. Releasing the session closes its devices. A disconnected call ends, and accepted Chief tasks continue under their own execution IDs. Stop and failure clear both media indicators. A new call starts with fresh speech ownership and an enabled microphone.
 
@@ -50,6 +50,7 @@ Resolve the macOS Swift package to install its pinned WebRTC framework. The [nat
 
 ```sh
 python3 tools/e2e/global-voice/native.py
+python3 tools/e2e/global-voice/native.py --meter-fixture
 uv run tools/e2e/global-voice/native.py --exercise --output /tmp/chief-native-voice.json
 uv run tools/e2e/global-voice/native.py --exercise --acoustic-loopback --require-input-signal --output /tmp/chief-native-acoustics.json
 ```

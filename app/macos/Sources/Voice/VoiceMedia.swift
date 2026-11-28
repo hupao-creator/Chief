@@ -13,6 +13,7 @@ final class VoiceMedia {
     private var track: LKRTCAudioTrack?
     private var sender: LKRTCRtpSender?
     private var remoteTrack: LKRTCAudioTrack?
+    private let capture = VoiceCaptureActivity()
     private let playback = VoicePlaybackActivity()
     private var pending: (() -> Void)?
     private var health: Task<Void, Never>?
@@ -20,6 +21,9 @@ final class VoiceMedia {
     private var muted = false
     private var closed = false
     var onFailure: (() -> Void)?
+    private(set) var microphoneLevel = 0.0
+    private(set) var playbackLevel = 0.0
+    var onLevels: ((Double, Double) -> Void)?
     var onRemoteSpeaking: ((Bool) -> Void)?
     private(set) var isRemoteSpeaking = false
     private(set) var failure: String?
@@ -37,8 +41,9 @@ final class VoiceMedia {
         guard Self.sslReady, Self.deviceAvailable(input: true), Self.deviceAvailable(input: false) else {
             throw VoiceFailure("Voice Mode needs an available microphone and audio output.")
         }
+        let processing = LKRTCDefaultAudioProcessingModule(config: nil, capturePostProcessingDelegate: capture, renderPreProcessingDelegate: nil)
         let factory = LKRTCPeerConnectionFactory(audioDeviceModuleType: .audioEngine, bypassVoiceProcessing: false,
-                                                 encoderFactory: nil, decoderFactory: nil, audioProcessingModule: nil)
+                                                 encoderFactory: nil, decoderFactory: nil, audioProcessingModule: processing)
         self.factory = factory
         // Apple's duplex Voice Processing I/O couples input to output. WebRTC's
         // software echo cancellation lets the system output run on its own.
@@ -98,8 +103,15 @@ final class VoiceMedia {
         try await wait("Could not start the microphone or speaker.") { adm.isRecording && adm.isPlaying && adm.isEngineRunning }
         metering = Task { [weak self] in
             while !Task.isCancelled {
-                do { try await Task.sleep(for: .milliseconds(80)) } catch { return }
+                do { try await Task.sleep(for: .milliseconds(40)) } catch { return }
                 guard let self, !self.closed else { return }
+                let input = self.muted ? 0 : self.capture.meter.takeLevel(after: self.microphoneLevel)
+                let output = self.playback.meter.takeLevel(after: self.playbackLevel)
+                if input != self.microphoneLevel || output != self.playbackLevel {
+                    self.microphoneLevel = input
+                    self.playbackLevel = output
+                    self.onLevels?(input, output)
+                }
                 let speaking = self.playback.isAudible
                 if speaking != self.isRemoteSpeaking {
                     self.isRemoteSpeaking = speaking
@@ -144,6 +156,9 @@ final class VoiceMedia {
             }
             track.isEnabled = true
         }
+        capture.meter.reset()
+        microphoneLevel = 0
+        onLevels?(0, playbackLevel)
         self.muted = muted
     }
 
@@ -183,6 +198,9 @@ final class VoiceMedia {
         metering?.cancel(); metering = nil
         remoteTrack?.remove(playback); remoteTrack = nil
         isRemoteSpeaking = false
+        microphoneLevel = 0
+        playbackLevel = 0
+        onLevels = nil
         onRemoteSpeaking = nil
         pending?(); pending = nil
         track?.isEnabled = false

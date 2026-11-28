@@ -35,7 +35,7 @@ python3 tools/e2e/global-voice/workspace.py --app app/macos/dist/Chief.app
 uv run --script tools/e2e/global-voice/native.py --exercise
 ```
 
-The [local hardware replay](global-voice/native.py) runs the production media code with a loopback WebRTC peer. It observes CoreAudio input and output for the probe PID, sender RTP, decoded remote audio while muted, restoration, disconnect and release. The default invocation checks existing permissions without starting audio. `--exercise` needs a previously authorized launch host and live audio devices. These hardware and window checks share the desktop lock. The [fixture interaction replay](../../demos/global-voice-mode/README.md) separately covers drag cancellation, navigation, resizing, text ownership and glass geometry. [Native audio contract](../../app/macos/Sources/Voice/README.md)
+The [local hardware replay](global-voice/native.py) runs the production media code with a loopback WebRTC peer. It observes CoreAudio input and output for the probe PID, sender RTP, decoded remote audio while muted, restoration, disconnect and release. The offline `--meter-fixture` passes synthetic quiet, input-only, playback-only and simultaneous louder buffers through the production meter callbacks without opening devices. The default invocation checks existing permissions without starting audio. `--exercise` needs a previously authorized launch host and live audio devices. These hardware and window checks share the desktop lock. The [fixture interaction replay](../../demos/global-voice-mode/README.md) separately covers drag cancellation, navigation, resizing, text ownership and glass geometry. [Native audio contract](../../app/macos/Sources/Voice/README.md)
 
 ## Claude thread permission selection
 
