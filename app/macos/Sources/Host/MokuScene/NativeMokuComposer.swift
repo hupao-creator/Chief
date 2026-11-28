@@ -91,7 +91,7 @@ struct NativeMokuComposerInput: View {
     var targetsThread = false
     var sidecardComposer: SidecardComposerRequest?
     var placeholderIcon: AnyView?
-    var onEmptyEditorHold: (() -> Void)?
+    var onEditorHold: (() -> Void)?
     var readOnly = false
     var focusEnabled = true
     var automaticFocus = true
@@ -135,7 +135,7 @@ struct NativeMokuComposerInput: View {
     }
     private var placeholder: String {
         if let sidecardComposer { return sidecardComposer.placeholder }
-        if onEmptyEditorHold != nil {
+        if onEditorHold != nil {
             return localize("长按开启语音，或输入消息…", "Hold for Voice Mode or type a message…")
         }
         return localize("输入消息…", "Type a message…")
@@ -238,7 +238,7 @@ struct NativeMokuComposerInput: View {
                 updateComposition(state.composing)
                 onEditorStateChange?(state)
             }, onKeyDown: onKeyDown, onTypingKey: NativeMokuTypingSound.play, submitOnReturn: true,
-            emphasizedInsertionPoint: true, onEmptyEditorHold: onEmptyEditorHold)
+            emphasizedInsertionPoint: true, onEditorHold: onEditorHold)
             .help(editorHelp)
     }
     private func updateComposition(_ active: Bool) {

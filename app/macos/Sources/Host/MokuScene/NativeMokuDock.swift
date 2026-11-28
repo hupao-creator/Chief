@@ -1024,7 +1024,7 @@ public struct NativeMokuDock: View {
         return NativeMokuComposerInput(draft: draft, cwd: cwd, disabled: disabled,
             awaitingContinuation: sidecardComposer == nil && awaitingContinuation,
             targetsThread: threadID != nil, sidecardComposer: sidecardComposer,
-            onEmptyEditorHold: composerVoiceStart,
+            onEditorHold: composerVoiceStart,
             readOnly: state.inputLeaving, focusEnabled: composerCanFocus && (sidecardComposer?.ready ?? true),
             automaticFocus: false,
             // Keep the Compose key through the input's lifetime so installing

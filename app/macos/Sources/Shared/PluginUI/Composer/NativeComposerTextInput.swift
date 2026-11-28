@@ -74,7 +74,7 @@ public struct NativeComposerTextInput: View {
     private let onTypingKey: ((NativeComposerTypingKey) -> Void)?
     private let submitOnReturn: Bool
     private let emphasizedInsertionPoint: Bool
-    private let onEmptyEditorHold: (() -> Void)?
+    private let onEditorHold: (() -> Void)?
     @State private var focused = false
     @State private var pasting = false
     @State private var pasteOwnerID = UUID()
@@ -102,7 +102,7 @@ public struct NativeComposerTextInput: View {
                 onKeyDown: ((NativeComposerKeyEvent) -> Bool)? = nil,
                 onTypingKey: ((NativeComposerTypingKey) -> Void)? = nil,
                 submitOnReturn: Bool = false, emphasizedInsertionPoint: Bool = false,
-                onEmptyEditorHold: (() -> Void)? = nil) {
+                onEditorHold: (() -> Void)? = nil) {
         _value = value; self.draft = draft; self.placeholder = placeholder; self.disabled = disabled; self.readOnly = readOnly
         self.placeholderIcon = placeholderIcon
         self.placeholderLineLimit = placeholderLineLimit
@@ -121,7 +121,7 @@ public struct NativeComposerTextInput: View {
         self.onTypingKey = onTypingKey
         self.submitOnReturn = submitOnReturn
         self.emphasizedInsertionPoint = emphasizedInsertionPoint
-        self.onEmptyEditorHold = onEmptyEditorHold
+        self.onEditorHold = onEditorHold
         _measuredHeight = State(initialValue: minHeight)
     }
 
@@ -137,7 +137,7 @@ public struct NativeComposerTextInput: View {
             onState: onEditorStateChange, onKeyDown: onKeyDown, onSubmit: { if !pasting { onSubmit() } }, onEscape: onEscape,
             onTypingKey: onTypingKey, submitOnReturn: submitOnReturn, emphasizedInsertionPoint: emphasizedInsertionPoint,
             onPaste: nativePaste, textInsets: emphasizedInsertionPoint ? editorInsets : EdgeInsets(),
-            onEmptyEditorHold: onEmptyEditorHold)
+            onEditorHold: onEditorHold)
             // Split the trailing line spacing around the glyphs to center a single line.
             // Keep glow space inside the native viewport so the scroll clip
             // does not cut it at the first/last line or the leading insertion.

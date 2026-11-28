@@ -12,7 +12,7 @@ Click Chief’s eyes once. The bar expands and the cursor appears in the text bo
 
 ## Hold Chief Bar to speak
 
-Press and hold the bar for half a second. In Overview, you can also hold the empty text box for half a second and release. Look for **Hold for Voice Mode or type a message…**. If you’ve already typed something, you can still hold the eyes or agent icon at the left edge.
+Press and hold the bar for half a second. In Overview, you can also press inside the text box, keep the pointer still for half a second, then release. This works even with a draft in the box. An empty box shows **Hold for Voice Mode or type a message…**. You can also hold the eyes or agent icon at the left edge.
 
 Chief glances to the right while it connects. The first time, allow Chief to use your microphone when macOS asks. When the blue orb separates from the bar, you can speak. The call continues until you end it.
 
