@@ -179,7 +179,7 @@ private struct OpenCodeProfileFields: View {
             NativeSettingsRow(label: t("权限模式")) {
                 NativeSettingsSelect(value: Binding(get: { value.ocText("permissionMode") ?? (executionSnapshot ? "" : "auto") }, set: { change(ocReplacing(value, key: "permissionMode", value: .string($0))) }),
                     options: (executionSnapshot ? [.init(id: "", label: t("请选择"), disabled: true)] : []) + [
-                        .init(id: "auto", label: "auto · " + t("审查风险，仅自动批准低风险请求")), .init(id: "default", label: "default · " + t("按原生规则询问"))]).nativeSettingsControl("permissionMode").disabled(disabled)
+                        .init(id: "auto", label: "auto · " + t("自动批准权限请求（保留拒绝规则）")), .init(id: "default", label: "default · " + t("按原生规则询问"))]).nativeSettingsControl("permissionMode").disabled(disabled)
             }
         }
     }

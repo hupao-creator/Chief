@@ -62,7 +62,7 @@ func ocLocalized(_ source: String, locale: Locale) -> String {
 private let ocEnglish: [String: String] = [
     "请补全模型相关配置；完成前不会保存此组修改。": "Complete the model settings to save these changes.",
     "基础模型变体": "Base model variant", "OpenCode Thread 配置": "OpenCode Thread settings", "OpenCode Thread 默认配置": "Default OpenCode Thread settings",
-    "OpenCode 原生默认": "OpenCode native default", "审查风险，仅自动批准低风险请求": "Review risk and approve routine requests",
+    "OpenCode 原生默认": "OpenCode native default", "自动批准权限请求（保留拒绝规则）": "Approve permission requests automatically (keep deny rules)",
     "按原生规则询问": "Ask according to native rules", "当前原生模型": "Current native model", "OpenCode 模型变体": "OpenCode model variant",
     "OpenCode 状态不可用": "OpenCode state unavailable", "OpenCode 请求已失效": "This OpenCode request is no longer available",
     "OpenCode 回复失败": "OpenCode reply failed",

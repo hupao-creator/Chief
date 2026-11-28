@@ -16,7 +16,6 @@ import (
 )
 
 type Harness struct {
-	reviewSlots   chan struct{}
 	host          plugin.HostContext
 	settings      *SettingsAPI
 	backgroundMu  sync.Mutex
@@ -33,7 +32,7 @@ type Harness struct {
 
 func New(host plugin.HostContext) *Harness {
 	lifetime, stop := context.WithCancel(context.Background())
-	h := &Harness{reviewSlots: make(chan struct{}, 2), host: host, lifetime: lifetime, stop: stop, pending: map[string]bool{}, readTelemetry: readTelemetry}
+	h := &Harness{host: host, lifetime: lifetime, stop: stop, pending: map[string]bool{}, readTelemetry: readTelemetry}
 	// Production discovery launches the captured source directly. A callback here
 	// would resolve the environment and executable again after fingerprinting.
 	h.settings = NewSettings(host, nil)
@@ -135,7 +134,7 @@ func captureLaunch(ctx context.Context, host plugin.HostContext, s Settings, cwd
 }
 
 func (h *Harness) Open(ctx context.Context, open plugin.OpenContext) (plugin.Handle, error) {
-	handle, err := OpenThread(ctx, open, h.launch, h.reviewPermission)
+	handle, err := OpenThread(ctx, open, h.launch)
 	if err != nil {
 		return nil, err
 	}

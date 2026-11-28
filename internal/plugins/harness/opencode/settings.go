@@ -990,7 +990,7 @@ func (s *SettingsAPI) Describe(ctx context.Context, input plugin.SettingsRequest
 	return describeCatalog(current, observed)
 }
 func describeCatalog(current Settings, observed *CatalogSnapshot) (json.RawMessage, error) {
-	permissions := Object{"type": "string", "enum": []string{"auto", "default"}, "default": current.PermissionMode, "description": "auto uses the thread model to review native permission requests and approves routine actions once. Risky or unclear requests wait for you. default asks you for each request."}
+	permissions := Object{"type": "string", "enum": []string{"auto", "default"}, "default": current.PermissionMode, "description": "auto approves native permission requests once while preserving deny rules; default asks the user."}
 	choices := []any{}
 	omitted := 0
 	var build *CatalogAgent
