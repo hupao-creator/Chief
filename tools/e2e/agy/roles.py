@@ -68,7 +68,13 @@ def check_repaired_roles(runtime, saved):
         if entry["id"] in ("tag.settings", "report.settings"):
             entry["value"] = {"mode": "inherit", "enabled": False, "independent": {
                 "harnessPreference": "auto", "harnesses": {"codex": saved["moku"]["executionHarnesses"]["codex"]}}}
-    assert settings == expected, "recovery changed unrelated settings or lost a retained model"
+    before_save = copy.deepcopy(expected)
+    before_save["harnesses"]["agy"]["authMethod"] = "oauth-business"
+    assert settings == before_save, "recovery changed unrelated settings or lost a retained model"
+    catalog = runtime.invoke("harness:settings-presentation", [{"scope": "global", "harnessId": "agy"}])["value"]
+    assert catalog.get("models"), "catalog probe did not use the native CLI account"
     result = runtime.invoke("app:update-settings", [{"settings": settings, "expectedSettingsRevision": state["settingsRevision"]}])
-    assert result["status"] == "saved" and result["settingsRevision"] == state["settingsRevision"], result["status"]
+    assert result["status"] == "saved" and result["settings"] == expected, "normalization lost unrelated settings"
+    repeated = runtime.invoke("app:update-settings", [{"settings": expected, "expectedSettingsRevision": result["settingsRevision"]}])
+    assert repeated["status"] == "saved" and repeated["settingsRevision"] == result["settingsRevision"]
     print("legacy Chief, independent Tag and retained Super Thread settings reopened and saved", flush=True)
