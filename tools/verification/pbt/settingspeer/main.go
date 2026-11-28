@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
 	core "github.com/hupao-creator/Chief/internal/core/runtime"
 	"github.com/hupao-creator/Chief/internal/core/store"
@@ -112,10 +113,12 @@ func run() error {
 	}
 	host := plugin.HostContext{HarnessDataRoot: root, TemporaryWorkspaceRoot: root}
 	adapters := map[string]plugin.Harness{}
+	var catalog []model.RuntimePlugin
 	for _, h := range []plugin.Harness{codex.New(host), claude.New(host), pi.New(host), opencode.New(host)} {
+		catalog = append(catalog, h.Descriptor().RuntimePlugin(true, ""))
 		adapters[h.Descriptor().ID] = harness{Harness: h, failProbe: request.FailProbe, failCatalog: request.FailCatalog}
 	}
-	r, err := core.New(ctx, core.Config{Store: db, DataDir: root, DefaultCwd: root, Harnesses: adapters})
+	r, err := core.New(ctx, core.Config{Store: db, DataDir: root, DefaultCwd: root, Harnesses: adapters, Plugins: catalog})
 	if err != nil {
 		return err
 	}

@@ -129,16 +129,19 @@ func (c *Coordinator) Start(ctx context.Context, start plugin.RuntimeStartContex
 			ids := c.harnessOrder()
 			for _, id := range ids {
 				h := c.config.Harnesses[id]
-				if h.Descriptor().ThreadCapabilities.CanHostMoku() && (c.config.HarnessEnabled == nil || c.config.HarnessEnabled(id)) {
-					host = id
-					break
+				if h.Descriptor().SupportsRole(plugin.ChiefHostRole) {
+					if c.config.HarnessEnabled == nil || c.config.HarnessEnabled(id) {
+						host = id
+						break
+					}
+					// A disabled host may own the empty shell until setup.
+					if host == "" {
+						host = id
+					}
 				}
 			}
-			if host == "" && len(ids) > 0 {
-				host = ids[0]
-			}
 			if host == "" {
-				loadErr = errors.New("No registered Harness")
+				loadErr = errors.New("no registered Chief Host Harness")
 			} else {
 				configuration := SessionConfiguration{Unapplied: true, HarnessID: host, Settings: json.RawMessage(`{}`), AppliedSettings: settings, SettingsRevision: revision, Cwd: c.config.Workspace}
 				shell, createErr := c.config.EnsureSession(ctx, configuration)
@@ -859,7 +862,7 @@ func (c *Coordinator) resolveHost(ctx context.Context, settings model.Settings, 
 			failures = append(failures, fmt.Errorf("%s is disabled", id))
 			continue
 		}
-		if h == nil || !h.Descriptor().ThreadCapabilities.CanHostMoku() {
+		if h == nil || !h.Descriptor().SupportsRole(plugin.ChiefHostRole) {
 			failures = append(failures, fmt.Errorf("%s cannot host Chief", id))
 			continue
 		}

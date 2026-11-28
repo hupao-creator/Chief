@@ -71,6 +71,7 @@ struct NativeVoiceProbe {
                     let snapshot = room.snapshot()
                     result["power"] = snapshot.power
                     result["buffers"] = snapshot.buffers
+                    result["frequenciesHz"] = RoomBands.frequencies
                 case "stopMonitor":
                     if let engine = monitorEngine {
                         engine.stop()
@@ -127,10 +128,11 @@ struct NativeVoiceProbe {
 /// Independent acoustic observer. Only narrowband power leaves the tap.
 private final class RoomBands: Sendable {
     struct Snapshot: Sendable {
-        var power = [0.0, 0.0, 0.0]
+        var power = Array(repeating: 0.0, count: RoomBands.frequencies.count)
         var buffers = 0
     }
 
+    static let frequencies = [650.0, 1_000.0, 1_450.0, 1_900.0, 2_100.0, 2_300.0]
     private let totals = Mutex(Snapshot())
 
     func reset() { totals.withLock { $0 = Snapshot() } }
@@ -146,7 +148,7 @@ private final class RoomBands: Sendable {
         let count = Int(buffer.frameLength)
         guard count > 0 else { return }
         let stride = buffer.stride
-        let power = [650.0, 1_000.0, 1_450.0].map { frequency in
+        let power = Self.frequencies.map { frequency in
             let coefficient = 2 * cos(2 * .pi * frequency / buffer.format.sampleRate)
             var previous = 0.0, older = 0.0
             for index in 0..<count {

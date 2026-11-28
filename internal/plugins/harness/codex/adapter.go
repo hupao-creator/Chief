@@ -87,7 +87,7 @@ func New(host plugin.HostContext) *Adapter {
 	return a
 }
 func (a *Adapter) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ID: "codex", DisplayName: "Codex", ThreadCapabilities: plugin.ThreadCapabilities{FollowUpOnly: true, Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"extend", "exclusive"}}}
+	return plugin.HarnessDescriptor{ID: "codex", DisplayName: "Codex", Roles: plugin.StandardHarnessRoles(), ThreadCapabilities: plugin.ThreadCapabilities{FollowUpOnly: true, Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"extend", "exclusive"}}}
 }
 func (a *Adapter) DefaultSettings() json.RawMessage         { return json.RawMessage(`{"threadSettings":{}}`) }
 func (a *Adapter) Settings() plugin.HarnessSettings         { return a.settings }

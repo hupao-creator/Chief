@@ -140,13 +140,13 @@ func (h *threadHandle) ownsState() error {
 	}
 	return nil
 }
-func (r *Runtime) harness(ctx context.Context, t model.ThreadRecord) (plugin.Harness, error) {
-	if reason := r.config.DisabledHarnesses[t.HarnessID]; reason != "" {
+func (r *Runtime) harness(id string) (plugin.Harness, error) {
+	if reason := r.config.DisabledHarnesses[id]; reason != "" {
 		return nil, fmt.Errorf("harness disabled: %s", reason)
 	}
-	h := r.config.Harnesses[t.HarnessID]
+	h := r.config.Harnesses[id]
 	if h == nil {
-		return nil, fmt.Errorf("unknown harness: %s", t.HarnessID)
+		return nil, fmt.Errorf("unknown harness: %s", id)
 	}
 	return h, nil
 }
@@ -194,7 +194,7 @@ func (r *Runtime) openThreadWithAdmission(ctx context.Context, t model.ThreadRec
 	}
 	ctx, stopOperation := r.operationContext(ctx)
 	defer stopOperation()
-	h, err := r.harness(ctx, t)
+	h, err := r.harness(t.HarnessID)
 	if err != nil {
 		return nil, err
 	}
@@ -702,6 +702,17 @@ func (r *Runtime) CreateThread(ctx context.Context, request CreateThreadRequest)
 	if err := validateInput(request.Input); err != nil {
 		return CreatedThread{}, err
 	}
+	h, err := r.harness(request.HarnessID)
+	if err != nil {
+		return CreatedThread{}, err
+	}
+	role := plugin.AgentThreadRole
+	if request.Moku {
+		role = plugin.ChiefHostRole
+	}
+	if !h.Descriptor().SupportsRole(role) {
+		return CreatedThread{}, fmt.Errorf("harness %s cannot participate in %s", request.HarnessID, role)
+	}
 	// Reject a fenced creation before allocating its workspace or durable shell.
 	releaseService, err := r.beginServiceAdmission(false)
 	if err != nil {
@@ -774,10 +785,6 @@ func (r *Runtime) CreateThread(ctx context.Context, request CreateThreadRequest)
 		if err != nil {
 			return CreatedThread{}, err
 		}
-	}
-	h, err := r.harness(ctx, record)
-	if err != nil {
-		return CreatedThread{}, err
 	}
 	settings, _, err := r.Settings()
 	if err != nil {
@@ -1282,7 +1289,7 @@ func (r *Runtime) settleSendFailure(owner *threadHandle, id string, cause error)
 	}
 	state, err := owner.harness.SessionState().Settle(plugin.SettleRequest{SessionState: t.SessionState, ExecutionID: id, Outcome: outcome, FinishedAt: time.Now().UnixMilli()})
 	if err == nil {
-		err = owner.Commit(context.WithoutCancel(r.ctx), state)
+		_ = owner.Commit(context.WithoutCancel(r.ctx), state)
 	}
 }
 func (r *Runtime) InterruptThread(ctx context.Context, id string) error {

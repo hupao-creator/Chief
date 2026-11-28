@@ -75,21 +75,15 @@ public struct NativeWindowNavigationView: View {
     public let action: ThreadDetailBackAction?
     public let hidden: Bool
     public let suspended: Bool
-    public let managesNativeButtons: Bool
-    public let compact: Bool
-    public let reading: NativeReadingNavigationState?
     public let onRevealChange: ((Bool) -> Void)?
     public let onBackFrameChange: ((CGRect) -> Void)?
     private let backFocus: FocusState<Bool>.Binding?
     @FocusState private var unmanagedBackFocus: Bool
-    @Environment(\.locale) private var locale
     public init(action: ThreadDetailBackAction?, hidden: Bool = false, suspended: Bool = false,
-                managesNativeButtons: Bool = true, compact: Bool = false, reading: NativeReadingNavigationState? = nil,
                 onRevealChange: ((Bool) -> Void)? = nil,
                 backFocus: FocusState<Bool>.Binding? = nil, onBackFrameChange: ((CGRect) -> Void)? = nil) {
-        self.action = action; self.hidden = hidden; self.suspended = suspended; self.compact = compact
-        self.managesNativeButtons = managesNativeButtons
-        self.reading = reading; self.onRevealChange = onRevealChange
+        self.action = action; self.hidden = hidden; self.suspended = suspended
+        self.onRevealChange = onRevealChange
         self.backFocus = backFocus; self.onBackFrameChange = onBackFrameChange
     }
     public var body: some View {

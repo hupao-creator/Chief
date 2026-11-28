@@ -14,6 +14,14 @@ public struct NativeHarnessSettingsRequest {
     public let refreshSequence: Int
     public let savedValue: JSONValue
     public let value: Binding<JSONValue>
+
+    @MainActor func editor(in workspace: NativeWorkspaceModel) -> AnyView {
+        AnyView(NativeHarnessSettingsView(host: workspace.harnessHost,
+            configuration: .init(harnessID: harnessID, cwd: JSONText(workspace.settingsModel.defaultCwd),
+                source: savedValue, scope: .global(applicationSettings: scopeID, executionOwner: executionSnapshot ? .moku : nil)),
+            section: section, executionSnapshot: executionSnapshot, settingsFormPage: true,
+            refreshSequence: refreshSequence, value: value))
+    }
 }
 
 /// Application-owned settings remain opaque to the settings shell. Composition
@@ -30,14 +38,28 @@ public struct NativeHarnessSettingsRequest {
     }
 }
 
+enum NativeHarnessRole {
+    case agentThread, chiefHost, application(JSONText)
+
+    var key: String {
+        switch self {
+        case .agentThread: "agent"
+        case .chiefHost: "moku"
+        case .application(let settingsID): settingsID.string
+        }
+    }
+}
+
 public struct NativeSettingsPlugin: Equatable, Sendable {
     public let key: String
     public let enabled: Bool
     public let unavailableReason: String?
+    let harnessRoles: Set<String>
     public init?(json: JSONValue) {
         guard let key = json["key"]?.stringValue, let enabled = json["enabled"]?.boolValue else { return nil }
         self.key = key; self.enabled = enabled
         unavailableReason = json["unavailableReason"]?.stringValue
+        harnessRoles = Set(json["harnessRoles"]?.arrayValue?.compactMap(\.stringValue) ?? [])
     }
 }
 
@@ -69,8 +91,6 @@ public final class NativeSettingsModel {
     public private(set) var installing: Set<String> = []
     public private(set) var detailRefreshSequences: [String: Int] = [:]
     public private(set) var probing = false
-    public private(set) var clearing = false
-    public var confirmClear = false
     public var operationError: String?
     public private(set) var defaultCwd = ""
     public var activeHostHarnessID: String?
@@ -78,7 +98,6 @@ public final class NativeSettingsModel {
     public var mokuInFlight = false
     public var runtimeAvailable: Bool { draft.runtimeAvailable }
     public var savedSettings: JSONValue { draft.saved }
-    @ObservationIgnored private let clearHistory: () async throws -> Void
     @ObservationIgnored private let loadInstallation: ((String) async throws -> JSONValue)?
     @ObservationIgnored private let loadInstallations: () async throws -> JSONValue
     @ObservationIgnored private let installHarness: (String) async throws -> Void
@@ -94,12 +113,11 @@ public final class NativeSettingsModel {
 
     public init(settings: JSONValue, revision: Int,
                 save: @escaping (JSONValue, Int) async throws -> NativeSettingsSaveResult,
-                clearHistory: @escaping () async throws -> Void,
                 loadInstallations: @escaping () async throws -> JSONValue,
                 installHarness: @escaping (String) async throws -> Void,
                 loadInstallation: ((String) async throws -> JSONValue)? = nil) {
         draft = NativeSettingsDraft(settings: settings, revision: revision, save: save)
-        self.clearHistory = clearHistory; self.loadInstallations = loadInstallations
+        self.loadInstallations = loadInstallations
         self.installHarness = installHarness; self.loadInstallation = loadInstallation
     }
 
@@ -113,6 +131,10 @@ public final class NativeSettingsModel {
             defaultCwd = snapshot["defaultCwd"]?.stringValue ?? defaultCwd
         }
         if draft.runtimeAvailable != runtimeAvailable { draft.runtimeAvailable = runtimeAvailable }
+    }
+
+    func supports(_ harness: AnyHarnessPlugin, role: NativeHarnessRole) -> Bool {
+        plugins.first { $0.key == "harness:" + harness.descriptor.id.string }?.harnessRoles.contains(role.key) == true
     }
 
     public func startDiscovery(harnessIDs: [String]) {
@@ -265,14 +287,6 @@ public final class NativeSettingsModel {
         case .loaded: return .missing
         case .failed: return .error
         }
-    }
-
-    public func requestClear() async {
-        guard !retired, runtimeAvailable, !clearing, draft.status != .saving, draft.status != .pending else { return }
-        guard confirmClear else { confirmClear = true; return }
-        clearing = true; operationError = nil
-        do { try await clearHistory() } catch { if !retired { operationError = error.localizedDescription } }
-        confirmClear = false; clearing = false
     }
 
     public func harnessValueBinding(_ id: String, execution: Bool) -> Binding<JSONValue> {

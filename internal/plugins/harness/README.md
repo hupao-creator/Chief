@@ -3,7 +3,7 @@
 接入一个新的 coding agent，需要为同一个 Harness ID 提供两份实现。Go 适配器驱动用户安装的原生 CLI，Swift 插件把该适配器的投影呈现在 macOS 上。两者都随 Chief 编译，通过源码静态注册。设置里的“发现”检查外部引擎及其配置。仓库没有扫描工作区 `plugins/` 或读取第三方 Harness manifest 的加载器。[Go 组装入口](../../core/composition/bootstrap.go) · [macOS 组装入口](../../../app/macos/Sources/Composition/NativePlugins.swift)
 
 直接用户追加输入时，`SendRequest.FollowUpRowID` 由已准入的 HTTP 命令提供。
-四个 Harness 把它用作当前执行的用户消息行或时间线条目标识，原生请求与 checkpoint 仍使用各自的 ID。
+各 Harness 把它用作当前执行的用户消息行或时间线条目标识，原生请求与 checkpoint 仍使用各自的 ID。
 没有该标识的输入沿用 Harness 自己的标识。[输入归属](../../../design/composer.md#send-identity-and-ownership)
 
 ## 1. 选定 ID 和参照实现
@@ -12,6 +12,7 @@
 
 | 原生引擎 | 适合参考的路径 |
 | --- | --- |
+| Antigravity | 普通任务派发、ACP stdio、原生工具授权、恢复与停止。[适配器说明](agy/README.md) |
 | Pi Agent | RPC 子进程、仅独占工具注入、外部安装说明。可沿 [Go 适配器](pi/adapter.go) → [Thread](pi/thread.go) → [Swift 插件](../../../app/macos/Sources/Plugins/Harnesses/Pi/PiHarnessPlugin.swift) 走完整条路径。 |
 | Codex | app-server JSON-RPC、分页模型目录，以及只能送给活动执行的追加输入。[适配器说明](codex/README.md) |
 | Claude Code | stream-json 会话、原生权限交互和注入工具的 MCP 桥。[适配器说明](claude/README.md) |
@@ -35,7 +36,7 @@
 
 ## 3. 声明可用角色和能力
 
-**要让它担任 Chief 的协调者**，Go 的 `CanHostMoku()` 要求 `Instructions`、`ThreadContext`、`SendContext` 均为真，且 `ToolModes` 包含 `exclusive`。Runtime 还检查启用状态、原生可用性和执行配置。普通任务作为派发目标另走模型目录检查。[Go 判定](../../core/plugin/harness.go) · [协调者选择](../../services/moku/coordinator.go) · [Swift 判定](../../../app/macos/Sources/Shared/PluginAPI/HarnessPlugin.swift)
+在 Go 插件的 `HarnessDescriptor.Roles` 声明可参与的角色。普通 Agent Thread 派发使用 `plugin.AgentThreadRole`，Chief Host 使用 `plugin.ChiefHostRole`，后台角色使用应用的执行设置 ID（如 `plugin.TagAgentRole`、`plugin.SuperThreadRole`）。`plugin.StandardHarnessRoles()` 包含这四项。插件可单独声明任意适用子集。内部角色还要求 `Instructions`、`ThreadContext`、`SendContext` 和独占工具模式。Runtime 发布各 Harness 的有效 `harnessRoles`，Swift 设置、首次设置和图示均按当前角色读取。可用性、原生模型和执行配置在各自的运行入口检查。[Go 声明](../../core/plugin/harness.go) · [Runtime 发布](../../core/composition/bootstrap.go) · [Swift 设置模型](../../../app/macos/Sources/Host/Settings/NativeSettingsModel.swift)
 
 | Go `ThreadCapabilities` | 开启时引擎必须能做到什么 |
 | --- | --- |
@@ -52,7 +53,7 @@
 1. 在 `bootstrap.go` 导入新包，在 `Bootstrap.open` 的 `constructors` 增加 ID 对应的构造函数，**同时把 ID 加入 `ids`**。启动循环按这份列表创建适配器和每个引擎的 telemetry ledger，将适配器传入 `core.Config.Harnesses`。活动插件目录中的键为 `harness:<id>`，默认启用。composition 在启动时读取 `settings.pluginEnabled`，保存偏好不会改变当前实例的启用状态。[bootstrap.go](../../core/composition/bootstrap.go) · [启用状态](../../core/runtime/README.md#settings)
 2. 在架构检查器的 `allowed` 为新包声明实际导入的内部包，并在校验 `bootstrap.go` 构造调用的 ID 列表加入新包。检查器识别包的 `New` / `NewWithOptions` 调用。Pi 和 OpenCode 嵌入的四份 JS 是供外部引擎加载的单独白名单资源。[架构检查器](../../tooling/architecture/check.go)
 3. 如需向 Chief 贡献原生账号或使用情况等上下文，可实现 `MokuContextContributor`。如需向 Context 插件提供参考模型目录，实现 `ModelCatalogSource` 并在 `CollectContext` 的显式 ID 列表接入。可选 `CachedModelCatalogSource` 提供快速只读快照。此处的消费者是 Context 插件。协调器从配置模块读取已发布的目标选项。协调者和后台执行的自动排序都把额外注册的 ID 接在内建优先项之后。[Context 组装](../../core/composition/moku.go) · [后台执行选择](../../core/runtime/background.go)
-4. 从新的隔离 profile 检查 `state:load`。在 `plugins` 找到 `harness:<id>`，在 `settings.harnesses[id]` 核对默认配置。`moku.hostHarnessPreference` 选择协调者，`moku.executionHarnesses` 保存其执行配置，`moku.targetHarnessIds` 选择可派发的目标。Runtime 仅在首次创建设置时写入各 Harness 默认值，保存时要求每个已注册 ID 均有设置。[初始化](../../core/runtime/runtime.go) · [设置校验](../../core/runtime/settings.go)
+4. 从新的隔离 profile 检查 `state:load`。在 `plugins` 找到 `harness:<id>`，在 `settings.harnesses[id]` 核对默认配置。`moku.hostHarnessPreference` 选择协调者，`moku.executionHarnesses` 保存其执行配置，`moku.targetHarnessIds` 选择可派发的目标。首次创建或新注册 Harness 时，Runtime 补齐缺少的默认配置；派发目标按已保存选择和角色声明恢复。[初始化](../../core/runtime/runtime.go) · [设置校验](../../core/runtime/settings.go)
 
 ## 5. 接入 macOS
 
@@ -62,10 +63,11 @@
 
 ### Thread Markdown
 
-四个注册项分别实现 Go `SessionStateAdapter` 和 macOS `HarnessPlugin`。以下路径既用于实时更新，也用于打开已存执行。宿主以 `harnessId` 选择插件，先取 `thread` 目录，再按行键取 `turn`。终态轻量行用 `nonempty` 标记折叠内容，展开详情按需取 `execution`。
+各注册项分别实现 Go `SessionStateAdapter` 和 macOS `HarnessPlugin`。以下路径既用于实时更新，也用于打开已存执行。宿主以 `harnessId` 选择插件，先取 `thread` 目录，再按行键取 `turn`。使用轻量行的适配器以 `nonempty` 标记折叠内容，展开详情按需取 `execution`。Antigravity 的 `turn` 已含该次执行的完整块。
 
 | Harness ID | 协议和历史入口 | 状态、显示投影和语义转换 |
 | --- | --- | --- |
+| `agy` · Antigravity | [原生 ACP](agy/acp.go) 通过 stdio 新建或重开原会话。[执行](agy/thread.go) 保留 Chief 的执行及用户行 ID。 | [状态投影](agy/state.go) 为目录保留摘要，按执行返回有序文本、思考和工具块。[阅读器](../../../app/macos/Sources/Plugins/Harnesses/Agy/AgyThread.swift) 展示结果和当前授权。 |
 | `codex` · Codex | [app-server JSON-RPC](codex/native.go) 处理带 item ID 的增量、完成帧和请求。重开读取保存的 turns，原生 `thread/read` 用于校验分支历史。 | [ReduceEvent](codex/state.go) 保存消息、活动和按顺序排列的引用，[阅读投影](codex/presentation.go) 选择目录回复，[CodexTurn](../../../app/macos/Sources/Plugins/Harnesses/Codex/CodexTurnRows.swift) 解析引用。保存格式为 `mokusei.harness.codex.thread.v1`。 |
 | `claude` · Claude Code | [stream-json](claude/parser.go) 按 message ID 和 block index 合并流与完整消息。[分支读取](claude/session.go) 用 checkpoint 对应原生会话并把继承记录存为只读快照。 | [v2 turn](claude/state.go) 保存 timeline 与实体表，[目录投影](claude/projection.go) 选择已结束的回复，[Claude timeline](../../../app/macos/Sources/Plugins/Harnesses/Claude/ClaudeTimeline.swift) 读取实体引用或继承快照。 |
 | `pi` · Pi Agent | [RPC frame decoder](pi/protocol.go) 接收完整消息和增量，[Thread reducer](pi/thread.go) 按执行、消息和工具调用归并。原生 JSONL 保存恢复或分支所需的历史。 | [v1 状态投影](pi/state.go) 从保存的消息生成阅读数据，[Pi transcript](../../../app/macos/Sources/Plugins/Harnesses/Pi/PiTranscript.swift) 按原生块次序恢复文本、思考和工具。 |

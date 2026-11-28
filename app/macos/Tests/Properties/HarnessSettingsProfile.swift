@@ -80,7 +80,6 @@ import ChiefPluginAPI
         }
         let model = NativeSettingsModel(settings: settings, revision: revision,
             save: { try self.save($0, revision: $1) },
-            clearHistory: { throw PropertyFailure("unexpected history clear") },
             loadInstallations: { try self.invoke("harness:detect-installations") },
             installHarness: { _ in throw PropertyFailure("unexpected installation") },
             loadInstallation: { id in

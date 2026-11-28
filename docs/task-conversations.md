@@ -18,6 +18,10 @@ If the agent asks a question or requests permission, respond to the prompt. The 
 
 When you ask Chief for a new Claude Code task, it normally uses your Claude thread permission setting. The initial setting is `auto`, which lets Claude Code review tool requests. You can ask for a specific mode, such as `acceptEdits`, when you create the task. If Claude Code reports that it started in a different mode after Chief requested `auto`, open the task conversation to see which mode it used.
 
+In an OpenCode task, the **auto** permission mode uses the task’s model to review approval requests. A routine project action can proceed once. If an action looks risky or the review cannot finish, open the task conversation, check the command or files, and choose whether to allow it. Choose **default** to answer every approval request yourself. OpenCode’s deny rules still block actions in either mode.
+
+In an Antigravity conversation, check the command or file named in a permission request and choose one of the actions offered. Choose the one-time option to allow just that operation, or deny it. You can send another message in the same conversation when the run ends.
+
 To stop the current run, click **Stop this thread**. The button shares the **Send** position and appears when the run is active and the input box is empty. Keep any unsent draft you want before clearing the box. When the run stops, Chief receives a notification that you stopped it. You can send a new message to continue later. Closing the conversation or its **Execution** sidecard leaves the task running. [Watch a live run](sidecards.md#watch-a-run-in-progress)
 
 ## Send a follow-up or attachment
@@ -30,7 +34,7 @@ When a follow-up appears in the conversation, click **Show full text** to see it
 
 If Chief is still connected to a background service from before an update, your message appears when the agent records it.
 
-When you send from the latest finished result, the **Execution** sidecard opens for the new run. You can keep reading the previous answer where you left off. Its work summary stays open or closed as you left it. You may see **Connecting to Codex** while the run starts. **Running** means Codex has started working on your message. You can fold the sidecard or switch to another one while you wait. When the new run finishes, its answer appears in the main reading area.
+When you send from the latest finished result, the **Execution** sidecard opens for the new run. The input box moves beneath the sidecard and stays there as the run starts. You can keep reading the previous answer where you left off. Its work summary stays open or closed as you left it. You may see **Connecting to Codex** while the run starts. **Running** means Codex has started working on your message. You can fold the sidecard or switch to another one while you wait. When the new run finishes, its answer appears in the main reading area.
 
 You can start writing the next message while Chief confirms the previous send. When the input box switches to the new run, your next draft goes with it. If another window has already saved a draft for the new run, its text appears before yours. If the send is rejected, Chief puts the earlier message above your new text so you can review both before sending.
 

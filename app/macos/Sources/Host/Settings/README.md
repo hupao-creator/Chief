@@ -7,6 +7,8 @@ refresh retains the provider's previous choices across restarts. Thread and
 execution-profile editors use their own settings scopes.
 
 
+The form below the map edits the selected coordinator. Antigravity uses the account configured in its CLI. The upper row uses the coordinating capability from the plugin descriptor.
+
 Settings form controls use system SwiftUI/AppKit controls on the existing macOS
 26 minimum. The page's `nativeSettingsFormPage` environment selects system
 popups, rounded text/secure fields, switches, bordered action buttons and AppKit
@@ -112,6 +114,8 @@ invalid-field focus and save flushing. Quit waits for the pending valid save
 before Runtime teardown; invalid or failed saves offer Keep Editing and Quit
 Without Saving. The existing bounded cleanup deadline and repeated Quit remain
 available.
+The Runtime publishes each Harness’s eligible roles in the plugin catalog. The coordination map lays out the Chief Host row and the Agent Thread dispatch row independently. Keyboard travel, character handoff and the start of each connection use the host row. Connection endpoints and selection feedback use the dispatch row. Tag and Super Thread use their own role rosters for both the illustration and the independent picker. Onboarding shares these controls. [Harness role declarations](../../../../../internal/plugins/harness/README.md#3-声明可用角色和能力)
+
 The horizontal header starts with Chief Agent, followed by Auto-Categorization, Super Thread and any
 other enabled application sections. Each opening selects Chief Agent, including after
 disconnection. The coordinating Harness form labels its model selector Chief Model.

@@ -33,6 +33,7 @@ let package = Package(
         ], path: "Sources/Shared/PluginUI", exclude: ["README.md", "Shaders", "Resources/Palette.xcassets"], resources: [.process("Resources")],
             plugins: [.plugin(name: "CloudMetalCompiler")]),
         .target(name: "ChiefHarnessCodex", dependencies: ["ChiefCore", "ChiefPluginAPI", "ChiefPluginUI"], path: "Sources/Plugins/Harnesses/Codex"),
+        .target(name: "ChiefHarnessAgy", dependencies: ["ChiefCore", "ChiefPluginAPI", "ChiefPluginUI"], path: "Sources/Plugins/Harnesses/Agy"),
         .target(name: "ChiefHarnessPi", dependencies: ["ChiefCore", "ChiefPluginAPI", "ChiefPluginUI"], path: "Sources/Plugins/Harnesses/Pi"),
         .target(name: "ChiefHarnessClaude", dependencies: ["ChiefCore", "ChiefPluginAPI", "ChiefPluginUI"], path: "Sources/Plugins/Harnesses/Claude"),
         .target(name: "ChiefHarnessOpenCode", dependencies: ["ChiefCore", "ChiefPluginAPI", "ChiefPluginUI"], path: "Sources/Plugins/Harnesses/OpenCode"),
@@ -43,7 +44,7 @@ let package = Package(
             "Overview/README.md", "MokuScene/README.md", "Settings/README.md", "Onboarding/README.md",
             "WindowNavigation/README.md", "Interaction/README.md", "Git/README.md"
         ]),
-        .target(name: "ChiefComposition", dependencies: ["ChiefCore", "ChiefUI", "ChiefPluginAPI", "ChiefPluginUI", "ChiefHarnessCodex", "ChiefHarnessPi", "ChiefHarnessClaude", "ChiefHarnessOpenCode", "ChiefApplications", "ChiefSidecardConversation", "ChiefSidecardBrowser"], path: "Sources/Composition"),
+        .target(name: "ChiefComposition", dependencies: ["ChiefCore", "ChiefUI", "ChiefPluginAPI", "ChiefPluginUI", "ChiefHarnessCodex", "ChiefHarnessPi", "ChiefHarnessClaude", "ChiefHarnessOpenCode", "ChiefHarnessAgy", "ChiefApplications", "ChiefSidecardConversation", "ChiefSidecardBrowser"], path: "Sources/Composition"),
         .executableTarget(name: "Chief", dependencies: ["ChiefVoice", "ChiefComposition", "ChiefCore", "ChiefUI", "ChiefPluginUI"], path: "Sources/App",
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
         .executableTarget(name: "ChiefProbe", dependencies: ["ChiefCore"], path: "Sources/Tools/Probe"),

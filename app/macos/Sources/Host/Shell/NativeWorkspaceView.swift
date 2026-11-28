@@ -638,6 +638,19 @@ public final class NativeWorkspacePresentation {
         return executionID.map { ApplicationExecutionRef(thread: selected, executionID: $0) }
     }
 
+    fileprivate var continuingAgentDockExecution: ApplicationExecutionRef? {
+        // The accepted execution owns the column while the exact source draft
+        // finishes editing. Send and Stop still use the actual input binding.
+        if let pending = executionSendNavigation, pending.route == navigationRouteID,
+           pending.generation == scene.composerGeneration, pending.reference == dockExecution,
+           pending.destination.thread == selected {
+            return pending.destination
+        }
+        guard threadExecutionReveal?.continues(to: readingTarget) == true,
+              dockExecution?.executionID == readingTarget?.executionID else { return nil }
+        return dockExecution
+    }
+
     var dockInputAvailable: Bool {
         if sidecardComposer != nil { return true }
         if selected?.typeID == "agent" {
@@ -1176,9 +1189,7 @@ public struct NativeWorkspaceView: View {
         }
         .overlay(alignment: .topLeading) {
             NativeWindowNavigationView(action: presentation.navigation, hidden: presentation.browsingCollection || presentation.nativeApplicationNavigation || presentation.usesReadingPanel,
-                suspended: presentation.scene.settingsOpen,
-                managesNativeButtons: !presentation.nativeApplicationNavigation || applicationSuppressed,
-                reading: presentation.readingNavigation)
+                suspended: presentation.scene.settingsOpen)
                 .allowsHitTesting(!presentation.scene.settingsOpen && !presentation.onboarding.blocksWorkspace)
                 .accessibilityHidden(presentation.scene.settingsOpen || presentation.onboarding.blocksWorkspace)
         }
@@ -1311,6 +1322,7 @@ public struct NativeWorkspaceView: View {
                 .environment(\.nativeAgentPanelClose, {
                     if presentation.navigationRouteID == routeID { presentation.showOverview() }
                 })
+                .environment(\.nativeAgentDockContinuation, presentation.continuingAgentDockExecution)
                 .environment(\.nativeAgentInputTargetChanged, { owner, target in
                     presentation.updateAgentInput(owner: owner, target: target, route: routeID)
                 })
@@ -1341,14 +1353,7 @@ public struct NativeWorkspaceView: View {
     private var settings: some View {
         NativeSettingsPage(model: model.settingsModel, navigation: presentation.settingsNavigation, locale: model.locale, harnesses: model.plugins.harnesses.modules,
             applicationSections: presentation.applicationHost.settingsSections(model: model.settingsModel),
-            harnessSettings: { request in
-                AnyView(NativeHarnessSettingsView(host: model.harnessHost,
-                    configuration: NativeHarnessSettingsConfiguration(harnessID: request.harnessID,
-                        cwd: JSONText(model.settingsModel.defaultCwd), source: request.savedValue,
-                        scope: .global(applicationSettings: request.scopeID, executionOwner: request.executionSnapshot ? .moku : nil)),
-                    section: request.section, executionSnapshot: request.executionSnapshot, settingsFormPage: true,
-                    refreshSequence: request.refreshSequence, value: request.value))
-            }, onClose: { _ in presentation.scene.closeSettings() },
+            harnessSettings: { $0.editor(in: model) }, onClose: { _ in presentation.scene.closeSettings() },
             mokuController: presentation.scene.settingsCharacter,
             onCoordinatorFrame: { presentation.scene.setCoordinatorFrame($0, pending: $1) })
     }

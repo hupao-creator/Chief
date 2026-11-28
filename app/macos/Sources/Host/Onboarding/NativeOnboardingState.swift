@@ -78,7 +78,7 @@ enum NativeOnboardingStep: Int, CaseIterable {
     }
     var selectedHost: AnyHarnessPlugin? {
         let id = settings.draft.value["moku"]?["hostHarnessPreference"]?.stringValue
-        return installed.first { $0.descriptor.id.string == id && $0.descriptor.threadCapabilities.canHostMoku }
+        return installed.first { $0.descriptor.id.string == id && settings.supports($0, role: .chiefHost) }
     }
     var targets: Set<String> {
         Set(settings.draft.value["moku"]?["targetHarnessIds"]?.arrayValue?.compactMap(\.stringValue) ?? [])
@@ -88,22 +88,25 @@ enum NativeOnboardingStep: Int, CaseIterable {
               !settings.draft.composing, settings.draft.firstInvalidField == nil else { return false }
         if step != .discovery, settings.draft.error != nil { return false }
         switch step {
-        case .discovery: return installed.contains { $0.descriptor.threadCapabilities.canHostMoku }
+        case .discovery: return installed.contains { settings.supports($0, role: .chiefHost) }
         case .moku: return selectedHost != nil && !validTargets.isEmpty && editorReady
         case .tag, .report: return roleIsAvailable && editorReady
         case .landing: return false
         }
     }
-    private var validTargets: Set<String> { targets.intersection(installed.map { $0.descriptor.id.string }) }
+    private var dispatchTargetIDs: Set<String> {
+        Set(installed.filter { settings.supports($0, role: .agentThread) }.map { $0.descriptor.id.string })
+    }
+    private var validTargets: Set<String> { targets.intersection(dispatchTargetIDs) }
     private var roleIsAvailable: Bool {
         guard let id = step.settingID,
               let raw = settings.draft.value["pluginSettings"]?.arrayValue?.first(where: { $0["id"] == .text(id) })?["value"],
               let value = try? ApplicationBackgroundExecutionSettings(json: raw) else { return false }
         if !value.enabled { return true }
         switch value.mode {
-        case .inherit: return selectedHost != nil
+        case .inherit: return selectedHost.map { settings.supports($0, role: .application(JSONText(id))) } == true
         case .override(let profile):
-            return installed.contains { $0.descriptor.id == profile.harnessPreference && $0.descriptor.threadCapabilities.canHostMoku }
+            return installed.contains { $0.descriptor.id == profile.harnessPreference && settings.supports($0, role: .application(JSONText(id))) }
         }
     }
 
@@ -219,9 +222,9 @@ enum NativeOnboardingStep: Int, CaseIterable {
     }
 
     private func seedAvailableSelections() {
-        guard let host = selectedHost ?? installed.first(where: { $0.descriptor.threadCapabilities.canHostMoku }) else { return }
+        guard let host = selectedHost ?? installed.first(where: { settings.supports($0, role: .chiefHost) }) else { return }
         var value = settingsReplacing(settings.draft.value, path: ["moku", "hostHarnessPreference"], value: .string(host.descriptor.id))
-        let selection = validTargets.isEmpty ? Set(installed.map { $0.descriptor.id.string }) : validTargets
+        let selection = validTargets.isEmpty ? dispatchTargetIDs : validTargets
         value = settingsReplacing(value, path: ["moku", "targetHarnessIds"], value: .array(selection.sorted().map(JSONValue.text)))
         settings.draft.change(value)
     }

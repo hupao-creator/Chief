@@ -20,7 +20,7 @@ type dispatchHost struct {
 }
 
 func (h *dispatchHost) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ThreadCapabilities: plugin.ThreadCapabilities{FollowUpOnly: h.steer}}
+	return plugin.HarnessDescriptor{Roles: []string{plugin.AgentThreadRole}, ThreadCapabilities: plugin.ThreadCapabilities{FollowUpOnly: h.steer}}
 }
 
 // PBT-DISPATCH-LIFECYCLE: README.md

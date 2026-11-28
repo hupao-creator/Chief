@@ -143,12 +143,16 @@ struct SetupRole {
             "routingGuidance": .null
         ])]), revision: 0,
             save: { value, revision in .saved(settings: value, revision: revision + 1) },
-            clearHistory: {}, loadInstallations: {
+            loadInstallations: {
                 .object(Dictionary(uniqueKeysWithValues: SetupAgent.allCases.map { agent in
                     (JSONText(agent.rawValue), JSONValue.object(["status": .text(installed.contains(agent) ? "installed" : "missing")]))
                 }))
             }, installHarness: { _ in })
-        model.receive(snapshot: nil, runtimeAvailable: true)
+        let plugins: [JSONValue] = (SetupAgent.allCases.map(\.rawValue)).map { id in
+            .object(["key": .text("harness:" + id), "enabled": .bool(true),
+                     "harnessRoles": .array(["agent", "moku", "tag.settings", "report.settings"].map(JSONValue.text))])
+        }
+        model.receive(snapshot: .object(["plugins": .array(plugins)]), runtimeAvailable: true)
         return model
     }
 }

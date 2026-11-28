@@ -215,9 +215,8 @@ Thread and Report archive, linked Threads hidden by Report archive, and
 visibility or coverage changes that remove a placement. Status and content
 updates that preserve membership keep the mounted card. When the final
 workspace card leaves, the Dock's landing composer takes input immediately
-while the empty canvas layout finishes the card's exit. **Clear all history**
-is a workspace reset under Settings, where the covered canvas coalesces
-catalog changes and resumes from the latest projection.
+while the empty canvas layout finishes the card's exit. The [Settings factory
+reset](../Settings/README.md) returns to first-time setup after restart.
 
 Card motion starts, interruption samples and display samples all use
 `ProcessInfo.systemUptime`. A MainActor clock shares one uptime sample for each
@@ -317,18 +316,17 @@ archive and Report coverage rules. The unscoped Running view uses untagged
 Threads. Completed and ordinary tag emptiness use their own presentations.
 
 The status title and recent-list heading use opaque, appearance-matched label
-backings. Rows share one regular Liquid Glass surface. Recently completed uses
-untinted glass and Recently read uses the Overview surface tint. Reduce
-Transparency and Increase Contrast use a solid face. Each row has the owning
-Harness logo, the Thread title and the relevant relative time. The title and
-time use the same high-contrast ink and differ in size and weight. Hover and
-press tint the row through the list's rounded edge, including the top and
-bottom insets on the end rows.
-Keyboard focus draws an inset outline. Clicking a row or activating it via its
-button opens the ordinary Agent reader. The selected filter remains the return
-destination. The group fits between the header and Dock, with fewer rows or the
-standalone skillet when space is limited. The startup toss uses the same
-viewport center before following the skillet to its settled position.
+backings. Both lists use regular Liquid Glass without an added tint. Reduce
+Transparency and Increase Contrast use the solid reading-card face with a
+neutral border. Each row has the owning Harness logo, the Thread title and the
+relevant relative time. The title and time use the same high-contrast ink and
+differ in size and weight. Hover and press shade the active row through the
+list's rounded edge, including the top and bottom insets on the end rows.
+Keyboard focus draws a neutral inset outline. Activating a row opens the
+ordinary Agent reader. The selected filter remains the return destination.
+The group fits between the header and Dock, with fewer rows or the standalone
+skillet when space is limited. The startup toss uses the same viewport center
+before following the skillet to its settled position.
 
 The profile's thread-reading directory keeps up to 512 Agent Thread visit
 times in a separate record. Shared clients merge visits under a stable lock

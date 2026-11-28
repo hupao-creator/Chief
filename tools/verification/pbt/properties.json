@@ -24,6 +24,7 @@
   {"id":"PBT-STORE-STREAM","suite":"go","engine":"rapid","package":"tools/verification/pbt/store","test":"TestStreamStorageProperties","doc":"internal/core/store/README.md","cases":30},
   {"id":"PBT-STORE-LIFECYCLE","suite":"go","engine":"rapid","package":"tools/verification/pbt/store","test":"TestLifecycleProperties","doc":"internal/core/store/README.md","cases":100},
   {"id":"PBT-CODEX-TERMINAL","suite":"go","engine":"rapid","package":"tools/verification/pbt/codex","test":"TestCodexTerminalProperties","doc":"internal/plugins/harness/codex/README.md","cases":100},
+  {"id":"PBT-OPENCODE-PERMISSION-REVIEW","suite":"go","engine":"rapid","package":"internal/plugins/harness/opencode","test":"TestPermissionReviewProperties","doc":"internal/plugins/harness/opencode/README.md","cases":100},
   {"id":"PBT-OPENCODE-QUOTA","suite":"go","engine":"rapid","package":"internal/plugins/harness/opencode","test":"TestGoAccountTelemetryProperties","doc":"internal/plugins/harness/opencode/README.md","cases":100},
   {"id":"PBT-OPENCODE-ZEN-BILLING","suite":"go","engine":"rapid","package":"internal/plugins/harness/opencode","test":"TestZenBillingTelemetryProperties","doc":"internal/plugins/harness/opencode/README.md","cases":100},
   {"id":"PBT-MOKU-MESSAGE-TELEMETRY","suite":"go","engine":"rapid","package":"internal/services/moku","test":"TestMessageAccountTelemetryProperties","doc":"internal/services/moku/README.md","cases":100},

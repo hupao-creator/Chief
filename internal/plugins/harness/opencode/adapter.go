@@ -16,6 +16,7 @@ import (
 )
 
 type Harness struct {
+	reviewSlots   chan struct{}
 	host          plugin.HostContext
 	settings      *SettingsAPI
 	backgroundMu  sync.Mutex
@@ -32,14 +33,14 @@ type Harness struct {
 
 func New(host plugin.HostContext) *Harness {
 	lifetime, stop := context.WithCancel(context.Background())
-	h := &Harness{host: host, lifetime: lifetime, stop: stop, pending: map[string]bool{}, readTelemetry: readTelemetry}
+	h := &Harness{reviewSlots: make(chan struct{}, 2), host: host, lifetime: lifetime, stop: stop, pending: map[string]bool{}, readTelemetry: readTelemetry}
 	// Production discovery launches the captured source directly. A callback here
 	// would resolve the environment and executable again after fingerprinting.
 	h.settings = NewSettings(host, nil)
 	return h
 }
 func (h *Harness) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ID: "opencode", DisplayName: "OpenCode", ThreadCapabilities: plugin.ThreadCapabilities{Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"extend", "exclusive"}}}
+	return plugin.HarnessDescriptor{ID: "opencode", DisplayName: "OpenCode", Roles: plugin.StandardHarnessRoles(), ThreadCapabilities: plugin.ThreadCapabilities{Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"extend", "exclusive"}}}
 }
 func (h *Harness) DefaultSettings() json.RawMessage         { return json.RawMessage(`{"threadSettings":{}}`) }
 func (h *Harness) Settings() plugin.HarnessSettings         { return h.settings }
@@ -134,7 +135,7 @@ func captureLaunch(ctx context.Context, host plugin.HostContext, s Settings, cwd
 }
 
 func (h *Harness) Open(ctx context.Context, open plugin.OpenContext) (plugin.Handle, error) {
-	handle, err := OpenThread(ctx, open, h.launch)
+	handle, err := OpenThread(ctx, open, h.launch, h.reviewPermission)
 	if err != nil {
 		return nil, err
 	}

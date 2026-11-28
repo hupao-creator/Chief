@@ -158,6 +158,8 @@ The [global voice call](../../services/moku/README.md#global-voice) counts as se
 
 [settings.go](settings.go) separates saved settings revision from streaming thread revisions. `app:update-settings` checks the DTO, application schema and local Harness settings shapes, preserves retained execution profiles and compares `expectedSettingsRevision` in the store transaction. The save performs no native snapshot or catalog acquisition. A conflict returns the latest settings; invalid writes leave state unchanged. An unchanged save does not advance the revision.
 
+At startup a fresh profile receives defaults for every registered Harness at revision zero. An existing profile receives defaults for missing Harness keys in one store transaction. The revision advances once when any key is added. Saved target selections and existing configuration values are preserved.
+
 The [Settings DTO](../model/state.go) contains ordinary Harness defaults, Moku's separate concrete execution profiles, plugin settings and desired plugin enablement. Ordinary thread settings are saved session configuration, not a live reference to global defaults. Thread configuration has its own CAS revision. Moku and background agents retain the configuration of already admitted work; newer saved settings apply at their next admission boundary.
 
 Changing Moku's Harness preference requires idle ordinary Agent Threads and
@@ -193,6 +195,8 @@ Configuration admission uses a cancellable gate. A settings presentation that
 leaves its page releases its waiting HTTP request even when another native
 discovery still owns the gate; a cancelled waiter never enters the operation.
 Nested preparation shares the owning admission context.
+
+Registered Harness roles govern dispatch targets, execution settings reads and saves, and native admission. A background role is identified by its registered execution-settings binding. Independent choices retained under inheritance are validated on save. On profile startup, unsupported Chief selections return to automatic host resolution. An unsupported independent selection returns to the role’s inherited default. Other eligible saved profiles and the role’s on/off switch are retained. Reconciliation writes the settings revision only when it repairs a selection or profile. Ordinary Thread history, directories and Harness defaults have separate ownership. [Role contract](../../plugins/harness/README.md#3-声明可用角色和能力) · [Profile reconciliation](harness_roles.go)
 
 Settings presentation and startup recovery discover missing execution profiles
 outside that gate. Their short commit merges only changed execution fields,
@@ -370,7 +374,7 @@ fields in different orders. Completions before commit, after commit or
 through cancellation check which source may be returned and which operation may
 advance the revision. **PBT-RUNTIME-ROLE-SETTINGS** checks read-only independent
 previews, conflicting saves and retention across retry. It also checks that cold
-initialization captures only the missing slot. The
+initialization captures only the missing slot and that an adapter with exclusive tools can opt into just one of the two background roles. The
 [properties](../../../tools/verification/pbt/runtime/settings_property_test.go)
 use a real Runtime and isolated SQLite with controlled Harness adapters.
 

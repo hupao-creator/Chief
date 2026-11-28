@@ -44,6 +44,21 @@ type backgroundSettings struct {
 	Independent       *executionProfiles         `json:"independent,omitempty"`
 }
 
+// An override and an inherited role's retained override have the same contract.
+func (s backgroundSettings) independentProfile() *executionProfiles {
+	if s.Mode == "override" {
+		return &executionProfiles{HarnessPreference: s.HarnessPreference, Harnesses: s.Harnesses}
+	}
+	return s.Independent
+}
+
+func executionRole(owner string) string {
+	if owner == "" {
+		return plugin.ChiefHostRole
+	}
+	return owner
+}
+
 // WithConfigurationAdmission serializes the entire native admission against
 // settings saves. Its context makes nested snapshot preparation non-recursive.
 func (r *Runtime) WithConfigurationAdmission(ctx context.Context, operation func(context.Context) error) error {
@@ -416,7 +431,7 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings *model.
 			}
 			selectedPreference := preference
 			if current != "" && r.config.DisabledHarnesses[current] == "" {
-				if h := r.config.Harnesses[current]; h != nil && h.Descriptor().ThreadCapabilities.CanHostMoku() {
+				if h := r.config.Harnesses[current]; h != nil && h.Descriptor().SupportsRole(executionRole(owner)) {
 					if probe, ok := h.(plugin.AvailabilityProbe); ok {
 						available, e := probe.Probe(ctx, plugin.SettingsRequest{Settings: source[current], Cwd: cwd}, "exclusive")
 						if e == nil && available.Available {
@@ -427,7 +442,7 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings *model.
 					}
 				}
 			}
-			id, err := r.ResolveHost(ctx, selectedPreference, source, cwd)
+			id, err := r.resolveHost(ctx, executionRole(owner), selectedPreference, source, cwd)
 			if err != nil {
 				return false, err
 			}
@@ -437,7 +452,7 @@ func (r *Runtime) captureExecutionProfiles(ctx context.Context, settings *model.
 		}
 	}
 	h := r.config.Harnesses[harnessID]
-	if err := r.checkExecutionHarness(harnessID); err != nil {
+	if err := r.checkExecutionHarness(harnessID, executionRole(owner)); err != nil {
 		return false, err
 	}
 	existing, exists := profiles[harnessID]
@@ -504,7 +519,7 @@ func mergeProfiles(all ...map[string]json.RawMessage) map[string]json.RawMessage
 	}
 	return result
 }
-func retainExecutionProfiles(settings, previous model.Settings) (model.Settings, error) {
+func (r *Runtime) retainExecutionProfiles(settings, previous model.Settings) (model.Settings, error) {
 	settings.Moku.ExecutionHarnesses = mergeProfiles(previous.Moku.ExecutionHarnesses, settings.Moku.ExecutionHarnesses)
 	old := map[string]backgroundSettings{}
 	for _, entry := range previous.PluginSettings {
@@ -515,19 +530,14 @@ func retainExecutionProfiles(settings, previous model.Settings) (model.Settings,
 	}
 	for i, entry := range settings.PluginSettings {
 		var value backgroundSettings
-		if json.Unmarshal(entry.Value, &value) != nil || (value.Mode != "inherit" && value.Mode != "override") {
+		if !r.isBackgroundBinding(entry.ID) || json.Unmarshal(entry.Value, &value) != nil || (value.Mode != "inherit" && value.Mode != "override") {
 			continue
 		}
 		before, ok := old[entry.ID]
 		if !ok {
 			continue
 		}
-		var profiles *executionProfiles
-		if before.Mode == "override" {
-			profiles = &executionProfiles{HarnessPreference: before.HarnessPreference, Harnesses: before.Harnesses}
-		} else {
-			profiles = before.Independent
-		}
+		profiles := before.independentProfile()
 		if profiles == nil {
 			continue
 		}
@@ -553,10 +563,10 @@ func retainExecutionProfiles(settings, previous model.Settings) (model.Settings,
 	}
 	return settings, nil
 }
-func (r *Runtime) checkExecutionHarness(id string) error {
+func (r *Runtime) checkExecutionHarness(id, role string) error {
 	h := r.config.Harnesses[id]
-	if h == nil || !h.Descriptor().ThreadCapabilities.CanHostMoku() {
-		return fmt.Errorf("harness cannot host internal execution: %s", id)
+	if h == nil || !h.Descriptor().SupportsRole(role) {
+		return fmt.Errorf("harness %s cannot participate in %s", id, role)
 	}
 	if r.config.DisabledHarnesses[id] != "" {
 		return fmt.Errorf("harness disabled: %s", id)
@@ -576,30 +586,38 @@ func (r *Runtime) validateBackgroundProfiles(settings, previous model.Settings) 
 	}
 	for _, entry := range settings.PluginSettings {
 		var value backgroundSettings
-		if json.Unmarshal(entry.Value, &value) != nil || value.Mode != "override" {
+		if !r.isBackgroundBinding(entry.ID) || json.Unmarshal(entry.Value, &value) != nil {
+			continue
+		}
+		if value.Mode == "inherit" && (value.Enabled == nil || *value.Enabled) {
+			if h := r.config.Harnesses[settings.Moku.HostHarnessPreference]; h != nil && !h.Descriptor().SupportsRole(entry.ID) {
+				return fmt.Errorf("Chief harness %s cannot participate in %s", settings.Moku.HostHarnessPreference, entry.ID)
+			}
+		}
+		profiles := value.independentProfile()
+		if profiles == nil {
 			continue
 		}
 		before := old[entry.ID]
-		oldProfiles := before.Harnesses
-		oldPreference := before.HarnessPreference
-		if before.Mode != "override" && before.Independent != nil {
-			oldProfiles = before.Independent.Harnesses
-			oldPreference = before.Independent.HarnessPreference
+		previousProfile := before.independentProfile()
+		if previousProfile == nil {
+			previousProfile = &executionProfiles{}
 		}
-		for id, profile := range value.Harnesses {
-			if sameExecutionProfile(profile, oldProfiles[id]) {
+		role := entry.ID
+		for id, profile := range profiles.Harnesses {
+			if sameExecutionProfile(profile, previousProfile.Harnesses[id]) {
 				continue
 			}
 			h := r.config.Harnesses[id]
-			if h == nil || !h.Descriptor().ThreadCapabilities.CanHostMoku() {
-				return fmt.Errorf("harness cannot host internal execution: %s", id)
+			if h == nil || !h.Descriptor().SupportsRole(role) {
+				return fmt.Errorf("harness %s cannot participate in %s", id, role)
 			}
 			if _, err := h.Settings().Normalize(profile); err != nil {
 				return err
 			}
 		}
-		if p := value.HarnessPreference; p != "auto" && (before.Mode != "override" || oldPreference != p) {
-			if err := r.checkExecutionHarness(p); err != nil {
+		if p := profiles.HarnessPreference; p != "auto" && (previousProfile.HarnessPreference != p || (value.Mode == "override" && before.Mode != "override")) {
+			if err := r.checkExecutionHarness(p, role); err != nil {
 				return err
 			}
 		}

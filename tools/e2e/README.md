@@ -13,6 +13,19 @@ content reads establish prerequisites and independent result evidence. Runtime
 invariants belong to PBT. Benchmarks own general UX timing, resource use and
 visual-performance measurements.
 
+## Antigravity task dispatch
+
+Run on macOS with Python 3.11 or later and both native executables (`codex`, `agy`) available to Chief. The replay uses a disposable Chief profile, separate native homes and two loopback model peers. The installed AGY supplies the actual ACP session, tool permission and command execution. It uses a temporary Gemini API key accepted by the local peer.
+
+```sh
+make runtime
+python3 tools/e2e/agy/run.py --runtime .build/go/chief-runtime
+```
+
+To also exercise the production macOS Settings and reader, build `xcrun swift build --package-path app/macos --product Chief` and append `--desktop app/macos/.build/debug/Chief` to the Python command in a graphical session. The runner opens that executable with the disposable profile and holds the shared host and desktop verification leases. With Screen Recording access, append `--capture COLLECTOR DIRECTORY` to save the three Settings pages, the Overview card and the Thread reader with the native benchmark collector.
+
+A separate runtime with a controlled PATH first checks a missing executable, another ACP identity and an old Antigravity version. The coordinator then receives the published Antigravity model choices through `moku:submit` and calls the injected `create_thread` tool with a non-default native model. The replay checks its receipt, the exact task reply and a same-session recall. After a Runtime restart it reads both turns by execution ID, resumes the native session, approves one temporary marker file and denies another. Stop interrupts an in-flight prompt. An injected provider error must settle as failed. The coordinator must receive terminal notifications for the completed, stopped and failed executions. The replay rejects explicit AGY role settings and execution catalog requests through the public API. Between restarts it seeds obsolete Chief, Tag and retained Super Thread preferences and a stale Antigravity sign-in method in the stopped disposable store. Reopening must preserve eligible profiles, role switches, AGY defaults, the selected target and the existing conversation. With the desktop option, the mounted Chief Host row, dispatch row and both independent role pickers must match the declared roles of installed agents. The replay enables Antigravity in the dispatch row and waits for the saved selection before submitting. After restart the reader must show a mounted, ready turn with visible rows. Output identifies the source revision, dirty state, executables' SHA-256, CLI version and model. Real Google account access, physical Settings/approval gestures and visual layout have separate verification boundaries. [Adapter contract](../../internal/plugins/harness/agy/README.md)
+
 ## Global voice
 
 Build the runtime, then run the opt-in account replay on macOS with a signed-in native Codex installation, network access and a configured Chief Harness.
@@ -35,7 +48,7 @@ python3 tools/e2e/global-voice/workspace.py --app app/macos/dist/Chief.app
 uv run --script tools/e2e/global-voice/native.py --exercise
 ```
 
-The [local hardware replay](global-voice/native.py) runs the production media code with a loopback WebRTC peer. It observes CoreAudio input and output for the probe PID, sender RTP, decoded remote audio while muted, restoration, disconnect and release. The default invocation checks existing permissions without starting audio. `--exercise` needs a previously authorized launch host and live audio devices. These hardware and window checks share the desktop lock. The [fixture interaction replay](../../demos/global-voice-mode/README.md) separately covers drag cancellation, navigation, resizing, text ownership and glass geometry. [Native audio contract](../../app/macos/Sources/Voice/README.md)
+The [local hardware replay](global-voice/native.py) runs the production media code with a loopback WebRTC peer. It observes CoreAudio input and output for the probe PID, sender RTP, decoded remote audio while muted, restoration, disconnect and release. With `--acoustic-loopback`, concurrent room and uplink measurements check local speaker leakage. Adding `--require-input-signal` uses an independent 2100 Hz source to check that near-end audio survives the same playback windows. The default invocation checks existing permissions without starting audio. `--exercise` needs a previously authorized launch host and live audio devices. These hardware and window checks share the desktop lock. The [fixture interaction replay](../../demos/global-voice-mode/README.md) separately covers drag cancellation, navigation, resizing, text ownership and glass geometry. [Native audio contract](../../app/macos/Sources/Voice/README.md)
 
 ## Claude thread permission selection
 
@@ -531,16 +544,22 @@ check. Follow the [Overview presentation contract](../../app/macos/Sources/Host/
 
 1. In Light and Dark, capture the empty Unread and Running views. Cover solid
    and wallpaper-backed windows, then repeat with Reduce Transparency and
-   Increase Contrast. Sample the label and row ink and the adjacent fill in
-   sRGB. Use a 4.5:1 contrast floor for titles and timestamps.
+   Increase Contrast. On a neutral backdrop, check both lists for an idle face
+   and rim without gold coloring. Wallpaper can contribute color to the glass.
+   Sample the label and row ink and the adjacent fill in sRGB. Use a 4.5:1
+   contrast floor for titles and timestamps.
 2. Hover the single-row list, then the first, middle and last rows of a
    populated list. Include the top and bottom end insets when pointing.
    Check that only the active row changes fill, that the fill follows the
    panel corners with no strips of the idle face and that the text remains
-   readable. Check pressed and keyboard-focused rows, including the focus
-   outline at the outer corners.
+   readable. Check that hover, press and the inset keyboard focus outline
+   stay neutral, including at the outer corners.
 3. Activate a row with the pointer and with the keyboard. Confirm that each
    opens the indicated Thread and returns to the same filter after closing.
+4. In the isolated workspace, open the last unread Agent Thread and wait for
+   its result. Close it and check the first Recently read row as it appears.
+   Repeat with Reduce Motion and compare the row face and rim with the settled
+   empty state.
 
 Record the revision, fixture or profile, effective appearance, background,
 accessibility settings, input route, frames and contrast samples. A static
@@ -846,6 +865,16 @@ the two settled centers. Repeat at ordinary and narrow window sizes in English
 and Simplified Chinese. Record the build identity, observed sizes, language,
 events, frame samples and capture limitations. `E2E-READ-001` checks mounted
 navigation, while the window recording supplies the geometry evidence.
+
+To check a follow-up from an exact result, open the latest completed execution
+through its result link in a wide window with Execution folded. Press Return in
+the native editor to send a follow-up. While the successor is starting, begin composing the next
+message and leave its marked text uncommitted until the right card shows the
+running execution. Commit the text. Record the window from before Return through
+draft handoff. Compare the glass center and width on every frame. The center
+should move directly to the right card and the glass should narrow to fit it.
+Once the glass arrives, its center and width should hold through the change of input target. Repeat with Voice
+Mode connected to include the adjacent orb.
 
 ## Fact sources
 

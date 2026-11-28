@@ -114,8 +114,6 @@ public final class NativeWorkspaceModel {
                 case "conflict": return .conflict(settings: settings, revision: revision)
                 default: throw PluginContractError("Unknown settings save outcome")
                 }
-            }, clearHistory: { [weak self] in
-                guard let self else { throw CancellationError() }; _ = try await self.invoke("history:clear")
             }, loadInstallations: { [weak self] in
                 guard let self else { throw CancellationError() }; return try await self.invoke("harness:detect-installations")
             }, installHarness: { [weak self] id in

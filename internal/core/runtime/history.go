@@ -66,7 +66,7 @@ func (r *Runtime) ForkThread(ctx context.Context, id string, request json.RawMes
 			return "", err
 		}
 	}
-	h, err := r.harness(ctx, source)
+	h, err := r.harness(source.HarnessID)
 	if err != nil {
 		return "", err
 	}
@@ -350,7 +350,7 @@ func (r *Runtime) ClearHistory(ctx context.Context) error {
 	}
 	if moku.HarnessID == "" {
 		for _, id := range r.harnessIDs() {
-			if r.config.Harnesses[id].Descriptor().ThreadCapabilities.CanHostMoku() {
+			if r.config.Harnesses[id].Descriptor().SupportsRole(plugin.ChiefHostRole) {
 				moku.HarnessID = id
 				break
 			}

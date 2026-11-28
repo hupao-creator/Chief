@@ -59,8 +59,7 @@ public struct NativeOverviewStatusEmptyState: View {
                 VStack(spacing: 0) {
                     mark(in: viewport.size).frame(height: Self.markHeight)
                     NativeOverviewRecentThreadList(title: recent.title,
-                        threads: Array(recent.threads.prefix(availableRows)),
-                        usesTintedGlass: recent.usesTintedGlass, open: recent.open)
+                        threads: Array(recent.threads.prefix(availableRows)), open: recent.open)
                         .frame(width: width)
                         .modifier(StartupSkilletChrome())
                         .nativeCanvasNavigationRegion()

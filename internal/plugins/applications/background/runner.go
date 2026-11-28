@@ -606,7 +606,7 @@ func (r *Runner) settleStale(ctx context.Context) error {
 	}
 	handle := prepared.handle
 	if busy(handle.Observation()) {
-		err = handle.Interrupt(ctx, nil)
+		_ = handle.Interrupt(ctx, nil)
 		if busy(handle.Observation()) {
 			return r.dispose()
 		}

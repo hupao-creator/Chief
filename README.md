@@ -1,5 +1,7 @@
 <h1 align="center"><img src="design/chief-logo.webp" width="115" height="115" align="absmiddle" hspace="6" alt="">Chief</h1>
 
+<p align="center"><strong>English</strong> / <a href="README.zh-CN.md">简体中文</a></p>
+
 <p align="center">Chief brings your AI agents together and gets them cooking.</p>
 
 <p align="center">
@@ -36,7 +38,7 @@ Read **one report** across related conversations. When you want to see how an ag
 ## What you get
 
 - **A fully native Mac app.** Chief is built with **SwiftUI and AppKit** for Apple silicon.
-- **Your agents in one place.** Bring **Codex, Claude, Pi Agent, and OpenCode** together with the accounts and models you already use.
+- **Your agents in one place.** Bring **Codex, Claude, Pi Agent, OpenCode, and Antigravity** together with the accounts and models you already use.
 - **One place to delegate.** Give Chief a task, and it can coordinate agents **across harnesses and models**. Ask Codex to implement a change and Claude Code to review it.
 - **Live task overview.** See what’s running, which files changed, and **which agents are waiting for you**. Filter by project folder or tag to focus on one part of your work.
 - **Designed around Liquid Glass.** Translucent controls keep your work in view as you move between the task overview and individual conversations.

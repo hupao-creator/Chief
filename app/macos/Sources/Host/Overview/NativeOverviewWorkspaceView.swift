@@ -100,8 +100,7 @@ public struct NativeOverviewWorkspaceView: View {
                         let recent = NativeOverviewRecentThreadList(
                             title: model.statusFilter == .running
                                 ? locale.text("最近完成", "Recently completed") : locale.text("最近阅读", "Recently read"),
-                            threads: model.recentStatusThreads,
-                            usesTintedGlass: model.statusFilter == .unread) { id in
+                            threads: model.recentStatusThreads) { id in
                                 guard model.containsGlobalThread(id) else { return }
                                 callbackStore.current.openThread(id, nil)
                             }

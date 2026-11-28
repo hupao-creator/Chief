@@ -14,7 +14,7 @@ Click Chief’s eyes once. The bar expands and the cursor appears in the text bo
 
 Press and hold the bar for half a second. In Overview, you can also press inside the text box, keep the pointer still for half a second, then release. This works even with a draft in the box. An empty box shows **Hold for Voice Mode or type a message…**. You can also hold the eyes or agent icon at the left edge.
 
-Chief glances to the right while it connects. The first time, allow Chief to use your microphone when macOS asks. When the blue orb separates from the bar, you can speak. The call continues until you end it.
+Chief glances to the right while it connects. The first time, allow Chief to use your microphone when macOS asks. When the blue orb separates from the bar, you can speak. You can keep speaking while audio plays on your Mac. On supported devices, Chief reduces the sound picked up from your speakers. The call continues until you end it.
 
 As you speak, the white ring brightens and the blue cloud moves with your voice. Incoming audio also moves the cloud. With Reduce Motion on, the cloud brightens in place.
 

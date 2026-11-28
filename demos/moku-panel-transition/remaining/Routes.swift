@@ -12,7 +12,7 @@ import SwiftUI
     let draft = NativeComposerDraft(services: .init(stageFiles: { _, _ in [] }, discardAttachments: { _ in }))
     let settings = NativeSettingsModel(settings: .object([:]), revision: 0,
         save: { value, revision in .saved(settings: value, revision: revision + 1) },
-        clearHistory: {}, loadInstallations: { .object([:]) }, installHarness: { _ in })
+        loadInstallations: { .object([:]) }, installHarness: { _ in })
     var request: PublicInteraction?
     var responses: [HarnessRespondRequest] = []
     var replyKey: JSONText?
@@ -108,15 +108,18 @@ private struct RoutePanel: View {
     try await until("Replacement question") {
         scene.dockInteractionIsQuestion && scene.dockHitRects.count >= 2 && scene.dockHitRects[1].width > permissionRect.width
     }
-    let blank = try await button("moku-interaction-action-submit")
+    let blank = try await button("moku-interaction-action-submit", press: true)
     try await capture("question")
-    try check(blank.count == 1 && blank[0]["enabled"] == "false", "Empty answer is disabled")
+    try check(blank.count == 1 && blank[0]["role"] == "AXButton" && blank[0]["enabled"] == "false", "Empty answer is disabled")
+    try check(model.responses.map(\.actionID) == ["allow"], "Empty answer produced a response")
     let option = try await button("First option", press: true)
     try record("question", ["blank": blank, "choice": option, "panel": NSStringFromRect(scene.dockHitRects[1])])
     try check(option.count == 1 && option[0]["press"] == "0", "Select answer")
     let submit = try await button("moku-interaction-action-submit", press: true)
+    try check(submit.count == 1 && submit[0]["enabled"] == "true" && submit[0]["press"] == "0", "Submit selected answer")
     try await until("Question response") { model.responses.count == 2 }
-    try check(model.responses.last?.answers?["q"] == .text("one"), "Selected answer receipt")
+    try check(model.responses.last?.interactionID == "question" && model.responses.last?.actionID == "submit"
+              && model.responses.last?.answers == ["q": .text("one")], "Selected answer receipt")
     try record("answered", ["submit": submit])
     model.request = nil
 

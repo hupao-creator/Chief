@@ -84,7 +84,6 @@ struct NativeSettingsPreferredHeightKey: PreferenceKey {
     }
     private var sections: [String] { NativeSettingsNavigation.sections(model: model, applications: applicationSections) }
     private var activeSection: String { navigation.activeSection(in: sections) }
-    private var busy: Bool { model.clearing }
 
     public var body: some View {
         GeometryReader { geometry in
@@ -164,11 +163,11 @@ struct NativeSettingsPreferredHeightKey: PreferenceKey {
                                             Button(locale.text("放弃草稿并载入最新设置", "Discard draft and load latest settings")) { model.draft.discardConflict() }
                                                 .nativeSettingsAction("discard", label: "Discard draft") { model.draft.discardConflict() }
                                         }
-                                    }.buttonStyle(.bordered).disabled(busy || !model.runtimeAvailable)
+                                    }.buttonStyle(.bordered).disabled(!model.runtimeAvailable)
                                 }
                             }.frame(maxWidth: NativeSettingsContentLayout.formWidth, alignment: .leading).id("notice")
                         }
-                        sectionBody(illustrationWidth: illustrationWidth).disabled(busy)
+                        sectionBody(illustrationWidth: illustrationWidth)
                             .environment(\.nativeSettingsFormPage, true)
                     }.frame(width: illustrationWidth)
                     .background(GeometryReader { content in
@@ -209,7 +208,7 @@ struct NativeSettingsPreferredHeightKey: PreferenceKey {
             Button(action: requestClose) {
                 NativeIcon(name: "X", size: 14, strokeWidth: 2)
                     .frame(width: 30, height: 30).contentShape(Circle())
-            }.buttonStyle(.plain).disabled(busy).focused($focusedBack)
+            }.buttonStyle(.plain).focused($focusedBack)
                 .foregroundStyle(.secondary)
                 .accessibilityLabel(locale.text("关闭设置", "Close settings"))
                 .accessibilityIdentifier("settings-close")
@@ -268,7 +267,8 @@ struct NativeSettingsPreferredHeightKey: PreferenceKey {
         harnesses.filter { harness in
             let id = harness.descriptor.id.string
             let plugin = model.plugins.first { $0.key == "harness:" + id }
-            return model.installations[id]?.status == .installed && plugin?.enabled != false && plugin?.unavailableReason == nil
+            return model.supports(harness, role: .application(JSONText(activeSection)))
+                && model.installations[id]?.status == .installed && plugin?.enabled != false && plugin?.unavailableReason == nil
         }
     }
 

@@ -54,9 +54,11 @@ import SwiftUI
             return state == .installed || state == .installing
         }
     }
-    private var host: AnyHarnessPlugin? { pickable.first { $0.descriptor.id.string == selectedHost && $0.descriptor.threadCapabilities.canHostMoku } }
+    private var hosts: [AnyHarnessPlugin] { pickable.filter { model.supports($0, role: .chiefHost) } }
+    private var dispatchTargets: [AnyHarnessPlugin] { pickable.filter { model.supports($0, role: .agentThread) } }
+    private var host: AnyHarnessPlugin? { hosts.first { $0.descriptor.id.string == selectedHost } }
     private var targets: [String] { moku["targetHarnessIds"]?.arrayValue?.compactMap(\.stringValue) ?? [] }
-    private var visibleTargets: [String] { pickable.map { $0.descriptor.id.string }.filter { targets.contains($0) } }
+    private var visibleTargets: [String] { dispatchTargets.map { $0.descriptor.id.string }.filter { targets.contains($0) } }
     private var rosterReady: Bool { model.installationLoadState == .loaded }
     private var rosterPending: Bool {
         model.installationLoadState == .notLoaded || model.installationLoadState == .loading
@@ -199,16 +201,21 @@ import SwiftUI
 
     private var dispatchMap: some View {
         GeometryReader { geometry in
-            let hostIndex = pickable.firstIndex { $0.descriptor.id == host?.descriptor.id }
-            let sourceX = hostIndex.map { hostX($0, width: geometry.size.width) }
+            let hosts = self.hosts
+            let dispatchTargets = self.dispatchTargets
+            let selectedTargets = Set(targets)
+            let visibleCount = dispatchTargets.filter { selectedTargets.contains($0.descriptor.id.string) }.count
+            let hostIndex = hosts.firstIndex { $0.descriptor.id.string == selectedHost }
+            let host = hostIndex.map { hosts[$0] }
+            let sourceX = hostIndex.map { hostX($0, count: hosts.count, width: geometry.size.width) }
             let source = sourceX.map { CGPoint(x: $0, y: 111.8) }
             TimelineView(.animation(minimumInterval: NativeFrameRate.interval)) { _ in
                 let now = NativeMokuSettingsAnimationState.now
                 ZStack(alignment: .topLeading) {
                     Canvas { context, _ in
                         if let point = motion.dispatchPosition(at: now) ?? source {
-                            for (index, harness) in pickable.enumerated() where targets.contains(harness.descriptor.id.string) {
-                                let destination = CGPoint(x: targetX(index, width: geometry.size.width), y: 179)
+                            for (index, harness) in dispatchTargets.enumerated() where selectedTargets.contains(harness.descriptor.id.string) {
+                                let destination = CGPoint(x: targetX(index, count: dispatchTargets.count, width: geometry.size.width), y: 179)
                                 let bend = (destination.y - point.y) * 0.55
                                 var path = Path(); path.move(to: point)
                                 path.addCurve(to: destination, control1: CGPoint(x: point.x, y: point.y + bend),
@@ -221,11 +228,10 @@ import SwiftUI
                             }
                         }
                     }.allowsHitTesting(false)
-                    ForEach(Array(pickable.enumerated()), id: \.element.descriptor.id) { index, harness in
+                    ForEach(Array(hosts.enumerated()), id: \.element.descriptor.id) { index, harness in
                         let id = harness.descriptor.id.string
-                        let x = hostX(index, width: geometry.size.width)
+                        let x = hostX(index, count: hosts.count, width: geometry.size.width)
                         let selected = host?.descriptor.id == harness.descriptor.id
-                        let supported = harness.descriptor.threadCapabilities.canHostMoku
                         NativeHarnessSettingsIcon(harness: harness, state: model.installationState(id), transparent: true,
                                                   hostSlot: true, hideLogo: selected) { selectHost(harness) }
                             .accessibilityIdentifier("moku-host-" + id)
@@ -233,35 +239,37 @@ import SwiftUI
                             .scaleEffect(selected ? 1.7 : 0.88).position(x: x, y: 71)
                             .animation(.timingCurve(0.4, 0, 0.2, 1, duration: 0.48), value: selected)
                             .animation(.timingCurve(0.4, 0, 0.2, 1, duration: 0.48), value: x)
-                            .disabled(!supported)
-                            .focusable(supported && (selected || (host == nil && pickable.first(where: { $0.descriptor.threadCapabilities.canHostMoku })?.descriptor.id == harness.descriptor.id)))
+                            .focusable(selected || (host == nil && hosts.first?.descriptor.id == harness.descriptor.id))
                             .focused($focusedHost, equals: id)
-                            .accessibilityLabel(harness.descriptor.displayName.string + (supported ? " · " + hostStatusText(id) : locale.text("（不支持 Chief Host）", " (does not support Chief Host)")))
+                            .accessibilityLabel(harness.descriptor.displayName.string + " · " + hostStatusText(id))
                             .accessibilityAddTraits(selected ? .isSelected : [])
                             .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .home, .end]) { event in
                                 navigateHost(current: id, key: event.key); return .handled
                             }
+                    }
+                    ForEach(Array(dispatchTargets.enumerated()), id: \.element.descriptor.id) { index, harness in
+                        let id = harness.descriptor.id.string
                         let feedback = feedbackSample(target: id, now: now)
                         NativeHarnessSettingsIcon(harness: harness, state: model.installationState(id), transparent: true,
                                                   preservesDisabledOpacity: true, logoTransform: feedback?.target ?? .init(),
                                                   logoOpacity: feedback?.targetOpacity ?? 1) { toggleTarget(id) }
-                            .nativeSettingsAction("target." + id, label: harness.descriptor.displayName.string, selected: targets.contains(id)) { toggleTarget(id) }
+                            .nativeSettingsAction("target." + id, label: harness.descriptor.displayName.string, selected: selectedTargets.contains(id)) { toggleTarget(id) }
                             .overlay(alignment: .bottom) {
                                 Capsule().fill(NativePalette.settings.accent.swiftUI).frame(width: 13, height: 2)
-                                    .scaleEffect(x: targets.contains(id) ? 1 : 0.5, y: 1)
-                                    .opacity(targets.contains(id) ? 0.6 : 0).offset(y: -2)
-                                    .animation(.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.18), value: targets.contains(id))
-                            }.position(x: targetX(index, width: geometry.size.width), y: 203)
-                            .disabled(targets.contains(id) && visibleTargets.count == 1)
-                            .help(targets.contains(id) && visibleTargets.count == 1 ? locale.text("至少保留一个可派发的 provider", "Keep at least one dispatch target") : "")
+                                    .scaleEffect(x: selectedTargets.contains(id) ? 1 : 0.5, y: 1)
+                                    .opacity(selectedTargets.contains(id) ? 0.6 : 0).offset(y: -2)
+                                    .animation(.timingCurve(0.25, 0.1, 0.25, 1, duration: 0.18), value: selectedTargets.contains(id))
+                            }.position(x: targetX(index, count: dispatchTargets.count, width: geometry.size.width), y: 203)
+                            .disabled(selectedTargets.contains(id) && visibleCount == 1)
+                            .help(selectedTargets.contains(id) && visibleCount == 1 ? locale.text("至少保留一个可派发的 provider", "Keep at least one dispatch target") : "")
                             .accessibilityLabel(harness.descriptor.displayName.string + " · " + hostStatusText(id))
-                            .accessibilityAddTraits(targets.contains(id) ? .isSelected : [])
+                            .accessibilityAddTraits(selectedTargets.contains(id) ? .isSelected : [])
                     }
                     if let host, let sourceX { coordinator(host, sourceX: sourceX, now: now) }
                 }.frame(width: geometry.size.width, height: geometry.size.height)
             }
-            .onChange(of: source, initial: true) { _, point in motion.configureDispatch(source: point, hasTargets: !visibleTargets.isEmpty) }
-            .onChange(of: visibleTargets) { _, _ in motion.configureDispatch(source: source, hasTargets: !visibleTargets.isEmpty) }
+            .onChange(of: source, initial: true) { _, point in motion.configureDispatch(source: point, hasTargets: visibleCount > 0) }
+            .onChange(of: visibleCount) { _, _ in motion.configureDispatch(source: source, hasTargets: visibleCount > 0) }
             .onGeometryChange(for: DispatchGeometry.self) { map in
                 DispatchGeometry(frame: map.frame(in: .global), width: map.size.width)
             } action: { dispatchGeometry = $0 }
@@ -302,12 +310,12 @@ import SwiftUI
         return NativeMokuSettingsMotion.feedback(enabled: clip.request.enabled, gazeX: clip.request.gazeX,
                                                  elapsedMilliseconds: now - clip.startedAt)
     }
-    private func hostX(_ index: Int, width: CGFloat) -> CGFloat {
-        19 + max(0, width - 38) * (CGFloat(index) + 0.5) / CGFloat(max(1, pickable.count))
+    private func hostX(_ index: Int, count: Int, width: CGFloat) -> CGFloat {
+        19 + max(0, width - 38) * (CGFloat(index) + 0.5) / CGFloat(max(1, count))
     }
-    private func targetX(_ index: Int, width: CGFloat) -> CGFloat {
-        let count = max(1, pickable.count)
-        return 43 + (count == 1 ? 0 : max(0, width - 86) * CGFloat(index) / CGFloat(count - 1))
+    private func targetX(_ index: Int, count: Int, width: CGFloat) -> CGFloat {
+        guard count > 1 else { return width / 2 }
+        return 43 + max(0, width - 86) * CGFloat(index) / CGFloat(count - 1)
     }
 
     private func textArea(field: String, label: String, height: CGFloat) -> some View {
@@ -341,9 +349,9 @@ import SwiftUI
         }
     }
     private func selectHost(_ harness: AnyHarnessPlugin) {
-        guard harness.descriptor.threadCapabilities.canHostMoku, host?.descriptor.id != harness.descriptor.id else { return }
-        if !coordinatorFrame.isEmpty, let index = pickable.firstIndex(where: { $0.descriptor.id == harness.descriptor.id }) {
-            let destination = dispatchGeometry.globalX(hostX(index, width: dispatchGeometry.width))
+        guard host?.descriptor.id != harness.descriptor.id else { return }
+        if !coordinatorFrame.isEmpty, let index = hosts.firstIndex(where: { $0.descriptor.id == harness.descriptor.id }) {
+            let destination = dispatchGeometry.globalX(hostX(index, count: hosts.count, width: dispatchGeometry.width))
             motion.beginHandoff(to: harness.descriptor.id.string, direction: destination - coordinatorFrame.midX)
         }
         changeMoku("hostHarnessPreference", .string(harness.descriptor.id))
@@ -351,8 +359,8 @@ import SwiftUI
     private func toggleTarget(_ id: String) {
         let selected = targets.contains(id)
         guard !selected || visibleTargets.count > 1 else { return }
-        let index = pickable.firstIndex { $0.descriptor.id.string == id }
-        let gaze = index.map { (dispatchGeometry.globalX(targetX($0, width: dispatchGeometry.width)) - coordinatorFrame.midX) / 4 } ?? 0
+        let index = dispatchTargets.firstIndex { $0.descriptor.id.string == id }
+        let gaze = index.map { (dispatchGeometry.globalX(targetX($0, count: dispatchTargets.count, width: dispatchGeometry.width)) - coordinatorFrame.midX) / 4 } ?? 0
         motion.requestFeedback(targetID: id, enabled: !selected, gazeX: coordinatorFrame.isEmpty ? 0 : gaze)
         changeMoku("targetHarnessIds", .array((selected ? targets.filter { $0 != id } : targets + [id]).map(JSONValue.text)))
     }
@@ -360,7 +368,7 @@ import SwiftUI
         onCoordinatorFrame(!rosterReady || host == nil || coordinatorFrame.isEmpty ? nil : coordinatorFrame, rosterPending)
     }
     private func navigateHost(current: String, key: KeyEquivalent) {
-        let supported = pickable.filter { $0.descriptor.threadCapabilities.canHostMoku }
+        let supported = hosts
         guard !supported.isEmpty else { return }
         let index = supported.firstIndex { $0.descriptor.id.string == current } ?? 0
         let next = key == .home ? 0 : key == .end ? supported.count - 1 : (index + (key == .leftArrow || key == .upArrow ? -1 : 1) + supported.count) % supported.count

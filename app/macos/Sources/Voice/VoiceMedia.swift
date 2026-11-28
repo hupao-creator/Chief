@@ -47,11 +47,6 @@ final class VoiceMedia {
         let factory = LKRTCPeerConnectionFactory(audioDeviceModuleType: .audioEngine, bypassVoiceProcessing: false,
                                                  encoderFactory: nil, decoderFactory: nil, audioProcessingModule: processing)
         self.factory = factory
-        // Apple's duplex Voice Processing I/O couples input to output. WebRTC's
-        // software echo cancellation lets the system output run on its own.
-        guard factory.audioDeviceModule.setPlatformVoiceProcessingAllowed(false) == 0 else {
-            throw VoiceFailure("Could not configure independent microphone and speaker I/O.")
-        }
         // Negotiate the track with both hardware gates shut until the sideband
         // has confirmed the remote session and the media channel is connected.
         try setAudio(input: false, output: false)
@@ -92,7 +87,7 @@ final class VoiceMedia {
 
     func connect(answer: String) async throws {
         try checkOpen()
-        guard let peer, let channel, let adm = factory?.audioDeviceModule else { throw CancellationError() }
+        guard let peer, let channel, let track, let adm = factory?.audioDeviceModule else { throw CancellationError() }
         try await setDescription(answer, remote: true)
         try await wait("The voice media connection timed out.") { peer.connectionState == .connected && channel.readyState == .open }
         guard let remote = peer.receivers.compactMap({ $0.track as? LKRTCAudioTrack }).first else {
@@ -100,8 +95,8 @@ final class VoiceMedia {
         }
         remoteTrack = remote
         remote.add(playback)
-        try setAudio(input: true, output: true)
-        track?.isEnabled = true
+        try startCapture(adm, track: track)
+        track.isEnabled = true
         try await wait("Could not start the microphone or speaker.") { adm.isRecording && adm.isPlaying && adm.isEngineRunning }
         metering = Task { [weak self] in
             while !Task.isCancelled {
@@ -150,18 +145,37 @@ final class VoiceMedia {
             }
         } else {
             guard Self.deviceAvailable(input: true) else { throw VoiceFailure("The microphone is unavailable.") }
-            try setAudio(input: true, output: true)
             sender.track = track
-            guard sender.track?.trackId == track.trackId,
-                  adm.isRecording || adm.initAndStartRecording() == 0, adm.isRecording else {
+            guard sender.track?.trackId == track.trackId else {
                 throw VoiceFailure("Could not restart the microphone.")
             }
+            try startCapture(adm, track: track)
             track.isEnabled = true
         }
         capture.meter.reset()
         microphoneLevel = 0
         onLevels?(0, playbackLevel)
         self.muted = muted
+    }
+
+    private func startCapture(_ adm: LKRTCAudioDeviceModule, track: LKRTCAudioTrack) throws {
+        func start() -> Int {
+            let result = adm.setEngineAvailability(LKRTCAudioEngineAvailability(isInputAvailable: true, isOutputAvailable: true))
+            guard result == 0, !adm.isRecording else { return result }
+            return adm.initAndStartRecording(audioProcessingOptions: .communication())
+        }
+
+        // Apple's duplex processor has the Mac's speaker reference. If this device pair
+        // cannot start that graph, keep the existing WebRTC software path for this call.
+        var result = start()
+        if result != 0, adm.isPlatformVoiceProcessingAllowed,
+           adm.setPlatformVoiceProcessingAllowed(false) == 0,
+           track.setAudioProcessingOptions(.communication()).isSuccess {
+            result = start()
+        }
+        guard result == 0, adm.isRecording else {
+            throw VoiceFailure("Could not start the microphone and speaker (\(result)).")
+        }
     }
 
     private func setAudio(input: Bool, output: Bool) throws {

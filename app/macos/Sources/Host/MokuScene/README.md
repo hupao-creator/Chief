@@ -55,7 +55,7 @@ owners and their verification entries. Each replay exercises a subset.
 | Talk, replacement, expiry and Compose over a notice | The shell fits the message. Talk ink fades while native text layout and scrolling update at their reading width. Opening input consumes a presented notice. | [Overview window](../../../../../demos/moku-panel-transition/README.md#overview-dock-replay) |
 | Dispatching, started, failed and superseding operation | The status seat fades through clear. The operation owns its deadline, configuration, Harness mark and 48-point trailing reservation. | [Control ink recording](../../../../../demos/moku-panel-transition/README.md#control-ink-recording) |
 | Settings command, close, reopen, short viewport | Shell and face travel to the page header, glass yields to the system background and page ink fades. Settings owns the save gate. | [Settings](../Settings/README.md) |
-| Permission or questionnaire, step, choice, other answer, submit | The panel fades at its own seat. Selection tint, borders, pressed and enabled states use local feedback. Answer text updates at native input speed. | [Mounted intervention controls](../../../../../demos/moku-panel-transition/remaining/README.md) |
+| Permission or questionnaire, step, choice, other answer, submit | The panel fades at its own seat. Selection tint, borders, pressed and enabled states use local feedback. Answer text updates at native input speed. Submit remains disabled for pointer and accessibility users until the questionnaire is valid. | [Mounted intervention controls](../../../../../demos/moku-panel-transition/remaining/README.md) |
 | Collection, covered/absent route, return during withdrawal | Collection owns its page fade. The scene retains the native Dock through route opacity retirement and revokes interaction at withdrawal. A return redirects that opacity. | [Collection](../Overview/README.md) · [Route reversal](../../../../../demos/moku-panel-transition/remaining/README.md) |
 | Reduce Motion, Reduce Transparency, hidden/inactive window | Reduced motion settles local ink, shell layout and Settings directly. Reduced transparency selects the opaque capsule. Hidden/inactive windows suspend character and travel work. | [Reduced-motion routes](../../../../../demos/moku-panel-transition/remaining/README.md) |
 
@@ -625,7 +625,9 @@ to that reader on the same main-actor turn. Agent and Report readers share the
 [send identity contract](../../../../../design/composer.md#send-identity-and-ownership).
 Sending from the latest finished result opens Conversation on local capture,
 including when the draft addresses that exact execution. Its pending column
-places the pinned composer beneath the card. The source reader stays mounted
+places the pinned composer beneath the card. When the card takes ownership of
+the accepted run, it keeps that column through the exact draft handoff, including
+while the editor finishes composing text for the next message. The source reader stays mounted
 while the receipt identifies the accepted execution and the catalog and index
 determine where its live reader belongs. Failure retires
 the provisional opening. A later card choice or reading visit owns its selection.
