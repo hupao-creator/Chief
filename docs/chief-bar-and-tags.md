@@ -18,6 +18,8 @@ Click the orb to mute your microphone. Its blue color fades and you can still he
 
 Voice goes to the **Chief Agent** selected in Settings, even when you open another task. Typing in that task still sends to the task, and opening Voice Mode keeps your draft and selection. Chief speaks its replies without opening a transcript window. Ending the call lets accepted work continue. [Choose your Chief Agent](settings.md)
 
+If transcription stalls for 30 seconds on one phrase, Chief skips it and keeps listening. You can say your next sentence in the same call. To check which requests reached Chief, open the Chief conversation and repeat any missing request.
+
 Voice Mode needs a microphone, audio output and a Codex installation signed in with a ChatGPT account that supports realtime voice. If microphone access was denied, turn on **Chief** in **System Settings → Privacy & Security → Microphone**, then hold the bar again.
 
 ## Right-click Chief Bar to chat

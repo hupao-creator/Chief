@@ -82,7 +82,7 @@ func TestVoiceHandoffProperties(t *testing.T) {
 }
 
 func exerciseHandoffs(t *rapid.T) {
-	timeout, deadline := context.WithTimeout(context.Background(), 100*time.Second)
+	timeout, deadline := context.WithTimeout(context.Background(), 150*time.Second)
 	defer deadline()
 	ctx, stop := context.WithCancel(timeout)
 	defer stop()
@@ -137,11 +137,50 @@ func exerciseHandoffs(t *rapid.T) {
 		emit("thread/realtime/item/completed", codex.Map{"threadId": thread, "item": codex.Map{"type": "transcriptSegment", "realtimeSessionId": session, "id": id, "role": "user", "text": text}})
 	}
 	words := rapid.SampledFrom([]string{"repeat", "你好", "<request>&"}).Draw(t, "repeated-speech")
+	startSegment := func(id string) {
+		emit("thread/realtime/item/started", codex.Map{"threadId": "relay", "item": codex.Map{
+			"type": "transcriptSegment", "role": "user", "realtimeSessionId": session, "id": id}})
+	}
+	// Withhold completions, as a native transcription stall would. A newer
+	// completion waits in order, then reaches Chief on the same connection.
+	stalled := rapid.IntRange(1, 4).Draw(t, "stalled-segments")
+	for i := range stalled {
+		startSegment(fmt.Sprintf("stalled-%d", i))
+	}
+	request("relay", "queued", words)
+	startSegment("in-progress")
+	progressAfter := time.Duration(rapid.IntRange(8, 20).Draw(t, "progress-after-seconds")) * time.Second
+	time.Sleep(progressAfter)
+	emit("thread/realtime/item/transcript/delta", codex.Map{"threadId": "relay", "itemId": "in-progress", "delta": words})
+	time.Sleep(29*time.Second - progressAfter)
+	synctest.Wait()
+	if len(inputs) != 0 {
+		t.Fatal("submitted a later utterance before the earlier one expired")
+	}
+	select {
+	case <-done:
+		t.Fatal("one stalled transcription ended the call")
+	case got := <-inputs:
+		if got != (handoff{"queued", words}) {
+			t.Fatalf("wrong input after transcription timeout: %+v", got)
+		}
+	case <-time.After(4 * time.Second):
+		t.Fatal("stalled transcription still blocks a completed utterance")
+	}
+	for i := range stalled {
+		id := fmt.Sprintf("stalled-%d", i)
+		startSegment(id)
+		request("relay", id, words)
+	}
+	request("relay", "in-progress", words)
+	if got := await(t, timeout, inputs); got != (handoff{"in-progress", words}) {
+		t.Fatalf("lost active transcription or submitted a late completion: %+v", got)
+	}
 	count := rapid.IntRange(2, 9).Draw(t, "handoffs")
 	for i := range count {
 		id := fmt.Sprint(i)
 		if rapid.Bool().Draw(t, "segment-start") {
-			emit("thread/realtime/item/started", codex.Map{"threadId": "relay", "item": codex.Map{"type": "transcriptSegment", "role": "user", "realtimeSessionId": session, "id": id}})
+			startSegment(id)
 		}
 		request("another-thread", id, "wrong owner")
 		emit("thread/realtime/itemAdded", codex.Map{"threadId": "relay", "item": codex.Map{"type": "handoff_request", "handoff_id": id, "input_transcript": words}})
@@ -227,8 +266,7 @@ func exerciseHandoffs(t *rapid.T) {
 	// The next segment starts before its predecessor finishes. Both
 	// destination admissions survive, but only the newer one may speak.
 	for _, id := range []string{"first", "blank", "second"} {
-		emit("thread/realtime/item/started", codex.Map{"threadId": "relay", "item": codex.Map{
-			"type": "transcriptSegment", "role": "user", "realtimeSessionId": session, "id": id}})
+		startSegment(id)
 	}
 	request("relay", "blank", "  ")
 	if rapid.Bool().Draw(t, "second-transcript-finishes-first") {

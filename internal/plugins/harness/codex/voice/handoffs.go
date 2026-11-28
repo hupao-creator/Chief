@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -13,11 +14,19 @@ import (
 
 type handoff struct{ id, text string }
 
+type segmentState uint8
+
+const (
+	transcribing segmentState = iota
+	completed
+	expired
+)
+
 type segment struct {
-	complete bool
-	digest   [sha256.Size]byte
-	updated  time.Time
-	text     string // released as soon as all earlier segments can be admitted
+	state   segmentState
+	digest  [sha256.Size]byte
+	updated time.Time
+	text    string // released as soon as all earlier segments can be admitted
 }
 
 // The committed V3 user segment ID is the handoff ID to Chief. Native
@@ -54,7 +63,7 @@ func (h *handoffs) observe(item map[string]any, complete bool) error {
 			h.cancelSpeech()
 		}
 	}
-	if !complete {
+	if !complete || previous.state == expired {
 		return nil
 	}
 	text, ok := item["text"].(string)
@@ -62,19 +71,25 @@ func (h *handoffs) observe(item map[string]any, complete bool) error {
 		return errors.New("invalid completed Codex voice segment")
 	}
 	digest := sha256.Sum256([]byte(text))
-	if previous.complete {
+	if previous.state == completed {
 		if previous.digest != digest {
 			return errors.New("Codex reused a handoff ID with different speech")
 		}
 		return nil
 	}
-	h.segments[id] = segment{complete: true, digest: digest, text: text}
+	h.segments[id] = segment{state: completed, digest: digest, text: text}
+	h.submitReady()
+	return nil
+}
+
+// Caller holds h.mu.
+func (h *handoffs) submitReady() {
 	// V3 can finish a newer transcript first. Reserve queue capacity at
 	// first sight so releasing this prefix never blocks the native reader.
 	for len(h.pending) > 0 {
 		first := h.pending[0]
 		s := h.segments[first]
-		if !s.complete {
+		if s.state != completed {
 			break
 		}
 		if strings.TrimSpace(s.text) != "" {
@@ -84,29 +99,30 @@ func (h *handoffs) observe(item map[string]any, complete bool) error {
 		h.segments[first] = s
 		h.pending = h.pending[1:]
 	}
-	return nil
 }
 
 func (h *handoffs) transcribing(id string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if current, ok := h.segments[id]; ok && !current.complete {
+	if current, ok := h.segments[id]; ok && current.state == transcribing {
 		current.updated = time.Now()
 		h.segments[id] = current
 	}
 }
 
-// A provider can acknowledge hearing speech yet leave its timeline segment
-// open. Surface that loss of finality without submitting a partial transcript.
-func (h *handoffs) stalled(now time.Time) bool {
+func (h *handoffs) expireStalled(now time.Time) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for _, s := range h.segments {
-		if !s.complete && now.Sub(s.updated) >= 30*time.Second {
-			return true
+	h.pending = slices.DeleteFunc(h.pending, func(id string) bool {
+		s := h.segments[id]
+		if s.state != transcribing || now.Sub(s.updated) < 30*time.Second {
+			return false
 		}
-	}
-	return false
+		// Retain the ID for the call so a late completion cannot submit old speech.
+		h.segments[id] = segment{state: expired}
+		return true
+	})
+	h.submitReady()
 }
 
 // The native reader can revoke a queued or blocked append as soon as the
@@ -114,7 +130,7 @@ func (h *handoffs) stalled(now time.Time) bool {
 func (h *handoffs) speech(reply plugin.VoiceReply) (context.Context, context.CancelFunc, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if reply.HandoffID != h.latest || !h.segments[h.latest].complete || reply.Context.Err() != nil {
+	if reply.HandoffID != h.latest || h.segments[h.latest].state != completed || reply.Context.Err() != nil {
 		return nil, nil, false
 	}
 	ctx, cancel := context.WithCancel(reply.Context)
