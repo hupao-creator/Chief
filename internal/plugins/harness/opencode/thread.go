@@ -35,6 +35,7 @@ type Thread struct {
 	life                         context.Context
 	cancel                       context.CancelFunc
 	launch                       func(context.Context, Settings, string, bool) (*Runtime, error)
+	reviewer                     permissionReviewer
 	mu                           sync.Mutex
 	state                        *State
 	native                       *Runtime
@@ -63,7 +64,7 @@ type Thread struct {
 	closeErr                     error
 }
 
-func OpenThread(ctx context.Context, open plugin.OpenContext, launch func(context.Context, Settings, string, bool) (*Runtime, error)) (*Thread, error) {
+func OpenThread(ctx context.Context, open plugin.OpenContext, launch func(context.Context, Settings, string, bool) (*Runtime, error), reviewer permissionReviewer) (*Thread, error) {
 	if open.SessionState == nil || open.ReadThread == nil {
 		return nil, errors.New("OpenCode requires durable session authority")
 	}
@@ -75,7 +76,7 @@ func OpenThread(ctx context.Context, open plugin.OpenContext, launch func(contex
 		return nil, errors.New("unsupported OpenCode tool mode")
 	}
 	life, cancel := context.WithCancel(ctx)
-	t := &Thread{open: open, life: life, cancel: cancel, launch: launch, state: state, observed: map[string]bool{}, busy: map[string]bool{}, eventQueue: make(chan queuedEvent, 4096), workerDone: make(chan struct{})}
+	t := &Thread{open: open, life: life, cancel: cancel, launch: launch, reviewer: reviewer, state: state, observed: map[string]bool{}, busy: map[string]bool{}, eventQueue: make(chan queuedEvent, 4096), workerDone: make(chan struct{})}
 	if state.NativeSessionID != "" {
 		t.observed[state.NativeSessionID] = true
 	}
@@ -588,40 +589,12 @@ func (t *Thread) acceptEvent(ctx context.Context, event Event, replay bool, expe
 		t.busy[session] = true
 	}
 	foreground := t.state.foregroundForEvent(event, owner)
+	previousInteractions := len(t.state.Interactions)
 	if err := t.state.Reduce(event, owner); err != nil {
 		return err
 	}
 	if event.Durable != nil {
 		t.state.Cursors[session] = event.Durable.Seq
-	}
-	if event.Type == "permission.asked" && !replay && active != nil && t.native != nil {
-		settings, _, err := t.settings()
-		if err != nil {
-			return err
-		}
-		if settings.PermissionMode == "" || settings.PermissionMode == "auto" {
-			for _, pending := range t.state.Interactions {
-				if pending.Kind == "permission" && pending.SessionID == session && pending.ID == str(event.Data["id"]) && pending.Status == "pending" && t.nativeOps[interactionID(pending)] == nil {
-					err = t.respondInteractionLocked(ctx, pending, model.RespondRequest{ActionID: "allow"})
-					if t.closed || t.stopping {
-						return nil
-					}
-					if err != nil {
-						var req *RequestError
-						if !errors.As(err, &req) || req.Status != http.StatusNotFound {
-							return err
-						}
-						for _, current := range t.state.Interactions {
-							if interactionID(current) == interactionID(pending) && current.Status == "pending" {
-								current.Status = "cancelled"
-								t.state.RefreshInteractions(current.ExecutionID)
-								break
-							}
-						}
-					}
-				}
-			}
-		}
 	}
 	terminal := event.Type == "session.execution.succeeded" || event.Type == "session.execution.failed" || event.Type == "session.execution.interrupted"
 	if terminal {
@@ -651,6 +624,9 @@ func (t *Thread) acceptEvent(ctx context.Context, event Event, replay bool, expe
 	if terminal || interaction || strings.Contains(event.Type, "replied") || strings.Contains(event.Type, "cancelled") {
 		if err := t.commitLocked(ctx); err != nil {
 			return err
+		}
+		if event.Type == "permission.asked" && !replay && active != nil && len(t.state.Interactions) > previousInteractions {
+			t.startPermissionReviewLocked(t.state.Interactions[previousInteractions], event.Data)
 		}
 		if terminal && !replay {
 			go t.scheduleReconcile()
@@ -1334,6 +1310,9 @@ func (t *Thread) Respond(ctx context.Context, request model.RespondRequest) erro
 	}
 	if pending == nil || request.ExecutionID != "" && pending.ExecutionID != request.ExecutionID {
 		return errors.New("unknown or expired OpenCode interaction")
+	}
+	if review := t.nativeOps["review:"+request.InteractionID]; review != nil {
+		review.cancel()
 	}
 	if err := t.respondInteractionLocked(ctx, pending, request); err != nil {
 		return err

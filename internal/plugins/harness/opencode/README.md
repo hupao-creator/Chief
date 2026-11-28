@@ -164,8 +164,7 @@ isolated prompts all use build, including previously saved
 The native build agent must be available; there is no fallback to another agent.
 Settings omit the Agent selector and description, and creation schemas expose no
 agent choice. Native model/variant overrides on build still apply.
-`auto` permissions reply once to requests that pass native deny rules; forms still
-require typed responses. Exclusive sessions reject ambient plugins, MCP and tool
+The [permission review](#permission-and-account-boundaries) handles native approval requests. Forms require typed responses. Exclusive sessions reject ambient plugins, MCP and tool
 execution. Forks reserve new identities and import frozen history upon admission;
 reads use native `/fork` and `/generate` in the source database, retaining native
 lineage and cache affinity. The source primary request retains a bounded private
@@ -178,7 +177,7 @@ nonautomatic image detail remain explicit errors, matching the previous adapter.
 
 ## Permission and account boundaries
 
-`permissionMode` accepts `auto` or `default`. An omitted creation option inherits configured Harness mode, falling back to `auto`. Automatic mode replies once only after native deny policy allows the request; forms still need typed responses. Reconnect skips already answered or stopped interactions, and no wildcard persistent allow rule is installed.
+`permissionMode` accepts `auto` or `default`. An omitted creation option inherits configured Harness mode, falling back to `auto`. Native deny rules block before Chief receives a request. In `default`, each native ask waits for the user. In `auto`, Chief publishes the pending request, then uses the thread’s OpenCode provider and model in an isolated, tool-free completion. Its input contains the workspace, native request and matching tool input when the request identifies a tool call. Up to two reviews use native servers concurrently across the harness. A complete routine verdict within 15 seconds, including queue time, permits one native `once` reply for that pending request and active execution. Risky or uncertain actions, incomplete or oversized evidence (over 32 KiB), and review errors remain available for manual approval. Manual responses take precedence over an outstanding review. A previously persisted pending request stays manual across reconciliation or restart. Forms follow the normal typed response flow.
 
 Chief reads Go subscription windows from the native `opencode-go` provider in
 the configured workspace. The provider must have a recognized package, an
