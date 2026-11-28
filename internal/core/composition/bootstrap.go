@@ -237,12 +237,11 @@ func (b *Bootstrap) open(ctx context.Context) error {
 	addPlugin := func(category, id string) {
 		key := category + ":" + id
 		known[key] = true
-		catalog = append(catalog, model.RuntimePlugin{Key: key, Enabled: b.isEnabled(category, id), UnavailableReason: func() string {
-			if category == "harness" {
-				return b.disabled[id]
-			}
-			return ""
-		}()})
+		entry := model.RuntimePlugin{Key: key, Enabled: b.isEnabled(category, id)}
+		if category == "harness" {
+			entry = b.harnesses[id].Descriptor().RuntimePlugin(entry.Enabled, b.disabled[id])
+		}
+		catalog = append(catalog, entry)
 	}
 	for _, application := range applications {
 		manifest := application.Manifest()
@@ -284,7 +283,9 @@ func (b *Bootstrap) open(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	b.runtime.SetApplications(b.applications)
+	if err = b.runtime.SetApplications(ctx, b.applications); err != nil {
+		return err
+	}
 	err = b.runtime.RefreshApplicationDirectoryTags(ctx)
 	if err != nil {
 		return err

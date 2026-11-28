@@ -92,10 +92,10 @@ private final class FontResourceAnchor: NSObject {}
 
 /// Packaged apps own their resources. SwiftPM also places them beside standalone
 /// products and test bundles. Resolve both layouts from the running product.
-enum NativeResources {
+package enum NativeResources {
     static let platform = "macosx"
 
-    static let bundle: Bundle = {
+    package static let bundle: Bundle = {
         let name = "ChiefNative_ChiefPluginUI.bundle"
         if let resourceURL = Bundle.main.resourceURL {
             let packagedURL = resourceURL.appendingPathComponent(name, isDirectory: true)

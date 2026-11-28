@@ -35,7 +35,11 @@ import ChiefHarnessOpenCode
                 .object(["pi": .object(["status": .text("installed")]), "codex": .object(["status": .text("installed")]),
                          "claude": .object(["status": .text("installed")]), "opencode": .object(["status": .text("installed")])])
             }, installHarness: { _ in })
-        model.receive(snapshot: nil, runtimeAvailable: true)
+        let plugins: [JSONValue] = (harnesses.map { $0.descriptor.id.string }).map { id in
+            .object(["key": .text("harness:" + id), "enabled": .bool(true),
+                     "harnessRoles": .array(["agent", "moku", "tag.settings", "report.settings"].map(JSONValue.text))])
+        }
+        model.receive(snapshot: .object(["plugins": .array(plugins)]), runtimeAvailable: true)
     }
 }
 

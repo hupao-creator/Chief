@@ -14,10 +14,17 @@ public struct AgyHarnessPlugin: HarnessPlugin {
     public let descriptor = HarnessPluginDescriptor(id: "agy", displayName: "Antigravity",
         threadCapabilities: .init(instructions: false, threadContext: false, sendContext: true, toolModes: []),
         installationGuide: URL(string: "https://antigravity.google/docs/getting-started?tab=cli"))
-    private static let logoData = nativeLogoPNG { AgyHarnessPlugin().logo(size: 64) }
-    public var logoSource: String { Self.logoData }
+    private static let artwork: (image: NSImage, source: String) = {
+        guard let url = NativeResources.bundle.url(forResource: "Antigravity", withExtension: "png"),
+              let data = try? Data(contentsOf: url), let image = NSImage(data: data) else {
+            preconditionFailure("Missing Antigravity logo")
+        }
+        return (image, "data:image/png;base64," + data.base64EncodedString())
+    }()
+    public var logoSource: String { Self.artwork.source }
     public func logo(size: CGFloat) -> some View {
-        Image(systemName: "mountain.2.fill").resizable().scaledToFit().frame(width: size, height: size)
+        Image(nsImage: Self.artwork.image).renderingMode(.original).resizable().interpolation(.high)
+            .scaledToFit().frame(width: size, height: size).accessibilityLabel("Antigravity")
     }
     public var harnessSettingsCodec: PluginValueCodec<JSONValue> { settingsCodec(["authMethod", "model"]) }
     public var threadSettingsCodec: PluginValueCodec<JSONValue> { settingsCodec(["model"]) }

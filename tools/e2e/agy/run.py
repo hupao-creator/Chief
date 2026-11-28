@@ -18,6 +18,7 @@ from gate.runner import lease
 from provider import Provider, declared_tools, find_tool
 from reading.public import content
 from gemini import Gemini
+from roles import check_role_admission, seed_legacy_roles, check_repaired_roles
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lease import DesktopLease
 
@@ -143,34 +144,78 @@ def desktop_ui(desktop, binary, profile, socket, env):
         owner.close()
 
 
-def select_target(ui, runtime):
+def controls(ui):
+    return ((ui.request() or {}).get("settings") or {}).get("controls", [])
+
+
+def activate(ui, id, selected):
+    row = wait_for(lambda: next((c for c in controls(ui) if c["id"] == id and c["enabled"]
+                                 and not c["pending"] and c["value"] is selected), None), bool, 45)
+    ui.request({"name": "settings.control", "controlId": id, "handle": row["handle"],
+                "operation": "activate", "value": None})
+
+
+def open_settings(ui):
     wait_for(ui.request, lambda s: s and "settings.open" in s["actions"], 45)
     ui.request({"name": "settings.open"})
 
-    def select(harness, selected):
-        def control():
-            page = ui.request() or {}
-            return next((c for c in (page.get("settings") or {}).get("controls", [])
-                         if c["id"].endswith("target." + harness) and c["enabled"]
-                         and c["value"] is selected), None)
-        current = wait_for(control, bool, 45)
-        ui.request({"name": "settings.control", "controlId": current["id"], "handle": current["handle"],
-                    "operation": "activate", "value": None})
 
-    select("agy", False)
-    select("codex", True)
+def select_target(ui, runtime, capture):
+    open_settings(ui)
+    installed = runtime.invoke("harness:detect-installations", [])
+    available = {p["key"].removeprefix("harness:"): p["harnessRoles"] for p in runtime.state()["plugins"]
+                 if p["key"].startswith("harness:") and p["enabled"] and not p.get("unavailableReason")
+                 and installed[p["key"].removeprefix("harness:")]["status"] == "installed"}
+
+    def roster(prefix, role):
+        expected = {id for id, roles in available.items() if role in roles}
+        wait_for(lambda: controls(ui),
+                 lambda rows: {c["id"].removeprefix(prefix) for c in rows if c["id"].startswith(prefix)} == expected, 45)
+
+    roster("moku.host.", "moku")
+    roster("moku.target.", "agent")
+    activate(ui, "moku.target.agy", False)
+    wait_for(lambda: controls(ui), lambda rows: any(c["id"] == "moku.target.agy" and c["value"] for c in rows), 10)
+    capture(ui, "chief-agent")
+    activate(ui, "moku.target.codex", True)
+    for owner, name in (("tag.settings", "auto-categorization"), ("report.settings", "super-thread")):
+        ui.request({"name": "settings.select", "section": owner})
+        activate(ui, owner + ".independent", False)
+        roster(owner + ".harness.", owner)
+        capture(ui, name)
+        activate(ui, owner + ".off", False)
     wait_for(ui.request, lambda s: s and "settings.close" in s["actions"], 25)
     ui.request({"name": "settings.close"})
     wait_for(runtime.state, lambda s: s["settings"]["moku"]["targetHarnessIds"] == ["agy"], 25)
-    print("macOS Chief Agent settings selected and saved Antigravity as the dispatch target", flush=True)
+    print("macOS Chief Host, dispatch, Tag and Super Thread rosters matched; AGY saved as the dispatch target", flush=True)
 
 
-def check_reader(ui, thread_id, execution_id):
+def reopen_repaired_settings(ui, runtime):
+    open_settings(ui)
+    for owner in ("tag.settings", "report.settings"):
+        ui.request({"name": "settings.select", "section": owner})
+        activate(ui, owner + ".independent", False)
+        wait_for(lambda: controls(ui), lambda rows: any(c["id"] == owner + ".harness.codex" and c["value"] for c in rows), 15)
+        check(not any(c["id"] == owner + ".harness.agy" for c in controls(ui)), "retained AGY role reappeared")
+        activate(ui, owner + ".off", False)
+    wait_for(ui.request, lambda s: s and "settings.close" in s["actions"], 25)
+    ui.request({"name": "settings.close"})
+
+    def restored(state):
+        roles = [e["value"] for e in state["settings"]["pluginSettings"] if e["id"] in ("tag.settings", "report.settings")]
+        return len(roles) == 2 and all(r.get("mode") == "override" and r.get("enabled") is False
+                                       and r.get("harnessPreference") == "codex" for r in roles)
+    wait_for(runtime.state, restored, 25)
+    print("both repaired role editors opened the retained Codex model and saved through Settings", flush=True)
+
+
+def check_reader(ui, thread_id, execution_id, capture):
     def card():
         snapshot = ui.request() or {}
         if snapshot.get("page") == "overview" and "thread.open" in snapshot["actions"]:
             return next((r for r in snapshot["threads"] if r["threadId"] == thread_id), None)
     target = wait_for(card, bool, 45)
+    capture(ui, "thread-card")
     ui.request({"name": "thread.open", "threadId": target["threadId"], "typeId": target["typeId"]})
     def mounted(snapshot):
         controls = ((snapshot or {}).get("reading") or {}).get("controls", [])
@@ -178,10 +223,11 @@ def check_reader(ui, thread_id, execution_id):
                    and c["value"].get("state") == "ready" and c["value"].get("visibleRowCount", 0) > 0
                    for c in controls)
     wait_for(ui.request, mounted, 45)
+    capture(ui, "thread-reader")
     print("macOS opened the saved Antigravity card from Overview and mounted its completed execution", flush=True)
 
 
-def replay(binary, root, stack, desktop):
+def replay(binary, root, stack, desktop, capture=lambda ui, name: None):
     gateway = stack.enter_context(Gemini())
     server = threading.Thread(target=gateway.serve_forever, daemon=True)
     server.start()
@@ -233,13 +279,14 @@ supports_websockets = false
     settings["moku"]["targetHarnessIds"] = ["codex"] if desktop else ["agy"]
     settings["harnesses"]["agy"] = {"authMethod": "gemini-api-key"}
     runtime.invoke("app:update-settings", [{"settings": settings, "expectedSettingsRevision": state["settingsRevision"]}])
+    check_role_admission(runtime)
     preferences = profile / "desktop-preferences.json"
     if desktop:
         preferences.write_text(json.dumps({"onboardingCompleted": True}))
         with desktop.open("rb") as executable:
             print("desktop_sha256=" + hashlib.file_digest(executable, "sha256").hexdigest(), flush=True)
         with desktop_ui(desktop, binary, profile, root / "setup.sock", env) as ui:
-            select_target(ui, runtime)
+            select_target(ui, runtime, capture)
     service("stop")
     service("start")
     catalog = runtime.invoke("harness:settings-presentation", [{"scope": "global", "harnessId": "agy"}])["value"]
@@ -272,7 +319,9 @@ supports_websockets = false
     check(second["status"] == "completed" and second.get("summary", "").strip() == "RECALL: " + peer.marker,
           f"follow-up did not return the exact recall reply (status={second['status']}, error={second.get('error')})")
     service("stop")
+    saved = seed_legacy_roles(profile)
     service("start")
+    check_repaired_roles(runtime, saved)
     for turn, expected in ((first, peer.marker), (second, "RECALL: " + peer.marker)):
         snapshot = content(runtime, tid, {"kind": "turn", "key": turn["executionId"]})
         rows = snapshot["value"]["turns"]
@@ -283,7 +332,8 @@ supports_websockets = false
     print("same-session recall and scoped replies after Runtime restart passed", flush=True)
     if desktop:
         with desktop_ui(desktop, binary, profile, root / "ui.sock", env) as ui:
-            check_reader(ui, tid, second["executionId"])
+            reopen_repaired_settings(ui, runtime)
+            check_reader(ui, tid, second["executionId"], capture)
         service("start")
     workspace = Path(thread["cwd"]).resolve()
     check(workspace == peer.project.resolve(), "task ran outside the selected temporary project")
@@ -342,8 +392,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", type=Path, required=True)
     parser.add_argument("--desktop", type=Path, help="also enable the target in Settings and open the saved Thread with this Chief desktop")
+    parser.add_argument("--capture", type=Path, nargs=2, metavar=("COLLECTOR", "DIRECTORY"),
+                        help="save mounted desktop window PNGs with the native benchmark collector")
     args = parser.parse_args()
+    if args.capture and not args.desktop:
+        parser.error("--capture requires --desktop")
+
+    def capture(ui, name):
+        if args.capture:
+            collector, directory = args.capture
+            directory.mkdir(parents=True, exist_ok=True)
+            wait_for(ui.request, lambda s: s and s["mounted"] and not s["transitioning"], 30)
+            subprocess.run([collector, "capture", str(ui.pid), directory / (name + ".png")], check=True, timeout=20)
+
     # Chief reserves chief-* under the system temp directory for Inbox work.
     # Model a user-selected project folder so its settled card is in Overview.
     with lease(), tempfile.TemporaryDirectory(prefix="agy-dispatch-") as tmp, contextlib.ExitStack() as stack:
-        replay(args.runtime.resolve(), Path(tmp), stack, args.desktop.resolve() if args.desktop else None)
+        replay(args.runtime.resolve(), Path(tmp), stack, args.desktop.resolve() if args.desktop else None, capture)

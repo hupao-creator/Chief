@@ -103,7 +103,7 @@ func TestDispatchOptionsProperties(t *testing.T) {
 type dispatchChiefPeer struct{ injectedToolPeer }
 
 func (*dispatchChiefPeer) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ID: "fixture", ThreadCapabilities: plugin.ThreadCapabilities{Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"exclusive"}}}
+	return plugin.HarnessDescriptor{ID: "fixture", Roles: plugin.StandardHarnessRoles(), ThreadCapabilities: plugin.ThreadCapabilities{Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"exclusive"}}}
 }
 
 type dispatchTargetPeer struct {
@@ -115,7 +115,7 @@ type dispatchTargetPeer struct {
 }
 
 func (h *dispatchTargetPeer) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ID: "opencode"}
+	return plugin.HarnessDescriptor{ID: "opencode", Roles: []string{plugin.AgentThreadRole}}
 }
 func (h *dispatchTargetPeer) Settings() plugin.HarnessSettings { return h.adapter.Settings() }
 func (h *dispatchTargetPeer) DefaultSettings() json.RawMessage { return h.adapter.DefaultSettings() }

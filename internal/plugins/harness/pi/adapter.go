@@ -23,7 +23,7 @@ func New(host plugin.HostContext) *Adapter { return &Adapter{host: host, setting
 func (a *Adapter) Close() error            { return a.settings.close() }
 
 func (*Adapter) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ID: "pi", DisplayName: "Pi Agent", ThreadCapabilities: plugin.ThreadCapabilities{Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"exclusive"}}}
+	return plugin.HarnessDescriptor{ID: "pi", DisplayName: "Pi Agent", Roles: plugin.StandardHarnessRoles(), ThreadCapabilities: plugin.ThreadCapabilities{Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"exclusive"}}}
 }
 func (*Adapter) DefaultSettings() json.RawMessage         { return json.RawMessage(`{"threadSettings":{}}`) }
 func (a *Adapter) Settings() plugin.HarnessSettings       { return a.settings }

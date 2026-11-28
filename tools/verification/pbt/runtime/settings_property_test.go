@@ -212,11 +212,16 @@ func sameProfileChoices(a, b json.RawMessage) bool {
 type roleSettingsHarness struct {
 	harness
 	id     string
+	roles  []string
 	native roleSettingsNative
 }
 
 func (h roleSettingsHarness) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ID: h.id, ThreadCapabilities: plugin.ThreadCapabilities{
+	roles := h.roles
+	if roles == nil {
+		roles = plugin.StandardHarnessRoles()
+	}
+	return plugin.HarnessDescriptor{ID: h.id, Roles: roles, ThreadCapabilities: plugin.ThreadCapabilities{
 		Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"exclusive"},
 	}}
 }
@@ -301,6 +306,10 @@ func TestBackgroundSettingsSaveProperties(t *testing.T) {
 			disabled[fmt.Sprintf("fixture-%d", (selected+1)%count)] = "fixture disabled"
 		}
 		roles := []string{"tag.settings", "report.settings"}
+		// This adapter can inject exclusive tools but opts into just one role.
+		limitedRole := rapid.IntRange(0, 1).Draw(t, "declared-role")
+		harnesses["limited"] = &roleSettingsHarness{id: "limited", roles: []string{roles[limitedRole]},
+			native: roleSettingsNative{snapshots: &snapshots}}
 		r, err := core.New(ctx, core.Config{Store: db, DataDir: root, DefaultCwd: root,
 			Harnesses: harnesses, DisabledHarnesses: disabled, Applications: roleSettingsApplications{}})
 		if err != nil {
@@ -409,6 +418,25 @@ func TestBackgroundSettingsSaveProperties(t *testing.T) {
 		if err != nil || unchanged.Status != "saved" || unchanged.SettingsRevision != retry.SettingsRevision {
 			t.Fatalf("unchanged save advanced the revision: %+v / %v", unchanged, err)
 		}
+		for index, role := range roles {
+			_, previewErr := r.Invoke(ctx, "harness:settings-presentation", []json.RawMessage{raw(map[string]any{
+				"scope": "global", "harnessId": "limited", "applicationSettings": role, "previewIndependent": true,
+			})})
+			if (previewErr == nil) != (index == limitedRole) {
+				t.Fatalf("preview for %s ignored the declared role: %v", role, previewErr)
+			}
+		}
+		denied := 1 - limitedRole
+		for _, mode := range []string{"override", "inherit"} {
+			value := draft(retry.Settings, denied, "limited")
+			if mode == "inherit" {
+				value.PluginSettings[denied].Value = raw(map[string]any{"mode": mode, "independent": map[string]any{
+					"harnessPreference": "limited", "harnesses": profiles}})
+			}
+			if _, err := save(value, retry.SettingsRevision); err == nil {
+				t.Fatalf("undeclared %s role accepted in %s mode", roles[denied], mode)
+			}
+		}
 		if count := snapshots.Load(); count != 0 {
 			t.Fatalf("preview or save acquired %d native snapshots", count)
 		}
@@ -420,6 +448,13 @@ func TestBackgroundSettingsSaveProperties(t *testing.T) {
 				string(next.PluginSettings[0].Value) != string(retry.Settings.PluginSettings[0].Value) || snapshots.Load() != 1 {
 				t.Fatalf("cold admission did not capture only the missing slot: %v", err)
 			}
+		}
+		current, rev, err := r.Settings()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if accepted, err := save(draft(current, limitedRole, "limited"), rev); err != nil || accepted.Status != "saved" {
+			t.Fatalf("declared independent role rejected: %v / %v", accepted.Status, err)
 		}
 	})
 }

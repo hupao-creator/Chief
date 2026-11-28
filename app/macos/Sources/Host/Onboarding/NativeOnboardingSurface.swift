@@ -148,7 +148,9 @@ struct NativeOnboardingSurface: View {
                     if state.admitted && panelStep == .discovery { discovery.padding(.top, 22) }
                     else if state.admitted {
                         NativeRoleConfigurationPanel(role: panelStep == .moku ? .moku : panelStep == .tag ? .tag : .report,
-                            harnesses: state.installed, locale: locale, showsHeading: true) {
+                            harnesses: state.installed.filter { harness in
+                                panelStep.settingID.map { state.settings.supports(harness, role: .application(JSONText($0))) } ?? true
+                            }, locale: locale, showsHeading: true) {
                             configurationForStep(panelStep).disabled(state.busy)
                         }
                     }
@@ -254,13 +256,7 @@ struct NativeOnboardingSurface: View {
     @ViewBuilder private var configuration: some View {
         if panelStep == .moku {
             NativeMokuSettings(model: state.settings, harnesses: state.installed, locale: locale, focusRequest: 0, motion: mapMotion,
-                harnessSettings: { request in
-                    AnyView(NativeHarnessSettingsView(host: state.workspace.harnessHost,
-                        configuration: .init(harnessID: request.harnessID, cwd: JSONText(state.settings.defaultCwd),
-                            source: request.savedValue, scope: .global(executionOwner: .moku)),
-                        section: request.section, executionSnapshot: true, settingsFormPage: true,
-                        refreshSequence: request.refreshSequence, value: request.value))
-                }, onCoordinatorFrame: { _, _ in }, onCloseRequest: {}, presentation: .compact)
+                harnessSettings: { $0.editor(in: state.workspace) }, onCoordinatorFrame: { _, _ in }, onCloseRequest: {}, presentation: .compact)
         } else if let id = panelStep.settingID, let section = applicationSections.first(where: { $0.id == id }) {
             let saved = state.settings.savedSettings["pluginSettings"]?.arrayValue?.first(where: { $0["id"] == .text(id) })?["value"] ?? .null
             section.content(saved, state.settings.applicationValueBinding(id))

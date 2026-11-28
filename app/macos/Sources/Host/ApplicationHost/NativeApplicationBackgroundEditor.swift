@@ -34,9 +34,11 @@ public struct NativeApplicationBackgroundEditor: View {
     private var inherited: Bool {
         if case .inherit = value.mode { return true }; return false
     }
+    private var roleHarnesses: [AnyHarnessPlugin] {
+        workspace.plugins.harnesses.modules.filter { settingsModel.supports($0, role: .application(settingID)) }
+    }
     private var harnesses: [AnyHarnessPlugin] {
-        workspace.plugins.harnesses.modules.filter { harness in
-            guard harness.descriptor.threadCapabilities.canHostMoku else { return false }
+        roleHarnesses.filter { harness in
             guard onboarding else { return true }
             let plugin = settingsModel.plugins.first { $0.key == "harness:\(harness.descriptor.id.string)" }
             return onboardingHarnessIDs?.contains(harness.descriptor.id) != false
@@ -51,6 +53,15 @@ public struct NativeApplicationBackgroundEditor: View {
 
     private var selectedChoice: AgentChoice {
         value.enabled ? (inherited ? .inherit : .independent) : .off
+    }
+
+    private var chiefSource: JSONValue {
+        editorDrafts == nil ? settingsModel.savedSettings : settingsModel.draft.value
+    }
+
+    private var canInherit: Bool {
+        guard let id = chiefSource["moku"]?["hostHarnessPreference"]?.stringValue, id != "auto" else { return true }
+        return roleHarnesses.contains { $0.descriptor.id.string == id }
     }
 
     private func choiceDescription(_ choice: AgentChoice) -> String {
@@ -124,12 +135,13 @@ public struct NativeApplicationBackgroundEditor: View {
             NativeSettingsChoiceButton(title, selected: selected, hint: hint) { selectChoice(choice) }
                 .accessibilityIdentifier("\(settingID.string)-mode-\(choice.rawValue)")
                 .nativeSettingsAction(choice.rawValue, label: title, selected: selected) { selectChoice(choice) }
+                .disabled(choice == .inherit && !canInherit)
         }
     }
 
     @ViewBuilder private func onboardingFields(_ effective: ApplicationBackgroundExecutionSettings.Overrides) -> some View {
         if inherited {
-            if let host = workspace.plugins.harnesses.modules.first(where: { $0.descriptor.id == effective.harnessPreference }) {
+            if let host = roleHarnesses.first(where: { $0.descriptor.id == effective.harnessPreference }) {
                 HStack(alignment: .top, spacing: 20) {
                     HStack(spacing: 12) {
                         host.logo(size: 24)
@@ -186,7 +198,7 @@ public struct NativeApplicationBackgroundEditor: View {
                     + harnesses.map { .init(id: $0.descriptor.id, label: $0.descriptor.displayName.string) }).nativeSettingsControl("harness")
                     .disabled(inherited)
             }
-            if let host = workspace.plugins.harnesses.modules.first(where: { $0.descriptor.id == effective.harnessPreference }) {
+            if let host = roleHarnesses.first(where: { $0.descriptor.id == effective.harnessPreference }) {
                 harnessFields(host, effective: effective)
             } else {
                 NativeSettingsNotice(message: locale.text("请先选择 Chief 的协调 Agent 并固定运行配置。",
@@ -232,7 +244,7 @@ public struct NativeApplicationBackgroundEditor: View {
     private func effectiveSettings(_ settings: ApplicationBackgroundExecutionSettings) throws
         -> ApplicationBackgroundExecutionSettings.Overrides {
         switch settings.mode {
-        case .inherit: return try mokuSettings(editorDrafts == nil ? settingsModel.savedSettings : settingsModel.draft.value)
+        case .inherit: return try mokuSettings(chiefSource)
         case .override(let overrides): return overrides
         }
     }
@@ -242,7 +254,9 @@ public struct NativeApplicationBackgroundEditor: View {
               case .object(let harnesses) = source["moku"]?["executionHarnesses"] else {
             throw PluginContractError("Invalid saved Chief execution settings")
         }
-        return try .init(harnessPreference: preference, harnesses: harnesses)
+        let supported = Set(roleHarnesses.map(\.descriptor.id))
+        return try .init(harnessPreference: supported.contains(preference) ? preference : "auto",
+                         harnesses: harnesses.filter { supported.contains($0.key) })
     }
 
     private func savedApplicationSettings() throws -> ApplicationBackgroundExecutionSettings {
@@ -254,14 +268,21 @@ public struct NativeApplicationBackgroundEditor: View {
     }
 
     private func selectChoice(_ choice: AgentChoice) {
-        guard choice != selectedChoice else { return }
+        guard choice != selectedChoice, choice != .inherit || canInherit else { return }
         do {
             // Off preserves the underlying mode. Enabling and choosing a source
             // share one draft update, so no intermediate configuration is saved.
             let mode: ApplicationBackgroundExecutionSettings.Mode
             switch (choice, value.mode) {
             case (.inherit, .override(let overrides)): mode = .inherit(independent: overrides)
-            case (.independent, .inherit(let independent)): mode = .override(try independent ?? mokuSettings(editorDrafts == nil ? settingsModel.savedSettings : settingsModel.draft.value))
+            case (.independent, .inherit(let independent)):
+                let chief = try mokuSettings(chiefSource)
+                if let independent, independent.harnessPreference == "auto" {
+                    mode = .override(try .init(harnessPreference: chief.harnessPreference,
+                                               harnesses: chief.harnesses.merging(independent.harnesses) { _, saved in saved }))
+                } else {
+                    mode = .override(independent ?? chief)
+                }
             default: mode = value.mode
             }
             NativeSettingsChangeContext.withDiscreteChange {

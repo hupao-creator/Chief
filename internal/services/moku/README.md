@@ -34,6 +34,7 @@ native failures cannot authorize replay or clear an uncertain outbox attempt.
 
 Fixed tool schemas compile once per installed binding and are reused for that
 configuration generation. Published option changes are delivered through context and preserve the installed bindings.
+The target schema and context list the selected Harnesses that declare the ordinary Agent Thread role.
 
 For an ordinary Antigravity Thread, `target.agy.model` carries the exact published native ID. The destination handles authentication, permission requests and terminal observation. Further user inputs can resume the same native session. [Antigravity dispatch](../../plugins/harness/agy/README.md)
 

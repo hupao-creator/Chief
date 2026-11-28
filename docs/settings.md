@@ -14,7 +14,7 @@ You can change a ready agent’s settings while Chief checks the others. Close S
 
 If Chief says no agents are available, install and sign in to a supported agent on your Mac, then return to the **Chief Agent** tab and click **Retry**. [Supported agents](getting-started.md#connect-an-agent)
 
-To give tasks to **Antigravity**, select it in the bottom row. Expand **Antigravity** below the map to choose **Authentication**. **Use native settings** uses the account set up in `agy`. If you choose a sign-in method, complete its setup in `agy`. Close Settings to save, then ask Chief to assign Antigravity a task in your chosen project folder. Open the folder in Overview and click the task card to read the reply.
+Antigravity takes ordinary tasks. To enable it, select its multicolor A in the bottom row and look for a dashed line from Chief. Expand **Antigravity** below the map to choose **Authentication**. **Use native settings** uses the account set up in `agy`. If you choose a sign-in method, complete its setup in `agy`. Close Settings to save, then ask Chief to assign Antigravity a task in your chosen project folder. Open the folder in Overview and click the task card to read the reply.
 
 Use **Task Orchestration Preferences** to guide which models Chief chooses when it assigns tasks. Pick **Economy**, **Balanced**, or **Performance**, or select **Custom** and click the text box below. When the cursor appears, describe what you prefer. The hint disappears as you type. Hover over a choice marked with an info icon to read its description. Chief keeps your custom text if you switch presets. Chief chooses from the agents you've enabled and the models available when it assigns the work.
 
@@ -22,7 +22,7 @@ Chief can use Artificial Analysis measurements for the specific model and reason
 
 ## Set up Tag Agent and Super Thread Agent
 
-Use **Auto-Categorization** to set up Tag Agent and **Super Thread** to set up Super Thread Agent. When an agent is available, an illustration on a rounded glass panel plays above the role's settings. In the Super Thread illustration, several documents come together into one page with three diagrams. You can turn either role on independently. Hover over a choice marked with an info icon to see what it does.
+Use **Auto-Categorization** to set up Tag Agent and **Super Thread** to set up Super Thread Agent. Each page lists the installed agents that can run that role. You can use Antigravity for ordinary tasks alongside either role. When an agent is available, an illustration on a rounded glass panel plays above the role's settings. In the Super Thread illustration, several documents come together into one page with three diagrams. You can turn either role on independently. Hover over a choice marked with an info icon to see what it does.
 
 - **Agent off** stops automatic work for that role and keeps its existing tags or Super Threads and saved choices. Pending work resumes when you turn the agent back on.
 - **Use Chief** uses Chief's agent and model settings for future work.

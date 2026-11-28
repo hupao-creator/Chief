@@ -267,7 +267,8 @@ struct NativeSettingsPreferredHeightKey: PreferenceKey {
         harnesses.filter { harness in
             let id = harness.descriptor.id.string
             let plugin = model.plugins.first { $0.key == "harness:" + id }
-            return model.installations[id]?.status == .installed && plugin?.enabled != false && plugin?.unavailableReason == nil
+            return model.supports(harness, role: .application(JSONText(activeSection)))
+                && model.installations[id]?.status == .installed && plugin?.enabled != false && plugin?.unavailableReason == nil
         }
     }
 

@@ -196,6 +196,8 @@ leaves its page releases its waiting HTTP request even when another native
 discovery still owns the gate; a cancelled waiter never enters the operation.
 Nested preparation shares the owning admission context.
 
+Registered Harness roles govern dispatch targets, execution settings reads and saves, and native admission. A background role is identified by its registered execution-settings binding. Independent choices retained under inheritance are validated on save. On profile startup, unsupported Chief selections return to automatic host resolution. An unsupported independent selection returns to the role’s inherited default. Other eligible saved profiles and the role’s on/off switch are retained. Reconciliation writes the settings revision only when it repairs a selection or profile. Ordinary Thread history, directories and Harness defaults have separate ownership. [Role contract](../../plugins/harness/README.md#3-声明可用角色和能力) · [Profile reconciliation](harness_roles.go)
+
 Settings presentation and startup recovery discover missing execution profiles
 outside that gate. Their short commit merges only changed execution fields,
 checking the selected Harness's source rather than unrelated Harness defaults.
@@ -372,7 +374,7 @@ fields in different orders. Completions before commit, after commit or
 through cancellation check which source may be returned and which operation may
 advance the revision. **PBT-RUNTIME-ROLE-SETTINGS** checks read-only independent
 previews, conflicting saves and retention across retry. It also checks that cold
-initialization captures only the missing slot. The
+initialization captures only the missing slot and that an adapter with exclusive tools can opt into just one of the two background roles. The
 [properties](../../../tools/verification/pbt/runtime/settings_property_test.go)
 use a real Runtime and isolated SQLite with controlled Harness adapters.
 

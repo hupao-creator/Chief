@@ -154,6 +154,9 @@ func New(ctx context.Context, config Config) (*Runtime, error) {
 	r.generationCtx, r.generationCancel = context.WithCancel(lifetime)
 	r.publisherWake = make(chan struct{}, 1)
 	_, err = config.Store.Update(ctx, r.initializeHarnessSettings)
+	if err == nil && config.Applications != nil {
+		err = r.reconcileHarnessRoles(ctx)
+	}
 	if err != nil {
 		cancel()
 		return nil, err
@@ -257,12 +260,16 @@ func New(ctx context.Context, config Config) (*Runtime, error) {
 	return r, nil
 }
 
-func (r *Runtime) SetApplications(applications Applications) {
+func (r *Runtime) SetApplications(ctx context.Context, applications Applications) error {
 	r.mu.Lock()
 	r.config.Applications = applications
 	r.applicationGeneration++
 	r.mu.Unlock()
+	if err := r.reconcileHarnessRoles(ctx); err != nil {
+		return err
+	}
 	r.Publish()
+	return nil
 }
 func (r *Runtime) SetMoku(moku Moku) { r.mu.Lock(); r.config.Moku = moku; r.mu.Unlock() }
 func (r *Runtime) Harnesses() map[string]plugin.Harness {

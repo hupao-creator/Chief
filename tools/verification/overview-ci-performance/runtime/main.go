@@ -153,7 +153,7 @@ func run() (returned error) {
 		return err
 	}
 	r, err := core.New(ctx, core.Config{Store: db, Harnesses: map[string]plugin.Harness{"codex": adapter},
-		DataDir: p.DataDir, DefaultCwd: workspace, Plugins: []model.RuntimePlugin{{Key: "harness:codex", Enabled: true}}})
+		DataDir: p.DataDir, DefaultCwd: workspace, Plugins: []model.RuntimePlugin{adapter.Descriptor().RuntimePlugin(true, "")}})
 	if err != nil {
 		return err
 	}

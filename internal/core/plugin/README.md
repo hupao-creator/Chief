@@ -4,6 +4,8 @@
 
 `plugin.Harness` 必须提供 Descriptor、DefaultSettings、Detect、Settings、SessionState、Metadata 和 Open。可选功能使用独立接口，包括 Installer、Forker、PromptCompleter、AvailabilityProbe、ModelCatalogSource、WorkspaceDiscoverer、Extension；未实现的能力不能以空成功响应冒充支持。
 
+`HarnessDescriptor.Roles` 声明插件可参与的角色。普通派发使用 `agent`，Chief Host 使用 `moku`，后台角色使用应用自己的执行设置绑定 ID。内部角色还需要独占执行与注入能力。Runtime 将有效角色发布在 `state:load` 的 `plugins[].harnessRoles`，供客户端绘图和配置选择使用。[Harness 接入](../../plugins/harness/README.md)
+
 `OpenContext` 将会话限定到一个 Thread：
 
 - `ReadThread` 返回会话快照。

@@ -14,6 +14,14 @@ public struct NativeHarnessSettingsRequest {
     public let refreshSequence: Int
     public let savedValue: JSONValue
     public let value: Binding<JSONValue>
+
+    @MainActor func editor(in workspace: NativeWorkspaceModel) -> AnyView {
+        AnyView(NativeHarnessSettingsView(host: workspace.harnessHost,
+            configuration: .init(harnessID: harnessID, cwd: JSONText(workspace.settingsModel.defaultCwd),
+                source: savedValue, scope: .global(applicationSettings: scopeID, executionOwner: executionSnapshot ? .moku : nil)),
+            section: section, executionSnapshot: executionSnapshot, settingsFormPage: true,
+            refreshSequence: refreshSequence, value: value))
+    }
 }
 
 /// Application-owned settings remain opaque to the settings shell. Composition
@@ -30,14 +38,28 @@ public struct NativeHarnessSettingsRequest {
     }
 }
 
+enum NativeHarnessRole {
+    case agentThread, chiefHost, application(JSONText)
+
+    var key: String {
+        switch self {
+        case .agentThread: "agent"
+        case .chiefHost: "moku"
+        case .application(let settingsID): settingsID.string
+        }
+    }
+}
+
 public struct NativeSettingsPlugin: Equatable, Sendable {
     public let key: String
     public let enabled: Bool
     public let unavailableReason: String?
+    let harnessRoles: Set<String>
     public init?(json: JSONValue) {
         guard let key = json["key"]?.stringValue, let enabled = json["enabled"]?.boolValue else { return nil }
         self.key = key; self.enabled = enabled
         unavailableReason = json["unavailableReason"]?.stringValue
+        harnessRoles = Set(json["harnessRoles"]?.arrayValue?.compactMap(\.stringValue) ?? [])
     }
 }
 
@@ -109,6 +131,10 @@ public final class NativeSettingsModel {
             defaultCwd = snapshot["defaultCwd"]?.stringValue ?? defaultCwd
         }
         if draft.runtimeAvailable != runtimeAvailable { draft.runtimeAvailable = runtimeAvailable }
+    }
+
+    func supports(_ harness: AnyHarnessPlugin, role: NativeHarnessRole) -> Bool {
+        plugins.first { $0.key == "harness:" + harness.descriptor.id.string }?.harnessRoles.contains(role.key) == true
     }
 
     public func startDiscovery(harnessIDs: [String]) {

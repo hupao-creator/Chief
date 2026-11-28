@@ -148,7 +148,11 @@ struct SetupRole {
                     (JSONText(agent.rawValue), JSONValue.object(["status": .text(installed.contains(agent) ? "installed" : "missing")]))
                 }))
             }, installHarness: { _ in })
-        model.receive(snapshot: nil, runtimeAvailable: true)
+        let plugins: [JSONValue] = (SetupAgent.allCases.map(\.rawValue)).map { id in
+            .object(["key": .text("harness:" + id), "enabled": .bool(true),
+                     "harnessRoles": .array(["agent", "moku", "tag.settings", "report.settings"].map(JSONValue.text))])
+        }
+        model.receive(snapshot: .object(["plugins": .array(plugins)]), runtimeAvailable: true)
         return model
     }
 }

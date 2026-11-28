@@ -1339,14 +1339,7 @@ public struct NativeWorkspaceView: View {
     private var settings: some View {
         NativeSettingsPage(model: model.settingsModel, navigation: presentation.settingsNavigation, locale: model.locale, harnesses: model.plugins.harnesses.modules,
             applicationSections: presentation.applicationHost.settingsSections(model: model.settingsModel),
-            harnessSettings: { request in
-                AnyView(NativeHarnessSettingsView(host: model.harnessHost,
-                    configuration: NativeHarnessSettingsConfiguration(harnessID: request.harnessID,
-                        cwd: JSONText(model.settingsModel.defaultCwd), source: request.savedValue,
-                        scope: .global(applicationSettings: request.scopeID, executionOwner: request.executionSnapshot ? .moku : nil)),
-                    section: request.section, executionSnapshot: request.executionSnapshot, settingsFormPage: true,
-                    refreshSequence: request.refreshSequence, value: request.value))
-            }, onClose: { _ in presentation.scene.closeSettings() },
+            harnessSettings: { $0.editor(in: model) }, onClose: { _ in presentation.scene.closeSettings() },
             mokuController: presentation.scene.settingsCharacter,
             onCoordinatorFrame: { presentation.scene.setCoordinatorFrame($0, pending: $1) })
     }

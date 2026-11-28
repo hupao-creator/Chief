@@ -123,7 +123,7 @@ func (c backgroundCapability) Resolve(ctx context.Context, sessionKey string) (p
 	if err != nil {
 		return plugin.ResolvedBackgroundConfiguration{}, err
 	}
-	harnessID, err := c.runtime.ResolveHost(ctx, preference, harnesses, cwd)
+	harnessID, err := c.runtime.resolveHost(ctx, executionRole(c.settingsID), preference, harnesses, cwd)
 	if err != nil {
 		return plugin.ResolvedBackgroundConfiguration{}, err
 	}
@@ -185,7 +185,7 @@ func backgroundConfigurationKey(harnessID, cwd string, settings json.RawMessage)
 func equalRevision(left, right *int64) bool {
 	return left == nil && right == nil || left != nil && right != nil && *left == *right
 }
-func (r *Runtime) ResolveHost(ctx context.Context, preference string, harnesses map[string]json.RawMessage, cwd string) (string, error) {
+func (r *Runtime) resolveHost(ctx context.Context, role, preference string, harnesses map[string]json.RawMessage, cwd string) (string, error) {
 	ids := []string{}
 	for _, id := range []string{"pi", "codex", "claude", "opencode"} {
 		if r.config.Harnesses[id] != nil {
@@ -210,8 +210,8 @@ func (r *Runtime) ResolveHost(ctx context.Context, preference string, harnesses 
 		if h == nil {
 			return "", fmt.Errorf("unknown harness: %s", id)
 		}
-		if !h.Descriptor().ThreadCapabilities.CanHostMoku() {
-			reasons = append(reasons, id+": cannot host injected tools")
+		if !h.Descriptor().SupportsRole(role) {
+			reasons = append(reasons, id+": cannot participate in "+role)
 			continue
 		}
 		settings := harnesses[id]
@@ -327,7 +327,7 @@ func (c backgroundCapability) Configure(ctx context.Context, request plugin.Conf
 		}
 		harness := c.runtime.config.Harnesses[configuration.HarnessID]
 		profile := harnesses[configuration.HarnessID]
-		if harness == nil || !harness.Descriptor().ThreadCapabilities.CanHostMoku() || c.runtime.config.DisabledHarnesses[configuration.HarnessID] != "" || len(profile) == 0 || configuration.Cwd != expectedCwd || configuration.ConfigurationKey != backgroundConfigurationKey(configuration.HarnessID, expectedCwd, profile) {
+		if harness == nil || !harness.Descriptor().SupportsRole(executionRole(c.settingsID)) || c.runtime.config.DisabledHarnesses[configuration.HarnessID] != "" || len(profile) == 0 || configuration.Cwd != expectedCwd || configuration.ConfigurationKey != backgroundConfigurationKey(configuration.HarnessID, expectedCwd, profile) {
 			return nil, errors.New("stale or unregistered background configuration")
 		}
 		var current plugin.PrivateSessionSnapshot

@@ -114,6 +114,8 @@ invalid-field focus and save flushing. Quit waits for the pending valid save
 before Runtime teardown; invalid or failed saves offer Keep Editing and Quit
 Without Saving. The existing bounded cleanup deadline and repeated Quit remain
 available.
+The Runtime publishes each Harness’s eligible roles in the plugin catalog. The coordination map lays out the Chief Host row and the Agent Thread dispatch row independently. Keyboard travel, character handoff and the start of each connection use the host row. Connection endpoints and selection feedback use the dispatch row. Tag and Super Thread use their own role rosters for both the illustration and the independent picker. Onboarding shares these controls. [Harness role declarations](../../../../../internal/plugins/harness/README.md#3-声明可用角色和能力)
+
 The horizontal header starts with Chief Agent, followed by Auto-Categorization, Super Thread and any
 other enabled application sections. Each opening selects Chief Agent, including after
 disconnection. The coordinating Harness form labels its model selector Chief Model.

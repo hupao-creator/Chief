@@ -39,7 +39,7 @@ func New(host plugin.HostContext) *Harness {
 	return h
 }
 func (h *Harness) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ID: "opencode", DisplayName: "OpenCode", ThreadCapabilities: plugin.ThreadCapabilities{Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"extend", "exclusive"}}}
+	return plugin.HarnessDescriptor{ID: "opencode", DisplayName: "OpenCode", Roles: plugin.StandardHarnessRoles(), ThreadCapabilities: plugin.ThreadCapabilities{Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"extend", "exclusive"}}}
 }
 func (h *Harness) DefaultSettings() json.RawMessage         { return json.RawMessage(`{"threadSettings":{}}`) }
 func (h *Harness) Settings() plugin.HarnessSettings         { return h.settings }

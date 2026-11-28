@@ -30,9 +30,10 @@ func DefaultSettings(harnessIDs []string) Settings {
 }
 
 type RuntimePlugin struct {
-	Key               string `json:"key"`
-	Enabled           bool   `json:"enabled"`
-	UnavailableReason string `json:"unavailableReason,omitempty"`
+	Key               string   `json:"key"`
+	Enabled           bool     `json:"enabled"`
+	UnavailableReason string   `json:"unavailableReason,omitempty"`
+	HarnessRoles      []string `json:"harnessRoles,omitempty"`
 }
 type MokuExecution struct {
 	ThreadID    string `json:"threadId"`

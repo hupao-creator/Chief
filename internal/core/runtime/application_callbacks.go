@@ -15,7 +15,7 @@ func (r *Runtime) InitializeApplicationSession(ctx context.Context, ref model.Th
 	if err != nil {
 		return model.SessionRecord{}, err
 	}
-	id, err := r.ResolveHost(ctx, configuration.HarnessPreference, configuration.Harnesses, cwd)
+	id, err := r.resolveHost(ctx, plugin.ChiefHostRole, configuration.HarnessPreference, configuration.Harnesses, cwd)
 	if err != nil {
 		return model.SessionRecord{}, err
 	}

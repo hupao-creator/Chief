@@ -37,10 +37,11 @@ final class NativeWorkspaceSettingsPrefetch {
         for harness in harnesses {
             let id = harness.descriptor.id
             let defaults = NativeHarnessSettingsConfiguration(harnessID: id, cwd: cwd, source: settings["harnesses"]?[id.string] ?? .null)
-            guard harness.descriptor.threadCapabilities.canHostMoku else { next.append(defaults); continue }
             let execution = settings["moku"]?["executionHarnesses"]?[id.string] ?? .null
-            next.append(.init(harnessID: id, cwd: cwd, source: execution, scope: .global(executionOwner: .moku)))
-            for definition in backgroundSettings {
+            if model.supports(harness, role: .chiefHost) {
+                next.append(.init(harnessID: id, cwd: cwd, source: execution, scope: .global(executionOwner: .moku)))
+            }
+            for definition in backgroundSettings where model.supports(harness, role: .application(definition.id)) {
                 guard let entry = settings["pluginSettings"]?.arrayValue?.first(where: { $0["id"] == .string(definition.id) }),
                       let value = entry["value"], let saved = try? ApplicationBackgroundExecutionSettings(json: value) else { continue }
                 let configuration = NativeHarnessSettingsConfiguration.background(harnessID: id, cwd: cwd, settingID: definition.id,

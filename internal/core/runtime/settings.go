@@ -35,7 +35,13 @@ func (r *Runtime) initializeHarnessSettings(tx *store.Tx) error {
 	}
 	var revision int64
 	if !exists {
-		settings = model.DefaultSettings(r.harnessIDs())
+		var targets []string
+		for _, id := range r.harnessIDs() {
+			if r.config.Harnesses[id].Descriptor().SupportsRole(plugin.AgentThreadRole) {
+				targets = append(targets, id)
+			}
+		}
+		settings = model.DefaultSettings(targets)
 	} else {
 		if _, err = tx.Get("settings-revision", &revision); err != nil {
 			return err
@@ -97,7 +103,7 @@ func (r *Runtime) UpdateSettings(ctx context.Context, expected int64, settings m
 	if err != nil {
 		return SettingsResult{}, err
 	}
-	settings, err = retainExecutionProfiles(settings, previous)
+	settings, err = r.retainExecutionProfiles(settings, previous)
 	if err != nil {
 		return SettingsResult{}, err
 	}
@@ -117,8 +123,8 @@ func (r *Runtime) UpdateSettings(ctx context.Context, expected int64, settings m
 		return SettingsResult{}, fmt.Errorf("unknown Chief harness: %s", p)
 	}
 	for _, id := range settings.Moku.TargetHarnessIDs {
-		if r.config.Harnesses[id] == nil {
-			return SettingsResult{}, fmt.Errorf("unknown target harness: %s", id)
+		if h := r.config.Harnesses[id]; h == nil || !h.Descriptor().SupportsRole(plugin.AgentThreadRole) {
+			return SettingsResult{}, fmt.Errorf("invalid dispatch target: %s", id)
 		}
 	}
 	for id, value := range settings.Harnesses {
@@ -141,7 +147,7 @@ func (r *Runtime) UpdateSettings(ctx context.Context, expected int64, settings m
 			if err != nil {
 				return SettingsResult{}, err
 			}
-			if !h.Descriptor().ThreadCapabilities.CanHostMoku() && !sameExecutionProfile(normalized, previous.Moku.ExecutionHarnesses[id]) {
+			if !h.Descriptor().SupportsRole(plugin.ChiefHostRole) && !sameExecutionProfile(normalized, previous.Moku.ExecutionHarnesses[id]) {
 				return SettingsResult{}, fmt.Errorf("harness cannot host internal execution: %s", id)
 			}
 			settings.Moku.ExecutionHarnesses[id] = normalized
@@ -167,7 +173,7 @@ func (r *Runtime) UpdateSettings(ctx context.Context, expected int64, settings m
 	// Catalogs and native snapshot acquisition belong to configuration entry
 	// and execution admission. This command only persists the edited choices.
 	if preference := settings.Moku.HostHarnessPreference; preference != "auto" && preference != previous.Moku.HostHarnessPreference {
-		if err := r.checkExecutionHarness(preference); err != nil {
+		if err := r.checkExecutionHarness(preference, plugin.ChiefHostRole); err != nil {
 			return SettingsResult{}, err
 		}
 	}
@@ -274,7 +280,7 @@ func (r *Runtime) UpdateThreadSettings(ctx context.Context, id, harnessID string
 	if source.PendingInput || source.Observation.LatestExecution != nil && !source.Observation.LatestExecution.Terminal() {
 		return result, errors.New("cannot update settings during an active execution or input admission")
 	}
-	h, err := r.harness(ctx, source)
+	h, err := r.harness(source.HarnessID)
 	if err != nil {
 		return result, err
 	}
@@ -334,6 +340,11 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 	}
 	snapshotError := ""
 	executionProfile := request.Scope == "global" && (request.ExecutionOwner == "moku" || request.ApplicationSettings != "")
+	if executionProfile {
+		if err := r.checkExecutionHarness(request.HarnessID, executionRole(request.ApplicationSettings)); err != nil {
+			return nil, err
+		}
+	}
 	if executionProfile && !request.PreviewIndependent {
 		_, snapshotErr := r.EnsureExecutionSettings(ctx, request.HarnessID, request.ApplicationSettings)
 		if err := snapshotErr; err != nil {
@@ -372,7 +383,7 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 		}
 		cwd = effectiveCwd(t)
 		threadSettings = t.Settings
-		h, err = r.harness(ctx, t)
+		h, err = r.harness(t.HarnessID)
 		if err != nil {
 			return nil, err
 		}
@@ -442,9 +453,6 @@ func (r *Runtime) SettingsPresentation(ctx context.Context, raw json.RawMessage)
 		return nil, err
 	}
 	if request.PreviewIndependent {
-		if err := r.checkExecutionHarness(request.HarnessID); err != nil {
-			return nil, err
-		}
 		if err := os.MkdirAll(cwd, 0700); err != nil {
 			return nil, err
 		}

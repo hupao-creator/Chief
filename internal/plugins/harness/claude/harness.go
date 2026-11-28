@@ -34,7 +34,7 @@ func (h *Harness) Close() error {
 }
 
 func (h *Harness) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ID: "claude", DisplayName: "Claude Code", ThreadCapabilities: plugin.ThreadCapabilities{Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"additive", "exclusive"}}}
+	return plugin.HarnessDescriptor{ID: "claude", DisplayName: "Claude Code", Roles: plugin.StandardHarnessRoles(), ThreadCapabilities: plugin.ThreadCapabilities{Instructions: true, ThreadContext: true, SendContext: true, ToolModes: []string{"additive", "exclusive"}}}
 }
 func (h *Harness) DefaultSettings() json.RawMessage         { return json.RawMessage(`{"threadSettings":{}}`) }
 func (h *Harness) Settings() plugin.HarnessSettings         { return h.settings }

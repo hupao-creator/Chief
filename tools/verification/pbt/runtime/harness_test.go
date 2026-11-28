@@ -26,8 +26,10 @@ func raw(v any) json.RawMessage {
 
 type harness struct{}
 
-func (*harness) Descriptor() plugin.HarnessDescriptor { return plugin.HarnessDescriptor{ID: "fixture"} }
-func (*harness) DefaultSettings() json.RawMessage     { return raw(map[string]any{}) }
+func (*harness) Descriptor() plugin.HarnessDescriptor {
+	return plugin.HarnessDescriptor{ID: "fixture", Roles: []string{plugin.AgentThreadRole}}
+}
+func (*harness) DefaultSettings() json.RawMessage { return raw(map[string]any{}) }
 func (*harness) Detect(context.Context, string) (plugin.Installation, error) {
 	return plugin.Installation{Status: "installed"}, nil
 }

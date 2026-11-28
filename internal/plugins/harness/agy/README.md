@@ -1,6 +1,8 @@
 # Antigravity task Threads
 
-The Go adapter and macOS reader share the Harness ID `agy`. In **Settings → Chief Agent**, selecting Antigravity in the bottom row enables ordinary task dispatch. Its disclosure edits the authentication method. The Thread's model picker offers native model IDs, including effort variants. [User guide](../../../../docs/settings.md#choose-who-coordinates-and-who-can-take-tasks)
+The Go adapter and macOS reader share the Harness ID `agy`. Antigravity declares the ordinary Agent Thread role. Its seat appears in the dispatch row of **Settings → Chief Agent**. Selecting it enables ordinary task dispatch. Its disclosure edits the authentication method. The Thread's model picker offers native model IDs, including effort variants. [User guide](../../../../docs/settings.md#choose-who-coordinates-and-who-can-take-tasks)
+
+Settings, discovery and task cards use Google’s full-color Antigravity mark. The bundled transparent 216 × 216 PNG covers the largest 72-point mark at 3×. It is rasterized from the official 180-unit SVG with a centered `20 20 140 140` viewBox around the artwork. The source SVG SHA-256 is `d775965ea1f8060538c15f758a3e22487317211fcb6051333b5e023f35aa726f`. [Google press assets](https://antigravity.google/press) · [Original SVG](https://antigravity.google/assets/image/brand/antigravity-icon__full-color.svg)
 
 ## Discovery and authentication
 
@@ -22,4 +24,4 @@ The v1 state retains the native session ID, each execution's model, input, publi
 
 ## Verification
 
-The [dispatch replay](../../../../tools/e2e/README.md#antigravity-task-dispatch) runs the installed Codex and Antigravity binaries with two deterministic loopback model peers. It checks published options, a non-default model, native events, follow-up and restart, file effects of grant and denial, Stop and failure. Its optional macOS check selects the target through the mounted Chief Agent settings, saves it and mounts the saved execution through the isolated production reader. [Property inventory](../../../../tools/verification/pbt/README.md)
+The [dispatch replay](../../../../tools/e2e/README.md#antigravity-task-dispatch) runs the installed Codex and Antigravity binaries with two deterministic loopback model peers. It checks published options, a non-default model, native events, follow-up and restart, file effects of grant and denial, Stop and failure. The settings checks cover role admission and recovery of active and retained preferences from a stopped profile containing an ordinary AGY Thread. The macOS option compares both rows and both independent background pickers with the installed roster, saves the target and opens its saved card and execution. [Property inventory](../../../../tools/verification/pbt/README.md)

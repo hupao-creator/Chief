@@ -13,6 +13,12 @@ import (
 	"github.com/hupao-creator/Chief/internal/services/directorytag"
 )
 
+func (c *Coordinator) dispatchTargetEnabled(id string) bool {
+	h := c.config.Harnesses[id]
+	return h != nil && h.Descriptor().SupportsRole(plugin.AgentThreadRole) &&
+		(c.config.HarnessEnabled == nil || c.config.HarnessEnabled(id))
+}
+
 func (c *Coordinator) describeTargets(ctx context.Context, settings model.Settings) (ThreadCreationDescription, error) {
 	if err := ctx.Err(); err != nil {
 		return ThreadCreationDescription{}, err
@@ -20,7 +26,7 @@ func (c *Coordinator) describeTargets(ctx context.Context, settings model.Settin
 	var targets []TargetDescription
 	for _, id := range settings.Moku.TargetHarnessIDs {
 		h := c.config.Harnesses[id]
-		if h == nil || c.config.HarnessEnabled != nil && !c.config.HarnessEnabled(id) {
+		if !c.dispatchTargetEnabled(id) {
 			continue
 		}
 		schema := json.RawMessage(`{"type":"object"}`)
@@ -337,7 +343,7 @@ func (c *Coordinator) dispatchEntry(settings model.Settings) (plugin.ContextEntr
 	}
 	ids := []string{}
 	for _, id := range settings.Moku.TargetHarnessIDs {
-		if c.config.Harnesses[id] != nil && (c.config.HarnessEnabled == nil || c.config.HarnessEnabled(id)) {
+		if c.dispatchTargetEnabled(id) {
 			ids = append(ids, id)
 		}
 	}

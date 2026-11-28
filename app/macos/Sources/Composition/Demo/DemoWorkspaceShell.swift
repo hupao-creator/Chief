@@ -28,7 +28,9 @@ final class DemoWorkspaceShell {
             revision: 1, save: { .saved(settings: $0, revision: $1 + 1) },
             loadInstallations: { .object(["codex": .object(["status": .text("installed")])]) },
             installHarness: { _ in throw DemoThread.readOnly })
-        settings.receive(snapshot: nil, runtimeAvailable: true)
+        let codex: JSONValue = .object(["key": .text("harness:codex"), "enabled": .bool(true),
+            "harnessRoles": .array(["agent", "moku", "tag.settings", "report.settings"].map(JSONValue.text))])
+        settings.receive(snapshot: .object(["plugins": .array([codex])]), runtimeAvailable: true)
     }
 
     private static func makeDraft() -> NativeComposerDraft {

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 )
@@ -14,7 +15,35 @@ type HarnessDescriptor struct {
 	ID                 string             `json:"id"`
 	DisplayName        string             `json:"displayName"`
 	ThreadCapabilities ThreadCapabilities `json:"threadCapabilities"`
+	Roles              []string           `json:"roles"`
 }
+
+// Background roles use their application's execution-settings binding ID.
+const (
+	AgentThreadRole = "agent"
+	ChiefHostRole   = "moku"
+	TagAgentRole    = "tag.settings"
+	SuperThreadRole = "report.settings"
+)
+
+func StandardHarnessRoles() []string {
+	return []string{AgentThreadRole, ChiefHostRole, TagAgentRole, SuperThreadRole}
+}
+
+func (d HarnessDescriptor) SupportsRole(role string) bool {
+	return slices.Contains(d.Roles, role) && (role == AgentThreadRole || d.ThreadCapabilities.CanHostMoku())
+}
+
+func (d HarnessDescriptor) RuntimePlugin(enabled bool, unavailableReason string) model.RuntimePlugin {
+	entry := model.RuntimePlugin{Key: "harness:" + d.ID, Enabled: enabled, UnavailableReason: unavailableReason}
+	for _, role := range d.Roles {
+		if d.SupportsRole(role) {
+			entry.HarnessRoles = append(entry.HarnessRoles, role)
+		}
+	}
+	return entry
+}
+
 type ThreadCapabilities struct {
 	// FollowUpOnly promises native steering cannot start work on an idle engine.
 	FollowUpOnly  bool     `json:"followUpOnly,omitempty"`

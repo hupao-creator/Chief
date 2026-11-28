@@ -20,7 +20,7 @@ var _ plugin.Harness = (*Adapter)(nil)
 
 func New(host plugin.HostContext) *Adapter { return &Adapter{host: host} }
 func (*Adapter) Descriptor() plugin.HarnessDescriptor {
-	return plugin.HarnessDescriptor{ID: "agy", DisplayName: "Antigravity", ThreadCapabilities: plugin.ThreadCapabilities{SendContext: true, ToolModes: []string{}}}
+	return plugin.HarnessDescriptor{ID: "agy", DisplayName: "Antigravity", Roles: []string{plugin.AgentThreadRole}, ThreadCapabilities: plugin.ThreadCapabilities{SendContext: true, ToolModes: []string{}}}
 }
 func (*Adapter) DefaultSettings() json.RawMessage         { return json.RawMessage(`{}`) }
 func (a *Adapter) Settings() plugin.HarnessSettings       { return a }
