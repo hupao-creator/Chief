@@ -866,6 +866,16 @@ and Simplified Chinese. Record the build identity, observed sizes, language,
 events, frame samples and capture limitations. `E2E-READ-001` checks mounted
 navigation, while the window recording supplies the geometry evidence.
 
+To check a follow-up from an exact result, open the latest completed execution
+through its result link in a wide window with Execution folded. Press Return in
+the native editor to send a follow-up. While the successor is starting, begin composing the next
+message and leave its marked text uncommitted until the right card shows the
+running execution. Commit the text. Record the window from before Return through
+draft handoff. Compare the glass center and width on every frame. The center
+should move directly to the right card and the glass should narrow to fit it.
+Once the glass arrives, its center and width should hold through the change of input target. Repeat with Voice
+Mode connected to include the adjacent orb.
+
 ## Fact sources
 
 Expectations follow these current production contracts, not removed replays:

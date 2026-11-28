@@ -638,6 +638,19 @@ public final class NativeWorkspacePresentation {
         return executionID.map { ApplicationExecutionRef(thread: selected, executionID: $0) }
     }
 
+    fileprivate var continuingAgentDockExecution: ApplicationExecutionRef? {
+        // The accepted execution owns the column while the exact source draft
+        // finishes editing. Send and Stop still use the actual input binding.
+        if let pending = executionSendNavigation, pending.route == navigationRouteID,
+           pending.generation == scene.composerGeneration, pending.reference == dockExecution,
+           pending.destination.thread == selected {
+            return pending.destination
+        }
+        guard threadExecutionReveal?.continues(to: readingTarget) == true,
+              dockExecution?.executionID == readingTarget?.executionID else { return nil }
+        return dockExecution
+    }
+
     var dockInputAvailable: Bool {
         if sidecardComposer != nil { return true }
         if selected?.typeID == "agent" {
@@ -1309,6 +1322,7 @@ public struct NativeWorkspaceView: View {
                 .environment(\.nativeAgentPanelClose, {
                     if presentation.navigationRouteID == routeID { presentation.showOverview() }
                 })
+                .environment(\.nativeAgentDockContinuation, presentation.continuingAgentDockExecution)
                 .environment(\.nativeAgentInputTargetChanged, { owner, target in
                     presentation.updateAgentInput(owner: owner, target: target, route: routeID)
                 })

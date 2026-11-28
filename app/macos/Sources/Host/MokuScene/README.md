@@ -625,7 +625,9 @@ to that reader on the same main-actor turn. Agent and Report readers share the
 [send identity contract](../../../../../design/composer.md#send-identity-and-ownership).
 Sending from the latest finished result opens Conversation on local capture,
 including when the draft addresses that exact execution. Its pending column
-places the pinned composer beneath the card. The source reader stays mounted
+places the pinned composer beneath the card. When the card takes ownership of
+the accepted run, it keeps that column through the exact draft handoff, including
+while the editor finishes composing text for the next message. The source reader stays mounted
 while the receipt identifies the accepted execution and the catalog and index
 determine where its live reader belongs. Failure retires
 the provisional opening. A later card choice or reading visit owns its selection.

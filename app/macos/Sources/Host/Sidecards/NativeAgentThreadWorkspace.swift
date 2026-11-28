@@ -70,6 +70,7 @@ private extension EnvironmentValues {
 extension EnvironmentValues {
     @Entry public var nativeAgentPanelClose: (() -> Void)?
     @Entry var nativeAgentInputTargetChanged: ((UUID, ThreadConversationInputTarget?) -> Void)?
+    @Entry var nativeAgentDockContinuation: ApplicationExecutionRef?
 }
 
 @MainActor
@@ -159,6 +160,7 @@ struct NativeSidecardWorkspaceLayout: View {
     @Environment(\.nativeExecutionDockPlacement) private var executionPlacement
     @Environment(\.nativeAgentPanelClose) private var panelClose
     @Environment(\.nativeAgentInputTargetChanged) private var inputTargetChanged
+    @Environment(\.nativeAgentDockContinuation) private var dockContinuation
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var focusedLauncher: JSONText?
     @State private var launcherFrames: [JSONText: CGRect] = [:]
@@ -319,10 +321,12 @@ struct NativeSidecardWorkspaceLayout: View {
         if card.view.composer != nil || card.view.pendingExecution {
             return CGRect(x: layout.surfaceX, y: layout.surfaceY, width: layout.surfaceWidth, height: layout.surfaceHeight)
         }
-        let historicalInput = inputTarget.map { !$0.followsLatest && $0.executionID != snapshot.input.thread.observation.latestExecution?.executionID } ?? false
-        if !historicalInput, snapshot.input.thread.observation.isExecutionActive,
-           let executionID = snapshot.input.thread.observation.latestExecution?.executionID,
-           card.view.excludeExecutionID == executionID {
+        let thread = snapshot.input.thread
+        let latest = thread.observation.latestExecution?.executionID
+        let historicalInput = inputTarget.map { !$0.followsLatest && $0.executionID != latest } ?? false
+        let continuingInCard = dockContinuation?.thread.threadID == thread.id && dockContinuation?.executionID == latest
+        if thread.observation.isExecutionActive, let latest,
+           card.view.excludeExecutionID == latest, !historicalInput || continuingInCard {
             return CGRect(x: layout.surfaceX, y: layout.surfaceY, width: layout.surfaceWidth, height: layout.surfaceHeight)
         }
         return CGRect(x: 0, y: 0, width: layout.mainWidth, height: layout.mainHeight)
