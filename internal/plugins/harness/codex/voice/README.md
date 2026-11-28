@@ -18,4 +18,6 @@ The [destination admission](../../../../services/moku/README.md#global-voice) re
 
 After 30 seconds without transcription progress on an unfinished user segment, the relay skips that segment and releases any completed inputs next in order. The call remains open. The relay remembers the skipped segment ID until hangup and ignores late events for it. The call bounds unfinished and queued admissions together to 32 and retains up to 1,024 distinct handoffs. Peer loss, a closed lease and runtime shutdown retire the call, release its process and revoke queued work. A user may explicitly start a fresh call. Already admitted business execution retains the ordinary Chief lifetime.
 
+In the development bundle, `codex.voice_relay transcription_stalled` marks a sweep that skipped one or more stalled segments. `handoff_admission_failed` marks a failed submission to Chief while the call is active. `destination_failed` marks a terminal failure of the current admitted handoff. These events carry only the operation, phase and call trace. [Development diagnostics](../../../../platform/diagnostics/README.md)
+
 [PBT domains](../../../../../tools/verification/pbt/README.md) · [Live synthetic speech replay](../../../../../tools/e2e/README.md#global-voice)

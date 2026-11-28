@@ -99,3 +99,8 @@ snapshot is authoritative on the same resource; the next patch uses that
 snapshot's revision as its base. Frame selection does not weaken queue
 backpressure: a representation that fits the frame can still fail with
 `CONTENT_BACKPRESSURE` for its client's bounded queue.
+
+When publication terminates a current subscription, the development Runtime
+distinguishes queue backpressure (`queue_backpressure`), a size limit
+(`content_too_large`) and an invalid response (`invalid_response`). Closing
+the event stream is routine teardown. [Development diagnostics](../diagnostics/README.md)
