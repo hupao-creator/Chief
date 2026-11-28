@@ -14,6 +14,8 @@ You can change a ready agent’s settings while Chief checks the others. Close S
 
 If Chief says no agents are available, install and sign in to a supported agent on your Mac, then return to the **Chief Agent** tab and click **Retry**. [Supported agents](getting-started.md#connect-an-agent)
 
+To give tasks to **Antigravity**, select it in the bottom row. Expand **Antigravity** below the map to choose **Authentication**. **Use native settings** uses the account set up in `agy`. If you choose a sign-in method, complete its setup in `agy`. Close Settings to save, then ask Chief to assign Antigravity a task in your chosen project folder. Open the folder in Overview and click the task card to read the reply.
+
 Use **Task Orchestration Preferences** to guide which models Chief chooses when it assigns tasks. Pick **Economy**, **Balanced**, or **Performance**, or select **Custom** and click the text box below. When the cursor appears, describe what you prefer. The hint disappears as you type. Hover over a choice marked with an info icon to read its description. Chief keeps your custom text if you switch presets. Chief chooses from the agents you've enabled and the models available when it assigns the work.
 
 Chief can use Artificial Analysis measurements for the specific model and reasoning effort it matched. If you ask Chief to compare models, it can compare Intelligence Index scores and cost per task when their published index versions match. A model with an unknown version stays available for assignment.

@@ -29,6 +29,8 @@ presentation digest on the normal Runtime state stream. A desktop with a stored 
 on receipt. A stable projection has no write or notification. Model ordering is preserved in Settings and normalized by provider and model ID for routing. Native discovery
 keys and retry policy are private to each adapter.
 
+Antigravity publishes its CLI version, executable, native model IDs and effective model from an ACP session. Each effort variant has its own model ID. The coordinator selects that ID and the destination checks it against the execution session. [Antigravity discovery](../../plugins/harness/agy/README.md#discovery-and-authentication)
+
 ## Verification
 
 **PBT-DISPATCH-PUBLICATION** generates two-provider traces of successful,
@@ -37,7 +39,7 @@ oracle tracks public membership and notifications, checks restart isolation
 and checks that a private native field cannot enter the stored view.
 
 **PBT-DISPATCH-OPTIONS** passes generated unpublished model identifiers to all
-four production adapters with discovery offline. It checks that native selectors
+five production adapters with discovery offline. It checks that native selectors
 survive conversion, launch overrides are rejected and no provider lookup runs.
 This boundary exercises wire conversion. Real account acceptance requires native
 execution evidence. [Property inventory](../../../tools/verification/pbt/README.md)

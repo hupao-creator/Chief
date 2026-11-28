@@ -1,6 +1,6 @@
 # Chief Product Guide
 
-Chief brings Codex, Claude, Pi Agent, and OpenCode into one Mac workspace. Ask Chief to coordinate your work, then open a task conversation when you want to check progress, answer a question, or give the agent more direction.
+Chief brings Codex, Claude, Pi Agent, OpenCode, and Antigravity into one Mac workspace. Ask Chief to coordinate your work, then open a task conversation when you want to check progress, answer a question, or give the agent more direction.
 
 To return to this guide from the app, choose **Help → Chief User Guide**.
 

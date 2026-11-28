@@ -1,6 +1,7 @@
 import ChiefPluginAPI
 import ChiefUI
 import ChiefHarnessCodex
+import ChiefHarnessAgy
 import ChiefHarnessPi
 import ChiefHarnessClaude
 import ChiefHarnessOpenCode
@@ -14,7 +15,8 @@ import ChiefSidecardBrowser
     public static func make() throws -> NativePluginComposition {
         try NativePluginComposition(
             harnesses: [AnyHarnessPlugin(PiHarnessPlugin()), AnyHarnessPlugin(CodexHarnessPlugin()),
-                        AnyHarnessPlugin(ClaudeHarnessPlugin()), AnyHarnessPlugin(OpenCodeHarnessPlugin())],
+                        AnyHarnessPlugin(ClaudeHarnessPlugin()), AnyHarnessPlugin(OpenCodeHarnessPlugin()),
+                        AnyHarnessPlugin(AgyHarnessPlugin())],
             sidecards: [AnySidecardPlugin(NativeConversationSidecard()), AnySidecardPlugin(NativeBrowserSidecard())],
             applications: NativeApplicationModules.make())
     }

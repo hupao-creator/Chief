@@ -13,6 +13,19 @@ content reads establish prerequisites and independent result evidence. Runtime
 invariants belong to PBT. Benchmarks own general UX timing, resource use and
 visual-performance measurements.
 
+## Antigravity task dispatch
+
+Run on macOS with Python 3.11 or later and both native executables (`codex`, `agy`) available to Chief. The replay uses a disposable Chief profile, separate native homes and two loopback model peers. AGY 1.5.17 supplies the actual ACP session, tool permission and command execution. It uses a temporary Gemini API key accepted by the local peer.
+
+```sh
+make runtime
+python3 tools/e2e/agy/run.py --runtime .build/go/chief-runtime
+```
+
+To also exercise the production macOS Settings and reader, build `xcrun swift build --package-path app/macos --product Chief` and append `--desktop app/macos/.build/debug/Chief` to the Python command in a graphical session. The runner opens that executable with the disposable profile and holds the shared host and desktop verification leases.
+
+A separate runtime with a controlled PATH first checks a missing executable, another ACP identity and an old Antigravity version. The coordinator then receives the published Antigravity model choices through `moku:submit` and calls the injected `create_thread` tool with a non-default native model. The replay checks its receipt, the exact task reply and a same-session recall. After a Runtime restart it reads both turns by execution ID, resumes the native session, approves one temporary marker file and denies another. Stop interrupts an in-flight prompt. An injected provider error must settle as failed. The coordinator must receive terminal notifications for the completed, stopped and failed executions. With the desktop option, the mounted Chief Agent target controls enable Antigravity and the test waits for the saved selection before submitting. After restart the reader must show a mounted, ready turn with visible rows. Output identifies the source revision, dirty state, executables' SHA-256, CLI version and model. Real Google account access, physical Settings/approval gestures and visual layout have separate verification boundaries. [Adapter contract](../../internal/plugins/harness/agy/README.md)
+
 ## Global voice
 
 Build the runtime, then run the opt-in account replay on macOS with a signed-in native Codex installation, network access and a configured Chief Harness.

@@ -3,7 +3,7 @@
 接入一个新的 coding agent，需要为同一个 Harness ID 提供两份实现。Go 适配器驱动用户安装的原生 CLI，Swift 插件把该适配器的投影呈现在 macOS 上。两者都随 Chief 编译，通过源码静态注册。设置里的“发现”检查外部引擎及其配置。仓库没有扫描工作区 `plugins/` 或读取第三方 Harness manifest 的加载器。[Go 组装入口](../../core/composition/bootstrap.go) · [macOS 组装入口](../../../app/macos/Sources/Composition/NativePlugins.swift)
 
 直接用户追加输入时，`SendRequest.FollowUpRowID` 由已准入的 HTTP 命令提供。
-四个 Harness 把它用作当前执行的用户消息行或时间线条目标识，原生请求与 checkpoint 仍使用各自的 ID。
+各 Harness 把它用作当前执行的用户消息行或时间线条目标识，原生请求与 checkpoint 仍使用各自的 ID。
 没有该标识的输入沿用 Harness 自己的标识。[输入归属](../../../design/composer.md#send-identity-and-ownership)
 
 ## 1. 选定 ID 和参照实现
@@ -12,6 +12,7 @@
 
 | 原生引擎 | 适合参考的路径 |
 | --- | --- |
+| Antigravity | 普通任务派发、ACP stdio、原生工具授权、恢复与停止。[适配器说明](agy/README.md) |
 | Pi Agent | RPC 子进程、仅独占工具注入、外部安装说明。可沿 [Go 适配器](pi/adapter.go) → [Thread](pi/thread.go) → [Swift 插件](../../../app/macos/Sources/Plugins/Harnesses/Pi/PiHarnessPlugin.swift) 走完整条路径。 |
 | Codex | app-server JSON-RPC、分页模型目录，以及只能送给活动执行的追加输入。[适配器说明](codex/README.md) |
 | Claude Code | stream-json 会话、原生权限交互和注入工具的 MCP 桥。[适配器说明](claude/README.md) |
@@ -62,10 +63,11 @@
 
 ### Thread Markdown
 
-四个注册项分别实现 Go `SessionStateAdapter` 和 macOS `HarnessPlugin`。以下路径既用于实时更新，也用于打开已存执行。宿主以 `harnessId` 选择插件，先取 `thread` 目录，再按行键取 `turn`。终态轻量行用 `nonempty` 标记折叠内容，展开详情按需取 `execution`。
+各注册项分别实现 Go `SessionStateAdapter` 和 macOS `HarnessPlugin`。以下路径既用于实时更新，也用于打开已存执行。宿主以 `harnessId` 选择插件，先取 `thread` 目录，再按行键取 `turn`。使用轻量行的适配器以 `nonempty` 标记折叠内容，展开详情按需取 `execution`。Antigravity 的 `turn` 已含该次执行的完整块。
 
 | Harness ID | 协议和历史入口 | 状态、显示投影和语义转换 |
 | --- | --- | --- |
+| `agy` · Antigravity | [原生 ACP](agy/acp.go) 通过 stdio 新建或重开原会话。[执行](agy/thread.go) 保留 Chief 的执行及用户行 ID。 | [状态投影](agy/state.go) 为目录保留摘要，按执行返回有序文本、思考和工具块。[阅读器](../../../app/macos/Sources/Plugins/Harnesses/Agy/AgyThread.swift) 展示结果和当前授权。 |
 | `codex` · Codex | [app-server JSON-RPC](codex/native.go) 处理带 item ID 的增量、完成帧和请求。重开读取保存的 turns，原生 `thread/read` 用于校验分支历史。 | [ReduceEvent](codex/state.go) 保存消息、活动和按顺序排列的引用，[阅读投影](codex/presentation.go) 选择目录回复，[CodexTurn](../../../app/macos/Sources/Plugins/Harnesses/Codex/CodexTurnRows.swift) 解析引用。保存格式为 `mokusei.harness.codex.thread.v1`。 |
 | `claude` · Claude Code | [stream-json](claude/parser.go) 按 message ID 和 block index 合并流与完整消息。[分支读取](claude/session.go) 用 checkpoint 对应原生会话并把继承记录存为只读快照。 | [v2 turn](claude/state.go) 保存 timeline 与实体表，[目录投影](claude/projection.go) 选择已结束的回复，[Claude timeline](../../../app/macos/Sources/Plugins/Harnesses/Claude/ClaudeTimeline.swift) 读取实体引用或继承快照。 |
 | `pi` · Pi Agent | [RPC frame decoder](pi/protocol.go) 接收完整消息和增量，[Thread reducer](pi/thread.go) 按执行、消息和工具调用归并。原生 JSONL 保存恢复或分支所需的历史。 | [v1 状态投影](pi/state.go) 从保存的消息生成阅读数据，[Pi transcript](../../../app/macos/Sources/Plugins/Harnesses/Pi/PiTranscript.swift) 按原生块次序恢复文本、思考和工具。 |

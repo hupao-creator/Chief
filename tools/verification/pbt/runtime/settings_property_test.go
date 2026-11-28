@@ -169,6 +169,38 @@ func TestSettingsPresentationProperties(t *testing.T) {
 				t.Fatalf("read changed saved settings/revision: %v", err)
 			}
 		}
+		// An Alpha profile may reopen with additional statically linked harnesses.
+		// Compare the complete saved choices after each reopen, including targets.
+		prior, revision, err := r.Settings()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = r.Close(ctx); err != nil {
+			t.Fatal(err)
+		}
+		installed := map[string]plugin.Harness{"claude": &settingsHarness{Harness: adapter, native: native}}
+		for _, additions := range []int{0, 1, 2} {
+			for range additions {
+				id := fmt.Sprintf("new-%d", len(installed))
+				h := &roleSettingsHarness{id: id}
+				installed[id] = h
+				prior.Harnesses[id] = h.DefaultSettings()
+			}
+			if additions > 0 {
+				revision++
+			}
+			for range 2 {
+				reopened, err := core.New(ctx, core.Config{Store: db, DataDir: root, DefaultCwd: root, Harnesses: installed})
+				if err != nil {
+					t.Fatal(err)
+				}
+				current, rev, readErr := reopened.Settings()
+				closeErr := reopened.Close(ctx)
+				if readErr != nil || closeErr != nil || rev != revision || string(raw(current)) != string(raw(prior)) {
+					t.Fatalf("reopened settings or revision changed beyond %d new defaults (revision %d, want %d): %v", additions, rev, revision, errors.Join(readErr, closeErr))
+				}
+			}
+		}
 	})
 }
 

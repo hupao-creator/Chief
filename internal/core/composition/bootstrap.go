@@ -27,6 +27,7 @@ import (
 	"github.com/hupao-creator/Chief/internal/plugins/applications/report"
 	"github.com/hupao-creator/Chief/internal/plugins/applications/tag"
 	"github.com/hupao-creator/Chief/internal/plugins/contexts/artificialanalysis"
+	"github.com/hupao-creator/Chief/internal/plugins/harness/agy"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/claude"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/codex"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/codex/voice"
@@ -201,9 +202,10 @@ func (b *Bootstrap) open(ctx context.Context) error {
 		"codex":    func(host plugin.HostContext) plugin.Harness { return codex.New(host) },
 		"claude":   func(host plugin.HostContext) plugin.Harness { return claude.New(host) },
 		"pi":       func(host plugin.HostContext) plugin.Harness { return pi.New(host) },
+		"agy":      func(host plugin.HostContext) plugin.Harness { return agy.New(host) },
 		"opencode": func(host plugin.HostContext) plugin.Harness { return opencode.New(host) },
 	}
-	ids := []string{"codex", "claude", "pi", "opencode"}
+	ids := []string{"codex", "claude", "pi", "opencode", "agy"}
 	for _, id := range ids {
 		if !b.isEnabled("harness", id) {
 			b.disabled[id] = "Harness plugin " + id + " is disabled."

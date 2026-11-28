@@ -1,0 +1,25 @@
+# Antigravity task Threads
+
+The Go adapter and macOS reader share the Harness ID `agy`. In **Settings → Chief Agent**, selecting Antigravity in the bottom row enables ordinary task dispatch. Its disclosure edits the authentication method. The Thread's model picker offers native model IDs, including effort variants. [User guide](../../../../docs/settings.md#choose-who-coordinates-and-who-can-take-tasks)
+
+## Discovery and authentication
+
+The host resolves `agy` in its executable search path. Discovery runs `agy acp --stdio`, sends ACP v1 `initialize` with Chief's own client identity, and checks the returned agent name and version. Supported peers identify as `Antigravity ACP Server` and report a stable version from 1.5.1 onward. Installation discovery needs no model session. A signed-out user can configure an installed target. A catalog probe has a 20-second deadline and requests a separate native session.
+
+The default global settings are `{}`. With the native default, Antigravity uses its own account configuration. An explicit `authMethod` must appear in the server's advertised methods and is sent before creating or reopening a session. Chief stores the method ID. Credentials, OAuth and credential storage belong to the user's CLI.
+
+A successful probe publishes `cli.available`, version, executable path, model entries and current model through the workspace dispatch configuration. A successful empty list clears the choices. A failed refresh retains the previous publication. The static creation contract takes an explicit `target.agy.model`. The destination checks availability in its execution session and applies the selected ID before the prompt. The provider ultimately determines account access. [Settings](settings.go) · [Publication](../../../services/dispatchconfig/README.md)
+
+## Execution and permissions
+
+One ordinary input owns one Chief execution. The adapter saves the prompt and execution ID before acknowledging admission, then runs the native process group in the Thread's effective working directory. It requests the native default permission mode, sends an empty MCP server list and advertises no client filesystem or terminal services. Text, file references, mentions and skills are sent as text. The first input creates an ACP session. A later turn uses the live native session or reopens the saved ID with advertised `session/resume` or `session/load`. Load-time history stays outside the new prompt's event window. An unfinished local turn with no surviving peer settles as interrupted when its handle reopens. [Transport](acp.go) · [Thread lifecycle](thread.go)
+
+The session direction, request ID, session ID and active execution bind each update or permission reply. Assistant and reasoning chunks retain order. Tool updates merge by native call ID. A supported native permission exposes its own presented actions and warnings. Only a pending option for the matching execution can answer it. Other client requests receive cancellation or a method error. Stop sends `session/cancel` to this process and retires an unresponsive peer after one second. Session preparation is bounded at 30 seconds and prompt inactivity at 15 minutes. A pending user permission suspends the inactivity deadline. [Events and permissions](events.go)
+
+Normal completion, cancellation and errors map to Chief's completed, interrupted and failed states. On `end_turn` the adapter also checks for a new terminal error step (type 17) in this session's native SQLite trajectory under `~/.gemini/antigravity-cli/conversations`. The read-only query is limited to the last index and type. With an inaccessible or changed trajectory schema, classification falls back to the ACP result. An engine that reports a provider failure solely as successful text can then appear completed. [Outcome reconciliation](outcome.go)
+
+The v1 state retains the native session ID, each execution's model, input, public status and ordered blocks. New manual follow-ups keep their Chief message row ID. Older v1 turns use the original execution-derived display anchor. Overview receives an excerpt, the manifest lists turns, and the turn and execution scopes return exactly the requested execution. The macOS reader uses the shared conversation and Markdown layout. Independent history questions, forks, active-only steering, native question forms, inline media and detached command/subagent lifecycles have no implementation in this adapter. [State projections](state.go) · [Reader](../../../../app/macos/Sources/Plugins/Harnesses/Agy/AgyThread.swift)
+
+## Verification
+
+The [dispatch replay](../../../../tools/e2e/README.md#antigravity-task-dispatch) runs the installed Codex and Antigravity binaries with two deterministic loopback model peers. It checks published options, a non-default model, native events, follow-up and restart, file effects of grant and denial, Stop and failure. Its optional macOS check selects the target through the mounted Chief Agent settings, saves it and mounts the saved execution through the isolated production reader. [Property inventory](../../../../tools/verification/pbt/README.md)
