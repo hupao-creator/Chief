@@ -15,12 +15,13 @@ struct VoiceOrb: View {
 
     var body: some View {
         let levels = levels()
-        // Give quiet speech more of the ring's visible range.
+        // Give quiet speech more of the orb's visible range.
         let input = microphoneMuted ? 0 : sqrt(levels.microphone)
         let ringWidth = reduceMotion ? 3.0 : 2 + 2 * input
-        let activity = (microphoneMuted ? 0 : 0.12) + 0.88 * levels.playback
+        let level = max(input, levels.playback)
+        let activity = (microphoneMuted ? 0 : 0.12) + 0.88 * level
         CloudDisk(activity: reduceMotion ? 0 : activity, runs: !reduceMotion && activity > 0, origin: clockOrigin)
-            .brightness(reduceMotion ? 0.20 * levels.playback : 0)
+            .brightness(reduceMotion ? 0.20 * level : 0)
             // Fade the pigment into the round glass, leaving its refractive rim exposed.
             .mask(RadialGradient(stops: [.init(color: .white, location: 0.78),
                                           .init(color: .white.opacity(0.9), location: 0.90),
