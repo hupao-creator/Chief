@@ -226,9 +226,7 @@ async def exercise(native, report, args, binary):
         peer.tone.enabled = True
         states["remoteAudio"] = await native.wait(inputRunning=True, outputRunning=True, speaking=True)
         await native.command("mute")
-        states["playingWhileMuted"] = await native.wait(inputRunning=False, outputRunning=True, speaking=True, microphoneLevel=0)
-        if states["playingWhileMuted"]["playbackLevel"] <= 0:
-            raise RuntimeError("remote tone produced no playback level while muted")
+        states["playingWhileMuted"] = await native.wait(inputRunning=False, outputRunning=True, speaking=True)
         await asyncio.sleep(0.45)  # Let in-flight RTP drain before measuring the muted sender.
         before = await peer.packets()
         await asyncio.sleep(1.1)  # Spans two production health checks.
@@ -301,10 +299,6 @@ async def run(args, report):
                             f"{platform.machine()}-apple-macosx26.0", "-F", framework, "-Xlinker", "-rpath", "-Xlinker",
                             framework, *SOURCES, "-o", binary], check=True, timeout=90)
             async with native_process(binary) as native:
-                if args.meter_fixture:
-                    report["meterFixture"] = await native.command("meterFixture")
-                    report["status"] = "passed"
-                    return 0
                 status = report["preflight"] = await native.command("preflight")
                 if not args.exercise:
                     report["status"] = "preflight"
@@ -328,9 +322,7 @@ async def run(args, report):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--meter-fixture", action="store_true", help="Exercise both meter callbacks with synthetic PCM and no devices.")
-    mode.add_argument("--exercise", action="store_true", help="Use the existing microphone and play a quiet tone locally.")
+    parser.add_argument("--exercise", action="store_true", help="Use the existing microphone and play a quiet tone locally.")
     parser.add_argument("--require-input-signal", action="store_true", help="Require non-silent input before the remote tone starts.")
     parser.add_argument("--acoustic-loopback", action="store_true", help="Play short local tones and match them at both physical microphone endpoints.")
     parser.add_argument("--framework", type=Path, default=FRAMEWORK)

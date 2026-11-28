@@ -50,7 +50,6 @@ Resolve the macOS Swift package to install its pinned WebRTC framework. The [nat
 
 ```sh
 python3 tools/e2e/global-voice/native.py
-python3 tools/e2e/global-voice/native.py --meter-fixture
 uv run tools/e2e/global-voice/native.py --exercise --output /tmp/chief-native-voice.json
 uv run tools/e2e/global-voice/native.py --exercise --acoustic-loopback --require-input-signal --output /tmp/chief-native-acoustics.json
 ```

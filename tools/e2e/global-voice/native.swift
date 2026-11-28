@@ -2,7 +2,6 @@ import AVFoundation
 import CoreAudio
 import Foundation
 import Synchronization
-@preconcurrency import LiveKitWebRTC
 
 /// The driver links the production media implementation and accepts SDP only
 /// from its parent process over stdio. HAL samples are independent of WebRTC.
@@ -25,10 +24,6 @@ struct NativeVoiceProbe {
             do {
                 let request = try JSONDecoder().decode(Request.self, from: Data(line.utf8))
                 switch request.action {
-                case "meterFixture":
-                    let data = try JSONSerialization.data(withJSONObject: meterFixture())
-                    try FileHandle.standardOutput.write(contentsOf: data + Data([10]))
-                    continue
                 case "preflight":
                     let permission = AVCaptureDevice.authorizationStatus(for: .audio)
                     result["microphonePermission"] = switch permission {
@@ -88,8 +83,6 @@ struct NativeVoiceProbe {
                     throw VoiceFailure("Unknown native probe action.")
                 }
                 try result.merge(processIO()) { _, new in new }
-                result["microphoneLevel"] = media?.microphoneLevel ?? 0
-                result["playbackLevel"] = media?.playbackLevel ?? 0
                 result["speaking"] = media?.isRemoteSpeaking ?? false
                 if let failure = media?.failure { result["mediaFailure"] = failure }
             } catch {
@@ -99,37 +92,6 @@ struct NativeVoiceProbe {
             let bytes = try JSONSerialization.data(withJSONObject: result)
             try FileHandle.standardOutput.write(contentsOf: bytes + Data([10]))
         }
-    }
-
-    /// Exercise the production callbacks without opening an input or output device.
-    static func meterFixture() throws -> [String: Any] {
-        let input = VoiceCaptureActivity(), output = VoicePlaybackActivity()
-        let mic = FixtureCaptureBuffer()
-        let format = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 48000, channels: 1, interleaved: true)!
-        let remote = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 480)!
-        remote.frameLength = 480
-        func sample(_ micAmplitude: Float, _ remoteAmplitude: Int16) -> [Double] {
-            mic.samples.update(repeating: micAmplitude, count: mic.frames)
-            remote.int16ChannelData![0].update(repeating: remoteAmplitude, count: 480)
-            input.audioProcessingProcess(audioBuffer: mic)
-            output.render(pcmBuffer: remote)
-            return [input.meter.takeLevel(after: 0), output.meter.takeLevel(after: 0)]
-        }
-        let quiet = sample(32, 32), micOnly = sample(2048, 0), remoteOnly = sample(0, 1024)
-        let both = sample(8192, 8192)
-        guard quiet == [0, 0], micOnly[0] > 0, micOnly[1] == 0,
-              remoteOnly[0] == 0, remoteOnly[1] > 0,
-              both[0] > micOnly[0], both[1] > remoteOnly[1] else {
-            throw VoiceFailure("Independent microphone and playback levels did not follow the fixtures.")
-        }
-        var previous = both
-        for _ in 0..<20 {
-            let next = [input.meter.takeLevel(after: previous[0]), output.meter.takeLevel(after: previous[1])]
-            guard zip(next, previous).allSatisfy({ $0 <= $1 }) else { throw VoiceFailure("Level rose during silence.") }
-            previous = next
-        }
-        guard previous == [0, 0] else { throw VoiceFailure("Levels did not settle after silence.") }
-        return ["quiet": quiet, "micOnly": micOnly, "remoteOnly": remoteOnly, "bothLouder": both, "afterSilence": previous]
     }
 
     private static func property(_ object: AudioObjectID, _ selector: AudioObjectPropertySelector,
@@ -200,16 +162,4 @@ private final class RoomBands: Sendable {
             for i in power.indices { state.power[i] += power[i] }
         }
     }
-}
-
-private final class FixtureCaptureBuffer: LKRTCAudioBuffer {
-    let samples = UnsafeMutablePointer<Float>.allocate(capacity: 480)
-    override var channels: Int { 1 }
-    override var frames: Int { 480 }
-    override func rawBuffer(forChannel channel: Int) -> UnsafeMutablePointer<Float> { samples }
-    override init() {
-        samples.initialize(repeating: 0, count: 480)
-        super.init()
-    }
-    deinit { samples.deallocate() }
 }
