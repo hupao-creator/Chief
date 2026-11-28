@@ -25,10 +25,9 @@ delivery, change execution ownership or defer wrapping until mouse release.
 An expanded card owning the current running/waiting execution publishes its
 destination column to the resident Moku input through a passive native geometry
 bridge across the reading panel's separate hosting tree. Input
-centers below that column and narrows to fit it. Its horizontal entrance uses a
-620ms-response spring with 0.78 damping for braking and a small rebound; shell
-sizing and return keep the 380ms fold curve. On initial entry the compact Dock
-finishes that travel before input expansion is admitted. Later card choices keep
+centers below that column and narrows to fit it. Column travel uses a 470ms
+ease-in/ease-out curve in both directions. Shell sizing uses the 380ms fold curve.
+On initial entry the compact Dock finishes that travel before input expansion is admitted. Later card choices keep
 the editor mounted and open. Dragging/resizing settles directly; stacked layout
 uses the panels' shared full column width. Choosing Browser or another
 non-owning activity centers and fits input below main, including for a completed
