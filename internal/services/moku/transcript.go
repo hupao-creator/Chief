@@ -85,6 +85,7 @@ func (c *Coordinator) settleExecution(ctx context.Context, record model.ThreadRe
 		return nil
 	}
 	return c.config.UpdateThread(ctx, record.ID, func(current *model.ThreadRecord) error {
+		source, recorded := "", false
 		status := "complete"
 		if execution.Status == "interrupted" {
 			status = "cancelled"
@@ -99,6 +100,12 @@ func (c *Coordinator) settleExecution(ctx context.Context, record model.ThreadRe
 			}
 			if item["executionId"] != execution.ExecutionID {
 				continue
+			}
+			if item["type"] == "message" && item["role"] == "user" && item["resendRequest"] != nil {
+				source, _ = item["id"].(string)
+			}
+			if item["type"] == "chief-failure" {
+				recorded = true
 			}
 			changed := false
 			if item["type"] == "message" && item["role"] == "assistant" && item["status"] == "streaming" {
@@ -120,6 +127,9 @@ func (c *Coordinator) settleExecution(ctx context.Context, record model.ThreadRe
 				}
 				current.Transcript[index] = encoded
 			}
+		}
+		if current.Moku && status == "failed" && !recorded {
+			return appendFailure(current, newID(), execution.ExecutionID, source, failureCode(execution.Error))
 		}
 		return nil
 	})
@@ -247,7 +257,12 @@ func (c *Coordinator) eventsLoop(ctx context.Context) {
 			if err != nil || current.ID != event.record.ID {
 				continue
 			}
-			_ = c.settleExecution(context.WithoutCancel(ctx), *event.record)
+			// Admission writes the original user row before releasing the queue.
+			settlement := context.WithoutCancel(ctx)
+			if c.queue.Lock(settlement) == nil {
+				_ = c.settleExecution(settlement, *event.record)
+				c.queue.Unlock()
+			}
 			continue
 		}
 
@@ -344,6 +359,9 @@ func publicThread(record model.ThreadRecord) map[string]any {
 // Restart cannot resume a Go tool callback from the former process. Settle its
 // audit row before native recovery, even if the native session is recoverable.
 func (c *Coordinator) settleStaleTranscript(ctx context.Context, record model.ThreadRecord) error {
+	if err := c.restoreFailure(ctx, record); err != nil {
+		return err
+	}
 	pending := false
 	for _, raw := range record.Transcript {
 		var item map[string]any

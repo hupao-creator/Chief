@@ -290,7 +290,7 @@ func (r *Runtime) projectChangedThread(snapshot store.Snapshot, id string) (mode
 			}
 		}
 		if thread.Moku || thread.MokuHistory {
-			entry.record.Transcript = auditPreview(thread.Transcript)
+			entry.record.Transcript = auditPreview(thread.Transcript, thread.Observation.LatestExecution)
 		}
 		if r.overviewCache == nil {
 			r.overviewCache = map[string]cachedOverview{}

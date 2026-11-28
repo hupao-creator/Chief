@@ -161,7 +161,7 @@ func (r *Runtime) projectThreads(snapshot store.Snapshot) ([]model.ThreadRecord,
 				}
 			}
 			if thread.Moku || thread.MokuHistory {
-				entry.record.Transcript = auditPreview(thread.Transcript)
+				entry.record.Transcript = auditPreview(thread.Transcript, thread.Observation.LatestExecution)
 			}
 			entries[index] = entry
 			return ctx.Err()

@@ -393,3 +393,9 @@ for the public terminal execution and checks exact output through a scoped
 content subscription. `creation.json`, `initial-content.json` and
 `initial-oracle.json` retain these facts. This is setup for UI interaction,
 not a Moku property suite or evidence of real provider/model behavior.
+
+## Chief failure replies
+
+A failed Chief execution produces one durable failure row. An unavailable host configuration or a host that cannot open can fail before native admission. The coordinator records that public request and failure together. Cancellation and ordinary Agent Thread failures retain their own paths. The public reason comes from an allowlist, with a generic explanation for unclassified failures.
+
+`moku:resend` takes the current Chief thread ID and failure row ID. The coordinator uses the original structured input and its directory and Super Thread selections, revalidates attachments, and prepares the current host configuration. A failure without a saved public request remains readable. The coordinator serializes user admissions and records a claim before native handoff. An exact pre-consumption rejection releases the claim. An uncertain handoff remains fenced across restarts. A confirmed send keeps the historical error and creates its own user turn.

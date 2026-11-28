@@ -17,13 +17,18 @@ type conversationMessage struct {
 	CreatedAt   int64    `json:"createdAt"`
 	Text        string   `json:"text"`
 	Attachments []string `json:"attachments,omitempty"`
+	FailureCode string   `json:"failureCode,omitempty"`
+	ResendState string   `json:"resendState,omitempty"`
+	ThreadID    string   `json:"threadId,omitempty"`
+	FailureID   string   `json:"failureId,omitempty"`
 }
 
-// Only the coordinator's user-admission and completed Talk records are public
-// dialogue. In particular, a Harness user turn may contain injected context.
+// Project only explicit public coordinator rows. Harness turns and diagnostic
+// strings may contain injected context or credentials.
 func dialogueMessage(owner string, raw json.RawMessage) (conversationMessage, bool) {
 	var row struct {
 		ID, Type, Role, Status, Content, Name, ExecutionID, Presentation string
+		FailureCode, ResendState                                         string
 		SystemEvent, IsError                                             bool
 		CreatedAt, CompletedAt                                           int64
 		Arguments                                                        struct{ Text string }
@@ -44,6 +49,26 @@ func dialogueMessage(owner string, raw json.RawMessage) (conversationMessage, bo
 			}
 		}
 		return m, strings.TrimSpace(m.Text) != "" || len(m.Attachments) > 0
+	case row.Type == "chief-failure":
+		m.Role, m.ThreadID, m.FailureID = "chief", owner, row.ID
+		m.FailureCode, m.ResendState = row.FailureCode, row.ResendState
+		switch m.FailureCode {
+		case "authentication":
+			m.Text = "The model service rejected authentication. Check the host account or API key, then resend."
+		case "rate-limit":
+			m.Text = "The model service reached its request limit. Wait a moment, then resend."
+		case "connection":
+			m.Text = "Chief lost its connection and could not reconnect."
+		case "startup":
+			m.Text = "Chief could not open its host session. Check the host in Settings."
+		case "host":
+			m.Text = "Chief could not start. Choose an available host or model in Settings."
+		case "execution":
+			m.Text = "Chief stopped before it could finish the request."
+		default:
+			return conversationMessage{}, false
+		}
+		return m, true
 	case row.Type == "tool-operation" && row.Name == "talk" && row.ExecutionID != "" &&
 		row.CompletedAt > 0 && !row.IsError && row.Result.OK && strings.TrimSpace(row.Arguments.Text) != "":
 		m.Role, m.Text = "chief", row.Arguments.Text
@@ -90,6 +115,9 @@ func mokuConversationPage(ctx context.Context, threads []model.ThreadRecord, bef
 		for s.index--; s.index >= 0 && ctx.Err() == nil; s.index-- {
 			row, ok := dialogueMessage(s.thread.ID, s.thread.Transcript[s.index])
 			if ok && (boundary == 0 || row.CreatedAt < boundary || row.CreatedAt == boundary && i >= boundarySource) {
+				if row.FailureID != "" && !s.thread.Moku && row.ResendState == "ready" {
+					row.ResendState = "unavailable"
+				}
 				s.row = row
 				return
 			}

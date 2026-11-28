@@ -455,7 +455,7 @@ display string capped at 256 code points; oversized target keys are omitted
 instead of changing their identity. Other native options are not forwarded to
 the catalog. The full stored operation retains the caller's original request.
 
-Switching the coordinating Harness retains the previous conversation as a read-only Chief history session. The conversation shows successful Talk messages across these sessions until an explicit history reset.
+Switching the coordinating Harness retains the previous conversation as a read-only Chief history session. The conversation shows saved replies and failures across these sessions until an explicit history reset.
 
 ### Talk execution links
 
@@ -792,3 +792,7 @@ not certify IME, attachments, historical forks, Report input, Moku-wide cancel,
 uncertain receipts, restart recovery or real external-provider behavior. Runtime
 invariants remain PBT's responsibility; latency and animation quality belong to
 benchmarks. A scenario definition is not evidence that a particular commit ran.
+
+### Chief failure replies
+
+The compact Talk surface and the incoming conversation balloon share the failure content and resend action. A warning symbol leads the full localized reason. Resend or its receipt sits at the trailing edge, beside the wrapping text. The compact glass fits the measured row height. The compact failure has no expiry timer and follows Talk’s replacement and dismissal behavior. Reading history preserves the original request, failure and later replies. Resend passes the failure identity directly to the coordinator and leaves the composer draft alone. Ordinary task errors remain in the task reader.

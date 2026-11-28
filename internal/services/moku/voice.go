@@ -94,7 +94,7 @@ func (c *Coordinator) RunGlobalVoice(ctx context.Context, offer string, answer f
 			}
 			bindingCtx, retire := context.WithCancel(call.ctx)
 			binding := &voiceBinding{call: call, handoff: id, ctx: bindingCtx, cancel: retire}
-			err := c.submit(ctx, SubmitRequest{Input: model.AgentInput{Parts: []model.AgentInputPart{{Kind: "text", Text: text}}}}, binding)
+			err := c.submit(ctx, SubmitRequest{Input: model.AgentInput{Parts: []model.AgentInputPart{{Kind: "text", Text: text}}}}, binding, nil)
 			if err != nil {
 				retire()
 				return err

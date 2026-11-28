@@ -966,6 +966,11 @@ func (r *Runtime) sendLockedAdmitted(ctx context.Context, id string, input model
 		unlockAdmission()
 		return SendResult{}, err
 	}
+	if model.IsChiefResend(ctx) && (t.Observation.BackgroundWork != nil ||
+		(t.Observation.LatestExecution != nil && !t.Observation.LatestExecution.Terminal())) {
+		unlockAdmission()
+		return SendResult{}, &plugin.MokuAdmissionRejectedError{Cause: errors.New("Chief is already working")}
+	}
 	if expected, _ := ctx.Value(expectedUserExecutionKey{}).(string); expected != "" &&
 		(t.Observation.LatestExecution == nil || t.Observation.LatestExecution.ExecutionID != expected) {
 		unlockAdmission()

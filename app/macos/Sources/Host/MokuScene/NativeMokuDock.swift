@@ -105,6 +105,7 @@ public struct NativeMokuDock: View {
     @State private var conversationContentHeight: CGFloat = 0
     @State private var settingsPreferredHeight: CGFloat = 900
     @State private var settingsHeaderScroll: CGFloat = 0
+    @State private var failureContentHeight: CGFloat = 0
     @State private var linkedTalkHeight: CGFloat = NativeMokuTalkTypography.maximumHeight
     @State private var talkScrollbarStyle = NSScroller.preferredScrollerStyle
     @State private var character = NativeMokuCharacterMotion()
@@ -254,7 +255,14 @@ public struct NativeMokuDock: View {
     }
 
     @ViewBuilder private func rowMessage(_ message: NativeMokuTalkMessage, width: CGFloat) -> some View {
-        if let dispatch = message.dispatch {
+        if let failure = message.failure {
+            NativeMokuFailureContent(failure: failure, workspace: presentation?.workspace,
+                                     chinese: locale.language.languageCode?.identifier == "zh", fillsBar: true)
+                .id(failure.id)
+                .frame(width: max(1, width - NativeMokuTalkTypography.leading - (stopControlPresent ? 48 : NativeMokuTalkTypography.trailing)))
+                .fixedSize(horizontal: false, vertical: true)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { failureContentHeight = $0 }
+        } else if let dispatch = message.dispatch {
             NativeMokuDispatchContent(dispatch: dispatch, harness: dispatchHarness(dispatch))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(height: 32)
@@ -307,6 +315,9 @@ public struct NativeMokuDock: View {
     private func surfaceHeight(width: CGFloat) -> CGFloat {
         guard let message = displayedMessage else {
             return max(landing ? 76 : 58, capsuleHeight) + (completionVisible ? completionHeight : 0)
+        }
+        if message.failure != nil {
+            return max(58, failureContentHeight + 2 * NativeMokuTalkTypography.verticalPadding)
         }
         if message.dispatch != nil { return landing ? 76 : 58 }
         let maximumHeight = NativeMokuTalkTypography.maximumHeight

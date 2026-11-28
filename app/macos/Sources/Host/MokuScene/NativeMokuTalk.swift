@@ -12,16 +12,29 @@ public struct NativeMokuTalkMessage: Equatable, Sendable, Identifiable {
     public let id: JSONText
     public let text: String
     let content: NativeMessageText
+    let failure: NativeMokuFailure?
     public let dispatch: NativeMokuDispatch?
 
     public init(id: JSONText, text: String, dispatch: NativeMokuDispatch? = nil) {
-        self.id = id; self.text = text; self.dispatch = dispatch
+        self.id = id; self.text = text; self.dispatch = dispatch; self.failure = nil
         content = NativeMessageText(text)
     }
 
+    private init(id: JSONText, failure: NativeMokuFailure) {
+        self.id = id; self.failure = failure; self.dispatch = nil
+        text = failure.text(chinese: true); content = NativeMessageText(text)
+    }
+
     public static func latest(in thread: HarnessThread?) -> Self? {
-        guard let thread, thread.moku == true, let execution = thread.observation.latestExecution else { return nil }
-        for item in (thread.transcript?.arrayValue ?? []).reversed() where item["executionId"] == .string(execution.executionID) {
+        guard let thread, thread.moku == true else { return nil }
+        let execution = thread.observation.latestExecution
+        for item in (thread.transcript?.arrayValue ?? []).reversed() {
+            if item["type"] == .string("chief-failure"), case .string(let id) = item["id"],
+               let failure = NativeMokuFailure(item, owner: thread.id, id: id),
+               item["executionId"] == .string("") || item["executionId"] == execution.map({ .string($0.executionID) }) {
+                return Self(id: JSONText(thread.id.string + "/" + id.string), failure: failure)
+            }
+            guard let execution, item["executionId"] == .string(execution.executionID) else { continue }
             if let message = project(item, thread: thread, execution: execution) { return message }
         }
         return nil
@@ -89,7 +102,7 @@ public struct NativeMokuTalkState: Equatable {
         presented = value && message != nil
         // Start only on actual presentation. Same-operation result updates and
         // repeated view callbacks must retain the original lease.
-        if presented, deadline == nil {
+        if presented, deadline == nil, message?.failure == nil {
             deadline = now.advanced(by: .seconds(message?.dispatch != nil ? 10 : 60))
         }
     }

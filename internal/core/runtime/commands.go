@@ -86,7 +86,7 @@ func (r *Runtime) Invoke(ctx context.Context, channel string, args []json.RawMes
 			return nil, err
 		}
 		return r.config.Attachments.Stage(ctx, imports)
-	case "moku:submit", "moku:clear", "moku:cancel":
+	case "moku:submit", "moku:resend", "moku:clear", "moku:cancel":
 
 		r.mu.Lock()
 		moku := r.config.Moku

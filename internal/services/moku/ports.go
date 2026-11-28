@@ -80,6 +80,7 @@ type Configuration struct {
 	InterruptThreadTarget      func(context.Context, string, string) (model.CancellationResult, error)
 	ClaimThreadInput           func(context.Context, string) (context.Context, context.CancelFunc, error)
 	RespondThread              func(context.Context, string, model.RespondRequest) error
+	RetainInput                func(context.Context, string, model.AgentInput) (model.AgentInput, error)
 	CanonicalizeInput          func(context.Context, model.AgentInput) (model.AgentInput, error)
 	StageAttachments           func(context.Context, json.RawMessage) (any, error)
 	CollectContext             func(context.Context, string, model.Settings) ([]plugin.ContextEntry, error)

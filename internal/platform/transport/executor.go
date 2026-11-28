@@ -96,7 +96,7 @@ func (e *commandExecutor) execute(ctx context.Context, channel string, raw []byt
 			defer stop()
 			defer cancel()
 		}
-		if channel == "thread:follow-up" || channel == "moku:submit" {
+		if channel == "thread:follow-up" || channel == "moku:submit" || channel == "moku:resend" {
 			callContext = model.WithFollowUpCommand(callContext, request.CommandID)
 		}
 		callContext = diagnostics.CopyTrace(callContext, ctx)
