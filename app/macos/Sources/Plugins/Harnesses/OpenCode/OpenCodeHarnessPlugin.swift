@@ -61,9 +61,9 @@ func ocLocalized(_ source: String, locale: Locale) -> String {
 }
 private let ocEnglish: [String: String] = [
     "请补全模型相关配置；完成前不会保存此组修改。": "Complete the model settings to save these changes.",
-    "基础模型变体": "Base model variant", "OpenCode Thread 配置": "OpenCode Thread settings", "OpenCode Thread 默认配置": "Default OpenCode Thread settings",
+    "模型默认配置": "Base model variant", "OpenCode Thread 配置": "OpenCode Thread settings", "OpenCode Thread 默认配置": "Default OpenCode Thread settings",
     "OpenCode 原生默认": "OpenCode native default", "自动批准权限请求（保留拒绝规则）": "Approve permission requests automatically (keep deny rules)",
-    "按原生规则询问": "Ask according to native rules", "当前原生模型": "Current native model", "OpenCode 模型变体": "OpenCode model variant",
+    "按原生规则询问": "Ask according to native rules", "当前原生模型": "Current native model", "思考强度": "OpenCode model variant",
     "OpenCode 状态不可用": "OpenCode state unavailable", "OpenCode 请求已失效": "This OpenCode request is no longer available",
     "OpenCode 回复失败": "OpenCode reply failed",
     "部分内容因体积限制被省略或截断；完整内容仍保存在会话记录中。": "Some content was omitted or truncated for transport; the complete content remains in the saved conversation.",

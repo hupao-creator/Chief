@@ -72,6 +72,9 @@ func ocCleanSettings(_ raw: JSONValue) -> JSONValue {
 private func ocReplacing(_ raw: JSONValue, key: String, value: JSONValue?) -> JSONValue {
     var result = raw.objectValue ?? [:]; result[JSONText(key)] = value; return ocCleanSettings(.object(result))
 }
+// The runtime catalog and the Swift fallback use the same capability reason.
+private let ocUnverifiedThinkingReason = "OpenCode returned a variant without a verified thinking encoding"
+
 func ocThinkingCapability(model: JSONValue, agent: JSONValue?) -> JSONValue {
     func unknown(_ reason: String) -> JSONValue { .object(["kind": .text("unknown"), "reason": .text(reason)]) }
     if let unavailable = model["unavailableReason"]?.stringValue, !unavailable.isEmpty { return unknown(unavailable) }
@@ -82,7 +85,7 @@ func ocThinkingCapability(model: JSONValue, agent: JSONValue?) -> JSONValue {
     let variants = (model["variants"]?.arrayValue ?? []).filter { $0["id"] != .text("default") }
     if variants.isEmpty { return .object(["kind": .text("fixed")]) }
     let controls = variants.map { ocVariantControl(model, variant: $0) }
-    if controls.contains(where: { $0 == nil }) { return unknown("OpenCode returned a variant without a verified thinking encoding") }
+    if controls.contains(where: { $0 == nil }) { return unknown(ocUnverifiedThinkingReason) }
     let off = controls.contains { $0?["mode"] == .text("off") }
     let on = controls.contains { $0?["mode"] == .text("on") }
     var efforts: [JSONText] = []
@@ -130,7 +133,6 @@ private struct OpenCodeProfileFields: View {
     var disabled = false
     let change: (JSONValue) -> Void
     @Environment(\.nativeSettingsModelLabel) private var modelLabel
-    @Environment(\.nativeSettingsOpenCodeVariantLabel) private var variantLabel
     @Environment(\.locale) private var locale
     private var presentation: OpenCodeSettingsPresentationData? { if case .ready(let data) = resource.state { data } else { nil } }
     private var models: [JSONValue] { presentation?.models ?? [] }
@@ -168,12 +170,15 @@ private struct OpenCodeProfileFields: View {
                     }), options: thinkingOptions, presentation: .reasoning).nativeSettingsControl("thinking").disabled(disabled || choices.isEmpty)
                 }
             } else {
-                NativeSettingsRow(label: variantLabel ?? t("OpenCode 模型变体")) {
+                NativeSettingsRow(label: t("思考强度")) {
                     NativeModelSelector(value: binding("variant") { change(ocReplacing(value, key: "variant", value: $0)) }, options: variantOptions).nativeSettingsControl("variant")
                         .disabled(disabled || selected == nil || selected?["unavailableReason"] != nil)
                 }
             }
-            if capability?["kind"] == .text("unknown"), let reason = capability?["reason"]?.stringValue { NativeSettingsNotice(message: reason, kind: .warning) }
+            if capability?["kind"] == .text("unknown"), let reason = capability?["reason"]?.stringValue,
+               reason != ocUnverifiedThinkingReason {
+                NativeSettingsNotice(message: reason, kind: .warning)
+            }
             if let exclusiveReason { NativeSettingsNotice(message: t(exclusiveReason), kind: .warning) }
         } advanced: {
             NativeSettingsRow(label: t("权限模式")) {
@@ -208,7 +213,7 @@ private struct OpenCodeProfileFields: View {
     private func thinkingLabel(_ value: JSONValue) -> String { value["mode"] == nil ? t("未选择") : ocThinkingLabel(value) }
     private var variantOptions: [NativeSettingsOption] {
         var result: [NativeSettingsOption] = [.init(id: "", label: t(executionSnapshot ? "请选择" : "OpenCode 原生默认"), disabled: executionSnapshot)]
-        if executionSnapshot { result.append(.init(id: "default", label: t("基础模型变体"))) }
+        if executionSnapshot { result.append(.init(id: "default", label: t("模型默认配置"))) }
         let variants = selected?["variants"]?.arrayValue ?? []
         if let variant = value.ocText("variant"), !(executionSnapshot && variant == "default"), !variants.contains(where: { $0.ocText("id") == variant }) { result.append(.init(id: variant, label: variant.string + " · " + t("目录中不可用"))) }
         return result + variants.filter { !executionSnapshot || $0["id"] != .text("default") }.map { .init(id: $0.ocID("id"), label: $0.ocID("id").string) }

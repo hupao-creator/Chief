@@ -40,7 +40,7 @@ For a new Codex setup, Chief checks whether Codex supports its default **approve
 2. On **Find your conversations**, choose how to run **Tag Agent**. Each role offers **Agent off**, **Use Chief**, or **Configure separately**. Choose **Configure separately** to edit the model already on screen. On your first visit, it starts with Chief’s choices. On later visits, it shows the choices you saved for that role. Available options update in place. Complete the required fields, then click **Continue**. You can switch away and return to the same choices. [What each option does](settings.md#set-up-tag-agent-and-super-thread-agent)
 3. On **From text to pictures**, choose how to run **Super Thread Agent**, then click **Start using Chief**. The setup panel shrinks into Chief's input box. If the window stays active and visible, Chief's eyes blink once as the box appears. You can start typing as soon as setup closes.
 
-If you choose **Configure separately** and select **OpenCode** for either role, use **OpenCode model variant** (**思考强度** in Simplified Chinese) to choose the model’s variant.
+If you choose **Configure separately** and select **OpenCode** for either role, use **OpenCode model variant** (**思考强度** in Simplified Chinese) to choose a preset. Choose **Base model variant** (**模型默认配置** in Simplified Chinese) to use the selected model’s settings without a named preset.
 
 If you see a load or save error, use **Retry** next to it. If you quit partway through setup, Chief returns to the agent check and keeps the choices you've already saved.
 
