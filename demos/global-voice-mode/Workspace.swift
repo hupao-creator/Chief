@@ -69,7 +69,9 @@ struct DemoWorkspace: View {
                     onThreadClose: forTask ? { model.showTask(false) } : nil,
                     onSend: { model.receive($0, forTask: forTask) }, onCancel: {})
                     .environment(\.chiefVoiceDock, VoiceDockControls(phase: model.voice.phase,
-                        microphoneMuted: model.voice.microphoneMuted, start: model.voice.start,
+                        microphoneMuted: model.voice.microphoneMuted,
+                        levels: { (model.voice.awaitingReply ? 0.8 : 0, model.voice.phase == .speaking ? 0.95 : 0) },
+                        start: model.voice.start,
                         toggleMute: model.voice.toggleMute, end: model.voice.end))
             } settings: { EmptyView() }
             .environment(\.nativeExecutionDockRoute, model.route)

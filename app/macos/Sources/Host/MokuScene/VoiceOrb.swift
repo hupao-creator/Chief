@@ -8,11 +8,21 @@ struct VoiceOrb: View {
     let phase: VoicePhase
     let microphoneMuted: Bool
 
+    let levels: @MainActor () -> (microphone: Double, playback: Double)
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var clockOrigin = Date.now
 
     var body: some View {
-        CloudDisk(activity: phase.activity, runs: !reduceMotion && phase.activity > 0, origin: clockOrigin)
+        let levels = levels()
+        let input = microphoneMuted ? 0 : levels.microphone
+        let activity = (microphoneMuted ? 0 : 0.12) + 0.88 * levels.playback
+        CloudDisk(activity: reduceMotion ? 0 : activity, runs: !reduceMotion && activity > 0, origin: clockOrigin)
+            .brightness(reduceMotion ? 0.20 * levels.playback : 0)
+            .overlay {
+                Circle().strokeBorder(.white.opacity(input * 0.95), lineWidth: reduceMotion ? 3 : 1 + 3 * input)
+                    .padding(3)
+            }
             // Fade the pigment into the round glass, leaving its refractive rim exposed.
             .mask(RadialGradient(stops: [.init(color: .white, location: 0.78),
                                           .init(color: .white.opacity(0.9), location: 0.90),
@@ -36,13 +46,17 @@ private struct CloudDisk: View, @MainActor Animatable {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24, paused: !runs)) { tick in
-            let seconds = runs ? max(0, tick.date.timeIntervalSince(origin)) : 0
-            let image = activity == 0 ? CloudWash.resting : CloudWash.image(time: seconds, activity: Float(activity))
-            Image(decorative: image, scale: 2)
-                .resizable()
-                .interpolation(.high)
+        if runs {
+            TimelineView(.animation(minimumInterval: 1.0 / 24)) { tick in
+                pigment(CloudWash.image(time: max(0, tick.date.timeIntervalSince(origin)), activity: Float(activity)))
+            }
+        } else {
+            pigment(CloudWash.resting)
         }
+    }
+
+    private func pigment(_ image: CGImage) -> some View {
+        Image(decorative: image, scale: 2).resizable().interpolation(.high)
     }
 }
 
@@ -125,15 +139,5 @@ private enum CloudWash {
         return CGImage(width: side, height: side, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: side * 4,
                        space: colorSpace, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
                        provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)!
-    }
-}
-
-extension VoicePhase {
-    var activity: Double {
-        switch self {
-        case .idle, .connecting, .muted: 0
-        case .listening: 0.23
-        case .speaking: 1
-        }
     }
 }
