@@ -340,7 +340,10 @@ struct NativeReportDetail: View {
         do {
             unsubscribe = try props.context.capabilities.require(ApplicationCapabilities.executionReferencesUI)
                 .subscribe(props.entry.view.relatedExecutions, invalidateRelations)
-        } catch { failure = error.localizedDescription }
+        } catch {
+            DevDiagnostics.failure("report.reference_subscription", error)
+            failure = error.localizedDescription
+        }
     }
     private func invalidateRelations() {
         if relationsLoading { relationsPending = true }
@@ -358,7 +361,10 @@ struct NativeReportDetail: View {
                 sidecards.selectExecution(nil)
             }
             failure = nil
-        } catch { failure = error.localizedDescription }
+        } catch {
+            DevDiagnostics.failure("report.reference_projection", error)
+            failure = error.localizedDescription
+        }
     }
     @ViewBuilder private func execution(_ reference: ApplicationExecutionRef) -> some View {
         switch Result(catching: { try props.context.capabilities.require(ApplicationCapabilities.executionReferencesUI).execution(reference) }) {

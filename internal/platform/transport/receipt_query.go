@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 // ReceiptStatus is observation only. An unknown ID must never admit or replay
@@ -47,6 +48,12 @@ func (s *Server) serveReceiptQuery(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.send(w, 400, resultFailure(err))
 		return
+	}
+	if diagnostics.Traced(r.Context()) {
+		switch status.Status {
+		case "unknown", "pending", "complete":
+			diagnostics.Event(r.Context(), "transport.receipt_lookup", status.Status)
+		}
 	}
 	s.send(w, 200, status)
 }

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"github.com/hupao-creator/Chief/internal/platform/profile"
 )
 
@@ -170,6 +171,9 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodPost && path == "/commands/receipt" {
+		if token := r.Header.Get(diagnostics.TraceHeader); token != "" {
+			r = r.WithContext(diagnostics.WithTrace(r.Context(), token))
+		}
 		s.serveReceiptQuery(w, r)
 		return
 	}
@@ -270,12 +274,15 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		s.send(w, 503, resultFailure(model.NewError("SERVICE_STOPPING", "Runtime is stopping")))
 		return
 	}
+	if trace := r.Header.Get(diagnostics.TraceHeader); trace != "" || voiceEndpoint {
+		r = r.WithContext(diagnostics.WithTrace(r.Context(), trace))
+	}
 	if voiceEndpoint {
 		s.voice(w, r, body)
 		return
 	}
 	if contentEndpoint {
-		err = s.content.update(body)
+		err = s.content.update(r.Context(), body)
 		if err != nil {
 			s.send(w, 400, resultFailure(err))
 		} else {

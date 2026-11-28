@@ -12,7 +12,7 @@ extension RuntimeClient {
         // Stop can win while the completed offer waits for the client actor.
         try Task.checkCancellation()
         let channel = try RuntimeHTTPChannel(connection: connection, path: "/voice/global", method: "POST",
-                                             body: body, timeout: 86400)
+                                             body: body, timeout: 86400, diagnosticTrace: DevDiagnostics.trace)
         // Keep reading the lease while WebRTC applies SDP and opens its devices.
         // Either failure must also cancel the other side of startup.
         let answers = AsyncStream<String>.makeStream(bufferingPolicy: .bufferingNewest(1))

@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode/utf16"
 
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"github.com/hupao-creator/Chief/internal/platform/profile"
 )
 
@@ -171,7 +172,7 @@ func (s *Source) WaitForBootstrap(ctx context.Context, values []AcquisitionIdent
 	warm := s.current != nil
 	call := s.pending[key]
 	if call == nil && !s.options.Now().Before(s.refreshAfter[key]) {
-		call = s.refreshLocked(identities, key)
+		call = s.refreshLocked(ctx, identities, key)
 	}
 	s.mu.Unlock()
 	if !warm && call != nil {
@@ -201,7 +202,7 @@ func (s *Source) Refresh(ctx context.Context, values []AcquisitionIdentity) erro
 		s.mu.Unlock()
 		return errors.New("artificial analysis source is stopped")
 	}
-	call := s.refreshLocked(identities, identityKey(identities))
+	call := s.refreshLocked(ctx, identities, identityKey(identities))
 	s.mu.Unlock()
 	select {
 	case <-ctx.Done():
@@ -210,7 +211,7 @@ func (s *Source) Refresh(ctx context.Context, values []AcquisitionIdentity) erro
 		return call.err
 	}
 }
-func (s *Source) refreshLocked(identities []AcquisitionIdentity, key string) *refreshCall {
+func (s *Source) refreshLocked(ctx context.Context, identities []AcquisitionIdentity, key string) *refreshCall {
 	if existing := s.pending[key]; existing != nil {
 		return existing
 	}
@@ -232,7 +233,10 @@ func (s *Source) refreshLocked(identities []AcquisitionIdentity, key string) *re
 		<-previous
 		generationError := s.ctx.Err()
 		if generationError == nil {
+			ctx := diagnostics.EnsureTrace(ctx)
+			diagnostics.Event(ctx, "artificialanalysis.refresh", "acquiring")
 			generationError = s.refreshGeneration(identities)
+			diagnostics.End(ctx, "artificialanalysis.refresh", generationError)
 		}
 		published := generationError == nil
 		s.mu.Lock()

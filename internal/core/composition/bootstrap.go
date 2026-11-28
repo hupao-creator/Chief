@@ -19,6 +19,7 @@ import (
 	"github.com/hupao-creator/Chief/internal/hosts/applicationhost"
 	"github.com/hupao-creator/Chief/internal/hosts/contexthost"
 	"github.com/hupao-creator/Chief/internal/platform/applicationprocess"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"github.com/hupao-creator/Chief/internal/platform/environment"
 	"github.com/hupao-creator/Chief/internal/platform/profile"
 	"github.com/hupao-creator/Chief/internal/platform/transport"
@@ -168,8 +169,10 @@ func (b *Bootstrap) open(ctx context.Context) error {
 	}
 	b.store, err = store.Open(filepath.Join(stateRoot, "state.sqlite"))
 	if err != nil {
+		diagnostics.Event(ctx, "composition.bootstrap", "store_open_failed")
 		return err
 	}
+	diagnostics.Event(ctx, "composition.bootstrap", "store_open")
 	var persisted model.Settings
 	if _, err = b.store.Snapshot().Get("settings", &persisted); err != nil {
 		return err

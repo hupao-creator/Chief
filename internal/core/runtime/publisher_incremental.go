@@ -11,6 +11,7 @@ import (
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
 	"github.com/hupao-creator/Chief/internal/core/store"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"github.com/hupao-creator/Chief/internal/services/directorytag"
 )
 
@@ -43,7 +44,12 @@ func (r *Runtime) initializePublication() error {
 	return nil
 }
 
-func (r *Runtime) projectMutation(snapshot store.Snapshot) (model.AppState, model.StateMutation, uint64, error) {
+func (r *Runtime) projectMutation(snapshot store.Snapshot) (_ model.AppState, _ model.StateMutation, _ uint64, returned error) {
+	defer func() {
+		if returned != nil {
+			diagnostics.End(context.Background(), "runtime.projection", returned)
+		}
+	}()
 	previous := r.publicationSnapshot
 	r.pendingAgentRuns = nil
 	next := r.baseline

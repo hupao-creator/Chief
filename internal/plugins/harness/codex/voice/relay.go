@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"github.com/hupao-creator/Chief/internal/plugins/harness/codex"
 )
 
@@ -27,6 +28,8 @@ const backing = "You are the transport for Chief's voice session. The client del
 // Run owns a fresh native process and disposable native home for the entire call.
 // The returned error retains native startup, protocol, admission or exit detail.
 func (r Relay) Run(ctx context.Context, executable string, call plugin.GlobalVoice) (failure error) {
+	diagnostics.Event(ctx, "codex.voice_relay", "starting")
+	defer func() { diagnostics.End(ctx, "codex.voice_relay", failure) }()
 	dir, err := os.MkdirTemp(r.TemporaryRoot, "chief-voice-")
 	if err != nil {
 		return err
@@ -36,11 +39,13 @@ func (r Relay) Run(ctx context.Context, executable string, call plugin.GlobalVoi
 	defer finishStartup()
 	server, err := r.Codex.OpenSubscriptionServer(startup, dir, executable)
 	if err != nil {
+		diagnostics.Event(ctx, "codex.voice_relay", "native_start_failed")
 		return err
 	}
 	defer func() { failure = errors.Join(failure, server.Close()) }()
 	thread, err := prepareThread(startup, server, dir)
 	if err != nil {
+		diagnostics.Event(ctx, "codex.voice_relay", "native_admission_failed")
 		return err
 	}
 	return runSession(ctx, server, thread, call)
@@ -218,6 +223,7 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 				if ctx.Err() != nil {
 					return
 				}
+				diagnostics.Event(ctx, "codex.voice_relay", "utterance_ready")
 				if err := call.Submit(ctx, h.id, h.text); err != nil {
 					cancel(fmt.Errorf("Chief voice handoff %s: %w", h.id, err))
 					return
@@ -239,6 +245,7 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 				return context.Cause(ctx)
 			}
 			if failure.Context.Err() == nil && requests.current(failure.HandoffID) {
+				diagnostics.Event(ctx, "codex.voice_relay", "destination_failed")
 				return failure.Err
 			}
 		}

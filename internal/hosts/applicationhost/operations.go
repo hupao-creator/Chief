@@ -11,6 +11,7 @@ import (
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
 	"github.com/hupao-creator/Chief/internal/core/store"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 type commandReceipt struct {
@@ -92,7 +93,16 @@ func (h *Host) query(ctx context.Context, request plugin.OperationRequest, owner
 func (h *Host) Command(ctx context.Context, request plugin.OperationRequest) (any, error) {
 	return h.execute(ctx, request, nil, nil, "")
 }
-func (h *Host) execute(ctx context.Context, request plugin.OperationRequest, owner *plugin.BackgroundAgentRef, batch *plugin.BatchWriteContext, settingsID string) (json.RawMessage, error) {
+func (h *Host) execute(ctx context.Context, request plugin.OperationRequest, owner *plugin.BackgroundAgentRef, batch *plugin.BatchWriteContext, settingsID string) (_ json.RawMessage, returned error) {
+	operation := "application.command"
+	if request.PluginID == "report" {
+		operation = "report.command"
+		ctx = diagnostics.EnsureTrace(ctx)
+	}
+	if diagnostics.Traced(ctx) {
+		diagnostics.Event(ctx, operation, "validating_scope")
+		defer func() { diagnostics.End(ctx, operation, returned) }()
+	}
 	if err := h.begin(); err != nil {
 		return nil, err
 	}

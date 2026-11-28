@@ -15,6 +15,7 @@ import (
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 type executionScope struct {
@@ -369,7 +370,10 @@ func (c *Coordinator) Submit(ctx context.Context, request SubmitRequest) error {
 	return c.submit(ctx, request, nil)
 }
 
-func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *voiceBinding) error {
+func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *voiceBinding) (returned error) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "moku.submit", "admitting")
+	defer func() { diagnostics.End(ctx, "moku.submit", returned) }()
 	ctx, finish, err := c.begin(ctx)
 	if err != nil {
 		return err
@@ -425,6 +429,7 @@ func (c *Coordinator) submit(ctx context.Context, request SubmitRequest, voice *
 
 			entries, err := c.sendContext(admissionCtx, request.Input, request.DirectoryTag, request.DirectoryScopeID)
 			if err != nil {
+				diagnostics.Event(admissionCtx, "moku.submit", "context_failed")
 				return err
 			}
 			entries, err = c.withSuperThreadContext(admissionCtx, entries, request.SuperThreadID)

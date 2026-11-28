@@ -23,6 +23,7 @@ import (
 	"unicode"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 const (
@@ -76,7 +77,10 @@ func NewWithClientStorage(root, clientRoot string) *Repository {
 	return &Repository{root: root, clientRoot: clientRoot}
 }
 
-func (r *Repository) Stage(ctx context.Context, imports []Import) ([]model.Attachment, error) {
+func (r *Repository) Stage(ctx context.Context, imports []Import) (_ []model.Attachment, returned error) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "attachments.stage", "staging")
+	defer func() { diagnostics.End(ctx, "attachments.stage", returned) }()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(imports) > MaxMessageCount {
@@ -399,7 +403,13 @@ func (r *Repository) canonicalize(ctx context.Context, input model.AgentInput) (
 	return result, nil
 }
 
-func (r *Repository) RetainInput(ctx context.Context, threadID string, input model.AgentInput) (model.AgentInput, error) {
+func (r *Repository) RetainInput(ctx context.Context, threadID string, input model.AgentInput) (_ model.AgentInput, returned error) {
+	hasFiles := false
+	defer func() {
+		if hasFiles || returned != nil {
+			diagnostics.End(ctx, "attachments.retain", returned)
+		}
+	}()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err := validOwner(threadID); err != nil {
@@ -418,6 +428,9 @@ func (r *Repository) RetainInput(ctx context.Context, threadID string, input mod
 	if len(ids) == 0 {
 		return canonical, nil
 	}
+	hasFiles = true
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "attachments.retain", "retaining")
 	owners, err := r.readOwners()
 	if err != nil {
 		return model.AgentInput{}, err

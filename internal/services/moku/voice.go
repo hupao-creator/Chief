@@ -8,6 +8,7 @@ import (
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 // A call owns media and the right to submit to one Chief. Only destination
@@ -29,7 +30,10 @@ type voiceBinding struct {
 
 // RunGlobalVoice joins the call on disconnect, including in-flight admission.
 // Runtime owns any execution already accepted by the selected Harness.
-func (c *Coordinator) RunGlobalVoice(ctx context.Context, offer string, answer func(string) error) error {
+func (c *Coordinator) RunGlobalVoice(ctx context.Context, offer string, answer func(string) error) (returned error) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "moku.voice", "binding_destination")
+	defer func() { diagnostics.End(ctx, "moku.voice", returned) }()
 	ctx, finish, err := c.begin(ctx)
 	if err != nil {
 		return err

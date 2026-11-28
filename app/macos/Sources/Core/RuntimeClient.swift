@@ -102,7 +102,15 @@ public actor RuntimeClient {
         }
     }
     func setStatus(_ value: RuntimeConnectionStatus) {
-        guard status != value else { return }; status = value; emit(.connection(value))
+        guard status != value else { return }
+        status = value
+        switch value {
+        case .connecting: DevDiagnostics.event("runtime.connection", "connecting")
+        case .connected: DevDiagnostics.event("runtime.connection", "connected")
+        case .disconnected: DevDiagnostics.event("runtime.connection", "disconnected")
+        case .stopped: DevDiagnostics.event("runtime.connection", "stopped")
+        }
+        emit(.connection(value))
     }
     func assertOpen() throws { if closed { throw RuntimeError("CLIENT_CLOSED", "Runtime client is closed") } }
     public func connectionStatus() -> RuntimeConnectionStatus { status }
@@ -140,6 +148,7 @@ public actor RuntimeClient {
                 if self.generation == expected { self.starting = nil }
             } catch {
                 if self.generation == expected {
+                    DevDiagnostics.failure("runtime.connect", error)
                     self.starting = nil
                     if !self.closed && !self.explicitlyStopped {
                         self.setStatus(.disconnected)
@@ -264,6 +273,7 @@ public actor RuntimeClient {
     }
     private func failed(_ error: Error, stream id: UUID, generation expected: Int) {
         guard generation == expected, streamID == id else { return }
+        DevDiagnostics.failure("runtime.event_stream", error)
         let wasReady = ready == nil
         ready?.resume(throwing: error); ready = nil
         if !closed && !explicitlyStopped { setStatus(.disconnected) }

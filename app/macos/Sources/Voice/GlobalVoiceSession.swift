@@ -16,6 +16,7 @@ public final class GlobalVoiceSession {
     private let client: RuntimeClient
     @ObservationIgnored private var operation: Task<Void, Never>?
     @ObservationIgnored private var media: VoiceMedia?
+    @ObservationIgnored private var diagnosticTrace: DevDiagnostics.Trace?
 
     public init(client: RuntimeClient) { self.client = client }
 
@@ -29,8 +30,12 @@ public final class GlobalVoiceSession {
         }
         media.onFailure = { [weak self, weak media] in
             guard let self, let media, self.media === media else { return }
+            DevDiagnostics.event("voice.media", "device_or_connection_failed", trace: self.diagnosticTrace)
             self.stop()
         }
+        let trace = DevDiagnostics.makeTrace()
+        diagnosticTrace = trace
+        DevDiagnostics.event("voice.session", "connecting", trace: trace)
         state = .connecting
         operation = Task { [weak self, client] in
             var failure: String?
@@ -38,10 +43,21 @@ public final class GlobalVoiceSession {
                 guard await client.connectionStatus() == .connected else {
                     throw VoiceFailure("Connect to the Chief runtime before starting Voice Mode.")
                 }
-                let offer = try await media.offer()
-                try await client.runGlobalVoice(offer: offer) { [weak self] answer in
-                    try await media.connect(answer: answer)
-                    await self?.listening(media)
+                let offer: String
+                do { offer = try await media.offer() }
+                catch {
+                    if !Task.isCancelled { DevDiagnostics.event("voice.media", "offer_failed", trace: trace) }
+                    throw error
+                }
+                try await DevDiagnostics.$trace.withValue(trace) {
+                    try await client.runGlobalVoice(offer: offer) { [weak self] answer in
+                        do { try await media.connect(answer: answer) }
+                        catch {
+                            if !Task.isCancelled { DevDiagnostics.event("voice.media", "negotiation_failed", trace: trace) }
+                            throw error
+                        }
+                        await self?.listening(media)
+                    }
                 }
             } catch {
                 if !Task.isCancelled { failure = error.localizedDescription }
@@ -53,6 +69,9 @@ public final class GlobalVoiceSession {
             self.isMicrophoneMuted = false
             self.isRemoteSpeaking = false
             self.state = (media.failure ?? failure).map(State.failed) ?? .idle
+            if case .failed = self.state { DevDiagnostics.event("voice.session", "failed", trace: trace) }
+            else { DevDiagnostics.event("voice.session", "ended", trace: trace) }
+            self.diagnosticTrace = nil
         }
     }
 
@@ -60,6 +79,7 @@ public final class GlobalVoiceSession {
         guard self.media === media, state == .connecting else { return }
         isRemoteSpeaking = media.isRemoteSpeaking
         state = .listening
+        DevDiagnostics.event("voice.session", "media_ready", trace: diagnosticTrace)
     }
 
     /// Mute releases the input device and sender. Incoming audio keeps playing.
@@ -68,7 +88,9 @@ public final class GlobalVoiceSession {
         do {
             try media.setMicrophoneMuted(muted)
             isMicrophoneMuted = muted
+            DevDiagnostics.event("voice.session", muted ? "microphone_muted" : "microphone_unmuted", trace: diagnosticTrace)
         } catch {
+            DevDiagnostics.failure("voice.device_transition", error, trace: diagnosticTrace)
             media.fail(error.localizedDescription)
         }
     }
@@ -78,6 +100,7 @@ public final class GlobalVoiceSession {
     public func stop() {
         guard let operation else { return }
         state = .stopping
+        DevDiagnostics.event("voice.session", "stopping", trace: diagnosticTrace)
         isMicrophoneMuted = false
         isRemoteSpeaking = false
         media?.close()

@@ -378,6 +378,8 @@ public final class NativeComposerDraft {
                        optimisticallyClear: Bool = false,
                        didConsume: ((NativeComposerSubmission) async -> Void)? = nil) async {
         guard canSubmit else { return }
+        let trace = DevDiagnostics.makeTrace()
+        DevDiagnostics.event("composer.submit", "capturing_draft", trace: trace)
         let revision = editRevision, persistedRevision = savedRevision
         let sentAttachments = attachments.filter { $0.attachment != nil }
         let sentDirectories = directories
@@ -388,7 +390,10 @@ public final class NativeComposerDraft {
         do {
             submissionOwner = try attachmentOwner?.capture(submission.attachments.map(\.id))
                 ?? services.retainAttachments?(submission.attachments.map(\.id))
-        } catch { record(error); return }
+        } catch {
+            DevDiagnostics.event("composer.submit", "attachment_lease_failed", trace: trace)
+            record(error); return
+        }
         defer { try? submissionOwner?.release() }
         submitting = true; operationError = nil
         protectedAttachmentIDs = Set(submission.attachments.map(\.id))
@@ -409,14 +414,16 @@ public final class NativeComposerDraft {
                 install(next, pending: handoff, revision: revision)
             }
         } catch {
+            DevDiagnostics.event("composer.submit", "draft_persistence_failed", trace: trace)
             protectedAttachmentIDs = []
             record(error)
             return
         }
         defer { withExtendedLifetime(lease) {} }
         do {
-            try await send(submission)
+            try await DevDiagnostics.$trace.withValue(trace) { try await send(submission) }
             accepted = true
+            DevDiagnostics.event("composer.submit", "accepted", trace: trace)
             if optimisticallyClear {
                 try finish(handoff, restore: false, cleanup: handoff.receiptID)
                 if let id = handoff.receiptID { try await completeCleanup(id) }
@@ -428,6 +435,7 @@ public final class NativeComposerDraft {
             }
             consumed = !saveFailed || optimisticallyClear
         } catch let sendError {
+            DevDiagnostics.failure("composer.submit", sendError, trace: trace)
             record(sendError)
             let uncertain = (sendError as? RuntimeError)?.kind == .uncertain && persistence != nil
             if !accepted, optimisticallyClear, uncertain, let id = (sendError as? RuntimeError)?.receiptID {
@@ -443,7 +451,10 @@ public final class NativeComposerDraft {
         }
         // Retained command receipts outlive transport success. Release them
         // only after this revision has been consumed without a storage error.
-        if consumed { await didConsume?(submission) }
+        if consumed {
+            DevDiagnostics.event("composer.submit", "draft_consumed", trace: trace)
+            await didConsume?(submission)
+        }
         // Removing a chip or disposing a surface cannot delete bytes still
         // referenced by a command waiting for its admission receipt.
         let retired = accepted ? retiredAttachmentIDs.subtracting(protectedAttachmentIDs) : retiredAttachmentIDs

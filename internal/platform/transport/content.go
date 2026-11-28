@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/hupao-creator/Chief/internal/core/model"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 type contentTarget struct {
@@ -136,7 +137,7 @@ func parseContentSubscription(raw []byte) (string, string, *contentTarget, error
 	}
 	return clientID, subscriptionID, &target, nil
 }
-func (c *contentServer) update(raw []byte) error {
+func (c *contentServer) update(ctx context.Context, raw []byte) error {
 	clientID, id, target, err := parseContentSubscription(raw)
 	if err != nil {
 		return err
@@ -172,7 +173,7 @@ func (c *contentServer) update(raw []byte) error {
 		previous.cancel()
 		c.removeQueuedLocked(previous)
 	}
-	subscriptionContext, cancel := context.WithCancel(c.ctx)
+	subscriptionContext, cancel := context.WithCancel(diagnostics.CopyTrace(c.ctx, ctx))
 	subscriptions[id] = &contentSubscription{id: id, target: *target, ctx: subscriptionContext, cancel: cancel}
 	c.dirtyLocked(clientID, subscriptions[id])
 	c.mu.Unlock()
@@ -365,6 +366,7 @@ func (c *contentServer) fail(clientID string, subscription *contentSubscription,
 		return
 	}
 	client.cancelContent(subscription.id)
+	diagnostics.End(subscription.ctx, "transport.content", cause)
 	client.deliverContentError(subscription.id, cause.Error())
 }
 

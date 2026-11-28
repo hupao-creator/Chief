@@ -239,11 +239,16 @@ public final class NativeSettingsDraft {
                 guard self.runtimeAvailable else { self.status = .pending; return false }
                 let snapshot = self.ready
                 let submittedRouting = self.value["moku"]?["routingGuidance"]
+                let trace = DevDiagnostics.makeTrace()
+                DevDiagnostics.event("settings.save", "submitting", trace: trace)
                 do {
-                    let result = try await self.save(snapshot, self.revision)
+                    let result = try await DevDiagnostics.$trace.withValue(trace) {
+                        try await self.save(snapshot, self.revision)
+                    }
                     guard !self.retired else { return false }
                     switch result {
                     case let .conflict(settings, revision):
+                        DevDiagnostics.event("settings.save", "revision_conflict", trace: trace)
                         let authority = self.latest.1 > revision ? self.latest : (settings, revision)
                         if self.reconcileFirstRunDiscovery || self.isProfileInitialization(authority.0),
                            self.mergeUncontestedChanges(authority) { continue }
@@ -251,6 +256,7 @@ public final class NativeSettingsDraft {
                         self.error = "设置已被其他客户端修改，草稿已保留。保留我的修改并重试会合并独立修改，并以我的修改处理相同字段。"
                         self.status = .error; return false
                     case let .saved(settings, revision):
+                        DevDiagnostics.event("settings.save", "accepted", trace: trace)
                         // Keep the exact editable text after a normalized save:
                         // changing its UTF-16 ranges invalidates native Undo.
                         // Explicitly clearing saved guidance still closes it.
@@ -270,6 +276,7 @@ public final class NativeSettingsDraft {
                         self.setSaved(settings, revision: revision, submitted: snapshot)
                     }
                 } catch {
+                    DevDiagnostics.failure("settings.save", error, trace: trace)
                     guard !self.retired else { return false }
                     // A newer edit may have fixed the rejected combination while
                     // the previous draft was saving. Drain that edit before

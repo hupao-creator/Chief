@@ -5,13 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"strings"
 	"time"
 )
 
 // CollectMokuContexts uses each contribution's independent timeout/fallback and
 // deterministic slot order. Acquired services remain owned by this generation.
-func (h *Host) CollectMokuContexts(ctx context.Context, phase string, catalogs []plugin.BoundModelCatalog) ([]plugin.ContextEntry, error) {
+func (h *Host) CollectMokuContexts(ctx context.Context, phase string, catalogs []plugin.BoundModelCatalog) (_ []plugin.ContextEntry, returned error) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "context.collect", "collecting")
+	defer func() { diagnostics.End(ctx, "context.collect", returned) }()
 	ctx, services, done, err := h.begin(ctx)
 	if err != nil {
 		return nil, err
@@ -39,6 +43,7 @@ func (h *Host) CollectMokuContexts(ctx context.Context, phase string, catalogs [
 		cancel()
 		if (err != nil || strings.TrimSpace(content) == "") && ctx.Err() == nil {
 			if fallback, ok := service.(plugin.MokuContextFallback); ok {
+				diagnostics.Event(ctx, "context.collect", "using_fallback")
 				attempt, cancel = context.WithTimeout(ctx, time.Duration(definition.TimeoutMS)*time.Millisecond)
 				content, err = fallback.Fallback(attempt, plugin.MokuContextInput{Catalogs: catalogs})
 				if attempt.Err() != nil {

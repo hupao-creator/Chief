@@ -242,7 +242,7 @@ README/入口核对。资源来源说明属于自有文档；法律原文与生�
 | `design/thread-overview-isolation.md` | [design/reading.md](../../design/reading.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
 | `design/thread-scroll-observation.md` | [design/reading.md](../../design/reading.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
 | `design/thread-transition-latency.md` | [design/reading.md](../../design/reading.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
-| `internal/platform/diagnostics/README.md` | [业务证据边界](../../internal/README.md#business-evidence)、[Moku](../../internal/services/moku/README.md) | 无私有 service/tool/settings 日志接口；transcript、usage、receipt 与用户错误保留 |
+| [internal/platform/diagnostics/README.md](../../internal/platform/diagnostics/README.md) | [打包与诊断边界](../../app/macos/build/README.md#development-and-watching-main)、[实现](../../internal/platform/diagnostics/diagnostics.go) | [本地无界面核对](../../internal/platform/diagnostics/README.md#local-verification)覆盖连接、跨进程关联、字段约束和渠道门禁；产品交互和外部服务覆盖另验 |
 | `internal/plugins/harness/codex/t3-discovery.md` | [internal/services/moku/catalog-evidence.md](../../internal/services/moku/catalog-evidence.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
 | `internal/plugins/harness/pi/catalog-receipts.md` | [internal/plugins/harness/pi/README.md](../../internal/plugins/harness/pi/README.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |
 | `internal/services/moku/t3-native-discovery.md` | [internal/services/moku/catalog-evidence.md](../../internal/services/moku/catalog-evidence.md) | 约束归属/引用核对；不沿用输入文档的运行通过声明 |

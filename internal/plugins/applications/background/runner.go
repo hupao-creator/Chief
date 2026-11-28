@@ -9,6 +9,7 @@ import (
 
 	"github.com/hupao-creator/Chief/internal/core/model"
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 var errAgentDisabled = errors.New("background agent disabled")
@@ -389,6 +390,9 @@ func (r *Runner) process(shutdown context.Context) (returned error) {
 		}
 		work = &created
 	}
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "background.batch", "admitted")
+	defer func() { diagnostics.End(ctx, "background.batch", returned) }()
 	counted := false
 	recovered := false
 	var plan BatchPlan

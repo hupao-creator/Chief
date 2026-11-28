@@ -4,6 +4,10 @@
 
 The [global voice module](../Voice/README.md) uses [RuntimeVoice](RuntimeVoice.swift) for a call-scoped authenticated SDP stream. The existing live client lease and service epoch fence the operation.
 
+The packaged development client correlates loopback commands, foreground
+content and voice with [local diagnostics](../../../../internal/platform/diagnostics/README.md).
+Command receipts and content identities remain independent of diagnostic traces.
+
 Connection epochs and host identities fence callbacks. The client hydrates from a complete snapshot, applies valid deltas, and obtains a fresh snapshot after gaps. Catalog data is separate from [RuntimeContent](RuntimeContent.swift) subscriptions for full conversations, turns and execution bodies. A released ready subscription may remain live for 30 seconds in the bounded
 [reading retention cache](RuntimeReadingRetention.swift) (four entries, 8MiB
 accounting budget); the consumer ID retires immediately and its live wire can

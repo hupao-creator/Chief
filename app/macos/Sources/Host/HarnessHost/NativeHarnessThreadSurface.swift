@@ -21,6 +21,7 @@ public final class NativeHarnessThreadSurface {
     @ObservationIgnored private var onIndexChange: (ThreadConversationIndex) -> Void
     @ObservationIgnored private var routes: NativeHarnessThreadRoutes?
     @ObservationIgnored private var lastIndex: ThreadConversationIndex?
+    @ObservationIgnored private let diagnosticTrace = DevDiagnostics.makeTrace()
 
     @ObservationIgnored private let materialization = NativeThreadMaterializationCache()
     @ObservationIgnored private var resources: [String: HarnessContentResource] = [:]
@@ -32,6 +33,7 @@ public final class NativeHarnessThreadSurface {
         self.onIndexChange = onIndexChange; threadID = input.thread.id; harnessID = input.thread.harnessID
         self.routes = routes
         self.source = source
+        DevDiagnostics.event("reading.surface", "bound", trace: diagnosticTrace)
     }
 
     public func update(input: HarnessThreadInput, presentation: HarnessConversationPresentation,
@@ -94,10 +96,15 @@ public final class NativeHarnessThreadSurface {
                 try checkLifetime()
                 guard !resource.isReleased, resources[subscriptionID] === resource else { throw CancellationError() }
                 _ = try host.authoritativeThread(threadID: threadID, harnessID: harnessID, source: source)
-                try await client.subscribeThreadContent(threadId: threadID, scope: runtimeScope, subscriptionId: subscriptionID)
+                _ = try await DevDiagnostics.$trace.withValue(diagnosticTrace) {
+                    try await client.subscribeThreadContent(threadId: threadID, scope: runtimeScope, subscriptionId: subscriptionID)
+                }
                 if isReleased || resources[subscriptionID] == nil { await client.releaseThreadContent(subscriptionID) }
             } catch {
-                if !resource.isReleased { resource.publish(.error(error.localizedDescription)) }
+                if !resource.isReleased {
+                    DevDiagnostics.failure("reading.subscription", error, trace: diagnosticTrace)
+                    resource.publish(.error(error.localizedDescription))
+                }
             }
         }
         return resource

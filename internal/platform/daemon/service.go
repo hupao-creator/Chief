@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 	"github.com/hupao-creator/Chief/internal/platform/profile"
 	"github.com/hupao-creator/Chief/internal/platform/transport"
 )
@@ -27,12 +28,16 @@ type ServeOptions struct {
 	Overview  *transport.OverviewBroker
 }
 
-func Serve(ctx context.Context, options ServeOptions) error {
+func Serve(ctx context.Context, options ServeOptions) (returned error) {
+	ctx = diagnostics.WithTrace(ctx, "")
+	diagnostics.Event(ctx, "daemon.service", "starting")
+	defer func() { diagnostics.End(ctx, "daemon.service", returned) }()
 	if options.Bootstrap == nil {
 		return errors.New("runtime bootstrap is required")
 	}
 	owner, err := profile.Acquire(options.Profile)
 	if err != nil {
+		diagnostics.Event(ctx, "daemon.service", "profile_acquire_failed")
 		return err
 	}
 	lifetime, cancel := context.WithCancel(context.Background())
@@ -47,6 +52,7 @@ func Serve(ctx context.Context, options ServeOptions) error {
 	var stopErr error
 	stop := func(stopContext context.Context) error {
 		closeOnce.Do(func() {
+			diagnostics.Event(ctx, "daemon.service", "draining")
 			mu.Lock()
 			stopping = true
 			current := server
@@ -105,7 +111,9 @@ func Serve(ctx context.Context, options ServeOptions) error {
 	}()
 	var openErr error
 	host, openErr = options.Bootstrap.Initialize(lifetime)
-	if openErr == nil {
+	if openErr != nil {
+		diagnostics.Event(ctx, "daemon.service", "bootstrap_failed")
+	} else {
 		mu.Lock()
 		if stopping {
 			openErr = context.Canceled
@@ -125,8 +133,11 @@ func Serve(ctx context.Context, options ServeOptions) error {
 		if cleanupErr := stop(context.Background()); cleanupErr == nil {
 			return openErr
 		}
-	} else if options.Output != nil {
-		_ = json.NewEncoder(options.Output).Encode(map[string]any{"status": "running", "pid": server.Connection.PID, "epoch": owner.Epoch, "dataDir": options.Profile.DataDir})
+	} else {
+		diagnostics.Event(ctx, "daemon.service", "ready")
+		if options.Output != nil {
+			_ = json.NewEncoder(options.Output).Encode(map[string]any{"status": "running", "pid": server.Connection.PID, "epoch": owner.Epoch, "dataDir": options.Profile.DataDir})
+		}
 	}
 	<-stopped
 	if server != nil {

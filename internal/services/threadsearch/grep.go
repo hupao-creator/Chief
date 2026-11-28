@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hupao-creator/Chief/internal/core/plugin"
+	"github.com/hupao-creator/Chief/internal/platform/diagnostics"
 )
 
 // GrepSource comes from an authoritative ordinary-thread snapshot, never the
@@ -71,7 +72,10 @@ type GrepResult struct {
 
 // Grep returns the first matching passage per thread. Live keyset pages avoid
 // storing a second copy of private history; refresh to see edits behind a cursor.
-func Grep(ctx context.Context, raw json.RawMessage, sources []GrepSource, valid func(GrepSource) bool) (GrepResult, error) {
+func Grep(ctx context.Context, raw json.RawMessage, sources []GrepSource, valid func(GrepSource) bool) (_ GrepResult, returned error) {
+	ctx = diagnostics.EnsureTrace(ctx)
+	diagnostics.Event(ctx, "threadsearch.grep", "scanning")
+	defer func() { diagnostics.End(ctx, "threadsearch.grep", returned) }()
 	result := GrepResult{Hits: []GrepHit{}, Issues: []GrepIssue{}, Coverage: "Committed public completed-execution text only; not complete native history. One first match per thread. Live pages: refresh for edits behind the cursor. Issues describe unavailable coverage on this page."}
 	request := grepRequest{Mode: "literal", Field: "body", IncludeArchived: true, Limit: 20}
 	var object map[string]json.RawMessage
