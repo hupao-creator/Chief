@@ -16,12 +16,10 @@ import (
 )
 
 type realtimePeer struct {
-	notify  func(string, codex.Map, any)
-	exit    func(error)
-	start   chan codex.Map
-	speech  chan string
-	session string
-	appends int
+	notify     func(string, codex.Map, any)
+	exit       func(error)
+	start      chan codex.Map
+	unexpected chan string
 }
 
 func (p *realtimePeer) SetHandler(h func(string, codex.Map, any), exit func(error)) {
@@ -29,33 +27,16 @@ func (p *realtimePeer) SetHandler(h func(string, codex.Map, any), exit func(erro
 	p.exit = exit
 }
 func (*realtimePeer) Reply(any, codex.Map, error) error { return nil }
-func (p *realtimePeer) Call(ctx context.Context, method string, params any) (codex.Map, error) {
+func (p *realtimePeer) Call(_ context.Context, method string, params any) (codex.Map, error) {
 	switch method {
 	case "thread/realtime/start":
-		p.session = params.(codex.Map)["realtimeSessionId"].(string)
 		p.start <- params.(codex.Map)
-	case "thread/realtime/appendSpeech":
-		text := params.(codex.Map)["text"].(string)
-		p.speech <- text
-		if text == "hold this append" {
-			<-ctx.Done()
-			return nil, ctx.Err()
-		}
-		if text == "A new result from Chief." || text == "没有播出的结果" {
-			return codex.Map{}, nil // Simulate native acceptance before any playback event.
-		}
-		p.appends++
-		item := codex.Map{"type": "transcriptSegment", "role": "assistant", "realtimeSessionId": p.session,
-			"id": fmt.Sprintf("output-%d", p.appends), "text": text}
-		if text == "Talk with delayed playback" {
-			item["id"] = "slow-playout"
-		}
-		p.notify("thread/realtime/item/started", codex.Map{"threadId": "relay", "item": item}, nil)
-		if text != "Talk with delayed playback" {
-			p.notify("thread/realtime/item/completed", codex.Map{"threadId": "relay", "item": item}, nil)
-		}
 	case "thread/realtime/stop":
 	default:
+		select {
+		case p.unexpected <- method:
+		default:
+		}
 		return nil, fmt.Errorf("unexpected native method %s", method)
 	}
 	return codex.Map{}, nil
@@ -86,12 +67,12 @@ func exerciseHandoffs(t *rapid.T) {
 	defer deadline()
 	ctx, stop := context.WithCancel(timeout)
 	defer stop()
-	peer := &realtimePeer{start: make(chan codex.Map, 1), speech: make(chan string, 8)}
+	peer := &realtimePeer{start: make(chan codex.Map, 1), unexpected: make(chan string, 1)}
 	answer, inputs := make(chan string, 1), make(chan handoff, 32)
-	replies := make(chan plugin.VoiceReply, 16)
+	failures := make(chan plugin.VoiceFailure, 3)
 	done := make(chan error, 1)
 	go func() {
-		done <- runSession(ctx, peer, "relay", plugin.GlobalVoice{ID: "product-call", Offer: "offer", Answer: func(s string) error { answer <- s; return nil }, Replies: replies,
+		done <- runSession(ctx, peer, "relay", plugin.GlobalVoice{ID: "product-call", Offer: "offer", Answer: func(s string) error { answer <- s; return nil }, Failures: failures,
 			Submit: func(ctx context.Context, id, text string) error {
 				inputs <- handoff{id, text}
 				if text == "reject" {
@@ -102,7 +83,8 @@ func exerciseHandoffs(t *rapid.T) {
 	}()
 	start := await(t, timeout, peer.start)
 	session := start["realtimeSessionId"]
-	if session == nil || session == "product-call" || start["voiceSessionId"] != "product-call" || start["clientManagedHandoffs"] != true || start["version"] != "v3" {
+	if session == nil || session == "product-call" || start["voiceSessionId"] != "product-call" || start["clientManagedHandoffs"] != true || start["version"] != "v3" ||
+		start["outputModality"] != "audio" || start["delegationAckFiller"] != true {
 		t.Fatal("wrong realtime ownership")
 	}
 	emit := func(method string, params codex.Map) { peer.notify(method, params, nil) }
@@ -201,70 +183,11 @@ func exerciseHandoffs(t *rapid.T) {
 		if got := await(t, timeout, inputs); got != (handoff{id, words}) {
 			t.Fatalf("unexpected target input: %+v", got)
 		}
-		expired, revoke := context.WithCancel(ctx)
-		revoke()
-		replies <- plugin.VoiceReply{Context: expired, HandoffID: id, Text: "revoked"}
-		if i > 0 {
-			replies <- plugin.VoiceReply{Context: ctx, HandoffID: "0", Text: "stale"}
-		}
-		text := "the committed Talk"
-		if i+1 < count && rapid.Bool().Draw(t, "overlapping-speech") {
-			text = "hold this append"
-		}
-		replies <- plugin.VoiceReply{Context: ctx, HandoffID: id, Text: text}
-		if got := await(t, timeout, peer.speech); got != text {
-			t.Fatalf("unexpected speech %q", got)
-		}
 	}
-	// A native ack and then a playout each occupy the one speech lane.
-	// Wait for the actual relay to block before releasing either one.
-	assistant := func(method, id, text string) {
-		emit("thread/realtime/item/"+method, codex.Map{"threadId": "relay", "item": codex.Map{
-			"type": "transcriptSegment", "role": "assistant", "realtimeSessionId": session, "id": id, "text": text}})
-	}
-	assistant("started", "native-ack", "")
-	last := fmt.Sprint(count - 1)
-	replies <- plugin.VoiceReply{Context: ctx, HandoffID: last, Text: "Talk with delayed playback"}
-	replies <- plugin.VoiceReply{Context: ctx, HandoffID: last, Text: words}
-	synctest.Wait()
-	if len(peer.speech) != 0 {
-		t.Fatal("Talk interrupted the native acknowledgement")
-	}
-	assistant("completed", "native-ack", "heard")
-	if got := await(t, timeout, peer.speech); got != "Talk with delayed playback" {
-		t.Fatalf("first Talk after acknowledgement: %q", got)
-	}
-	synctest.Wait()
-	if len(peer.speech) != 0 {
-		t.Fatal("the second Talk interrupted the first")
-	}
-	assistant("completed", "slow-playout", "Talk with delayed playback")
-	if got := await(t, timeout, peer.speech); got != words {
-		t.Fatalf("second Talk after playout: %q", got)
-	}
-	// An acknowledgement can start after a successful append, even when the
-	// peer never plays that append. Only a transcript containing the Talk
-	// should release the next append.
-	const delayed = "A new result from Chief."
-	replies <- plugin.VoiceReply{Context: ctx, HandoffID: last, Text: delayed}
-	replies <- plugin.VoiceReply{Context: ctx, HandoffID: last, Text: words}
-	if got := await(t, timeout, peer.speech); got != delayed {
-		t.Fatalf("missing fast Talk: %q", got)
-	}
-	assistant("started", "late-ack", "")
-	assistant("completed", "late-ack", "I heard you.")
-	synctest.Wait()
-	if len(peer.speech) != 0 {
-		t.Fatal("an unrelated acknowledgement confirmed the pending Talk")
-	}
-	assistant("completed", "talk-start", "A new")
-	assistant("completed", "talk-end", "result from Chief!")
-	if got := await(t, timeout, peer.speech); got != words {
-		t.Fatalf("next Talk after confirmed speech: %q", got)
-	}
-
-	// The next segment starts before its predecessor finishes. Both
-	// destination admissions survive, but only the newer one may speak.
+	// An unfinished native acknowledgement cannot delay the next admission.
+	emit("thread/realtime/item/started", codex.Map{"threadId": "relay", "item": codex.Map{
+		"type": "transcriptSegment", "role": "assistant", "realtimeSessionId": session, "id": "ack"}})
+	// The next segment can start before its predecessor finishes.
 	for _, id := range []string{"first", "blank", "second"} {
 		startSegment(id)
 	}
@@ -284,13 +207,18 @@ func exerciseHandoffs(t *rapid.T) {
 		if got := await(t, timeout, inputs); got != (handoff{id, words}) {
 			t.Fatalf("incorrect overlapping handoff: %+v", got)
 		}
-		replies <- plugin.VoiceReply{Context: ctx, HandoffID: id, Text: id}
 	}
-	if got := await(t, timeout, peer.speech); got != "second" {
-		t.Fatalf("superseded speech: %s", got)
+	// Ignore failures from retired bindings and from older user segments.
+	expired, revoke := context.WithCancel(ctx)
+	revoke()
+	failures <- plugin.VoiceFailure{Context: expired, HandoffID: "second", Err: errors.New("retired binding")}
+	failures <- plugin.VoiceFailure{Context: ctx, HandoffID: "first", Err: errors.New("old segment")}
+	synctest.Wait()
+	if len(done) != 0 {
+		t.Fatal("an expired failure ended the call")
 	}
 	var expected string
-	switch rapid.IntRange(0, 6).Draw(t, "retirement") {
+	switch rapid.IntRange(0, 5).Draw(t, "retirement") {
 	case 0:
 		request("relay", "0", "conflict")
 		expected = "reused"
@@ -310,20 +238,18 @@ func exerciseHandoffs(t *rapid.T) {
 		stop()
 		expected = "context canceled"
 	case 5:
-		replies <- plugin.VoiceReply{Context: ctx, HandoffID: "first", Failure: errors.New("stale error")}
-		replies <- plugin.VoiceReply{Context: ctx, HandoffID: "second", Failure: errors.New("target account failed")}
+		failures <- plugin.VoiceFailure{Context: ctx, HandoffID: "second", Err: errors.New("target account failed")}
 		expected = "target account failed"
-	case 6:
-		replies <- plugin.VoiceReply{Context: ctx, HandoffID: "second", Text: "没有播出的结果"}
-		if got := await(t, timeout, peer.speech); got != "没有播出的结果" {
-			t.Fatalf("unexpected pending Talk: %q", got)
-		}
-		assistant("completed", "only-ack", "好的")
-		expected = "did not confirm voice playback"
 	}
 	if err := await(t, timeout, done); err == nil || !strings.Contains(err.Error(), expected) {
 		t.Fatalf("wrong call termination: %v", err)
 	}
+	select {
+	case method := <-peer.unexpected:
+		t.Fatalf("voice relay sent an unexpected RPC: %s", method)
+	default:
+	}
+
 	request("relay", "late", "late")
 	select {
 	case v := <-inputs:

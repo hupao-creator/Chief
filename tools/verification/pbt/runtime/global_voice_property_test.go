@@ -15,13 +15,14 @@ import (
 	"github.com/hupao-creator/Chief/internal/core/plugin"
 	core "github.com/hupao-creator/Chief/internal/core/runtime"
 	"github.com/hupao-creator/Chief/internal/core/store"
+	"github.com/hupao-creator/Chief/internal/platform/transport"
 	"github.com/hupao-creator/Chief/internal/services/moku"
 	"github.com/hupao-creator/Chief/tools/verification/pbt/rapidcheck"
 	"pgregory.net/rapid"
 )
 
 // PBT-MOKU-GLOBAL-VOICE observes the destination's actual admission, tool
-// audit, public speech and retained execution through a non-Codex Harness.
+// audit, public conversation and retained execution through a non-Codex Harness.
 func TestGlobalVoiceAdmissionProperties(t *testing.T) {
 	rapidcheck.Check(t, func(t *rapid.T) {
 		check := func(err error) {
@@ -92,49 +93,26 @@ func TestGlobalVoiceAdmissionProperties(t *testing.T) {
 			t.Fatal("two clients acquired media")
 		}
 		words := rapid.SampledFrom([]string{"same words", "重复的请求", "A & <B>"}).Draw(t, "repeated-utterance")
-		reply := rapid.SampledFrom([]string{"same reply", "原样\n播报"}).Draw(t, "public-talk")
+		reply := rapid.SampledFrom([]string{"same reply", "原样\n回复"}).Draw(t, "public-talk")
 		rounds := rapid.IntRange(2, 7).Draw(t, "handoffs")
 		wantIDs := []string{}
-		var previous context.Context
+		wantReplies := 0
 		for i := range rounds {
 			id := fmt.Sprintf("native/%d", i)
 			check(call.Submit(ctx, id, words))
 			wantIDs = append(wantIDs, id)
-			if previous != nil && previous.Err() == nil {
-				t.Fatal("superseded speech retained authority")
-			}
 			talk := peer.tools.Bindings[slices.IndexFunc(peer.tools.Bindings, func(b plugin.ToolBinding) bool { return b.Name == "talk" })]
 			if _, err := talk.Execute(ctx, plugin.ToolCall{CallID: "bad", Arguments: raw(map[string]string{"text": "  "})}); err == nil {
 				t.Fatal("invalid Talk succeeded")
 			}
-			select {
-			case <-call.Replies:
-				t.Fatal("rejected Talk was spoken")
-			default:
-			}
 			_, err = talk.Execute(ctx, plugin.ToolCall{CallID: id, Arguments: raw(map[string]string{"text": reply})})
 			check(err)
-			select {
-			case speech := <-call.Replies:
-				if speech.HandoffID != id || speech.Text != reply || speech.Context.Err() != nil {
-					t.Fatal("public Talk acquired the wrong owner or text")
-				}
-				previous = speech.Context
-			default:
-				t.Fatal("committed Talk was not spoken")
-			}
+			wantReplies++
 			if rapid.Bool().Draw(t, "interleaved-typed-input") {
 				check(c.Submit(ctx, moku.SubmitRequest{Input: model.AgentInput{Parts: []model.AgentInputPart{{Kind: "text", Text: "typed"}}}}))
-				if previous.Err() == nil {
-					t.Fatal("typed input did not fence speech")
-				}
 				_, err = talk.Execute(ctx, plugin.ToolCall{CallID: "typed", Arguments: raw(map[string]string{"text": reply})})
 				check(err)
-				select {
-				case <-call.Replies:
-					t.Fatal("typed execution reused voice attribution")
-				default:
-				}
+				wantReplies++
 			}
 		}
 		cancel()
@@ -176,12 +154,28 @@ func TestGlobalVoiceAdmissionProperties(t *testing.T) {
 		if !slices.Equal(gotIDs, wantIDs) {
 			t.Fatalf("admitted %v, want %v", gotIDs, wantIDs)
 		}
+		content, err := r.ReadThreadContent(ctx, chief.ID, transport.ContentScope{Kind: "moku-conversation"}, nil)
+		check(err)
+		var page struct{ Messages []struct{ Role, Text string } }
+		check(json.Unmarshal(content.Value, &page))
+		gotReplies := 0
+		for _, msg := range page.Messages {
+			if msg.Role == "chief" {
+				if msg.Text != reply {
+					t.Fatalf("unexpected public reply: %q", msg.Text)
+				}
+				gotReplies++
+			}
+		}
+		if gotReplies != wantReplies {
+			t.Fatalf("visible replies = %d, want %d", gotReplies, wantReplies)
+		}
 		if err := call.Submit(ctx, "late", "stale"); err == nil {
 			t.Fatal("accepted a retired voice call")
 		}
 		select {
-		case <-next.Replies:
-			t.Fatal("replayed a prior call's Talk")
+		case <-next.Failures:
+			t.Fatal("unexpected failure on a replacement call")
 		default:
 		}
 		check(next.Submit(ctx, "last", "check the account"))
@@ -193,10 +187,10 @@ func TestGlobalVoiceAdmissionProperties(t *testing.T) {
 			return nil
 		}))
 		select {
-		case reply := <-next.Replies:
-			if reply.HandoffID != "last" || reply.Text != "" || reply.Failure == nil ||
-				reply.Failure.Error() != "Chief (fixture): target account refused the request" {
-				t.Fatalf("incorrect destination failure: %+v", reply)
+		case failure := <-next.Failures:
+			if failure.HandoffID != "last" || failure.Err == nil ||
+				failure.Err.Error() != "Chief (fixture): target account refused the request" {
+				t.Fatalf("incorrect destination failure: %+v", failure)
 			}
 		case <-ctx.Done():
 			t.Fatal("target failure did not reach the voice caller")

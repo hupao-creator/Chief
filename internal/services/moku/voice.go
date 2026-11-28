@@ -16,7 +16,7 @@ type voiceCall struct {
 	id, owner string
 	ctx       context.Context
 	cancel    context.CancelCauseFunc
-	replies   chan plugin.VoiceReply
+	failures  chan plugin.VoiceFailure
 	binding   *voiceBinding
 }
 type voiceBinding struct {
@@ -39,7 +39,7 @@ func (c *Coordinator) RunGlobalVoice(ctx context.Context, offer string, answer f
 		return errors.New("Codex Voice Mode is unavailable")
 	}
 	ctx, cancel := context.WithCancelCause(ctx)
-	call := &voiceCall{id: newID(), ctx: ctx, cancel: cancel, replies: make(chan plugin.VoiceReply, 32)}
+	call := &voiceCall{id: newID(), ctx: ctx, cancel: cancel, failures: make(chan plugin.VoiceFailure, 1)}
 	c.mu.Lock()
 	if c.voice != nil {
 		c.mu.Unlock()
@@ -83,13 +83,13 @@ func (c *Coordinator) RunGlobalVoice(ctx context.Context, offer string, answer f
 	if err != nil {
 		return err
 	}
-	err = c.config.RunVoice(ctx, executable, plugin.GlobalVoice{ID: call.id, Offer: offer, Answer: answer, Replies: call.replies,
+	err = c.config.RunVoice(ctx, executable, plugin.GlobalVoice{ID: call.id, Offer: offer, Answer: answer, Failures: call.failures,
 		Submit: func(ctx context.Context, id, text string) error {
 			if err := context.Cause(call.ctx); err != nil {
 				return err
 			}
-			speech, retire := context.WithCancel(call.ctx)
-			binding := &voiceBinding{call: call, handoff: id, ctx: speech, cancel: retire}
+			bindingCtx, retire := context.WithCancel(call.ctx)
+			binding := &voiceBinding{call: call, handoff: id, ctx: bindingCtx, cancel: retire}
 			err := c.submit(ctx, SubmitRequest{Input: model.AgentInput{Parts: []model.AgentInputPart{{Kind: "text", Text: text}}}}, binding)
 			if err != nil {
 				retire()
@@ -113,7 +113,7 @@ func (c *Coordinator) RunGlobalVoice(ctx context.Context, offer string, answer f
 }
 
 // Called under the serialized user-input admission, before native Send. A
-// typed input also retires speech from the previous voice-owned execution.
+// typed input also retires the previous voice binding.
 func (c *Coordinator) startVoiceInput(binding *voiceBinding, owner string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -130,21 +130,7 @@ func (c *Coordinator) startVoiceInput(binding *voiceBinding, owner string) error
 	return nil
 }
 
-func (c *Coordinator) voiceTalk(owner, execution string) *voiceBinding {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.voice == nil || c.voice.owner != owner {
-		return nil
-	}
-	b := c.voice.binding
-	if b == nil || b.execution != execution || b.ctx.Err() != nil {
-		return nil
-	}
-	return b
-}
-
-// Called with Coordinator.mu. A failed destination can no longer produce Talk.
-// Fence the error like speech so an old execution cannot end a newer call.
+// Called with Coordinator.mu. Only the current binding can report failure.
 func (c *Coordinator) voiceFailure(record model.ThreadRecord) {
 	execution := record.Observation.LatestExecution
 	call := c.voice
@@ -153,7 +139,7 @@ func (c *Coordinator) voiceFailure(record model.ThreadRecord) {
 		return
 	}
 	b := call.binding
-	if b == nil || b.execution != execution.ExecutionID || b.failureReported {
+	if b == nil || b.execution != execution.ExecutionID || b.ctx.Err() != nil || b.failureReported {
 		return
 	}
 	b.failureReported = true
@@ -161,17 +147,14 @@ func (c *Coordinator) voiceFailure(record model.ThreadRecord) {
 	if execution.Error != nil && *execution.Error != "" {
 		message = *execution.Error
 	}
-	b.send(plugin.VoiceReply{Failure: fmt.Errorf("Chief (%s): %s", record.HarnessID, message)})
-}
-
-func (b *voiceBinding) send(reply plugin.VoiceReply) {
-	if b.ctx.Err() != nil {
-		return
-	}
-	reply.Context, reply.HandoffID = b.ctx, b.handoff
+	// A pending failure can only belong to a superseded binding. Keep the
+	// current failure available without blocking the observation publisher.
 	select {
-	case b.call.replies <- reply:
+	case <-call.failures:
 	default:
-		b.call.cancel(errors.New("Chief voice playback queue is full"))
+	}
+	call.failures <- plugin.VoiceFailure{
+		Context: b.ctx, HandoffID: b.handoff,
+		Err: fmt.Errorf("Chief (%s): %s", record.HarnessID, message),
 	}
 }

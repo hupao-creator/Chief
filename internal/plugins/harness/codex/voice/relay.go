@@ -21,7 +21,7 @@ type Relay struct {
 	TemporaryRoot string
 }
 
-const frontend = "You are the voice interface for Chief. The client automatically sends each completed user utterance to Chief. Acknowledge hearing the user briefly, then wait. Never answer a task, start work or promise a result. When Chief supplies text for playback, speak it verbatim in its original language."
+const frontend = "You are the voice interface for Chief. The client automatically sends each completed user utterance to Chief. Acknowledge hearing the user briefly, then wait. Never answer a task, start work or promise a result."
 const backing = "You are the transport for Chief's voice session. The client delivers completed user speech directly to Chief. Do not perform the task, call tools, or provide a substantive answer."
 
 // Run owns a fresh native process and disposable native home for the entire call.
@@ -126,7 +126,6 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 	session := fmt.Sprintf("%x-%x-%x-%x-%x", id[:4], id[4:6], id[6:8], id[8:10], id[10:])
 	events := make(chan notification, 8)
 	requests := &handoffs{segments: make(map[string]segment), jobs: make(chan handoff, 32)}
-	output := newPlayback()
 	server.SetHandler(func(method string, p codex.Map, request any) {
 		if ctx.Err() != nil {
 			return
@@ -160,17 +159,10 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 			if item["type"] != "transcriptSegment" || item["realtimeSessionId"] != session {
 				return
 			}
-			complete := method == "thread/realtime/item/completed"
-			if item["role"] == "assistant" {
-				if err := output.observe(item, complete); err != nil {
-					cancel(err)
-				}
-				return
-			}
 			if item["role"] != "user" {
 				return
 			}
-			if err := requests.observe(item, complete); err != nil {
+			if err := requests.observe(item, method == "thread/realtime/item/completed"); err != nil {
 				cancel(err)
 			}
 			return
@@ -242,28 +234,12 @@ func runSession(parent context.Context, server nativeServer, thread string, call
 			return context.Cause(ctx)
 		case now := <-watch.C:
 			requests.expireStalled(now)
-		case reply, open := <-call.Replies:
-			if !open {
-				return errors.New("the Chief voice destination disconnected")
-			}
+		case failure := <-call.Failures:
 			if ctx.Err() != nil {
 				return context.Cause(ctx)
 			}
-			speech, finish, ok := requests.speech(reply)
-			if !ok {
-				continue
-			}
-			if reply.Failure != nil {
-				finish()
-				return reply.Failure
-			}
-			stop := context.AfterFunc(ctx, finish)
-			err := output.say(speech, server, thread, reply.Text)
-			revoked := speech.Err() != nil
-			stop()
-			finish()
-			if err != nil && !revoked {
-				return fmt.Errorf("Chief speech was not confirmed: %w", err)
+			if failure.Context.Err() == nil && requests.current(failure.HandoffID) {
+				return failure.Err
 			}
 		}
 	}
