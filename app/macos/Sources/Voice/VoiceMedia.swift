@@ -41,7 +41,9 @@ final class VoiceMedia {
         guard Self.sslReady, Self.deviceAvailable(input: true), Self.deviceAvailable(input: false) else {
             throw VoiceFailure("Voice Mode needs an available microphone and audio output.")
         }
-        let processing = LKRTCDefaultAudioProcessingModule(config: nil, capturePostProcessingDelegate: capture, renderPreProcessingDelegate: nil)
+        let processing = LKRTCDefaultAudioProcessingModule()
+        // The pinned SDK's initializer does not attach the delegate to its native adapter.
+        processing.capturePostProcessingDelegate = capture
         let factory = LKRTCPeerConnectionFactory(audioDeviceModuleType: .audioEngine, bypassVoiceProcessing: false,
                                                  encoderFactory: nil, decoderFactory: nil, audioProcessingModule: processing)
         self.factory = factory
