@@ -638,6 +638,8 @@ does not change chip width, selection, ordering or the Runtime filter context.
 Receipt and catalog version changes update counts even for unselected spaces.
 
 A primary press on a left-side semantic tag selects it on a short release.
+The same native capsule hit boundary used by top-row and left-rail tag buttons
+keeps [Chief messages visible while browsing tags](../MokuScene/README.md#talk-and-dispatch).
 After at least half a second, releasing on that tag acknowledges the current
 unread versions in its browsing membership and preserves the selection.
 Dragging outside the capsule or more than 10pt, scrolling, pressing Escape,

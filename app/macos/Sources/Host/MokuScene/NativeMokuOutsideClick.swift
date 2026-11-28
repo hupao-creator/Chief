@@ -26,7 +26,7 @@ struct NativeMokuOutsideClickMonitor: NSViewRepresentable {
     var preservedClick: () -> Void = {}
     var outsideWindowClick: (() -> Void)? = nil
     var isInside: (CGPoint) -> Bool
-    var click: (CGPoint) -> Void
+    var click: (NSEvent) -> Void
 
     func makeNSView(context: Context) -> MonitorView {
         let view = MonitorView()
@@ -60,7 +60,7 @@ struct NativeMokuOutsideClickMonitor: NSViewRepresentable {
         private var beginClick: () -> Void = {}
         private var isActive: () -> Bool = { false }
         private var isInside: (CGPoint) -> Bool = { _ in true }
-        private var click: (CGPoint) -> Void = { _ in }
+        private var click: (NSEvent) -> Void = { _ in }
         private var preservedClick: () -> Void = {}
 
         // Match the flipped SwiftUI scene rather than AppKit's bottom-left origin.
@@ -71,7 +71,7 @@ struct NativeMokuOutsideClickMonitor: NSViewRepresentable {
                     isActive: @escaping () -> Bool, preservesOwnedInteractions: Bool,
                     preservedClick: @escaping () -> Void,
                     outsideWindowClick: (() -> Void)?, isInside: @escaping (CGPoint) -> Bool,
-                    click: @escaping (CGPoint) -> Void) {
+                    click: @escaping (NSEvent) -> Void) {
             self.beginClick = beginClick; self.isActive = isActive
             self.isInside = isInside; self.click = click
             self.outsideWindowClick = outsideWindowClick
@@ -134,7 +134,7 @@ struct NativeMokuOutsideClickMonitor: NSViewRepresentable {
                     guard self.isActive() else { return }
                     let point = self.convert(event.locationInWindow, from: nil)
                     guard !self.isInside(point) else { return }
-                    self.click(point)
+                    self.click(event)
                 }
                 return event
             }

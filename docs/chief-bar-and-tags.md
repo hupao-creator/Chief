@@ -32,6 +32,8 @@ Right-click the eyes, or hold **Control** and click. Your conversation opens abo
 
 Click a project folder or an Inbox tag in the top row. The button you choose lights up and the cards below change. In the clip, clicking **股票行情** (stock prices) brings up a stock quote task. Clicking **天气预报** (weather forecast) brings back the weekend forecast.
 
+You can click a folder or tag while a compact reply or the Chief conversation is visible. The cards switch and the message stays visible. Click an empty part of Overview to dismiss it.
+
 From Overview, press **⇧⌘[** to move one space left or **⇧⌘]** to move one space right. The top row scrolls to show your selection, and the shortcuts stop at either end. Close Chief Bar’s input or return from a reader or Settings before using these shortcuts. If your keyboard layout requires **Option** to type brackets, click the folder or tag at the top.
 
 ![The pointer clicks the stock prices tag and then the weather forecast tag. The card changes to match each selection.](images/overview-top-tags.gif)

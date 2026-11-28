@@ -708,7 +708,9 @@ public struct NativeMokuDock: View {
                         dockRects: state.dockHitRects)
                         || state.dockMentionHitRect?.contains(point) == true
                 },
-                click: { _ in
+                click: { event in
+                    if state.overviewVisible, state.conversationOpen || visibleTalk != nil,
+                       OverviewTagPointerPress.ownsPrimaryPress(event) { return }
                     if state.inputPinnedOpen, agentMentions?.dismiss() == true {
                         state.preserveInputForOwnedClick()
                     }
